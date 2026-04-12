@@ -175,7 +175,7 @@ export default function Policies() {
           </DialogTrigger>
           <DialogContent className="max-h-[90vh] overflow-y-auto">
             <DialogHeader><DialogTitle>{editingId ? "Editar Póliza" : "Nueva Póliza"}</DialogTitle></DialogHeader>
-            <PolicyForm />
+            {policyFormContent}
           </DialogContent>
         </Dialog>
       </div>
