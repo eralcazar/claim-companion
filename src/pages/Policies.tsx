@@ -59,12 +59,14 @@ export default function Policies() {
         user_id: user!.id,
         company: form.company,
         policy_number: form.policy_number,
+        policy_type: form.policy_type,
+        contractor_name: form.contractor_name,
         start_date: form.start_date,
         end_date: form.end_date || null,
         status: form.status,
         suma_asegurada: form.suma_asegurada ? parseFloat(form.suma_asegurada) : 0,
         observaciones: form.observaciones || "",
-      };
+      } as any;
       if (editingId) {
         const { error } = await supabase.from("insurance_policies").update(payload).eq("id", editingId);
         if (error) throw error;
@@ -131,6 +133,20 @@ export default function Policies() {
       <div className="space-y-2">
         <Label>Número de póliza</Label>
         <Input value={form.policy_number} onChange={(e) => setForm({ ...form, policy_number: e.target.value })} />
+      </div>
+      <div className="space-y-2">
+        <Label>Tipo de póliza</Label>
+        <Select value={form.policy_type} onValueChange={(v) => setForm({ ...form, policy_type: v })}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="individual">Individual</SelectItem>
+            <SelectItem value="colectiva">Colectiva</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="space-y-2">
+        <Label>Nombre del contratante</Label>
+        <Input value={form.contractor_name} onChange={(e) => setForm({ ...form, contractor_name: e.target.value })} placeholder="Razón social o nombre del contratante" />
       </div>
       <div className="space-y-2">
         <Label>Fecha y hora de inicio</Label>
