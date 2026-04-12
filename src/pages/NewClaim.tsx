@@ -113,7 +113,7 @@ export default function NewClaim() {
               <SelectTrigger><SelectValue placeholder="Selecciona póliza" /></SelectTrigger>
               <SelectContent>
                 {policies?.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>{p.company} — {p.policy_number}</SelectItem>
+                  <SelectItem key={p.id} value={p.id}>{p.policy_number} — {p.company}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
