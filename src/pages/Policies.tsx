@@ -111,7 +111,7 @@ export default function Policies() {
     setOpen(true);
   };
 
-  const PolicyForm = () => (
+  const policyFormContent = (
     <div className="space-y-4">
       <div className="space-y-2">
         <Label>Aseguradora</Label>
