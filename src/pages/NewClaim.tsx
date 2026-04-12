@@ -10,7 +10,9 @@ import { ArrowLeft, ArrowRight, Check, Download, FileDown } from "lucide-react";
 import { defaultFormData, type ClaimFormData, type ClaimType } from "@/components/claims/types";
 import StepClaimType from "@/components/claims/StepClaimType";
 import StepPolicySelect from "@/components/claims/StepPolicySelect";
+import StepPatientInfo from "@/components/claims/StepPatientInfo";
 import StepMedicalInfo from "@/components/claims/StepMedicalInfo";
+import StepComplementaryInfo from "@/components/claims/StepComplementaryInfo";
 import StepHospitalInfo from "@/components/claims/StepHospitalInfo";
 import StepInvoices from "@/components/claims/StepInvoices";
 import StepPayment from "@/components/claims/StepPayment";
@@ -51,9 +53,9 @@ export default function NewClaim() {
 
   const selectedPolicy = policies?.find((p) => p.id === form.policy_id);
   const company = selectedPolicy?.company || "";
+  const isMetLife = company.toLowerCase().includes("metlife");
   const isReembolso = form.claim_type === "reembolso";
 
-  // Build steps dynamically based on company + claim type
   const buildSteps = () => {
     const steps: { title: string; content: React.ReactNode; valid: boolean }[] = [];
 
@@ -79,35 +81,53 @@ export default function NewClaim() {
       valid: !!form.policy_id,
     });
 
-    // 3. Medical info
+    // 3. Patient info (MetLife: asegurado afectado)
+    if (isMetLife) {
+      steps.push({
+        title: "Datos del Paciente",
+        content: <StepPatientInfo form={form} onChange={onChange} />,
+        valid: form.patient_is_titular || (!!form.patient_first_name && !!form.patient_paternal_surname),
+      });
+    }
+
+    // 4. Medical info
     steps.push({
       title: "Información Médica",
       content: <StepMedicalInfo form={form} onChange={onChange} />,
       valid: !!form.diagnosis && !!form.treatment && !!form.symptom_start_date,
     });
 
-    // 4. Hospital (optional but always shown)
+    // 5. Complementary info (MetLife section 5)
+    if (isMetLife) {
+      steps.push({
+        title: "Datos Complementarios",
+        content: <StepComplementaryInfo form={form} onChange={onChange} />,
+        valid: true,
+      });
+    }
+
+    // 6. Hospital
     steps.push({
       title: "Hospitalización",
       content: <StepHospitalInfo form={form} onChange={onChange} />,
-      valid: true, // optional
+      valid: true,
     });
 
     if (isReembolso) {
-      // 5. Invoices
+      // 7. Invoices
       steps.push({
         title: "Facturas",
         content: <StepInvoices form={form} onChange={onChange} />,
         valid: !!form.total_cost || form.invoices.length > 0,
       });
-      // 6. Payment
+      // 8. Payment
       steps.push({
         title: "Método de Pago",
         content: <StepPayment form={form} onChange={onChange} />,
         valid: !!form.payment_method && (form.payment_method !== "transferencia" || (!!form.bank_name && form.clabe.length === 18)),
       });
     } else {
-      // 5. Surgery / Programación
+      // 7. Surgery / Programación
       steps.push({
         title: "Programación",
         content: <StepSurgeryInfo form={form} onChange={onChange} />,
@@ -141,6 +161,35 @@ export default function NewClaim() {
         : parseFloat(form.total_cost);
 
       const formData = {
+        // Patient
+        patient_is_titular: form.patient_is_titular,
+        patient_first_name: form.patient_first_name,
+        patient_paternal_surname: form.patient_paternal_surname,
+        patient_maternal_surname: form.patient_maternal_surname,
+        patient_dob: form.patient_dob,
+        patient_birth_country: form.patient_birth_country,
+        patient_birth_state: form.patient_birth_state,
+        patient_occupation: form.patient_occupation,
+        patient_certificate_number: form.patient_certificate_number,
+        patient_relationship: form.patient_relationship,
+        // Complementary
+        has_other_active_policy: form.has_other_active_policy,
+        other_active_policy_name: form.other_active_policy_name,
+        had_prior_insurance: form.had_prior_insurance,
+        prior_insurance_company: form.prior_insurance_company,
+        prior_insurance_start: form.prior_insurance_start,
+        has_current_other_insurance: form.has_current_other_insurance,
+        current_other_company: form.current_other_company,
+        current_other_start: form.current_other_start,
+        current_other_end: form.current_other_end,
+        has_prior_metlife_claims: form.has_prior_metlife_claims,
+        prior_metlife_siniestro: form.prior_metlife_siniestro,
+        is_pep: form.is_pep,
+        is_sending_prior_info: form.is_sending_prior_info,
+        prior_dcn_folio: form.prior_dcn_folio,
+        authority_knowledge: form.authority_knowledge,
+        authority_name: form.authority_name,
+        // Original fields
         prior_company: form.prior_company,
         has_prior_claims: form.has_prior_claims,
         accident_description: form.accident_description,
