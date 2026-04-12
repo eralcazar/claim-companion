@@ -22,6 +22,8 @@ type PolicyStatus = Database["public"]["Enums"]["policy_status"];
 const EMPTY_FORM = {
   company: "MetLife",
   policy_number: "",
+  policy_type: "individual",
+  contractor_name: "",
   start_date: "",
   end_date: "",
   status: "activa" as PolicyStatus,
