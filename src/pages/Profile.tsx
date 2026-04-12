@@ -166,6 +166,7 @@ export default function Profile() {
           </div>
           <Field id="nationality" label="Nacionalidad" />
           <Field id="occupation" label="Ocupación" />
+        </CardContent>
       </Card>
 
       {/* Dirección */}
