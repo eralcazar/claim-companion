@@ -3,32 +3,28 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, ArrowRight, Check } from "lucide-react";
-import type { Database } from "@/integrations/supabase/types";
-
-type ClaimType = Database["public"]["Enums"]["claim_type"];
+import { ArrowLeft, ArrowRight, Check, Download } from "lucide-react";
+import { defaultFormData, type ClaimFormData, type ClaimType } from "@/components/claims/types";
+import StepClaimType from "@/components/claims/StepClaimType";
+import StepPolicySelect from "@/components/claims/StepPolicySelect";
+import StepMedicalInfo from "@/components/claims/StepMedicalInfo";
+import StepHospitalInfo from "@/components/claims/StepHospitalInfo";
+import StepInvoices from "@/components/claims/StepInvoices";
+import StepPayment from "@/components/claims/StepPayment";
+import StepSurgeryInfo from "@/components/claims/StepSurgeryInfo";
+import StepReview from "@/components/claims/StepReview";
+import { generateClaimPDF } from "@/components/claims/generateClaimPDF";
 
 export default function NewClaim() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
+  const [form, setForm] = useState<ClaimFormData>({ ...defaultFormData });
 
-  const [form, setForm] = useState({
-    claim_type: "" as ClaimType | "",
-    policy_id: "",
-    incident_date: "",
-    diagnosis: "",
-    treatment: "",
-    total_cost: "",
-    notes: "",
-  });
+  const onChange = (updates: Partial<ClaimFormData>) => setForm((f) => ({ ...f, ...updates }));
 
   const { data: policies } = useQuery({
     queryKey: ["policies-active", user?.id],
@@ -52,17 +48,134 @@ export default function NewClaim() {
     enabled: !!user,
   });
 
+  const selectedPolicy = policies?.find((p) => p.id === form.policy_id);
+  const company = selectedPolicy?.company || "";
+  const isReembolso = form.claim_type === "reembolso";
+
+  // Build steps dynamically based on company + claim type
+  const buildSteps = () => {
+    const steps: { title: string; content: React.ReactNode; valid: boolean }[] = [];
+
+    // 1. Claim type
+    steps.push({
+      title: "Tipo de Reclamo",
+      content: <StepClaimType form={form} onChange={onChange} />,
+      valid: !!form.claim_type,
+    });
+
+    // 2. Policy
+    steps.push({
+      title: "Seleccionar Póliza",
+      content: (
+        <StepPolicySelect
+          form={form}
+          onChange={onChange}
+          policies={policies?.map((p) => ({ id: p.id, policy_number: p.policy_number, company: p.company })) || []}
+          profile={profile}
+          selectedPolicy={selectedPolicy ? { id: selectedPolicy.id, policy_number: selectedPolicy.policy_number, company: selectedPolicy.company } : undefined}
+        />
+      ),
+      valid: !!form.policy_id,
+    });
+
+    // 3. Medical info
+    steps.push({
+      title: "Información Médica",
+      content: <StepMedicalInfo form={form} onChange={onChange} />,
+      valid: !!form.diagnosis && !!form.treatment && !!form.symptom_start_date,
+    });
+
+    // 4. Hospital (optional but always shown)
+    steps.push({
+      title: "Hospitalización",
+      content: <StepHospitalInfo form={form} onChange={onChange} />,
+      valid: true, // optional
+    });
+
+    if (isReembolso) {
+      // 5. Invoices
+      steps.push({
+        title: "Facturas",
+        content: <StepInvoices form={form} onChange={onChange} />,
+        valid: !!form.total_cost || form.invoices.length > 0,
+      });
+      // 6. Payment
+      steps.push({
+        title: "Método de Pago",
+        content: <StepPayment form={form} onChange={onChange} />,
+        valid: !!form.payment_method && (form.payment_method !== "transferencia" || (!!form.bank_name && form.clabe.length === 18)),
+      });
+    } else {
+      // 5. Surgery / Programación
+      steps.push({
+        title: "Programación",
+        content: <StepSurgeryInfo form={form} onChange={onChange} />,
+        valid: !!form.surgeon_name && !!form.surgery_hospital && !!form.surgery_date && !!form.procedure_description && !!form.total_cost,
+      });
+    }
+
+    // Final: Review
+    steps.push({
+      title: "Revisión",
+      content: (
+        <StepReview
+          form={form}
+          profileName={profile?.full_name || ""}
+          policyLabel={`${company} — ${selectedPolicy?.policy_number || ""}`}
+          company={company}
+        />
+      ),
+      valid: true,
+    });
+
+    return steps;
+  };
+
+  const steps = buildSteps();
+
   const createMutation = useMutation({
     mutationFn: async () => {
+      const totalCost = isReembolso
+        ? form.invoices.reduce((s, i) => s + (parseFloat(i.amount) || 0), 0) || parseFloat(form.total_cost)
+        : parseFloat(form.total_cost);
+
+      const formData = {
+        prior_company: form.prior_company,
+        has_prior_claims: form.has_prior_claims,
+        accident_description: form.accident_description,
+        hospital_name: form.hospital_name,
+        hospital_address: form.hospital_address,
+        admission_date: form.admission_date,
+        discharge_date: form.discharge_date,
+        hospitalization_days: form.hospitalization_days,
+        lab_studies: form.lab_studies,
+        payment_method: form.payment_method,
+        bank_name: form.bank_name,
+        clabe: form.clabe,
+        invoices: form.invoices,
+        surgeon_name: form.surgeon_name,
+        surgeon_specialty: form.surgeon_specialty,
+        surgeon_license: form.surgeon_license,
+        surgery_hospital: form.surgery_hospital,
+        surgery_date: form.surgery_date,
+        procedure_description: form.procedure_description,
+      };
+
       const { error } = await supabase.from("claims").insert({
         user_id: user!.id,
         policy_id: form.policy_id,
         claim_type: form.claim_type as ClaimType,
-        incident_date: form.incident_date,
+        incident_date: form.symptom_start_date || form.incident_date,
         diagnosis: form.diagnosis,
         treatment: form.treatment,
-        total_cost: parseFloat(form.total_cost),
+        total_cost: totalCost,
         notes: form.notes,
+        cause: form.cause,
+        symptom_start_date: form.symptom_start_date || null,
+        first_attention_date: form.first_attention_date || null,
+        is_initial_claim: form.is_initial_claim,
+        prior_claim_number: form.prior_claim_number,
+        form_data: formData as any,
       });
       if (error) throw error;
     },
@@ -73,118 +186,43 @@ export default function NewClaim() {
     onError: () => toast.error("Error al crear reclamo"),
   });
 
-  const selectedPolicy = policies?.find((p) => p.id === form.policy_id);
-
-  const steps = [
-    {
-      title: "Tipo de Reclamo",
-      content: (
-        <div className="space-y-4">
-          <Label>¿Qué tipo de reclamo deseas hacer?</Label>
-          <div className="grid grid-cols-1 gap-3">
-            <Button
-              variant={form.claim_type === "reembolso" ? "default" : "outline"}
-              className="h-auto py-4 flex flex-col items-start"
-              onClick={() => setForm({ ...form, claim_type: "reembolso" })}
-            >
-              <span className="font-semibold">Reembolso</span>
-              <span className="text-xs opacity-80">Ya pagaste y quieres que te devuelvan el dinero</span>
-            </Button>
-            <Button
-              variant={form.claim_type === "procedimiento_programado" ? "default" : "outline"}
-              className="h-auto py-4 flex flex-col items-start"
-              onClick={() => setForm({ ...form, claim_type: "procedimiento_programado" })}
-            >
-              <span className="font-semibold">Procedimiento Programado</span>
-              <span className="text-xs opacity-80">Necesitas autorización para un procedimiento</span>
-            </Button>
-          </div>
-        </div>
-      ),
-      valid: !!form.claim_type,
-    },
-    {
-      title: "Datos del Reclamo",
-      content: (
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label>Póliza</Label>
-            <Select value={form.policy_id} onValueChange={(v) => setForm({ ...form, policy_id: v })}>
-              <SelectTrigger><SelectValue placeholder="Selecciona póliza" /></SelectTrigger>
-              <SelectContent>
-                {policies?.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>{p.policy_number} — {p.company}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="rounded-lg bg-muted/50 p-3 text-sm">
-            <p><strong>Paciente:</strong> {profile?.full_name}</p>
-            {selectedPolicy && <p><strong>Póliza:</strong> {selectedPolicy.company} — {selectedPolicy.policy_number}</p>}
-          </div>
-          <div className="space-y-2">
-            <Label>Fecha del incidente</Label>
-            <Input type="date" value={form.incident_date} onChange={(e) => setForm({ ...form, incident_date: e.target.value })} />
-          </div>
-          <div className="space-y-2">
-            <Label>Diagnóstico</Label>
-            <Input value={form.diagnosis} onChange={(e) => setForm({ ...form, diagnosis: e.target.value })} placeholder="Ej: Fractura de muñeca" />
-          </div>
-          <div className="space-y-2">
-            <Label>Descripción del tratamiento</Label>
-            <Textarea value={form.treatment} onChange={(e) => setForm({ ...form, treatment: e.target.value })} placeholder="Describe el tratamiento recibido" />
-          </div>
-          <div className="space-y-2">
-            <Label>Costo total ($)</Label>
-            <Input type="number" value={form.total_cost} onChange={(e) => setForm({ ...form, total_cost: e.target.value })} placeholder="0.00" />
-          </div>
-          <div className="space-y-2">
-            <Label>Notas adicionales (opcional)</Label>
-            <Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
-          </div>
-        </div>
-      ),
-      valid: !!form.policy_id && !!form.incident_date && !!form.diagnosis && !!form.treatment && !!form.total_cost,
-    },
-    {
-      title: "Revisión",
-      content: (
-        <div className="space-y-4">
-          <p className="text-sm text-muted-foreground">Revisa los datos antes de enviar:</p>
-          <div className="rounded-lg border p-4 space-y-2 text-sm">
-            <p><strong>Tipo:</strong> {form.claim_type === "reembolso" ? "Reembolso" : "Procedimiento Programado"}</p>
-            <p><strong>Paciente:</strong> {profile?.full_name}</p>
-            <p><strong>Póliza:</strong> {selectedPolicy?.company} — {selectedPolicy?.policy_number}</p>
-            <p><strong>Fecha:</strong> {form.incident_date}</p>
-            <p><strong>Diagnóstico:</strong> {form.diagnosis}</p>
-            <p><strong>Tratamiento:</strong> {form.treatment}</p>
-            <p><strong>Costo:</strong> ${Number(form.total_cost).toLocaleString()}</p>
-            {form.notes && <p><strong>Notas:</strong> {form.notes}</p>}
-          </div>
-        </div>
-      ),
-      valid: true,
-    },
-  ];
+  const handleDownloadPDF = () => {
+    if (!profile || !selectedPolicy) return;
+    const doc = generateClaimPDF(form, profile, {
+      policy_number: selectedPolicy.policy_number,
+      company: selectedPolicy.company,
+    });
+    const fileName = `${company.replace(/\s/g, "_")}_${isReembolso ? "Reembolso" : "Programacion"}_${new Date().toISOString().split("T")[0]}.pdf`;
+    doc.save(fileName);
+    toast.success("PDF descargado");
+  };
 
   return (
     <div className="space-y-6 animate-fade-in max-w-lg mx-auto">
       <h1 className="font-heading text-2xl font-bold">Nuevo Reclamo</h1>
 
       {/* Steps indicator */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1 overflow-x-auto pb-1">
         {steps.map((s, i) => (
-          <div key={i} className="flex items-center gap-2">
-            <div className={`h-8 w-8 rounded-full flex items-center justify-center text-sm font-medium ${i <= step ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
-              {i < step ? <Check className="h-4 w-4" /> : i + 1}
+          <div key={i} className="flex items-center gap-1 shrink-0">
+            <div
+              className={`h-7 w-7 rounded-full flex items-center justify-center text-xs font-medium transition-colors ${
+                i <= step ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+              }`}
+            >
+              {i < step ? <Check className="h-3 w-3" /> : i + 1}
             </div>
-            {i < steps.length - 1 && <div className={`h-0.5 w-8 ${i < step ? "bg-primary" : "bg-muted"}`} />}
+            {i < steps.length - 1 && (
+              <div className={`h-0.5 w-4 ${i < step ? "bg-primary" : "bg-muted"}`} />
+            )}
           </div>
         ))}
       </div>
 
       <Card>
-        <CardHeader><CardTitle className="text-base">{steps[step].title}</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle className="text-base">{steps[step].title}</CardTitle>
+        </CardHeader>
         <CardContent>{steps[step].content}</CardContent>
       </Card>
 
@@ -199,9 +237,23 @@ export default function NewClaim() {
             Siguiente <ArrowRight className="h-4 w-4 ml-1" />
           </Button>
         ) : (
-          <Button className="flex-1" onClick={() => createMutation.mutate()} disabled={createMutation.isPending}>
-            {createMutation.isPending ? "Enviando..." : "Enviar Reclamo"}
-          </Button>
+          <div className="flex-1 flex gap-2">
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={handleDownloadPDF}
+              disabled={!selectedPolicy}
+            >
+              <Download className="h-4 w-4 mr-1" /> PDF
+            </Button>
+            <Button
+              className="flex-1"
+              onClick={() => createMutation.mutate()}
+              disabled={createMutation.isPending}
+            >
+              {createMutation.isPending ? "Enviando..." : "Enviar"}
+            </Button>
+          </div>
         )}
       </div>
     </div>
