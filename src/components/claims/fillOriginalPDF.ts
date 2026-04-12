@@ -71,22 +71,20 @@ function fillMetLifeFields(pdfForm: any, form: ClaimFormData, profile: ProfileDa
   const todayStr = today.toISOString().split("T")[0];
   const [ty, tm, td] = todayStr.split("-");
 
-  // Date
+  // Section 1: Date + policy type
   setField(pdfForm, "D1", td);
   setField(pdfForm, "M1", tm);
   setField(pdfForm, "A1", ty);
-
-  // Policy type - individual
   checkBox(pdfForm, "INDI", true);
 
-  // Titular data (section 1 = titular = patient for now)
+  // Section 2: Titular data
   setField(pdfForm, "Apellido paterno", profile.paternal_surname);
   setField(pdfForm, "Apellido materno", profile.maternal_surname);
   setField(pdfForm, "Nombres", profile.first_name);
   setField(pdfForm, "Registro Federal de Contribuyentes RFC", profile.rfc || "");
   setField(pdfForm, "Póliza", policy.policy_number);
 
-  // DOB
+  // Titular DOB
   if (profile.date_of_birth) {
     const [dy, dm, dd] = profile.date_of_birth.split("-");
     setField(pdfForm, "DIAASEG", dd);
@@ -94,12 +92,29 @@ function fillMetLifeFields(pdfForm: any, form: ClaimFormData, profile: ProfileDa
     setField(pdfForm, "AASEG", dy);
   }
 
-  // Patient = same as titular
-  setField(pdfForm, "Apellido paterno_2", profile.paternal_surname);
-  setField(pdfForm, "Apellido materno_2", profile.maternal_surname);
-  setField(pdfForm, "Nombres_2", profile.first_name);
+  // Section 3: Patient (affected) - use patient data if not titular
+  if (form.patient_is_titular) {
+    setField(pdfForm, "Apellido paterno_2", profile.paternal_surname);
+    setField(pdfForm, "Apellido materno_2", profile.maternal_surname);
+    setField(pdfForm, "Nombres_2", profile.first_name);
+  } else {
+    setField(pdfForm, "Apellido paterno_2", form.patient_paternal_surname);
+    setField(pdfForm, "Apellido materno_2", form.patient_maternal_surname);
+    setField(pdfForm, "Nombres_2", form.patient_first_name);
+    if (form.patient_dob) {
+      const [py, pm, pd] = form.patient_dob.split("-");
+      setField(pdfForm, "DIAPAC", pd);
+      setField(pdfForm, "MESPEC", pm);
+      setField(pdfForm, "APAC", py);
+    }
+    setField(pdfForm, "PARENTESCO", form.patient_relationship);
+    setField(pdfForm, "CERTIF", form.patient_certificate_number);
+    setField(pdfForm, "OCUPAC2", form.patient_occupation);
+    setField(pdfForm, "PAISNAC2", form.patient_birth_country);
+    setField(pdfForm, "EDONAC2", form.patient_birth_state);
+  }
 
-  // Address
+  // Section 4: Address
   setField(pdfForm, "Calle  Avenida", profile.street || "");
   setField(pdfForm, "Exterior", profile.street_number || "");
   setField(pdfForm, "Interior", profile.interior_number || "");
@@ -111,7 +126,52 @@ function fillMetLifeFields(pdfForm: any, form: ClaimFormData, profile: ProfileDa
   setField(pdfForm, "Celular", profile.phone || "");
   setField(pdfForm, "PRE", profile.email || "");
 
-  // Page 2 - Claim info
+  // Section 5: Complementary data
+  if (form.has_other_active_policy) {
+    checkBox(pdfForm, "SIPGMM", true);
+    setField(pdfForm, "CUALGMM", form.other_active_policy_name);
+  } else {
+    checkBox(pdfForm, "NOGMM", true);
+  }
+
+  if (form.had_prior_insurance) {
+    checkBox(pdfForm, "SIANT", true);
+    setField(pdfForm, "CIAANT", form.prior_insurance_company);
+    setField(pdfForm, "FECHAANT", fmtDate(form.prior_insurance_start));
+  } else {
+    checkBox(pdfForm, "NOANT", true);
+  }
+
+  if (form.has_current_other_insurance) {
+    checkBox(pdfForm, "SIACT", true);
+    setField(pdfForm, "CIAACT", form.current_other_company);
+    setField(pdfForm, "INICIOACT", fmtDate(form.current_other_start));
+    setField(pdfForm, "FINACT", fmtDate(form.current_other_end));
+  } else {
+    checkBox(pdfForm, "NOACT", true);
+  }
+
+  if (form.has_prior_metlife_claims) {
+    checkBox(pdfForm, "SIMET", true);
+    setField(pdfForm, "NUMSINMET", form.prior_metlife_siniestro);
+  } else {
+    checkBox(pdfForm, "NOMET", true);
+  }
+
+  if (form.has_prior_claims) {
+    checkBox(pdfForm, "SIOTRA", true);
+    setField(pdfForm, "CIAOTRA", form.prior_company);
+  } else {
+    checkBox(pdfForm, "NOOTRA", true);
+  }
+
+  if (form.is_pep) {
+    checkBox(pdfForm, "SIPEP", true);
+  } else {
+    checkBox(pdfForm, "NOPEP", true);
+  }
+
+  // Section 6: Claim info
   const isReembolso = form.claim_type === "reembolso";
   checkBox(pdfForm, "REMBOLSO", isReembolso);
   checkBox(pdfForm, "PROGRAMACION", !isReembolso);
@@ -120,6 +180,11 @@ function fillMetLifeFields(pdfForm: any, form: ClaimFormData, profile: ProfileDa
   checkBox(pdfForm, "SUBSECUENTE", !form.is_initial_claim);
   if (!form.is_initial_claim && form.prior_claim_number) {
     setField(pdfForm, "NUMSIN", form.prior_claim_number);
+  }
+
+  if (form.is_sending_prior_info) {
+    checkBox(pdfForm, "SIENVIO", true);
+    setField(pdfForm, "FOLIODCN", form.prior_dcn_folio);
   }
 
   // Cause
@@ -141,10 +206,20 @@ function fillMetLifeFields(pdfForm: any, form: ClaimFormData, profile: ProfileDa
     setField(pdfForm, "AS1SIN", fy);
   }
 
-  // Diagnosis / treatment / studies
+  // Diagnosis / treatment / description
   setField(pdfForm, "S11", form.diagnosis);
   setField(pdfForm, "S21", form.treatment);
   setField(pdfForm, "S31", form.accident_description || "");
+
+  // Authority knowledge (accident)
+  if (form.cause === "accidente") {
+    if (form.authority_knowledge) {
+      checkBox(pdfForm, "SIAUT", true);
+      setField(pdfForm, "CUALAUT", form.authority_name);
+    } else {
+      checkBox(pdfForm, "NOAUT", true);
+    }
+  }
 
   // Hospital
   if (form.hospital_name) {
@@ -158,14 +233,7 @@ function fillMetLifeFields(pdfForm: any, form: ClaimFormData, profile: ProfileDa
     setField(pdfForm, "c Detalla estudios que presentas campo obligatorio", form.lab_studies);
   }
 
-  // Prior claims with other companies
-  if (form.has_prior_claims) {
-    checkBox(pdfForm, "SIPGMM", true);
-  } else {
-    checkBox(pdfForm, "NOGMM", false);
-  }
-
-  // Invoices (reembolso)
+  // Section 7: Invoices (reembolso)
   if (isReembolso) {
     form.invoices.slice(0, 6).forEach((inv, i) => {
       const row = i + 1;
@@ -177,7 +245,7 @@ function fillMetLifeFields(pdfForm: any, form: ClaimFormData, profile: ProfileDa
     const total = form.invoices.reduce((s, i) => s + (parseFloat(i.amount) || 0), 0) || parseFloat(form.total_cost) || 0;
     setField(pdfForm, "Total reclamado", total.toLocaleString("es-MX", { minimumFractionDigits: 2 }));
 
-    // Payment
+    // Section 8-9: Payment
     if (form.payment_method === "transferencia") {
       checkBox(pdfForm, "transferencia", true);
       setField(pdfForm, "Nombre de la institución bancaria", form.bank_name || "");
