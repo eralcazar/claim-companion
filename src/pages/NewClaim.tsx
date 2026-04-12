@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, ArrowRight, Check, Download } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Download, FileDown } from "lucide-react";
 import { defaultFormData, type ClaimFormData, type ClaimType } from "@/components/claims/types";
 import StepClaimType from "@/components/claims/StepClaimType";
 import StepPolicySelect from "@/components/claims/StepPolicySelect";
@@ -17,6 +17,7 @@ import StepPayment from "@/components/claims/StepPayment";
 import StepSurgeryInfo from "@/components/claims/StepSurgeryInfo";
 import StepReview from "@/components/claims/StepReview";
 import { generateClaimPDF } from "@/components/claims/generateClaimPDF";
+import { fillOriginalPDF } from "@/components/claims/fillOriginalPDF";
 
 export default function NewClaim() {
   const { user } = useAuth();
@@ -194,7 +195,28 @@ export default function NewClaim() {
     });
     const fileName = `${company.replace(/\s/g, "_")}_${isReembolso ? "Reembolso" : "Programacion"}_${new Date().toISOString().split("T")[0]}.pdf`;
     doc.save(fileName);
-    toast.success("PDF descargado");
+    toast.success("PDF resumen descargado");
+  };
+
+  const handleDownloadOriginalPDF = async () => {
+    if (!profile || !selectedPolicy) return;
+    try {
+      const pdfBytes = await fillOriginalPDF(form, profile, {
+        policy_number: selectedPolicy.policy_number,
+        company: selectedPolicy.company,
+      });
+      const blob = new Blob([new Uint8Array(pdfBytes)], { type: "application/pdf" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${company.replace(/\s/g, "_")}_Formato_Oficial_${isReembolso ? "Reembolso" : "Programacion"}_${new Date().toISOString().split("T")[0]}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("Formato oficial descargado");
+    } catch (err) {
+      console.error(err);
+      toast.error("Error al generar el formato oficial");
+    }
   };
 
   return (
@@ -237,21 +259,31 @@ export default function NewClaim() {
             Siguiente <ArrowRight className="h-4 w-4 ml-1" />
           </Button>
         ) : (
-          <div className="flex-1 flex gap-2">
+          <div className="flex-1 flex flex-col gap-2">
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={handleDownloadOriginalPDF}
+                disabled={!selectedPolicy}
+              >
+                <FileDown className="h-4 w-4 mr-1" /> Formato Oficial
+              </Button>
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={handleDownloadPDF}
+                disabled={!selectedPolicy}
+              >
+                <Download className="h-4 w-4 mr-1" /> Resumen
+              </Button>
+            </div>
             <Button
-              variant="outline"
-              className="flex-1"
-              onClick={handleDownloadPDF}
-              disabled={!selectedPolicy}
-            >
-              <Download className="h-4 w-4 mr-1" /> PDF
-            </Button>
-            <Button
-              className="flex-1"
+              className="w-full"
               onClick={() => createMutation.mutate()}
               disabled={createMutation.isPending}
             >
-              {createMutation.isPending ? "Enviando..." : "Enviar"}
+              {createMutation.isPending ? "Enviando..." : "Enviar Reclamo"}
             </Button>
           </div>
         )}
