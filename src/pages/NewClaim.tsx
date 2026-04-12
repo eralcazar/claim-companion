@@ -259,21 +259,31 @@ export default function NewClaim() {
             Siguiente <ArrowRight className="h-4 w-4 ml-1" />
           </Button>
         ) : (
-          <div className="flex-1 flex gap-2">
+          <div className="flex-1 flex flex-col gap-2">
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={handleDownloadOriginalPDF}
+                disabled={!selectedPolicy}
+              >
+                <FileDown className="h-4 w-4 mr-1" /> Formato Oficial
+              </Button>
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={handleDownloadPDF}
+                disabled={!selectedPolicy}
+              >
+                <Download className="h-4 w-4 mr-1" /> Resumen
+              </Button>
+            </div>
             <Button
-              variant="outline"
-              className="flex-1"
-              onClick={handleDownloadPDF}
-              disabled={!selectedPolicy}
-            >
-              <Download className="h-4 w-4 mr-1" /> PDF
-            </Button>
-            <Button
-              className="flex-1"
+              className="w-full"
               onClick={() => createMutation.mutate()}
               disabled={createMutation.isPending}
             >
-              {createMutation.isPending ? "Enviando..." : "Enviar"}
+              {createMutation.isPending ? "Enviando..." : "Enviar Reclamo"}
             </Button>
           </div>
         )}
