@@ -115,8 +115,8 @@ export default function Profile() {
       </div>
     );
 
-  const Field = ({ id, label, type = "text", placeholder = "" }: { id: string; label: string; type?: string; placeholder?: string }) => (
-    <div className="space-y-1.5">
+  const renderField = (id: string, label: string, type = "text", placeholder = "") => (
+    <div className="space-y-1.5" key={id}>
       <Label htmlFor={id} className="text-xs font-medium">{label}</Label>
       <Input id={id} type={type} value={(form as any)[id]} onChange={set(id)} placeholder={placeholder} />
     </div>
