@@ -25,6 +25,10 @@ const INITIAL_FORM = {
   sex: "",
   rfc: "",
   curp: "",
+  birth_country: "México",
+  birth_state: "",
+  nationality: "Mexicana",
+  occupation: "",
   street: "",
   street_number: "",
   interior_number: "",
@@ -63,6 +67,10 @@ export default function Profile() {
         sex: (profile as any).sex || "",
         rfc: (profile as any).rfc || "",
         curp: (profile as any).curp || "",
+        birth_country: (profile as any).birth_country || "México",
+        birth_state: (profile as any).birth_state || "",
+        nationality: (profile as any).nationality || "Mexicana",
+        occupation: (profile as any).occupation || "",
         street: (profile as any).street || "",
         street_number: (profile as any).street_number || "",
         interior_number: (profile as any).interior_number || "",
@@ -142,6 +150,22 @@ export default function Profile() {
           </div>
           <Field id="rfc" label="RFC" placeholder="XXXX000000XXX" />
           <Field id="curp" label="CURP" placeholder="XXXX000000XXXXXX00" />
+          <Field id="birth_country" label="País de Nacimiento" />
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium">Estado de Nacimiento</Label>
+            <Select value={form.birth_state} onValueChange={(v) => setForm((f) => ({ ...f, birth_state: v }))}>
+              <SelectTrigger>
+                <SelectValue placeholder="Seleccionar estado" />
+              </SelectTrigger>
+              <SelectContent>
+                {ESTADOS_MX.map((e) => (
+                  <SelectItem key={e} value={e}>{e}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <Field id="nationality" label="Nacionalidad" />
+          <Field id="occupation" label="Ocupación" />
         </CardContent>
       </Card>
 

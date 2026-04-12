@@ -177,11 +177,13 @@ export type Database = {
       insurance_policies: {
         Row: {
           company: string
+          contractor_name: string | null
           created_at: string
           end_date: string | null
           id: string
           observaciones: string | null
           policy_number: string
+          policy_type: string | null
           start_date: string
           status: Database["public"]["Enums"]["policy_status"]
           suma_asegurada: number | null
@@ -190,11 +192,13 @@ export type Database = {
         }
         Insert: {
           company?: string
+          contractor_name?: string | null
           created_at?: string
           end_date?: string | null
           id?: string
           observaciones?: string | null
           policy_number: string
+          policy_type?: string | null
           start_date: string
           status?: Database["public"]["Enums"]["policy_status"]
           suma_asegurada?: number | null
@@ -203,11 +207,13 @@ export type Database = {
         }
         Update: {
           company?: string
+          contractor_name?: string | null
           created_at?: string
           end_date?: string | null
           id?: string
           observaciones?: string | null
           policy_number?: string
+          policy_type?: string | null
           start_date?: string
           status?: Database["public"]["Enums"]["policy_status"]
           suma_asegurada?: number | null
@@ -288,6 +294,8 @@ export type Database = {
       profiles: {
         Row: {
           address: string | null
+          birth_country: string | null
+          birth_state: string | null
           country: string | null
           created_at: string
           curp: string | null
@@ -301,7 +309,9 @@ export type Database = {
           interior_number: string | null
           maternal_surname: string
           municipality: string | null
+          nationality: string | null
           neighborhood: string | null
+          occupation: string | null
           paternal_surname: string
           phone: string | null
           postal_code: string | null
@@ -315,6 +325,8 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          birth_country?: string | null
+          birth_state?: string | null
           country?: string | null
           created_at?: string
           curp?: string | null
@@ -328,7 +340,9 @@ export type Database = {
           interior_number?: string | null
           maternal_surname?: string
           municipality?: string | null
+          nationality?: string | null
           neighborhood?: string | null
+          occupation?: string | null
           paternal_surname?: string
           phone?: string | null
           postal_code?: string | null
@@ -342,6 +356,8 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          birth_country?: string | null
+          birth_state?: string | null
           country?: string | null
           created_at?: string
           curp?: string | null
@@ -355,7 +371,9 @@ export type Database = {
           interior_number?: string | null
           maternal_surname?: string
           municipality?: string | null
+          nationality?: string | null
           neighborhood?: string | null
+          occupation?: string | null
           paternal_surname?: string
           phone?: string | null
           postal_code?: string | null
