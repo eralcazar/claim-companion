@@ -162,9 +162,11 @@ export type Database = {
           created_at: string
           end_date: string | null
           id: string
+          observaciones: string | null
           policy_number: string
           start_date: string
           status: Database["public"]["Enums"]["policy_status"]
+          suma_asegurada: number | null
           updated_at: string
           user_id: string
         }
@@ -173,9 +175,11 @@ export type Database = {
           created_at?: string
           end_date?: string | null
           id?: string
+          observaciones?: string | null
           policy_number: string
           start_date: string
           status?: Database["public"]["Enums"]["policy_status"]
+          suma_asegurada?: number | null
           updated_at?: string
           user_id: string
         }
@@ -184,9 +188,11 @@ export type Database = {
           created_at?: string
           end_date?: string | null
           id?: string
+          observaciones?: string | null
           policy_number?: string
           start_date?: string
           status?: Database["public"]["Enums"]["policy_status"]
+          suma_asegurada?: number | null
           updated_at?: string
           user_id?: string
         }
