@@ -105,42 +105,60 @@ export type Database = {
       }
       claims: {
         Row: {
+          cause: string | null
           claim_type: Database["public"]["Enums"]["claim_type"]
           created_at: string
           diagnosis: string
+          first_attention_date: string | null
+          form_data: Json | null
           id: string
           incident_date: string
+          is_initial_claim: boolean | null
           notes: string | null
           policy_id: string
+          prior_claim_number: string | null
           status: Database["public"]["Enums"]["claim_status"]
+          symptom_start_date: string | null
           total_cost: number
           treatment: string
           updated_at: string
           user_id: string
         }
         Insert: {
+          cause?: string | null
           claim_type: Database["public"]["Enums"]["claim_type"]
           created_at?: string
           diagnosis: string
+          first_attention_date?: string | null
+          form_data?: Json | null
           id?: string
           incident_date: string
+          is_initial_claim?: boolean | null
           notes?: string | null
           policy_id: string
+          prior_claim_number?: string | null
           status?: Database["public"]["Enums"]["claim_status"]
+          symptom_start_date?: string | null
           total_cost: number
           treatment: string
           updated_at?: string
           user_id: string
         }
         Update: {
+          cause?: string | null
           claim_type?: Database["public"]["Enums"]["claim_type"]
           created_at?: string
           diagnosis?: string
+          first_attention_date?: string | null
+          form_data?: Json | null
           id?: string
           incident_date?: string
+          is_initial_claim?: boolean | null
           notes?: string | null
           policy_id?: string
+          prior_claim_number?: string | null
           status?: Database["public"]["Enums"]["claim_status"]
+          symptom_start_date?: string | null
           total_cost?: number
           treatment?: string
           updated_at?: string
