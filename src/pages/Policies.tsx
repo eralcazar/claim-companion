@@ -111,7 +111,7 @@ export default function Policies() {
     setOpen(true);
   };
 
-  const PolicyForm = () => (
+  const policyFormContent = (
     <div className="space-y-4">
       <div className="space-y-2">
         <Label>Aseguradora</Label>
@@ -175,7 +175,7 @@ export default function Policies() {
           </DialogTrigger>
           <DialogContent className="max-h-[90vh] overflow-y-auto">
             <DialogHeader><DialogTitle>{editingId ? "Editar Póliza" : "Nueva Póliza"}</DialogTitle></DialogHeader>
-            <PolicyForm />
+            {policyFormContent}
           </DialogContent>
         </Dialog>
       </div>
