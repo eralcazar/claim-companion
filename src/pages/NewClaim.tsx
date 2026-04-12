@@ -205,7 +205,7 @@ export default function NewClaim() {
         policy_number: selectedPolicy.policy_number,
         company: selectedPolicy.company,
       });
-      const blob = new Blob([pdfBytes.buffer], { type: "application/pdf" });
+      const blob = new Blob([new Uint8Array(pdfBytes)], { type: "application/pdf" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
