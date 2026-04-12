@@ -18,6 +18,7 @@ import MedicalRecords from "@/pages/MedicalRecords";
 import BrokerPanel from "@/pages/BrokerPanel";
 import DoctorPanel from "@/pages/DoctorPanel";
 import AdminPanel from "@/pages/AdminPanel";
+import Formats from "@/pages/Formats";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -36,6 +37,7 @@ const App = () => (
               <Route path="/perfil" element={<Profile />} />
               <Route path="/polizas" element={<Policies />} />
               <Route path="/reclamos" element={<Claims />} />
+              <Route path="/formatos" element={<Formats />} />
               <Route path="/reclamos/nuevo" element={<NewClaim />} />
               <Route path="/agenda" element={<Appointments />} />
               <Route path="/medicamentos" element={<Medications />} />
