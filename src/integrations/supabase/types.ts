@@ -264,34 +264,82 @@ export type Database = {
       profiles: {
         Row: {
           address: string | null
+          country: string | null
           created_at: string
+          curp: string | null
           date_of_birth: string | null
           email: string | null
+          emergency_contact_name: string | null
+          emergency_contact_phone: string | null
+          first_name: string
           full_name: string
           id: string
+          interior_number: string | null
+          maternal_surname: string
+          municipality: string | null
+          neighborhood: string | null
+          paternal_surname: string
           phone: string | null
+          postal_code: string | null
+          rfc: string | null
+          sex: string | null
+          state: string | null
+          street: string | null
+          street_number: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
           address?: string | null
+          country?: string | null
           created_at?: string
+          curp?: string | null
           date_of_birth?: string | null
           email?: string | null
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
+          first_name?: string
           full_name?: string
           id?: string
+          interior_number?: string | null
+          maternal_surname?: string
+          municipality?: string | null
+          neighborhood?: string | null
+          paternal_surname?: string
           phone?: string | null
+          postal_code?: string | null
+          rfc?: string | null
+          sex?: string | null
+          state?: string | null
+          street?: string | null
+          street_number?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
           address?: string | null
+          country?: string | null
           created_at?: string
+          curp?: string | null
           date_of_birth?: string | null
           email?: string | null
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
+          first_name?: string
           full_name?: string
           id?: string
+          interior_number?: string | null
+          maternal_surname?: string
+          municipality?: string | null
+          neighborhood?: string | null
+          paternal_surname?: string
           phone?: string | null
+          postal_code?: string | null
+          rfc?: string | null
+          sex?: string | null
+          state?: string | null
+          street?: string | null
+          street_number?: string | null
           updated_at?: string
           user_id?: string
         }
