@@ -9,6 +9,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
 
+const ESTADOS_MX = [
+  "Aguascalientes", "Baja California", "Baja California Sur", "Campeche", "Chiapas",
+  "Chihuahua", "Ciudad de México", "Coahuila", "Colima", "Durango", "Estado de México",
+  "Guanajuato", "Guerrero", "Hidalgo", "Jalisco", "Michoacán", "Morelos", "Nayarit",
+  "Nuevo León", "Oaxaca", "Puebla", "Querétaro", "Quintana Roo", "San Luis Potosí",
+  "Sinaloa", "Sonora", "Tabasco", "Tamaulipas", "Tlaxcala", "Veracruz", "Yucatán", "Zacatecas",
+];
+
 const INITIAL_FORM = {
   first_name: "",
   paternal_surname: "",
@@ -150,7 +158,19 @@ export default function Profile() {
           </div>
           <Field id="neighborhood" label="Colonia" />
           <Field id="municipality" label="Municipio" />
-          <Field id="state" label="Estado" />
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium">Estado</Label>
+            <Select value={form.state} onValueChange={(v) => setForm((f) => ({ ...f, state: v }))}>
+              <SelectTrigger>
+                <SelectValue placeholder="Seleccionar estado" />
+              </SelectTrigger>
+              <SelectContent>
+                {ESTADOS_MX.map((e) => (
+                  <SelectItem key={e} value={e}>{e}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <Field id="postal_code" label="Código Postal" />
           <Field id="country" label="País" />
         </CardContent>
