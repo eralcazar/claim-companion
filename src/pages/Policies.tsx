@@ -104,6 +104,8 @@ export default function Policies() {
     setForm({
       company: p.company,
       policy_number: p.policy_number,
+      policy_type: p.policy_type || "individual",
+      contractor_name: p.contractor_name || "",
       start_date: p.start_date,
       end_date: p.end_date || "",
       status: p.status,
