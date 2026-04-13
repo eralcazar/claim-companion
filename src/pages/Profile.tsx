@@ -115,8 +115,8 @@ export default function Profile() {
       </div>
     );
 
-  const Field = ({ id, label, type = "text", placeholder = "" }: { id: string; label: string; type?: string; placeholder?: string }) => (
-    <div className="space-y-1.5">
+  const renderField = (id: string, label: string, type = "text", placeholder = "") => (
+    <div className="space-y-1.5" key={id}>
       <Label htmlFor={id} className="text-xs font-medium">{label}</Label>
       <Input id={id} type={type} value={(form as any)[id]} onChange={set(id)} placeholder={placeholder} />
     </div>
@@ -132,10 +132,10 @@ export default function Profile() {
           <CardTitle className="text-base">Datos Personales</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <Field id="first_name" label="Nombre(s)" />
-          <Field id="paternal_surname" label="Apellido Paterno" />
-          <Field id="maternal_surname" label="Apellido Materno" />
-          <Field id="date_of_birth" label="Fecha de Nacimiento" type="date" />
+          {renderField("first_name", "Nombre(s)")}
+          {renderField("paternal_surname", "Apellido Paterno")}
+          {renderField("maternal_surname", "Apellido Materno")}
+          {renderField("date_of_birth", "Fecha de Nacimiento", "date")}
           <div className="space-y-1.5">
             <Label className="text-xs font-medium">Sexo</Label>
             <Select value={form.sex} onValueChange={(v) => setForm((f) => ({ ...f, sex: v }))}>
@@ -148,9 +148,9 @@ export default function Profile() {
               </SelectContent>
             </Select>
           </div>
-          <Field id="rfc" label="RFC" placeholder="XXXX000000XXX" />
-          <Field id="curp" label="CURP" placeholder="XXXX000000XXXXXX00" />
-          <Field id="birth_country" label="País de Nacimiento" />
+          {renderField("rfc", "RFC", "text", "XXXX000000XXX")}
+          {renderField("curp", "CURP", "text", "XXXX000000XXXXXX00")}
+          {renderField("birth_country", "País de Nacimiento")}
           <div className="space-y-1.5">
             <Label className="text-xs font-medium">Estado de Nacimiento</Label>
             <Select value={form.birth_state} onValueChange={(v) => setForm((f) => ({ ...f, birth_state: v }))}>
@@ -164,8 +164,8 @@ export default function Profile() {
               </SelectContent>
             </Select>
           </div>
-          <Field id="nationality" label="Nacionalidad" />
-          <Field id="occupation" label="Ocupación" />
+          {renderField("nationality", "Nacionalidad")}
+          {renderField("occupation", "Ocupación")}
         </CardContent>
       </Card>
 
@@ -175,13 +175,13 @@ export default function Profile() {
           <CardTitle className="text-base">Dirección</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <Field id="street" label="Calle" />
+          {renderField("street", "Calle")}
           <div className="grid grid-cols-2 gap-3">
-            <Field id="street_number" label="Número" />
-            <Field id="interior_number" label="Número Interior" />
+            {renderField("street_number", "Número")}
+            {renderField("interior_number", "Número Interior")}
           </div>
-          <Field id="neighborhood" label="Colonia" />
-          <Field id="municipality" label="Municipio" />
+          {renderField("neighborhood", "Colonia")}
+          {renderField("municipality", "Municipio")}
           <div className="space-y-1.5">
             <Label className="text-xs font-medium">Estado</Label>
             <Select value={form.state} onValueChange={(v) => setForm((f) => ({ ...f, state: v }))}>
@@ -195,8 +195,8 @@ export default function Profile() {
               </SelectContent>
             </Select>
           </div>
-          <Field id="postal_code" label="Código Postal" />
-          <Field id="country" label="País" />
+          {renderField("postal_code", "Código Postal")}
+          {renderField("country", "País")}
         </CardContent>
       </Card>
 
@@ -206,8 +206,8 @@ export default function Profile() {
           <CardTitle className="text-base">Contacto</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <Field id="email" label="Correo Electrónico" type="email" />
-          <Field id="phone" label="Teléfono" type="tel" />
+          {renderField("email", "Correo Electrónico", "email")}
+          {renderField("phone", "Teléfono", "tel")}
         </CardContent>
       </Card>
 
@@ -217,8 +217,8 @@ export default function Profile() {
           <CardTitle className="text-base">Datos de Emergencia</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <Field id="emergency_contact_name" label="Nombre" />
-          <Field id="emergency_contact_phone" label="Teléfono" type="tel" />
+          {renderField("emergency_contact_name", "Nombre")}
+          {renderField("emergency_contact_phone", "Teléfono", "tel")}
         </CardContent>
       </Card>
 
