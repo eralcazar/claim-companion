@@ -263,6 +263,7 @@ export default function NewClaim() {
         titular_birth_state: (selectedPolicy as any).titular_birth_state,
         titular_nationality: (selectedPolicy as any).titular_nationality,
         titular_occupation: (selectedPolicy as any).titular_occupation,
+        titular_rfc: (selectedPolicy as any).titular_rfc,
       });
       const blob = new Blob([new Uint8Array(pdfBytes)], { type: "application/pdf" });
       const url = URL.createObjectURL(blob);
