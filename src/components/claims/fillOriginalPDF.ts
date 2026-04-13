@@ -20,6 +20,10 @@ interface ProfileData {
   state?: string | null;
   postal_code?: string | null;
   country?: string | null;
+  birth_country?: string | null;
+  birth_state?: string | null;
+  nationality?: string | null;
+  occupation?: string | null;
 }
 
 interface PolicyData {
@@ -98,6 +102,12 @@ function fillMetLifeFields(pdfForm: any, form: ClaimFormData, profile: ProfileDa
     setField(pdfForm, "MESASEG", dm);
     setField(pdfForm, "AASEG", dy);
   }
+
+  // Titular extra fields
+  setField(pdfForm, "PAISNAC", profile.birth_country || "");
+  setField(pdfForm, "EDONAC", profile.birth_state || "");
+  setField(pdfForm, "NACIONALIDAD", profile.nationality || "");
+  setField(pdfForm, "OCUPAC", profile.occupation || "");
 
   // Section 3: Patient (affected) - use patient data if not titular
   if (form.patient_is_titular) {
