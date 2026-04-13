@@ -10,7 +10,7 @@ import { ArrowLeft, ArrowRight, Check, Download, FileDown } from "lucide-react";
 import { defaultFormData, type ClaimFormData, type ClaimType } from "@/components/claims/types";
 import StepClaimType from "@/components/claims/StepClaimType";
 import StepPolicySelect from "@/components/claims/StepPolicySelect";
-import StepPatientInfo from "@/components/claims/StepPatientInfo";
+
 import StepMedicalInfo from "@/components/claims/StepMedicalInfo";
 import StepComplementaryInfo from "@/components/claims/StepComplementaryInfo";
 import StepHospitalInfo from "@/components/claims/StepHospitalInfo";
@@ -81,16 +81,7 @@ export default function NewClaim() {
       valid: !!form.policy_id,
     });
 
-    // 3. Patient info (MetLife: asegurado afectado)
-    if (isMetLife) {
-      steps.push({
-        title: "Datos del Paciente",
-        content: <StepPatientInfo form={form} onChange={onChange} />,
-        valid: form.patient_is_titular || (!!form.patient_first_name && !!form.patient_paternal_surname),
-      });
-    }
-
-    // 4. Medical info
+    // 3. Medical info
     steps.push({
       title: "Información Médica",
       content: <StepMedicalInfo form={form} onChange={onChange} />,
