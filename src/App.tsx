@@ -12,6 +12,7 @@ import Profile from "@/pages/Profile";
 import Policies from "@/pages/Policies";
 import Claims from "@/pages/Claims";
 import NewClaim from "@/pages/NewClaim";
+import EditClaim from "@/pages/EditClaim";
 import Appointments from "@/pages/Appointments";
 import Medications from "@/pages/Medications";
 import MedicalRecords from "@/pages/MedicalRecords";
@@ -39,6 +40,7 @@ const App = () => (
               <Route path="/reclamos" element={<Claims />} />
               <Route path="/formatos" element={<Formats />} />
               <Route path="/reclamos/nuevo" element={<NewClaim />} />
+              <Route path="/reclamos/editar/:id" element={<EditClaim />} />
               <Route path="/agenda" element={<Appointments />} />
               <Route path="/medicamentos" element={<Medications />} />
               <Route path="/registros" element={<MedicalRecords />} />
