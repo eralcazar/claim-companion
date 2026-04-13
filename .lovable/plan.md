@@ -1,31 +1,19 @@
 
 
-## Plan: Agregar campos faltantes del titular en el PDF de MetLife
+## Plan: Corregir checkboxes de tipo de póliza en PDF MetLife
 
-**Problema:** En la Sección 2 del PDF de MetLife (Datos del Asegurado Titular), no se llenan los campos: País de nacimiento, Estado de nacimiento, Nacionalidad y Ocupación, aunque existen en el perfil del usuario.
+**Problema:** Los checkboxes de "Colectiva" e "Individual" en la Sección 1 del PDF MetLife no se marcan, probablemente porque los IDs de campo ("COLEC" / "INDI") no coinciden con los nombres reales en el PDF.
 
-**Causa raíz:** 
-1. La interfaz `ProfileData` en `fillOriginalPDF.ts` no incluye `birth_country`, `birth_state`, `nationality` ni `occupation`.
-2. La función `fillMetLifeFields` no llama a `setField` para esos campos del titular.
+**Causa probable:** Los nombres de campo del PDF para esos checkboxes son diferentes a los que usamos en el código.
 
-### Cambios
+### Pasos
 
-**Archivo: `src/components/claims/fillOriginalPDF.ts`**
+1. **Inspeccionar el PDF MetLife** con `pypdf` para obtener los nombres exactos de los campos checkbox en la Sección 1 ("Datos de quien contrató la póliza" / "Datos del tipo de póliza").
 
-1. Agregar a `ProfileData` los campos faltantes:
-   - `birth_country?: string | null`
-   - `birth_state?: string | null`
-   - `nationality?: string | null`
-   - `occupation?: string | null`
+2. **Actualizar `fillMetLifeFields`** en `src/components/claims/fillOriginalPDF.ts` con los IDs correctos para los checkboxes de Colectiva e Individual.
 
-2. En `fillMetLifeFields`, después de la línea del DOB del titular (línea ~100), agregar las llamadas para llenar los campos del formulario PDF:
-   ```typescript
-   setField(pdfForm, "PAISNAC", profile.birth_country || "");
-   setField(pdfForm, "EDONAC", profile.birth_state || "");
-   setField(pdfForm, "NACIONALIDAD", profile.nationality || "");
-   setField(pdfForm, "OCUPAC", profile.occupation || "");
-   ```
-   (Los IDs de campo pueden necesitar ajuste según los nombres reales en el PDF de MetLife.)
+3. **Generar un PDF de prueba** y verificar visualmente que el checkbox correcto se marque según el tipo de póliza registrado.
 
-No se requieren cambios en base de datos ni en otros archivos — los datos ya se guardan en `profiles` y se pasan al PDF.
+### Archivo a modificar
+- `src/components/claims/fillOriginalPDF.ts` — actualizar los IDs de `checkBox(pdfForm, "COLEC", ...)` y `checkBox(pdfForm, "INDI", ...)` con los nombres reales del PDF.
 
