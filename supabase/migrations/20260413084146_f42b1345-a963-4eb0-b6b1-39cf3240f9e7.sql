@@ -1,0 +1,1 @@
+ALTER TABLE public.insurance_policies ADD COLUMN titular_rfc text DEFAULT '';

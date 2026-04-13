@@ -195,6 +195,7 @@ export type Database = {
           titular_nationality: string | null
           titular_occupation: string | null
           titular_paternal_surname: string | null
+          titular_rfc: string | null
           updated_at: string
           user_id: string
         }
@@ -218,6 +219,7 @@ export type Database = {
           titular_nationality?: string | null
           titular_occupation?: string | null
           titular_paternal_surname?: string | null
+          titular_rfc?: string | null
           updated_at?: string
           user_id: string
         }
@@ -241,6 +243,7 @@ export type Database = {
           titular_nationality?: string | null
           titular_occupation?: string | null
           titular_paternal_surname?: string | null
+          titular_rfc?: string | null
           updated_at?: string
           user_id?: string
         }
