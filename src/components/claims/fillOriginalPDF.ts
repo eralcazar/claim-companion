@@ -105,7 +105,10 @@ function fillMetLifeFields(pdfForm: any, form: ClaimFormData, profile: ProfileDa
   setField(pdfForm, "Apellido paterno", policy.titular_paternal_surname || profile.paternal_surname);
   setField(pdfForm, "Apellido materno", policy.titular_maternal_surname || profile.maternal_surname);
   setField(pdfForm, "Nombres", policy.titular_first_name || profile.first_name);
-  setField(pdfForm, "Registro Federal de Contribuyentes RFC", policy.titular_rfc || profile.rfc || "");
+  // RFC split: first 10 chars in main field, last 3 in "undefined" field
+  const rfc = policy.titular_rfc || profile.rfc || "";
+  setField(pdfForm, "Registro Federal de Contribuyentes RFC", rfc.substring(0, 10));
+  setField(pdfForm, "undefined", rfc.substring(10, 13));
   setField(pdfForm, "Póliza", policy.policy_number);
 
   // Titular DOB
