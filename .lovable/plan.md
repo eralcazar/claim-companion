@@ -1,55 +1,40 @@
 
 
-## Plan: Agregar campos de perfil para Sección 3 del PDF MetLife
+## Plan: Sección 3 siempre desde perfil, eliminar paso "Datos del Paciente"
 
-**Objetivo:** Agregar "Parentesco con el asegurado titular" y "Número de certificado" al perfil del usuario, y completar el mapeo de la Sección 3 (Asegurado Afectado) del PDF MetLife cuando el paciente ES el titular.
+**Objetivo:** La Sección 3 (Asegurado Afectado) del PDF MetLife siempre tomará los datos del perfil del usuario. Se elimina el paso "Datos del Paciente" (con la pregunta "¿Es el titular?") del wizard de reclamos MetLife.
 
-### Paso 1 — Migración de base de datos
+### Paso 1 — Eliminar paso "Datos del Paciente" del wizard
 
-Agregar 2 columnas a `profiles`:
+En `src/pages/NewClaim.tsx` y `src/pages/EditClaim.tsx`:
+- Eliminar el bloque condicional `if (isMetLife) { steps.push({ title: "Datos del Paciente", ... }) }`.
+- Eliminar el import de `StepPatientInfo`.
 
-```sql
-ALTER TABLE public.profiles
-  ADD COLUMN certificate_number text DEFAULT '',
-  ADD COLUMN relationship_to_titular text DEFAULT '';
-```
+### Paso 2 — PDF: Sección 3 siempre desde perfil
 
-### Paso 2 — Perfil (`src/pages/Profile.tsx`)
-
-- Agregar `certificate_number` y `relationship_to_titular` al `INITIAL_FORM` y al `useEffect` de hidratación.
-- Agregar campos de input en la sección "Datos Personales": "No. de Certificado" y "Parentesco con el Asegurado Titular".
-
-### Paso 3 — PDF (`src/components/claims/fillOriginalPDF.ts`)
-
-- Agregar `certificate_number` y `relationship_to_titular` a `ProfileData`.
-- Completar la Sección 3 cuando `patient_is_titular === true` para incluir los campos faltantes:
+En `src/components/claims/fillOriginalPDF.ts` (líneas 131-162):
+- Eliminar el condicional `if (form.patient_is_titular) / else`.
+- Siempre llenar la Sección 3 desde los datos del perfil:
   ```typescript
-  if (form.patient_is_titular) {
-    setField(pdfForm, "Apellido paterno_2", profile.paternal_surname);
-    setField(pdfForm, "Apellido materno_2", profile.maternal_surname);
-    setField(pdfForm, "Nombres_2", profile.first_name);
-    // Campos faltantes — ahora mapeados desde perfil:
-    if (profile.date_of_birth) {
-      const [py, pm, pd] = profile.date_of_birth.split("-");
-      setField(pdfForm, "DIAPAC", pd);
-      setField(pdfForm, "MESPEC", pm);
-      setField(pdfForm, "APAC", py);
-    }
-    setField(pdfForm, "PAISNAC2", profile.birth_country || "");
-    setField(pdfForm, "EDONAC2", profile.birth_state || "");
-    setField(pdfForm, "OCUPAC2", profile.occupation || "");
-    setField(pdfForm, "CERTIF", profile.certificate_number || "");
-    setField(pdfForm, "PARENTESCO", profile.relationship_to_titular || "");
+  // Section 3: Always from profile
+  setField(pdfForm, "Apellido paterno_2", profile.paternal_surname);
+  setField(pdfForm, "Apellido materno_2", profile.maternal_surname);
+  setField(pdfForm, "Nombres_2", profile.first_name);
+  if (profile.date_of_birth) {
+    const [py, pm, pd] = profile.date_of_birth.split("-");
+    setField(pdfForm, "DIAPAC", pd);
+    setField(pdfForm, "MESPEC", pm);
+    setField(pdfForm, "APAC", py);
   }
+  setField(pdfForm, "PAISNAC2", profile.birth_country || "");
+  setField(pdfForm, "EDONAC2", profile.birth_state || "");
+  setField(pdfForm, "OCUPAC2", profile.occupation || "");
+  setField(pdfForm, "CERTIF", profile.certificate_number || "");
+  setField(pdfForm, "PARENTESCO", profile.relationship_to_titular || "");
   ```
-- En el caso `patient_is_titular === false`, los datos ya se toman del formulario del claim (sin cambios).
-
-### Paso 4 — StepPatientInfo
-
-- Cuando el paciente NO es el titular, los campos de parentesco y certificado ya existen en el formulario del claim (`patient_certificate_number`, `patient_relationship`). Sin cambios necesarios.
 
 ### Archivos a modificar
-- DB migration (2 columnas en `profiles`)
-- `src/pages/Profile.tsx` — campos nuevos
-- `src/components/claims/fillOriginalPDF.ts` — mapeo completo Sección 3
+- `src/pages/NewClaim.tsx` — eliminar paso StepPatientInfo
+- `src/pages/EditClaim.tsx` — eliminar paso StepPatientInfo
+- `src/components/claims/fillOriginalPDF.ts` — Sección 3 siempre desde perfil
 
