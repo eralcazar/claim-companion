@@ -88,9 +88,9 @@ function fillMetLifeFields(pdfForm: any, form: ClaimFormData, profile: ProfileDa
   // Contractor name
   setField(pdfForm, "Nombre del Contratante o razón social", policy.contractor_name || "");
 
-  // Lugar (municipality + state from profile)
+  // Lugar y fecha (header)
   const lugar = [profile.municipality, profile.state].filter(Boolean).join(", ");
-  setField(pdfForm, "Ciudad  Población", lugar);
+  setField(pdfForm, "Para facilitar los trámites de esta solicitud por favor llénala con letra de molde y tinta negra Este documento no será válido con", lugar);
 
   // Section 2: Titular data
   setField(pdfForm, "Apellido paterno", profile.paternal_surname);
