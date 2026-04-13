@@ -333,6 +333,8 @@ export default function EditClaim() {
       const pdfBytes = await fillOriginalPDF(form, profile, {
         policy_number: selectedPolicy.policy_number,
         company: selectedPolicy.company,
+        policy_type: selectedPolicy.policy_type,
+        contractor_name: selectedPolicy.contractor_name,
       });
       const blob = new Blob([new Uint8Array(pdfBytes)], { type: "application/pdf" });
       const url = URL.createObjectURL(blob);

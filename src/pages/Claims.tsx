@@ -140,6 +140,8 @@ export default function Claims() {
       const pdfBytes = await fillOriginalPDF(form, profile, {
         policy_number: pol.policy_number,
         company: pol.company,
+        policy_type: pol.policy_type,
+        contractor_name: pol.contractor_name,
       });
       const blob = new Blob([new Uint8Array(pdfBytes)], { type: "application/pdf" });
       const url = URL.createObjectURL(blob);

@@ -25,6 +25,8 @@ interface ProfileData {
 interface PolicyData {
   policy_number: string;
   company: string;
+  policy_type?: string | null;
+  contractor_name?: string | null;
 }
 
 function fmtDate(d: string): string {
@@ -75,7 +77,12 @@ function fillMetLifeFields(pdfForm: any, form: ClaimFormData, profile: ProfileDa
   setField(pdfForm, "D1", td);
   setField(pdfForm, "M1", tm);
   setField(pdfForm, "A1", ty);
-  checkBox(pdfForm, "INDI", true);
+  const isColectiva = policy.policy_type?.toLowerCase() === "colectiva";
+  checkBox(pdfForm, "COLEC", isColectiva);
+  checkBox(pdfForm, "INDI", !isColectiva);
+
+  // Contractor name
+  setField(pdfForm, "Nombre del Contratante o razón social", policy.contractor_name || "");
 
   // Section 2: Titular data
   setField(pdfForm, "Apellido paterno", profile.paternal_surname);
