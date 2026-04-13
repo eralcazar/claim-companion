@@ -1,5 +1,5 @@
 import {
-  Home, FileText, Calendar, Pill, User, Shield, Users, Stethoscope, FolderOpen, ClipboardList, Download, LogOut
+  Home, FileText, Calendar, Pill, User, Shield, Users, Stethoscope, FolderOpen, Download, LogOut
 } from "lucide-react";
 import { NavLink as RouterNavLink, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 const mainItems = [
   { title: "Inicio", url: "/", icon: Home },
   { title: "Reclamos", url: "/reclamos", icon: FileText },
-  { title: "Nuevo Reclamo", url: "/reclamos/nuevo", icon: ClipboardList },
+  
   { title: "Agenda", url: "/agenda", icon: Calendar },
   { title: "Medicamentos", url: "/medicamentos", icon: Pill },
   { title: "Registros Médicos", url: "/registros", icon: FolderOpen },
