@@ -323,6 +323,7 @@ export type Database = {
           address: string | null
           birth_country: string | null
           birth_state: string | null
+          certificate_number: string | null
           country: string | null
           created_at: string
           curp: string | null
@@ -342,6 +343,7 @@ export type Database = {
           paternal_surname: string
           phone: string | null
           postal_code: string | null
+          relationship_to_titular: string | null
           rfc: string | null
           sex: string | null
           state: string | null
@@ -354,6 +356,7 @@ export type Database = {
           address?: string | null
           birth_country?: string | null
           birth_state?: string | null
+          certificate_number?: string | null
           country?: string | null
           created_at?: string
           curp?: string | null
@@ -373,6 +376,7 @@ export type Database = {
           paternal_surname?: string
           phone?: string | null
           postal_code?: string | null
+          relationship_to_titular?: string | null
           rfc?: string | null
           sex?: string | null
           state?: string | null
@@ -385,6 +389,7 @@ export type Database = {
           address?: string | null
           birth_country?: string | null
           birth_state?: string | null
+          certificate_number?: string | null
           country?: string | null
           created_at?: string
           curp?: string | null
@@ -404,6 +409,7 @@ export type Database = {
           paternal_surname?: string
           phone?: string | null
           postal_code?: string | null
+          relationship_to_titular?: string | null
           rfc?: string | null
           sex?: string | null
           state?: string | null
