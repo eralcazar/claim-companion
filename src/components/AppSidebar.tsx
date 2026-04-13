@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 const mainItems = [
   { title: "Inicio", url: "/", icon: Home },
   { title: "Reclamos", url: "/reclamos", icon: FileText },
-  { title: "Nuevo Reclamo", url: "/reclamos/nuevo", icon: ClipboardList },
+  
   { title: "Agenda", url: "/agenda", icon: Calendar },
   { title: "Medicamentos", url: "/medicamentos", icon: Pill },
   { title: "Registros Médicos", url: "/registros", icon: FolderOpen },
