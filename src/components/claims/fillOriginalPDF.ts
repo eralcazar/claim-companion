@@ -24,6 +24,8 @@ interface ProfileData {
   birth_state?: string | null;
   nationality?: string | null;
   occupation?: string | null;
+  certificate_number?: string | null;
+  relationship_to_titular?: string | null;
 }
 
 interface PolicyData {
@@ -131,6 +133,17 @@ function fillMetLifeFields(pdfForm: any, form: ClaimFormData, profile: ProfileDa
     setField(pdfForm, "Apellido paterno_2", profile.paternal_surname);
     setField(pdfForm, "Apellido materno_2", profile.maternal_surname);
     setField(pdfForm, "Nombres_2", profile.first_name);
+    if (profile.date_of_birth) {
+      const [py, pm, pd] = profile.date_of_birth.split("-");
+      setField(pdfForm, "DIAPAC", pd);
+      setField(pdfForm, "MESPEC", pm);
+      setField(pdfForm, "APAC", py);
+    }
+    setField(pdfForm, "PAISNAC2", profile.birth_country || "");
+    setField(pdfForm, "EDONAC2", profile.birth_state || "");
+    setField(pdfForm, "OCUPAC2", profile.occupation || "");
+    setField(pdfForm, "CERTIF", profile.certificate_number || "");
+    setField(pdfForm, "PARENTESCO", profile.relationship_to_titular || "");
   } else {
     setField(pdfForm, "Apellido paterno_2", form.patient_paternal_surname);
     setField(pdfForm, "Apellido materno_2", form.patient_maternal_surname);
