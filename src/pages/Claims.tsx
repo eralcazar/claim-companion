@@ -5,9 +5,77 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
-import { Plus, FileText } from "lucide-react";
+import { Plus, FileText, Download, FileDown, Pencil } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { toast } from "sonner";
+import { defaultFormData, type ClaimFormData } from "@/components/claims/types";
+import { generateClaimPDF } from "@/components/claims/generateClaimPDF";
+import { fillOriginalPDF } from "@/components/claims/fillOriginalPDF";
+
+function claimToFormData(claim: any): ClaimFormData {
+  const fd = claim.form_data || {};
+  return {
+    ...defaultFormData,
+    claim_type: claim.claim_type || "",
+    policy_id: claim.policy_id || "",
+    is_initial_claim: claim.is_initial_claim ?? true,
+    prior_claim_number: claim.prior_claim_number || "",
+    cause: claim.cause || "enfermedad",
+    incident_date: claim.incident_date || "",
+    symptom_start_date: claim.symptom_start_date || "",
+    first_attention_date: claim.first_attention_date || "",
+    diagnosis: claim.diagnosis || "",
+    treatment: claim.treatment || "",
+    total_cost: String(claim.total_cost || ""),
+    notes: claim.notes || "",
+    patient_is_titular: fd.patient_is_titular ?? true,
+    patient_first_name: fd.patient_first_name || "",
+    patient_paternal_surname: fd.patient_paternal_surname || "",
+    patient_maternal_surname: fd.patient_maternal_surname || "",
+    patient_dob: fd.patient_dob || "",
+    patient_birth_country: fd.patient_birth_country || "",
+    patient_birth_state: fd.patient_birth_state || "",
+    patient_occupation: fd.patient_occupation || "",
+    patient_certificate_number: fd.patient_certificate_number || "",
+    patient_relationship: fd.patient_relationship || "",
+    has_other_active_policy: fd.has_other_active_policy ?? false,
+    other_active_policy_name: fd.other_active_policy_name || "",
+    had_prior_insurance: fd.had_prior_insurance ?? false,
+    prior_insurance_company: fd.prior_insurance_company || "",
+    prior_insurance_start: fd.prior_insurance_start || "",
+    has_current_other_insurance: fd.has_current_other_insurance ?? false,
+    current_other_company: fd.current_other_company || "",
+    current_other_start: fd.current_other_start || "",
+    current_other_end: fd.current_other_end || "",
+    has_prior_metlife_claims: fd.has_prior_metlife_claims ?? false,
+    prior_metlife_siniestro: fd.prior_metlife_siniestro || "",
+    is_pep: fd.is_pep ?? false,
+    is_sending_prior_info: fd.is_sending_prior_info ?? false,
+    prior_dcn_folio: fd.prior_dcn_folio || "",
+    authority_knowledge: fd.authority_knowledge ?? false,
+    authority_name: fd.authority_name || "",
+    prior_company: fd.prior_company || "",
+    has_prior_claims: fd.has_prior_claims ?? false,
+    accident_description: fd.accident_description || "",
+    hospital_name: fd.hospital_name || "",
+    hospital_address: fd.hospital_address || "",
+    admission_date: fd.admission_date || "",
+    discharge_date: fd.discharge_date || "",
+    hospitalization_days: fd.hospitalization_days || "",
+    lab_studies: fd.lab_studies || "",
+    payment_method: fd.payment_method || "",
+    bank_name: fd.bank_name || "",
+    clabe: fd.clabe || "",
+    invoices: fd.invoices || [],
+    surgeon_name: fd.surgeon_name || "",
+    surgeon_specialty: fd.surgeon_specialty || "",
+    surgeon_license: fd.surgeon_license || "",
+    surgery_hospital: fd.surgery_hospital || "",
+    surgery_date: fd.surgery_date || "",
+    procedure_description: fd.procedure_description || "",
+  };
+}
 
 export default function Claims() {
   const { user } = useAuth();
@@ -26,6 +94,15 @@ export default function Claims() {
     enabled: !!user,
   });
 
+  const { data: profile } = useQuery({
+    queryKey: ["profile", user?.id],
+    queryFn: async () => {
+      const { data } = await supabase.from("profiles").select("*").eq("user_id", user!.id).single();
+      return data;
+    },
+    enabled: !!user,
+  });
+
   const statusVariant: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
     pendiente: "secondary",
     aprobado: "default",
@@ -38,6 +115,45 @@ export default function Claims() {
     aprobado: "Aprobado",
     rechazado: "Rechazado",
     en_revision: "En revisión",
+  };
+
+  const handleDownloadPDF = (claim: any) => {
+    if (!profile) return;
+    const pol = (claim as any).insurance_policies;
+    if (!pol) return;
+    const form = claimToFormData(claim);
+    const doc = generateClaimPDF(form, profile, {
+      policy_number: pol.policy_number,
+      company: pol.company,
+    });
+    const fileName = `${pol.company.replace(/\s/g, "_")}_Resumen_${new Date().toISOString().split("T")[0]}.pdf`;
+    doc.save(fileName);
+    toast.success("PDF resumen descargado");
+  };
+
+  const handleDownloadOriginalPDF = async (claim: any) => {
+    if (!profile) return;
+    const pol = (claim as any).insurance_policies;
+    if (!pol) return;
+    const form = claimToFormData(claim);
+    try {
+      const pdfBytes = await fillOriginalPDF(form, profile, {
+        policy_number: pol.policy_number,
+        company: pol.company,
+      });
+      const blob = new Blob([new Uint8Array(pdfBytes)], { type: "application/pdf" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const isReembolso = claim.claim_type === "reembolso";
+      a.download = `${pol.company.replace(/\s/g, "_")}_Formato_Oficial_${isReembolso ? "Reembolso" : "Programacion"}_${new Date().toISOString().split("T")[0]}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("Formato oficial descargado");
+    } catch (err) {
+      console.error(err);
+      toast.error("Error al generar el formato oficial");
+    }
   };
 
   return (
@@ -55,7 +171,7 @@ export default function Claims() {
         <Card><CardContent className="p-8 text-center text-muted-foreground">No tienes reclamos</CardContent></Card>
       ) : (
         claims?.map((claim) => (
-          <Card key={claim.id} className="cursor-pointer hover:shadow-md transition-shadow">
+          <Card key={claim.id}>
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base flex items-center gap-2">
@@ -74,6 +190,29 @@ export default function Claims() {
               <div className="flex justify-between mt-2 text-xs text-muted-foreground">
                 <span>Costo: ${Number(claim.total_cost).toLocaleString()}</span>
                 <span>{format(new Date(claim.created_at), "PP", { locale: es })}</span>
+              </div>
+              <div className="flex gap-2 mt-3 flex-wrap">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate(`/reclamos/editar/${claim.id}`)}
+                >
+                  <Pencil className="h-3 w-3 mr-1" /> Editar
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleDownloadOriginalPDF(claim)}
+                >
+                  <FileDown className="h-3 w-3 mr-1" /> Formato
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleDownloadPDF(claim)}
+                >
+                  <Download className="h-3 w-3 mr-1" /> Resumen
+                </Button>
               </div>
             </CardContent>
           </Card>
