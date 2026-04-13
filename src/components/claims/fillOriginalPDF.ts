@@ -82,7 +82,7 @@ function fillMetLifeFields(pdfForm: any, form: ClaimFormData, profile: ProfileDa
   setField(pdfForm, "M1", tm);
   setField(pdfForm, "A1", ty);
   const isColectiva = policy.policy_type?.toLowerCase() === "colectiva";
-  checkBox(pdfForm, "COLEC", isColectiva);
+  checkBox(pdfForm, "COLECTIVA", isColectiva);
   checkBox(pdfForm, "INDI", !isColectiva);
 
   // Contractor name
