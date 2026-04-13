@@ -128,38 +128,21 @@ function fillMetLifeFields(pdfForm: any, form: ClaimFormData, profile: ProfileDa
   setField(pdfForm, "NAC1", policy.titular_nationality || profile.nationality || "");
   setField(pdfForm, "OCUP1", policy.titular_occupation || profile.occupation || "");
 
-  // Section 3: Patient (affected) - use patient data if not titular
-  if (form.patient_is_titular) {
-    setField(pdfForm, "Apellido paterno_2", profile.paternal_surname);
-    setField(pdfForm, "Apellido materno_2", profile.maternal_surname);
-    setField(pdfForm, "Nombres_2", profile.first_name);
-    if (profile.date_of_birth) {
-      const [py, pm, pd] = profile.date_of_birth.split("-");
-      setField(pdfForm, "DIAPAC", pd);
-      setField(pdfForm, "MESPEC", pm);
-      setField(pdfForm, "APAC", py);
-    }
-    setField(pdfForm, "PAISNAC2", profile.birth_country || "");
-    setField(pdfForm, "EDONAC2", profile.birth_state || "");
-    setField(pdfForm, "OCUPAC2", profile.occupation || "");
-    setField(pdfForm, "CERTIF", profile.certificate_number || "");
-    setField(pdfForm, "PARENTESCO", profile.relationship_to_titular || "");
-  } else {
-    setField(pdfForm, "Apellido paterno_2", form.patient_paternal_surname);
-    setField(pdfForm, "Apellido materno_2", form.patient_maternal_surname);
-    setField(pdfForm, "Nombres_2", form.patient_first_name);
-    if (form.patient_dob) {
-      const [py, pm, pd] = form.patient_dob.split("-");
-      setField(pdfForm, "DIAPAC", pd);
-      setField(pdfForm, "MESPEC", pm);
-      setField(pdfForm, "APAC", py);
-    }
-    setField(pdfForm, "PARENTESCO", form.patient_relationship);
-    setField(pdfForm, "CERTIF", form.patient_certificate_number);
-    setField(pdfForm, "OCUPAC2", form.patient_occupation);
-    setField(pdfForm, "PAISNAC2", form.patient_birth_country);
-    setField(pdfForm, "EDONAC2", form.patient_birth_state);
+  // Section 3: Affected insured - always from profile
+  setField(pdfForm, "Apellido paterno_2", profile.paternal_surname);
+  setField(pdfForm, "Apellido materno_2", profile.maternal_surname);
+  setField(pdfForm, "Nombres_2", profile.first_name);
+  if (profile.date_of_birth) {
+    const [py, pm, pd] = profile.date_of_birth.split("-");
+    setField(pdfForm, "DIAPAC", pd);
+    setField(pdfForm, "MESPEC", pm);
+    setField(pdfForm, "APAC", py);
   }
+  setField(pdfForm, "PAISNAC2", profile.birth_country || "");
+  setField(pdfForm, "EDONAC2", profile.birth_state || "");
+  setField(pdfForm, "OCUPAC2", profile.occupation || "");
+  setField(pdfForm, "CERTIF", profile.certificate_number || "");
+  setField(pdfForm, "PARENTESCO", profile.relationship_to_titular || "");
 
   // Section 4: Address
   setField(pdfForm, "Calle  Avenida", profile.street || "");
