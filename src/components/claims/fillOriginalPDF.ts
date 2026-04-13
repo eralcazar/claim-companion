@@ -104,10 +104,10 @@ function fillMetLifeFields(pdfForm: any, form: ClaimFormData, profile: ProfileDa
   }
 
   // Titular extra fields
-  setField(pdfForm, "PAISNAC", profile.birth_country || "");
-  setField(pdfForm, "EDONAC", profile.birth_state || "");
-  setField(pdfForm, "NACIONALIDAD", profile.nationality || "");
-  setField(pdfForm, "OCUPAC", profile.occupation || "");
+  setField(pdfForm, "PAISNAC1", profile.birth_country || "");
+  setField(pdfForm, "ESTADONAC1", profile.birth_state || "");
+  setField(pdfForm, "NAC1", profile.nationality || "");
+  setField(pdfForm, "OCUP1", profile.occupation || "");
 
   // Section 3: Patient (affected) - use patient data if not titular
   if (form.patient_is_titular) {
