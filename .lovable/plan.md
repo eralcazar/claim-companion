@@ -1,40 +1,30 @@
 
 
-## Plan: Sección 3 siempre desde perfil, eliminar paso "Datos del Paciente"
+## Plan: Corregir mapeo de campos Sección 3 del PDF MetLife Reembolso
 
-**Objetivo:** La Sección 3 (Asegurado Afectado) del PDF MetLife siempre tomará los datos del perfil del usuario. Se elimina el paso "Datos del Paciente" (con la pregunta "¿Es el titular?") del wizard de reclamos MetLife.
+**Problema:** Los campos de País de nacimiento, Estado de nacimiento, Ocupación, No. de Certificado y Parentesco no se llenan en la Sección 3 del PDF porque los nombres de campo internos del PDF probablemente no coinciden con los que estamos usando ("PAISNAC2", "EDONAC2", "OCUPAC2", "CERTIF", "PARENTESCO").
 
-### Paso 1 — Eliminar paso "Datos del Paciente" del wizard
+La función `setField` silenciosamente ignora los errores cuando un campo no existe (`catch { /* skip */ }`), por lo que no hay error visible pero los datos no se escriben.
 
-En `src/pages/NewClaim.tsx` y `src/pages/EditClaim.tsx`:
-- Eliminar el bloque condicional `if (isMetLife) { steps.push({ title: "Datos del Paciente", ... }) }`.
-- Eliminar el import de `StepPatientInfo`.
+### Paso 1 — Inspeccionar el PDF real
 
-### Paso 2 — PDF: Sección 3 siempre desde perfil
+Ejecutar un script que lea el archivo `/public/forms/METLIFE_REEMBOLSO.pdf` y liste TODOS los campos del formulario con sus nombres exactos, tipos y posiciones. Esto revelará los nombres correctos para los campos de la Sección 3.
 
-En `src/components/claims/fillOriginalPDF.ts` (líneas 131-162):
-- Eliminar el condicional `if (form.patient_is_titular) / else`.
-- Siempre llenar la Sección 3 desde los datos del perfil:
-  ```typescript
-  // Section 3: Always from profile
-  setField(pdfForm, "Apellido paterno_2", profile.paternal_surname);
-  setField(pdfForm, "Apellido materno_2", profile.maternal_surname);
-  setField(pdfForm, "Nombres_2", profile.first_name);
-  if (profile.date_of_birth) {
-    const [py, pm, pd] = profile.date_of_birth.split("-");
-    setField(pdfForm, "DIAPAC", pd);
-    setField(pdfForm, "MESPEC", pm);
-    setField(pdfForm, "APAC", py);
-  }
-  setField(pdfForm, "PAISNAC2", profile.birth_country || "");
-  setField(pdfForm, "EDONAC2", profile.birth_state || "");
-  setField(pdfForm, "OCUPAC2", profile.occupation || "");
-  setField(pdfForm, "CERTIF", profile.certificate_number || "");
-  setField(pdfForm, "PARENTESCO", profile.relationship_to_titular || "");
-  ```
+### Paso 2 — Corregir nombres de campos en fillOriginalPDF.ts
+
+En `src/components/claims/fillOriginalPDF.ts` (líneas 141-145), reemplazar los nombres de campo incorrectos por los nombres reales encontrados en el PDF:
+
+```typescript
+// Líneas actuales con nombres posiblemente incorrectos:
+setField(pdfForm, "PAISNAC2", profile.birth_country || "");
+setField(pdfForm, "EDONAC2", profile.birth_state || "");
+setField(pdfForm, "OCUPAC2", profile.occupation || "");
+setField(pdfForm, "CERTIF", profile.certificate_number || "");
+setField(pdfForm, "PARENTESCO", profile.relationship_to_titular || "");
+```
+
+Se actualizarán con los nombres exactos del PDF.
 
 ### Archivos a modificar
-- `src/pages/NewClaim.tsx` — eliminar paso StepPatientInfo
-- `src/pages/EditClaim.tsx` — eliminar paso StepPatientInfo
-- `src/components/claims/fillOriginalPDF.ts` — Sección 3 siempre desde perfil
+- `src/components/claims/fillOriginalPDF.ts` — corregir nombres de campos de la Sección 3
 
