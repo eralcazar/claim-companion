@@ -25,6 +25,8 @@ interface ProfileData {
 interface PolicyData {
   policy_number: string;
   company: string;
+  policy_type?: string | null;
+  contractor_name?: string | null;
 }
 
 function fmtDate(d: string): string {
