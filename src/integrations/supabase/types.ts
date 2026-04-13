@@ -187,6 +187,14 @@ export type Database = {
           start_date: string
           status: Database["public"]["Enums"]["policy_status"]
           suma_asegurada: number | null
+          titular_birth_country: string | null
+          titular_birth_state: string | null
+          titular_dob: string | null
+          titular_first_name: string | null
+          titular_maternal_surname: string | null
+          titular_nationality: string | null
+          titular_occupation: string | null
+          titular_paternal_surname: string | null
           updated_at: string
           user_id: string
         }
@@ -202,6 +210,14 @@ export type Database = {
           start_date: string
           status?: Database["public"]["Enums"]["policy_status"]
           suma_asegurada?: number | null
+          titular_birth_country?: string | null
+          titular_birth_state?: string | null
+          titular_dob?: string | null
+          titular_first_name?: string | null
+          titular_maternal_surname?: string | null
+          titular_nationality?: string | null
+          titular_occupation?: string | null
+          titular_paternal_surname?: string | null
           updated_at?: string
           user_id: string
         }
@@ -217,6 +233,14 @@ export type Database = {
           start_date?: string
           status?: Database["public"]["Enums"]["policy_status"]
           suma_asegurada?: number | null
+          titular_birth_country?: string | null
+          titular_birth_state?: string | null
+          titular_dob?: string | null
+          titular_first_name?: string | null
+          titular_maternal_surname?: string | null
+          titular_nationality?: string | null
+          titular_occupation?: string | null
+          titular_paternal_surname?: string | null
           updated_at?: string
           user_id?: string
         }

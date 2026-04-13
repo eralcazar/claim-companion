@@ -31,6 +31,14 @@ interface PolicyData {
   company: string;
   policy_type?: string | null;
   contractor_name?: string | null;
+  titular_paternal_surname?: string | null;
+  titular_maternal_surname?: string | null;
+  titular_first_name?: string | null;
+  titular_dob?: string | null;
+  titular_birth_country?: string | null;
+  titular_birth_state?: string | null;
+  titular_nationality?: string | null;
+  titular_occupation?: string | null;
 }
 
 function fmtDate(d: string): string {
@@ -92,26 +100,27 @@ function fillMetLifeFields(pdfForm: any, form: ClaimFormData, profile: ProfileDa
   const lugar = [profile.municipality, profile.state].filter(Boolean).join(", ");
   setField(pdfForm, "Para facilitar los trámites de esta solicitud por favor llénala con letra de molde y tinta negra Este documento no será válido con", lugar);
 
-  // Section 2: Titular data
-  setField(pdfForm, "Apellido paterno", profile.paternal_surname);
-  setField(pdfForm, "Apellido materno", profile.maternal_surname);
-  setField(pdfForm, "Nombres", profile.first_name);
+  // Section 2: Titular data (from policy record)
+  setField(pdfForm, "Apellido paterno", policy.titular_paternal_surname || profile.paternal_surname);
+  setField(pdfForm, "Apellido materno", policy.titular_maternal_surname || profile.maternal_surname);
+  setField(pdfForm, "Nombres", policy.titular_first_name || profile.first_name);
   setField(pdfForm, "Registro Federal de Contribuyentes RFC", profile.rfc || "");
   setField(pdfForm, "Póliza", policy.policy_number);
 
   // Titular DOB
-  if (profile.date_of_birth) {
-    const [dy, dm, dd] = profile.date_of_birth.split("-");
+  const titularDob = policy.titular_dob || profile.date_of_birth;
+  if (titularDob) {
+    const [dy, dm, dd] = titularDob.split("-");
     setField(pdfForm, "DIAASEG", dd);
     setField(pdfForm, "MESASEG", dm);
     setField(pdfForm, "AASEG", dy);
   }
 
   // Titular extra fields
-  setField(pdfForm, "PAISNAC1", profile.birth_country || "");
-  setField(pdfForm, "ESTADONAC1", profile.birth_state || "");
-  setField(pdfForm, "NAC1", profile.nationality || "");
-  setField(pdfForm, "OCUP1", profile.occupation || "");
+  setField(pdfForm, "PAISNAC1", policy.titular_birth_country || profile.birth_country || "");
+  setField(pdfForm, "ESTADONAC1", policy.titular_birth_state || profile.birth_state || "");
+  setField(pdfForm, "NAC1", policy.titular_nationality || profile.nationality || "");
+  setField(pdfForm, "OCUP1", policy.titular_occupation || profile.occupation || "");
 
   // Section 3: Patient (affected) - use patient data if not titular
   if (form.patient_is_titular) {

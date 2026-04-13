@@ -86,7 +86,7 @@ export default function Claims() {
     queryFn: async () => {
       const { data } = await supabase
         .from("claims")
-        .select("*, insurance_policies(company, policy_number, policy_type, contractor_name)")
+        .select("*, insurance_policies(company, policy_number, policy_type, contractor_name, titular_paternal_surname, titular_maternal_surname, titular_first_name, titular_dob, titular_birth_country, titular_birth_state, titular_nationality, titular_occupation)")
         .eq("user_id", user!.id)
         .order("created_at", { ascending: false });
       return data ?? [];
@@ -142,6 +142,14 @@ export default function Claims() {
         company: pol.company,
         policy_type: pol.policy_type,
         contractor_name: pol.contractor_name,
+        titular_paternal_surname: pol.titular_paternal_surname,
+        titular_maternal_surname: pol.titular_maternal_surname,
+        titular_first_name: pol.titular_first_name,
+        titular_dob: pol.titular_dob,
+        titular_birth_country: pol.titular_birth_country,
+        titular_birth_state: pol.titular_birth_state,
+        titular_nationality: pol.titular_nationality,
+        titular_occupation: pol.titular_occupation,
       });
       const blob = new Blob([new Uint8Array(pdfBytes)], { type: "application/pdf" });
       const url = URL.createObjectURL(blob);
