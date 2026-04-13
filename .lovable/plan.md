@@ -1,61 +1,31 @@
 
 
-## Plan: Sistema de Gestión de Seguros y Salud
+## Plan: Agregar campos faltantes del titular en el PDF de MetLife
 
-Aplicación móvil-first en español para pacientes, brokers y médicos. Diseño blanco y azul, tipografía Sora + Manrope.
+**Problema:** En la Sección 2 del PDF de MetLife (Datos del Asegurado Titular), no se llenan los campos: País de nacimiento, Estado de nacimiento, Nacionalidad y Ocupación, aunque existen en el perfil del usuario.
 
-### Diseño
-- Fondo blanco, primario azul #3B82F6, textos oscuros, tarjetas con sombras suaves
-- Tipografía: Sora (títulos) + Manrope (cuerpo)
-- Navegación inferior móvil (5 tabs), sidebar en desktop
+**Causa raíz:** 
+1. La interfaz `ProfileData` en `fillOriginalPDF.ts` no incluye `birth_country`, `birth_state`, `nationality` ni `occupation`.
+2. La función `fillMetLifeFields` no llama a `setField` para esos campos del titular.
 
-### Backend (Supabase / Lovable Cloud)
+### Cambios
 
-**Auth**: Google + Apple OAuth, roles: admin, broker, paciente, medico
+**Archivo: `src/components/claims/fillOriginalPDF.ts`**
 
-**Tablas**:
-- `profiles` — nombre, fecha_nacimiento, dirección, teléfono, email
-- `user_roles` — user_id, role (enum: admin, broker, paciente, medico)
-- `insurance_policies` — user_id, compañía, número_póliza, fechas, estado
-- `claims` — user_id, policy_id, tipo, fecha_incidente, diagnóstico, tratamiento, costo, estado
-- `claim_documents` — claim_id, file_path, tipo
-- `medical_records` — user_id, tipo, file_path, descripción, fecha
-- `appointments` — user_id, doctor_id, fecha_hora, tipo (consulta/estudio/procedimiento), notas
-- `medications` — user_id, nombre, dosis, frecuencia, fecha_inicio, fecha_fin, activo
-- `broker_patients` — broker_id, patient_id (asignaciones)
+1. Agregar a `ProfileData` los campos faltantes:
+   - `birth_country?: string | null`
+   - `birth_state?: string | null`
+   - `nationality?: string | null`
+   - `occupation?: string | null`
 
-**Storage**: Bucket `documents` para recibos, recetas, resultados lab
+2. En `fillMetLifeFields`, después de la línea del DOB del titular (línea ~100), agregar las llamadas para llenar los campos del formulario PDF:
+   ```typescript
+   setField(pdfForm, "PAISNAC", profile.birth_country || "");
+   setField(pdfForm, "EDONAC", profile.birth_state || "");
+   setField(pdfForm, "NACIONALIDAD", profile.nationality || "");
+   setField(pdfForm, "OCUPAC", profile.occupation || "");
+   ```
+   (Los IDs de campo pueden necesitar ajuste según los nombres reales en el PDF de MetLife.)
 
-**RLS**: Pacientes ven solo sus datos, brokers ven pacientes asignados, médicos ven pacientes asignados, admin ve todo (función `has_role()` security definer)
-
-### Pantallas
-
-1. **Login** — Botones Google + Apple
-2. **Dashboard** — Resumen: próximas citas, medicamentos hoy, reclamos recientes
-3. **Perfil** — Datos personales editables
-4. **Pólizas** — CRUD pólizas MetLife
-5. **Nuevo Reclamo** — Wizard 4 pasos: Tipo → Datos (auto-fill) → Archivos → Revisión
-6. **Historial Reclamos** — Lista con estados + descarga PDF
-7. **Registros Médicos** — Subir/ver documentos
-8. **Agenda** — Citas con fecha, tipo, notas, médico responsable
-9. **Medicamentos** — Lista con recordatorios/notificaciones
-10. **Panel Broker** — Pacientes asignados, gestionar reclamos
-11. **Panel Médico** — Pacientes asignados, ver registros y citas
-12. **Panel Admin** — Vista general, asignar pacientes
-
-### PDF
-- Generación cliente con jspdf: datos paciente, póliza, diagnóstico, tratamiento, costo
-- Descargable desde historial
-
-### Orden de Implementación
-1. Setup Supabase (tablas, auth Google+Apple, RLS, storage)
-2. Auth + roles + layout con navegación responsive
-3. Perfil paciente + pólizas
-4. Módulo reclamos (wizard) + subida archivos
-5. Generación PDF + historial
-6. Registros médicos
-7. Agenda de citas (con médico responsable)
-8. Recordatorios de medicamentos
-9. Panel broker + panel médico
-10. Panel admin básico
+No se requieren cambios en base de datos ni en otros archivos — los datos ya se guardan en `profiles` y se pasan al PDF.
 
