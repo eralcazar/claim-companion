@@ -168,10 +168,18 @@ function fillMetLifeFields(pdfForm: any, form: ClaimFormData, profile: ProfileDa
   setField(pdfForm, "Ciudad  Población", policy.titular_city || "");
   setField(pdfForm, "Estado  Provincia", policy.titular_state || "");
   setField(pdfForm, "País", policy.titular_country || "México");
+  setField(pdfForm, "PRE", policy.titular_intl_prefix || "");
   setField(pdfForm, "Celular", policy.titular_cell_phone || "");
   setField(pdfForm, "TEL2", policy.titular_landline || "");
-  setField(pdfForm, "undefined_2", policy.titular_intl_prefix || "");
-  setField(pdfForm, "PRE", policy.titular_email || "");
+  // Email: split at @ into two fields
+  const email = policy.titular_email || "";
+  const atIdx = email.indexOf("@");
+  if (atIdx > -1) {
+    setField(pdfForm, "undefined_2", email.substring(0, atIdx));
+    setField(pdfForm, "undefined_3", email.substring(atIdx + 1));
+  } else {
+    setField(pdfForm, "undefined_2", email);
+  }
 
   // Section 5: Complementary data
   if (form.has_other_active_policy) {
