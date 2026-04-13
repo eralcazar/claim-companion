@@ -132,10 +132,10 @@ export default function Profile() {
           <CardTitle className="text-base">Datos Personales</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          {renderField("first_name", "Nombre(s)" )}
-          {renderField("paternal_surname", "Apellido Paterno" )}
-          {renderField("maternal_surname", "Apellido Materno" )}
-          {renderField("date_of_birth", "Fecha de Nacimiento" type="date" )}
+          {renderField("first_name", "Nombre(s)")}
+          {renderField("paternal_surname", "Apellido Paterno")}
+          {renderField("maternal_surname", "Apellido Materno")}
+          {renderField("date_of_birth", "Fecha de Nacimiento", "date")}
           <div className="space-y-1.5">
             <Label className="text-xs font-medium">Sexo</Label>
             <Select value={form.sex} onValueChange={(v) => setForm((f) => ({ ...f, sex: v }))}>
@@ -148,9 +148,9 @@ export default function Profile() {
               </SelectContent>
             </Select>
           </div>
-          {renderField("rfc", "RFC" placeholder="XXXX000000XXX" )}
-          {renderField("curp", "CURP" placeholder="XXXX000000XXXXXX00" )}
-          {renderField("birth_country", "País de Nacimiento" )}
+          {renderField("rfc", "RFC", "text", "XXXX000000XXX")}
+          {renderField("curp", "CURP", "text", "XXXX000000XXXXXX00")}
+          {renderField("birth_country", "País de Nacimiento")}
           <div className="space-y-1.5">
             <Label className="text-xs font-medium">Estado de Nacimiento</Label>
             <Select value={form.birth_state} onValueChange={(v) => setForm((f) => ({ ...f, birth_state: v }))}>
@@ -164,8 +164,8 @@ export default function Profile() {
               </SelectContent>
             </Select>
           </div>
-          {renderField("nationality", "Nacionalidad" )}
-          {renderField("occupation", "Ocupación" )}
+          {renderField("nationality", "Nacionalidad")}
+          {renderField("occupation", "Ocupación")}
         </CardContent>
       </Card>
 
@@ -175,13 +175,13 @@ export default function Profile() {
           <CardTitle className="text-base">Dirección</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          {renderField("street", "Calle" )}
+          {renderField("street", "Calle")}
           <div className="grid grid-cols-2 gap-3">
-            {renderField("street_number", "Número" )}
-            {renderField("interior_number", "Número Interior" )}
+            {renderField("street_number", "Número")}
+            {renderField("interior_number", "Número Interior")}
           </div>
-          {renderField("neighborhood", "Colonia" )}
-          {renderField("municipality", "Municipio" )}
+          {renderField("neighborhood", "Colonia")}
+          {renderField("municipality", "Municipio")}
           <div className="space-y-1.5">
             <Label className="text-xs font-medium">Estado</Label>
             <Select value={form.state} onValueChange={(v) => setForm((f) => ({ ...f, state: v }))}>
@@ -195,8 +195,8 @@ export default function Profile() {
               </SelectContent>
             </Select>
           </div>
-          {renderField("postal_code", "Código Postal" )}
-          {renderField("country", "País" )}
+          {renderField("postal_code", "Código Postal")}
+          {renderField("country", "País")}
         </CardContent>
       </Card>
 
@@ -206,8 +206,8 @@ export default function Profile() {
           <CardTitle className="text-base">Contacto</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          {renderField("email", "Correo Electrónico" type="email" )}
-          {renderField("phone", "Teléfono" type="tel" )}
+          {renderField("email", "Correo Electrónico", "email")}
+          {renderField("phone", "Teléfono", "tel")}
         </CardContent>
       </Card>
 
@@ -217,8 +217,8 @@ export default function Profile() {
           <CardTitle className="text-base">Datos de Emergencia</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          {renderField("emergency_contact_name", "Nombre" )}
-          {renderField("emergency_contact_phone", "Teléfono" type="tel" )}
+          {renderField("emergency_contact_name", "Nombre")}
+          {renderField("emergency_contact_phone", "Teléfono", "tel")}
         </CardContent>
       </Card>
 
