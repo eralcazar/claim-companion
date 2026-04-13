@@ -336,6 +336,20 @@ export default function EditClaim() {
         titular_nationality: (selectedPolicy as any).titular_nationality,
         titular_occupation: (selectedPolicy as any).titular_occupation,
         titular_rfc: (selectedPolicy as any).titular_rfc,
+        titular_street: (selectedPolicy as any).titular_street,
+        titular_ext_number: (selectedPolicy as any).titular_ext_number,
+        titular_int_number: (selectedPolicy as any).titular_int_number,
+        titular_postal_code: (selectedPolicy as any).titular_postal_code,
+        titular_neighborhood: (selectedPolicy as any).titular_neighborhood,
+        titular_municipality: (selectedPolicy as any).titular_municipality,
+        titular_city: (selectedPolicy as any).titular_city,
+        titular_state: (selectedPolicy as any).titular_state,
+        titular_country: (selectedPolicy as any).titular_country,
+        titular_cell_phone: (selectedPolicy as any).titular_cell_phone,
+        titular_landline: (selectedPolicy as any).titular_landline,
+        titular_intl_prefix: (selectedPolicy as any).titular_intl_prefix,
+        titular_email: (selectedPolicy as any).titular_email,
+        titular_auth_contact: (selectedPolicy as any).titular_auth_contact,
       });
       const blob = new Blob([new Uint8Array(pdfBytes)], { type: "application/pdf" });
       const url = URL.createObjectURL(blob);

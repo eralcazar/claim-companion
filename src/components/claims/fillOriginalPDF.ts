@@ -42,6 +42,20 @@ interface PolicyData {
   titular_nationality?: string | null;
   titular_occupation?: string | null;
   titular_rfc?: string | null;
+  titular_street?: string | null;
+  titular_ext_number?: string | null;
+  titular_int_number?: string | null;
+  titular_postal_code?: string | null;
+  titular_neighborhood?: string | null;
+  titular_municipality?: string | null;
+  titular_city?: string | null;
+  titular_state?: string | null;
+  titular_country?: string | null;
+  titular_cell_phone?: string | null;
+  titular_landline?: string | null;
+  titular_intl_prefix?: string | null;
+  titular_email?: string | null;
+  titular_auth_contact?: boolean | null;
 }
 
 function fmtDate(d: string): string {
@@ -144,17 +158,20 @@ function fillMetLifeFields(pdfForm: any, form: ClaimFormData, profile: ProfileDa
   setField(pdfForm, "Número de certificado", profile.certificate_number || "");
   setField(pdfForm, "Parentesco con el Asegurado titular", profile.relationship_to_titular || "");
 
-  // Section 4: Address
-  setField(pdfForm, "Calle  Avenida", profile.street || "");
-  setField(pdfForm, "Exterior", profile.street_number || "");
-  setField(pdfForm, "Interior", profile.interior_number || "");
-  setField(pdfForm, "Colonia  Barrio", profile.neighborhood || "");
-  setField(pdfForm, "Código postal", profile.postal_code || "");
-  setField(pdfForm, "Municipio  Alcaldía", profile.municipality || "");
-  setField(pdfForm, "Estado  Provincia", profile.state || "");
-  setField(pdfForm, "País", profile.country || "México");
-  setField(pdfForm, "Celular", profile.phone || "");
-  setField(pdfForm, "PRE", profile.email || "");
+  // Section 4: Titular contact (from policy)
+  setField(pdfForm, "Calle  Avenida", policy.titular_street || "");
+  setField(pdfForm, "Exterior", policy.titular_ext_number || "");
+  setField(pdfForm, "Interior", policy.titular_int_number || "");
+  setField(pdfForm, "Colonia  Barrio", policy.titular_neighborhood || "");
+  setField(pdfForm, "Código postal", policy.titular_postal_code || "");
+  setField(pdfForm, "Municipio  Alcaldía", policy.titular_municipality || "");
+  setField(pdfForm, "Ciudad  Población", policy.titular_city || "");
+  setField(pdfForm, "Estado  Provincia", policy.titular_state || "");
+  setField(pdfForm, "País", policy.titular_country || "México");
+  setField(pdfForm, "Celular", policy.titular_cell_phone || "");
+  setField(pdfForm, "TEL2", policy.titular_landline || "");
+  setField(pdfForm, "undefined_2", policy.titular_intl_prefix || "");
+  setField(pdfForm, "PRE", policy.titular_email || "");
 
   // Section 5: Complementary data
   if (form.has_other_active_policy) {
