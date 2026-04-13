@@ -39,6 +39,7 @@ interface PolicyData {
   titular_birth_state?: string | null;
   titular_nationality?: string | null;
   titular_occupation?: string | null;
+  titular_rfc?: string | null;
 }
 
 function fmtDate(d: string): string {
@@ -104,7 +105,7 @@ function fillMetLifeFields(pdfForm: any, form: ClaimFormData, profile: ProfileDa
   setField(pdfForm, "Apellido paterno", policy.titular_paternal_surname || profile.paternal_surname);
   setField(pdfForm, "Apellido materno", policy.titular_maternal_surname || profile.maternal_surname);
   setField(pdfForm, "Nombres", policy.titular_first_name || profile.first_name);
-  setField(pdfForm, "Registro Federal de Contribuyentes RFC", profile.rfc || "");
+  setField(pdfForm, "Registro Federal de Contribuyentes RFC", policy.titular_rfc || profile.rfc || "");
   setField(pdfForm, "Póliza", policy.policy_number);
 
   // Titular DOB
