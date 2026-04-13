@@ -335,6 +335,14 @@ export default function EditClaim() {
         company: selectedPolicy.company,
         policy_type: selectedPolicy.policy_type,
         contractor_name: selectedPolicy.contractor_name,
+        titular_paternal_surname: (selectedPolicy as any).titular_paternal_surname,
+        titular_maternal_surname: (selectedPolicy as any).titular_maternal_surname,
+        titular_first_name: (selectedPolicy as any).titular_first_name,
+        titular_dob: (selectedPolicy as any).titular_dob,
+        titular_birth_country: (selectedPolicy as any).titular_birth_country,
+        titular_birth_state: (selectedPolicy as any).titular_birth_state,
+        titular_nationality: (selectedPolicy as any).titular_nationality,
+        titular_occupation: (selectedPolicy as any).titular_occupation,
       });
       const blob = new Blob([new Uint8Array(pdfBytes)], { type: "application/pdf" });
       const url = URL.createObjectURL(blob);

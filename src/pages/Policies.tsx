@@ -29,6 +29,14 @@ const EMPTY_FORM = {
   status: "activa" as PolicyStatus,
   suma_asegurada: "",
   observaciones: "",
+  titular_paternal_surname: "",
+  titular_maternal_surname: "",
+  titular_first_name: "",
+  titular_dob: "",
+  titular_birth_country: "México",
+  titular_birth_state: "",
+  titular_nationality: "Mexicana",
+  titular_occupation: "",
 };
 
 const ASEGURADORAS = ["MetLife", "MAPFRE"];
@@ -66,6 +74,14 @@ export default function Policies() {
         status: form.status,
         suma_asegurada: form.suma_asegurada ? parseFloat(form.suma_asegurada) : 0,
         observaciones: form.observaciones || "",
+        titular_paternal_surname: form.titular_paternal_surname,
+        titular_maternal_surname: form.titular_maternal_surname,
+        titular_first_name: form.titular_first_name,
+        titular_dob: form.titular_dob || null,
+        titular_birth_country: form.titular_birth_country,
+        titular_birth_state: form.titular_birth_state,
+        titular_nationality: form.titular_nationality,
+        titular_occupation: form.titular_occupation,
       } as any;
       if (editingId) {
         const { error } = await supabase.from("insurance_policies").update(payload).eq("id", editingId);
@@ -113,6 +129,14 @@ export default function Policies() {
       status: p.status,
       suma_asegurada: p.suma_asegurada?.toString() || "",
       observaciones: p.observaciones || "",
+      titular_paternal_surname: p.titular_paternal_surname || "",
+      titular_maternal_surname: p.titular_maternal_surname || "",
+      titular_first_name: p.titular_first_name || "",
+      titular_dob: p.titular_dob || "",
+      titular_birth_country: p.titular_birth_country || "México",
+      titular_birth_state: p.titular_birth_state || "",
+      titular_nationality: p.titular_nationality || "Mexicana",
+      titular_occupation: p.titular_occupation || "",
     });
     setOpen(true);
   };
@@ -179,6 +203,46 @@ export default function Policies() {
           rows={4}
         />
       </div>
+
+      {/* Datos del Titular */}
+      <div className="border-t pt-4 mt-4">
+        <h3 className="font-medium text-sm mb-3">Datos del Asegurado Titular</h3>
+        <div className="space-y-3">
+          <div className="space-y-2">
+            <Label>Apellido paterno</Label>
+            <Input value={form.titular_paternal_surname} onChange={(e) => setForm({ ...form, titular_paternal_surname: e.target.value })} />
+          </div>
+          <div className="space-y-2">
+            <Label>Apellido materno</Label>
+            <Input value={form.titular_maternal_surname} onChange={(e) => setForm({ ...form, titular_maternal_surname: e.target.value })} />
+          </div>
+          <div className="space-y-2">
+            <Label>Nombres</Label>
+            <Input value={form.titular_first_name} onChange={(e) => setForm({ ...form, titular_first_name: e.target.value })} />
+          </div>
+          <div className="space-y-2">
+            <Label>Fecha de nacimiento</Label>
+            <Input type="date" value={form.titular_dob} onChange={(e) => setForm({ ...form, titular_dob: e.target.value })} />
+          </div>
+          <div className="space-y-2">
+            <Label>País de nacimiento</Label>
+            <Input value={form.titular_birth_country} onChange={(e) => setForm({ ...form, titular_birth_country: e.target.value })} />
+          </div>
+          <div className="space-y-2">
+            <Label>Estado de nacimiento</Label>
+            <Input value={form.titular_birth_state} onChange={(e) => setForm({ ...form, titular_birth_state: e.target.value })} />
+          </div>
+          <div className="space-y-2">
+            <Label>Nacionalidad</Label>
+            <Input value={form.titular_nationality} onChange={(e) => setForm({ ...form, titular_nationality: e.target.value })} />
+          </div>
+          <div className="space-y-2">
+            <Label>Ocupación</Label>
+            <Input value={form.titular_occupation} onChange={(e) => setForm({ ...form, titular_occupation: e.target.value })} />
+          </div>
+        </div>
+      </div>
+
       <Button className="w-full" onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending || !form.policy_number || !form.start_date}>
         {saveMutation.isPending ? "Guardando..." : editingId ? "Actualizar" : "Guardar"}
       </Button>
