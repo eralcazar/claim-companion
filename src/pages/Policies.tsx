@@ -37,6 +37,7 @@ const EMPTY_FORM = {
   titular_birth_state: "",
   titular_nationality: "Mexicana",
   titular_occupation: "",
+  titular_rfc: "",
 };
 
 const ASEGURADORAS = ["MetLife", "MAPFRE"];
@@ -82,6 +83,7 @@ export default function Policies() {
         titular_birth_state: form.titular_birth_state,
         titular_nationality: form.titular_nationality,
         titular_occupation: form.titular_occupation,
+        titular_rfc: form.titular_rfc,
       } as any;
       if (editingId) {
         const { error } = await supabase.from("insurance_policies").update(payload).eq("id", editingId);
@@ -137,6 +139,7 @@ export default function Policies() {
       titular_birth_state: p.titular_birth_state || "",
       titular_nationality: p.titular_nationality || "Mexicana",
       titular_occupation: p.titular_occupation || "",
+      titular_rfc: p.titular_rfc || "",
     });
     setOpen(true);
   };
@@ -239,6 +242,10 @@ export default function Policies() {
           <div className="space-y-2">
             <Label>Ocupación</Label>
             <Input value={form.titular_occupation} onChange={(e) => setForm({ ...form, titular_occupation: e.target.value })} />
+          </div>
+          <div className="space-y-2">
+            <Label>RFC</Label>
+            <Input value={form.titular_rfc} onChange={(e) => setForm({ ...form, titular_rfc: e.target.value.toUpperCase() })} placeholder="XXXX000000XXX" maxLength={13} />
           </div>
         </div>
       </div>
