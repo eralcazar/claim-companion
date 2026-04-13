@@ -86,7 +86,7 @@ export default function Claims() {
     queryFn: async () => {
       const { data } = await supabase
         .from("claims")
-        .select("*, insurance_policies(company, policy_number)")
+        .select("*, insurance_policies(company, policy_number, policy_type, contractor_name)")
         .eq("user_id", user!.id)
         .order("created_at", { ascending: false });
       return data ?? [];
