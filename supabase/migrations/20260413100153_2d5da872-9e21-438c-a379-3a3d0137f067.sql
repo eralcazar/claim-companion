@@ -1,0 +1,15 @@
+ALTER TABLE public.insurance_policies
+  ADD COLUMN titular_street text DEFAULT '',
+  ADD COLUMN titular_ext_number text DEFAULT '',
+  ADD COLUMN titular_int_number text DEFAULT '',
+  ADD COLUMN titular_postal_code text DEFAULT '',
+  ADD COLUMN titular_neighborhood text DEFAULT '',
+  ADD COLUMN titular_municipality text DEFAULT '',
+  ADD COLUMN titular_city text DEFAULT '',
+  ADD COLUMN titular_state text DEFAULT '',
+  ADD COLUMN titular_country text DEFAULT 'México',
+  ADD COLUMN titular_cell_phone text DEFAULT '',
+  ADD COLUMN titular_landline text DEFAULT '',
+  ADD COLUMN titular_intl_prefix text DEFAULT '',
+  ADD COLUMN titular_email text DEFAULT '',
+  ADD COLUMN titular_auth_contact boolean DEFAULT false;

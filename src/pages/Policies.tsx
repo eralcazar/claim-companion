@@ -38,6 +38,20 @@ const EMPTY_FORM = {
   titular_nationality: "Mexicana",
   titular_occupation: "",
   titular_rfc: "",
+  titular_street: "",
+  titular_ext_number: "",
+  titular_int_number: "",
+  titular_postal_code: "",
+  titular_neighborhood: "",
+  titular_municipality: "",
+  titular_city: "",
+  titular_state: "",
+  titular_country: "México",
+  titular_cell_phone: "",
+  titular_landline: "",
+  titular_intl_prefix: "",
+  titular_email: "",
+  titular_auth_contact: false,
 };
 
 const ASEGURADORAS = ["MetLife", "MAPFRE"];
@@ -84,6 +98,20 @@ export default function Policies() {
         titular_nationality: form.titular_nationality,
         titular_occupation: form.titular_occupation,
         titular_rfc: form.titular_rfc,
+        titular_street: form.titular_street,
+        titular_ext_number: form.titular_ext_number,
+        titular_int_number: form.titular_int_number,
+        titular_postal_code: form.titular_postal_code,
+        titular_neighborhood: form.titular_neighborhood,
+        titular_municipality: form.titular_municipality,
+        titular_city: form.titular_city,
+        titular_state: form.titular_state,
+        titular_country: form.titular_country,
+        titular_cell_phone: form.titular_cell_phone,
+        titular_landline: form.titular_landline,
+        titular_intl_prefix: form.titular_intl_prefix,
+        titular_email: form.titular_email,
+        titular_auth_contact: form.titular_auth_contact,
       } as any;
       if (editingId) {
         const { error } = await supabase.from("insurance_policies").update(payload).eq("id", editingId);
@@ -140,6 +168,20 @@ export default function Policies() {
       titular_nationality: p.titular_nationality || "Mexicana",
       titular_occupation: p.titular_occupation || "",
       titular_rfc: p.titular_rfc || "",
+      titular_street: p.titular_street || "",
+      titular_ext_number: p.titular_ext_number || "",
+      titular_int_number: p.titular_int_number || "",
+      titular_postal_code: p.titular_postal_code || "",
+      titular_neighborhood: p.titular_neighborhood || "",
+      titular_municipality: p.titular_municipality || "",
+      titular_city: p.titular_city || "",
+      titular_state: p.titular_state || "",
+      titular_country: p.titular_country || "México",
+      titular_cell_phone: p.titular_cell_phone || "",
+      titular_landline: p.titular_landline || "",
+      titular_intl_prefix: p.titular_intl_prefix || "",
+      titular_email: p.titular_email || "",
+      titular_auth_contact: p.titular_auth_contact || false,
     });
     setOpen(true);
   };
@@ -246,6 +288,86 @@ export default function Policies() {
           <div className="space-y-2">
             <Label>RFC</Label>
             <Input value={form.titular_rfc} onChange={(e) => setForm({ ...form, titular_rfc: e.target.value.toUpperCase() })} placeholder="XXXX000000XXX" maxLength={13} />
+          </div>
+
+          {/* Dirección */}
+          <div className="border-t pt-3 mt-3">
+            <h4 className="font-medium text-xs mb-2 text-muted-foreground">Dirección del Titular</h4>
+            <div className="space-y-2">
+              <Label>Calle / Avenida</Label>
+              <Input value={form.titular_street} onChange={(e) => setForm({ ...form, titular_street: e.target.value })} />
+            </div>
+            <div className="grid grid-cols-2 gap-2 mt-2">
+              <div className="space-y-2">
+                <Label>Número exterior</Label>
+                <Input value={form.titular_ext_number} onChange={(e) => setForm({ ...form, titular_ext_number: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label>Número interior</Label>
+                <Input value={form.titular_int_number} onChange={(e) => setForm({ ...form, titular_int_number: e.target.value })} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2 mt-2">
+              <div className="space-y-2">
+                <Label>Código postal</Label>
+                <Input value={form.titular_postal_code} onChange={(e) => setForm({ ...form, titular_postal_code: e.target.value })} maxLength={5} />
+              </div>
+              <div className="space-y-2">
+                <Label>Colonia / Barrio</Label>
+                <Input value={form.titular_neighborhood} onChange={(e) => setForm({ ...form, titular_neighborhood: e.target.value })} />
+              </div>
+            </div>
+            <div className="space-y-2 mt-2">
+              <Label>Municipio / Alcaldía</Label>
+              <Input value={form.titular_municipality} onChange={(e) => setForm({ ...form, titular_municipality: e.target.value })} />
+            </div>
+            <div className="grid grid-cols-2 gap-2 mt-2">
+              <div className="space-y-2">
+                <Label>Ciudad / Población</Label>
+                <Input value={form.titular_city} onChange={(e) => setForm({ ...form, titular_city: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label>Estado / Provincia</Label>
+                <Input value={form.titular_state} onChange={(e) => setForm({ ...form, titular_state: e.target.value })} />
+              </div>
+            </div>
+            <div className="space-y-2 mt-2">
+              <Label>País</Label>
+              <Input value={form.titular_country} onChange={(e) => setForm({ ...form, titular_country: e.target.value })} />
+            </div>
+          </div>
+
+          {/* Contacto */}
+          <div className="border-t pt-3 mt-3">
+            <h4 className="font-medium text-xs mb-2 text-muted-foreground">Contacto del Titular</h4>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-2">
+                <Label>Teléfono celular</Label>
+                <Input value={form.titular_cell_phone} onChange={(e) => setForm({ ...form, titular_cell_phone: e.target.value })} placeholder="10 dígitos" />
+              </div>
+              <div className="space-y-2">
+                <Label>Teléfono fijo</Label>
+                <Input value={form.titular_landline} onChange={(e) => setForm({ ...form, titular_landline: e.target.value })} />
+              </div>
+            </div>
+            <div className="space-y-2 mt-2">
+              <Label>Prefijo internacional</Label>
+              <Input value={form.titular_intl_prefix} onChange={(e) => setForm({ ...form, titular_intl_prefix: e.target.value })} placeholder="Ej: +52" />
+            </div>
+            <div className="space-y-2 mt-2">
+              <Label>Correo electrónico</Label>
+              <Input type="email" value={form.titular_email} onChange={(e) => setForm({ ...form, titular_email: e.target.value })} />
+            </div>
+            <div className="space-y-2 mt-2">
+              <Label>Autorización para recibir información</Label>
+              <Select value={form.titular_auth_contact ? "si" : "no"} onValueChange={(v) => setForm({ ...form, titular_auth_contact: v === "si" })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="si">Sí</SelectItem>
+                  <SelectItem value="no">No</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </div>
       </div>
