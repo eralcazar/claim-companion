@@ -29,6 +29,8 @@ const INITIAL_FORM = {
   birth_state: "",
   nationality: "Mexicana",
   occupation: "",
+  certificate_number: "",
+  relationship_to_titular: "",
   street: "",
   street_number: "",
   interior_number: "",
@@ -71,6 +73,8 @@ export default function Profile() {
         birth_state: (profile as any).birth_state || "",
         nationality: (profile as any).nationality || "Mexicana",
         occupation: (profile as any).occupation || "",
+        certificate_number: (profile as any).certificate_number || "",
+        relationship_to_titular: (profile as any).relationship_to_titular || "",
         street: (profile as any).street || "",
         street_number: (profile as any).street_number || "",
         interior_number: (profile as any).interior_number || "",
@@ -166,6 +170,8 @@ export default function Profile() {
           </div>
           {renderField("nationality", "Nacionalidad")}
           {renderField("occupation", "Ocupación")}
+          {renderField("certificate_number", "No. de Certificado")}
+          {renderField("relationship_to_titular", "Parentesco con el Asegurado Titular")}
         </CardContent>
       </Card>
 
