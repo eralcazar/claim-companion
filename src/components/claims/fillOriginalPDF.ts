@@ -138,11 +138,11 @@ function fillMetLifeFields(pdfForm: any, form: ClaimFormData, profile: ProfileDa
     setField(pdfForm, "MESPEC", pm);
     setField(pdfForm, "APAC", py);
   }
-  setField(pdfForm, "PAISNAC2", profile.birth_country || "");
-  setField(pdfForm, "EDONAC2", profile.birth_state || "");
-  setField(pdfForm, "OCUPAC2", profile.occupation || "");
-  setField(pdfForm, "CERTIF", profile.certificate_number || "");
-  setField(pdfForm, "PARENTESCO", profile.relationship_to_titular || "");
+  setField(pdfForm, "País de nacimiento", profile.birth_country || "");
+  setField(pdfForm, "Nacionalidades", profile.birth_state || "");
+  setField(pdfForm, "Ocupación", profile.occupation || "");
+  setField(pdfForm, "Número de certificado", profile.certificate_number || "");
+  setField(pdfForm, "Parentesco con el Asegurado titular", profile.relationship_to_titular || "");
 
   // Section 4: Address
   setField(pdfForm, "Calle  Avenida", profile.street || "");
