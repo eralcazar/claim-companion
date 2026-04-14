@@ -103,6 +103,11 @@ export default function Claims() {
     enabled: !!user,
   });
 
+  const claimTypeLabel: Record<string, string> = {
+    reembolso: "Reembolso",
+    procedimiento_programado: "Proc. Programado",
+  };
+
   const statusVariant: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
     pendiente: "secondary",
     aprobado: "default",
