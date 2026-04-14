@@ -103,6 +103,11 @@ export default function Claims() {
     enabled: !!user,
   });
 
+  const claimTypeLabel: Record<string, string> = {
+    reembolso: "Reembolso",
+    procedimiento_programado: "Proc. Programado",
+  };
+
   const statusVariant: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
     pendiente: "secondary",
     aprobado: "default",
@@ -209,9 +214,14 @@ export default function Claims() {
               </div>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-muted-foreground">
-                {(claim as any).insurance_policies?.company} — {(claim as any).insurance_policies?.policy_number}
-              </p>
+              <div className="flex items-center gap-2">
+                <p className="text-sm text-muted-foreground">
+                  {(claim as any).insurance_policies?.company} — {(claim as any).insurance_policies?.policy_number}
+                </p>
+                <Badge variant="outline" className="text-xs bg-accent">
+                  {claimTypeLabel[claim.claim_type] || claim.claim_type}
+                </Badge>
+              </div>
               <div className="flex justify-between mt-2 text-xs text-muted-foreground">
                 <span>Costo: ${Number(claim.total_cost).toLocaleString()}</span>
                 <span>{format(new Date(claim.created_at), "PP", { locale: es })}</span>
