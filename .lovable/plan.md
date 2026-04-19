@@ -1,102 +1,63 @@
 
+El usuario está pegando de nuevo el spec completo de la Parte 3 (pdf-lib + coordenadas + integración en NewClaim). Verifico estado actual antes de proponer cambios.
 
-El usuario quiere implementar un sistema de llenado de PDFs originales usando pdf-lib con coordenadas absolutas. Las Partes 1 y 2 (Perfil y Pólizas) ya están implementadas según el historial. Voy a verificar el estado actual y enfocar el plan en la Parte 3 que es la novedad real.
+Estado verificado en mensajes previos:
+- `pdf-lib` ya instalado y en uso
+- `src/lib/pdfFiller.ts` ya existe con `fillPDF` + `drawCheckmark` + sanitización Latin-1
+- `src/lib/formCoordinates.ts` ya existe con paths en MAYÚSCULAS sincronizados con el bucket
+- `src/lib/generateFilledPDF.ts` ya existe con `getPDFFromStorage`, `generateFilledPDF`, `downloadPDF`, `buildOverlayData`
+- `src/components/claims/forms/registry.ts` ya tiene `getFormKey(insurer, tramite)`
+- `src/pages/NewClaim.tsx` ya integra el flujo: `getFormKey` → `generateFilledPDF` → upload → `downloadPDF`
+- Bucket `formatos` público con los 23 PDFs verificados
+- `gen_folio` corregido (ambigüedad `folio` resuelta vía `cf.folio` + `v_folio`)
+- RLS DELETE en `claims` y `claim_documents` agregado
 
-Verifico estado actual de Profile, Policies, y el wizard.
+El sistema completo ya está implementado. Lo único que el spec nuevo aporta vs lo actual son **coordenadas más precisas y completas** para cada formulario (el usuario las llama "exactas" pero el propio spec advierte que requieren calibración fina).
 
-Estado verificado:
-- Perfil ya tiene: estado_civil, giro_negocio, es_pep, cargo_pep, tipo_identificacion, numero_identificacion, vigencia_identificacion, telefono_celular ✓
-- Pólizas ya tiene: numero_certificado, tipo_contratacion, deducible, coaseguro_porcentaje, tope_coaseguro, agente_* ✓
-- Aseguradoras como SELECT con las 10 opciones ✓
-- Wizard dinámico con 8 formularios A-H y generación de PDF "desde cero" con jsPDF ✓
-- Bucket "documents" existe, NO existe bucket "formatos"
-- pdf-lib NO está instalado (solo jspdf)
+## Plan: Sincronizar coordenadas con la nueva especificación
 
-Por lo tanto el trabajo real es solo la PARTE 3: cambiar el motor de PDF de "generar desde cero" a "rellenar PDF original con coordenadas".
+### Diferencias clave entre spec nuevo y actual
 
-Ámbito reducido y claro.
+1. **Convención de keys**: el spec usa keys MAYÚSCULAS para los formularios (`GNP_aviso_accidente`, `AXA_reembolso`...), el código actual usa minúsculas (`gnp_aviso_accidente`). Ambas funcionan si `getFormKey` y `formCoordinates` coinciden — debo decidir una y mantener consistencia.
 
-## Plan: Llenado de PDFs originales por coordenadas (pdf-lib)
+2. **Coordenadas más detalladas**: el spec trae listas más completas de campos por formulario (ej. RFC letra-por-letra, fechas día/mes/año descompuestas, checkboxes posicionados).
 
-Las Partes 1 y 2 ya están implementadas. Solo se ejecuta la Parte 3.
+3. El resto de la infraestructura (`pdfFiller.ts`, `getPDFFromStorage`, `downloadPDF`, integración en `NewClaim`) ya está y coincide funcionalmente con lo que pide el spec.
 
-### 1. Infraestructura
+### Cambios a realizar
 
-**Bucket nuevo `formatos` (público)** vía migración SQL + políticas de lectura pública. El usuario sube manualmente los 23 PDFs originales con los paths exactos especificados (no podemos subir binarios desde código).
+**1. `src/lib/formCoordinates.ts`** — reemplazar el contenido completo con el catálogo de coordenadas del spec (manteniendo las keys en minúsculas para no romper `registry.ts`, o cambiando ambos a MAYÚSCULAS de forma consistente). Decisión: **mantener minúsculas** porque `registry.ts` ya las usa así y NewClaim funciona; solo actualizar los `storagePath` (ya en MAYÚSCULAS) y el array `fields` con la lista detallada del spec.
 
-**Dependencia**: instalar `pdf-lib`.
+**2. `src/lib/generateFilledPDF.ts`** — extender `buildOverlayData` para producir las nuevas keys que aparecen en el spec:
+   - `rfc_l1..rfc_h3` (RFC descompuesto letra por letra para GNP)
+   - `fecha_nac_dia/mes/año`, `fecha_dia/mes/año` (fechas descompuestas)
+   - `codigo_cliente`, `nombres` (alias)
+   - `check_masculino/femenino` con "X"
+   - `check_causa_accidente/enfermedad`
+   - Totales sumados de gastos (`total_gastos`)
+   - Edad calculada (`edad`)
 
-### 2. Archivos nuevos
+**3. Nada más** — `pdfFiller.ts`, `NewClaim.tsx`, `registry.ts`, bucket, RLS, gen_folio: todo ya está.
 
-**`src/lib/pdfFiller.ts`** — `fillPDF(pdfBytes, fields)` y `drawCheckmark(...)` exactamente como el spec del usuario, usando Helvetica embebida y `page.drawText` con coordenadas absolutas (origen inferior izquierda).
-
-**`src/lib/formCoordinates.ts`** — diccionario completo con las coordenadas provistas por el usuario para los 13 formularios listados:
-- gnp_aviso_accidente, gnp_informe_medico
-- axa_reembolso
-- metlife_reembolso
-- banorte_informe_reclamante
-- bbva_informe_medico
-- mapfre_reembolso
-- allianz_informe_medico, inbursa_informe_medico, plan_seguro_informe_medico, seguros_monterrey_informe_medico (plantillas base)
-
-**`src/lib/generateFilledPDF.ts`** — `generateFilledPDF(formKey, formData)` que descarga el PDF de Storage, aplana fields/page1Fields/page2Fields/page3Fields, mapea valores y llama a `fillPDF`. Más helper `downloadPDF(bytes, filename)`.
-
-### 3. Mapeo aseguradora+trámite → formKey
-
-En `src/components/claims/forms/registry.ts` agregar exportación `getFormKey(insurer, tramite)` con la tabla:
+### Archivos modificados
 
 ```text
-GNP + aviso_accidente        → gnp_aviso_accidente
-GNP + informe_medico         → gnp_informe_medico
-AXA + reembolso              → axa_reembolso
-METLIFE + reembolso          → metlife_reembolso
-BANORTE + informe_reclamante → banorte_informe_reclamante
-BBVA + informe_medico        → bbva_informe_medico
-MAPFRE + reembolso           → mapfre_reembolso
-ALLIANZ + informe_medico     → allianz_informe_medico
-INBURSA + informe_medico     → inbursa_informe_medico
-PLAN SEGURO + informe_medico → plan_seguro_informe_medico
-SEGUROS MONTERREY + informe_medico → seguros_monterrey_informe_medico
+edita: src/lib/formCoordinates.ts        (catálogo completo del spec)
+edita: src/lib/generateFilledPDF.ts      (nuevas keys en buildOverlayData)
 ```
 
-### 4. Mapeo de datos del wizard → keys de coordenadas
+### Notas importantes para el usuario
 
-Función `buildOverlayData(definition, data, profile, policy)` en `src/lib/generateFilledPDF.ts` que traduce los campos del wizard (ej. `paternal_surname`, `policy_number`, `cause`, etc.) a las keys que esperan las coordenadas (`apellido_paterno`, `numero_poliza`, `check_causa_accidente`, etc.).
+- Las coordenadas son **aproximaciones** según el propio spec. Después de generar el primer PDF de prueba habrá que ajustar fino x/y comparando visualmente con el original. Esto es trabajo iterativo manual, no de un solo paso.
+- Los formularios D, E, F, G, H que el spec sólo lista como "plantillas base" mantendrán fallback al generador jsPDF actual hasta que el usuario provea coordenadas detalladas.
+- Firma como imagen embebida queda fuera de alcance hasta que el usuario provea coordenadas `signature_x/y/width/height` por formulario.
 
-Maneja:
-- Strings directos
-- Checkboxes (valor "X" si está seleccionado, "" si no)
-- RFC letra-por-letra (descompone `RFC` en `rfc_l1..rfc_h3` para GNP)
-- Fechas día/mes/año (descompone DOB en `fecha_nac_dia/mes/año`)
-- Edad calculada
-- Total de gastos sumado
-
-### 5. Cambio en `src/pages/NewClaim.tsx`
-
-Reemplazar `handleGenerate` (que usaba `generateFormPDF` jsPDF) por:
-1. Llamar `getFormKey(insurer, tramite)`
-2. Si existe → `generateFilledPDF(formKey, buildOverlayData(...))` y `downloadPDF(...)`
-3. Si no existe → fallback al generador jsPDF actual (para los formularios sin PDF original mapeado: D, E, F, G, H que el usuario no listó completos)
-4. Subir el resultado al bucket `documents`, generar folio, marcar `claim_forms.status='submitted'`
-
-### 6. Archivos modificados/creados
+### Flujo de calibración después del deploy
 
 ```text
-nuevo:    supabase/migrations/<ts>_formatos_bucket.sql
-nuevo:    src/lib/pdfFiller.ts
-nuevo:    src/lib/formCoordinates.ts
-nuevo:    src/lib/generateFilledPDF.ts
-edita:    package.json (pdf-lib)
-edita:    src/components/claims/forms/registry.ts (getFormKey)
-edita:    src/pages/NewClaim.tsx (handleGenerate)
+1. Crear reclamo de prueba (ej. GNP reembolso)
+2. Generar PDF y abrirlo
+3. Comparar visualmente con el original
+4. Ajustar x,y de cada campo desviado en formCoordinates.ts
+5. Repetir hasta alineación perfecta
 ```
-
-### 7. Acción manual del usuario
-
-Tras desplegar, el usuario debe subir los 23 PDFs originales al bucket `formatos` con los paths exactos. Le doy un enlace al bucket en el mensaje de finalización.
-
-### Fuera de alcance
-- Calibración fina de coordenadas (el propio spec advierte que son aproximadas y se ajustan después comparando visualmente)
-- Coordenadas para formularios D, E, F, G, H completos (el spec solo listó plantillas base)
-- Firma digital embebida como imagen en el PDF original (queda como "X" o se omite si el usuario no provee coordenadas para imagen)
-
