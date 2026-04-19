@@ -186,3 +186,12 @@ export function getFormKey(insurer: string, tramite: TramiteType): string | null
   const ins = (insurer || "").toUpperCase();
   return formKeyMatrix[ins]?.[tramite] || null;
 }
+
+// Devuelve los trámites disponibles para una aseguradora,
+// según las entradas presentes en formKeyMatrix (es decir, los PDFs configurados).
+export function getAvailableTramites(insurer: string): TramiteType[] {
+  const ins = (insurer || "").toUpperCase();
+  const entry = formKeyMatrix[ins];
+  if (!entry) return [];
+  return Object.keys(entry).filter((k) => !!entry[k as TramiteType]) as TramiteType[];
+}
