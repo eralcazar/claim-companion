@@ -321,7 +321,7 @@ export default function EditClaim() {
     }
     try {
       const overlay = buildOverlayData({
-        data: { ...(form as any), ...(claim?.form_data || {}) },
+        data: { ...(form as any), ...((claim?.form_data as Record<string, any>) || {}) },
         profile,
         policy: selectedPolicy,
         insurer,
