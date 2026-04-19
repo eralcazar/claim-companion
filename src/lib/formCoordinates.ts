@@ -301,9 +301,69 @@ export const formCoordinates = {
     ],
   },
 
-  // Plantillas base — coordenadas a calibrar
+  // ══════════════════════════════════════════
+  // Plantillas base — coordenadas placeholder a calibrar visualmente
+  // ══════════════════════════════════════════
   ALLIANZ_informe_medico: {
     storagePath: "ALLIANZ/informe_medico.pdf",
+    fields: [
+      { key: "numero_poliza", page: 0, x: 90, y: 720, fontSize: 8 },
+      { key: "apellido_paterno", page: 0, x: 90, y: 698, fontSize: 8 },
+      { key: "apellido_materno", page: 0, x: 245, y: 698, fontSize: 8 },
+      { key: "nombres", page: 0, x: 400, y: 698, fontSize: 8 },
+      { key: "diagnostico", page: 0, x: 90, y: 660, fontSize: 8, maxWidth: 440 },
+      { key: "tratamiento", page: 0, x: 90, y: 600, fontSize: 8, maxWidth: 440 },
+    ],
+  },
+  ALLIANZ_aviso_accidente: {
+    storagePath: "ALLIANZ/aviso_accidente.pdf",
+    fields: [
+      { key: "numero_poliza", page: 0, x: 90, y: 720, fontSize: 8 },
+      { key: "apellido_paterno", page: 0, x: 90, y: 698, fontSize: 8 },
+      { key: "apellido_materno", page: 0, x: 245, y: 698, fontSize: 8 },
+      { key: "nombres", page: 0, x: 400, y: 698, fontSize: 8 },
+      { key: "desc_accidente", page: 0, x: 90, y: 600, fontSize: 8, maxWidth: 440 },
+    ],
+  },
+  ALLIANZ_carta_remesa: {
+    storagePath: "ALLIANZ/carta_remesa.pdf",
+    fields: [
+      { key: "nombre_completo", page: 0, x: 90, y: 700, fontSize: 8, maxWidth: 440 },
+      { key: "numero_poliza", page: 0, x: 90, y: 670, fontSize: 8 },
+      { key: "clabe", page: 0, x: 90, y: 600, fontSize: 8 },
+      { key: "banco", page: 0, x: 360, y: 600, fontSize: 8 },
+    ],
+  },
+  ALLIANZ_identificacion_cliente: {
+    storagePath: "ALLIANZ/identificacion_cliente.pdf",
+    fields: [
+      { key: "nombre_completo", page: 0, x: 90, y: 700, fontSize: 8, maxWidth: 440 },
+      { key: "rfc", page: 0, x: 90, y: 670, fontSize: 8 },
+      { key: "curp", page: 0, x: 90, y: 650, fontSize: 8 },
+    ],
+  },
+  AXA_informe_medico: {
+    storagePath: "AXA/informe_medico.pdf",
+    fields: [
+      { key: "numero_poliza", page: 0, x: 90, y: 720, fontSize: 8 },
+      { key: "apellido_paterno", page: 0, x: 90, y: 698, fontSize: 8 },
+      { key: "apellido_materno", page: 0, x: 245, y: 698, fontSize: 8 },
+      { key: "nombres", page: 0, x: 400, y: 698, fontSize: 8 },
+      { key: "diagnostico", page: 0, x: 90, y: 660, fontSize: 8, maxWidth: 440 },
+      { key: "tratamiento", page: 0, x: 90, y: 600, fontSize: 8, maxWidth: 440 },
+    ],
+  },
+  AXA_programacion_servicios: {
+    storagePath: "AXA/programacion_servicios.pdf",
+    fields: [
+      { key: "numero_poliza", page: 0, x: 90, y: 720, fontSize: 8 },
+      { key: "nombre_completo", page: 0, x: 90, y: 698, fontSize: 8, maxWidth: 440 },
+      { key: "diagnostico", page: 0, x: 90, y: 660, fontSize: 8, maxWidth: 440 },
+      { key: "fecha_programacion", page: 0, x: 90, y: 600, fontSize: 8 },
+    ],
+  },
+  BANORTE_informe_medico: {
+    storagePath: "BANORTE/informe_medico.pdf",
     fields: [
       { key: "numero_poliza", page: 0, x: 90, y: 720, fontSize: 8 },
       { key: "apellido_paterno", page: 0, x: 90, y: 698, fontSize: 8 },
@@ -322,7 +382,54 @@ export const formCoordinates = {
       { key: "diagnostico", page: 0, x: 90, y: 660, fontSize: 8, maxWidth: 440 },
     ],
   },
-  "PLAN SEGURO_informe_medico": {
+  INBURSA_aviso_accidente: {
+    storagePath: "INBURSA/aviso_accidente.pdf",
+    fields: [
+      { key: "numero_poliza", page: 0, x: 90, y: 720, fontSize: 8 },
+      { key: "nombre_completo", page: 0, x: 90, y: 698, fontSize: 8, maxWidth: 440 },
+      { key: "desc_accidente", page: 0, x: 90, y: 600, fontSize: 8, maxWidth: 440 },
+    ],
+  },
+  MAPFRE_informe_medico: {
+    storagePath: "MAPFRE/informe_medico.pdf",
+    fields: [
+      { key: "numero_poliza", page: 0, x: 90, y: 720, fontSize: 8 },
+      { key: "apellido_paterno", page: 0, x: 90, y: 698, fontSize: 8 },
+      { key: "apellido_materno", page: 0, x: 245, y: 698, fontSize: 8 },
+      { key: "nombres", page: 0, x: 400, y: 698, fontSize: 8 },
+      { key: "diagnostico", page: 0, x: 90, y: 660, fontSize: 8, maxWidth: 440 },
+      { key: "tratamiento", page: 0, x: 90, y: 600, fontSize: 8, maxWidth: 440 },
+    ],
+  },
+  METLIFE_informe_medico: {
+    storagePath: "METLIFE/informe_medico.pdf",
+    fields: [
+      { key: "numero_poliza", page: 0, x: 90, y: 720, fontSize: 8 },
+      { key: "apellido_paterno", page: 0, x: 90, y: 698, fontSize: 8 },
+      { key: "apellido_materno", page: 0, x: 245, y: 698, fontSize: 8 },
+      { key: "nombres", page: 0, x: 400, y: 698, fontSize: 8 },
+      { key: "diagnostico", page: 0, x: 90, y: 660, fontSize: 8, maxWidth: 440 },
+      { key: "tratamiento", page: 0, x: 90, y: 600, fontSize: 8, maxWidth: 440 },
+    ],
+  },
+  METLIFE_programacion_servicios: {
+    storagePath: "METLIFE/programacion_servicios.pdf",
+    fields: [
+      { key: "numero_poliza", page: 0, x: 90, y: 720, fontSize: 8 },
+      { key: "nombre_completo", page: 0, x: 90, y: 698, fontSize: 8, maxWidth: 440 },
+      { key: "diagnostico", page: 0, x: 90, y: 660, fontSize: 8, maxWidth: 440 },
+      { key: "fecha_programacion", page: 0, x: 90, y: 600, fontSize: 8 },
+    ],
+  },
+  METLIFE_consentimiento_informado: {
+    storagePath: "METLIFE/consentimiento_informado.pdf",
+    fields: [
+      { key: "nombre_completo", page: 0, x: 90, y: 700, fontSize: 8, maxWidth: 440 },
+      { key: "numero_poliza", page: 0, x: 90, y: 670, fontSize: 8 },
+      { key: "lugar_fecha", page: 0, x: 90, y: 120, fontSize: 8 },
+    ],
+  },
+  PLAN_SEGURO_informe_medico: {
     storagePath: "PLAN_SEGURO/informe_medico.pdf",
     fields: [
       { key: "numero_poliza", page: 0, x: 90, y: 720, fontSize: 8 },
@@ -331,13 +438,21 @@ export const formCoordinates = {
       { key: "diagnostico", page: 0, x: 90, y: 660, fontSize: 8, maxWidth: 440 },
     ],
   },
-  "SEGUROS MONTERREY_informe_medico": {
+  SEGUROS_MONTERREY_informe_medico: {
     storagePath: "SEGUROS_MONTERREY/informe_medico.pdf",
     fields: [
       { key: "numero_poliza", page: 0, x: 90, y: 720, fontSize: 8 },
       { key: "apellido_paterno", page: 0, x: 90, y: 698, fontSize: 8 },
       { key: "nombres", page: 0, x: 400, y: 698, fontSize: 8 },
       { key: "diagnostico", page: 0, x: 90, y: 660, fontSize: 8, maxWidth: 440 },
+    ],
+  },
+  SEGUROS_MONTERREY_aviso_accidente: {
+    storagePath: "SEGUROS_MONTERREY/aviso_accidente.pdf",
+    fields: [
+      { key: "numero_poliza", page: 0, x: 90, y: 720, fontSize: 8 },
+      { key: "nombre_completo", page: 0, x: 90, y: 698, fontSize: 8, maxWidth: 440 },
+      { key: "desc_accidente", page: 0, x: 90, y: 600, fontSize: 8, maxWidth: 440 },
     ],
   },
 } satisfies Record<string, FormCoordinates>;
