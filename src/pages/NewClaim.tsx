@@ -230,24 +230,23 @@ export default function NewClaim() {
 
   // Paso 0: selección trámite + póliza (no es del FormDefinition)
   if (!definition) {
+    const availableTramites = insurer ? getAvailableTramites(insurer) : [];
+    const tramiteOptions = TRAMITE_TYPES.filter((t) => availableTramites.includes(t.value));
     return (
       <div className="space-y-6 animate-fade-in max-w-lg mx-auto pb-24">
         <h1 className="font-heading text-2xl font-bold">Nuevo Reclamo</h1>
         <Card>
-          <CardHeader><CardTitle className="text-base">Tipo de trámite y póliza</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-base">Póliza y tipo de trámite</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium">Tipo de trámite</Label>
-              <Select value={tramite} onValueChange={(v) => setTramite(v as TramiteType)}>
-                <SelectTrigger><SelectValue placeholder="Seleccionar trámite" /></SelectTrigger>
-                <SelectContent>
-                  {TRAMITE_TYPES.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
               <Label className="text-xs font-medium">Póliza</Label>
-              <Select value={policyId} onValueChange={setPolicyId}>
+              <Select
+                value={policyId}
+                onValueChange={(v) => {
+                  setPolicyId(v);
+                  setTramite(""); // reset trámite al cambiar póliza
+                }}
+              >
                 <SelectTrigger><SelectValue placeholder="Seleccionar póliza" /></SelectTrigger>
                 <SelectContent>
                   {(policies || []).map((p: any) => (
@@ -255,6 +254,36 @@ export default function NewClaim() {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Tipo de trámite</Label>
+              <Select
+                value={tramite}
+                onValueChange={(v) => setTramite(v as TramiteType)}
+                disabled={!policyId || tramiteOptions.length === 0}
+              >
+                <SelectTrigger>
+                  <SelectValue
+                    placeholder={
+                      !policyId
+                        ? "Selecciona primero una póliza"
+                        : tramiteOptions.length === 0
+                          ? "Sin formatos disponibles"
+                          : "Seleccionar trámite"
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {tramiteOptions.map((t) => (
+                    <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {policyId && tramiteOptions.length === 0 && (
+                <p className="text-xs text-destructive">
+                  No hay formatos oficiales configurados para {insurer}.
+                </p>
+              )}
             </div>
             {tramite && policyId && !getFormDefinition(insurer, tramite as TramiteType) && (
               <p className="text-xs text-destructive">No hay formulario disponible para esta combinación.</p>
