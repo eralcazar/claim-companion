@@ -9,8 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, ArrowRight, Check, Download, Save } from "lucide-react";
-import { TRAMITE_TYPES, type TramiteType } from "@/lib/constants";
-import { getFormDefinition, getFormKey, getAvailableTramites } from "@/components/claims/forms/registry";
+import { getFormDefinition, getFormKey, getAvailableFormats } from "@/components/claims/forms/registry";
 import FormRenderer from "@/components/claims/forms/FormRenderer";
 import AutofillBanner from "@/components/claims/forms/shared/AutofillBanner";
 import { generateFilledPDF, downloadPDF, buildOverlayData } from "@/lib/generateFilledPDF";
@@ -34,7 +33,7 @@ export default function NewClaim() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const draftQuery = searchParams.get("draft");
-  const [tramite, setTramite] = useState<TramiteType | "">("");
+  const [tramite, setTramite] = useState<string>("");
   const [policyId, setPolicyId] = useState<string>("");
   const [step, setStep] = useState(0);
   const [data, setData] = useState<Record<string, any>>({});
@@ -55,7 +54,7 @@ export default function NewClaim() {
         .maybeSingle();
       if (error || !d) { toast.error("Borrador no encontrado"); setDraftLoaded(true); return; }
       setDraftId(d.id);
-      setTramite((d.tramite_type as TramiteType) || "");
+      setTramite((d.tramite_type as string) || "");
       setPolicyId(d.policy_id || "");
       setData((d.data as Record<string, any>) || {});
       setAutofilled(true); // ya tiene datos, no sobreescribir
@@ -89,9 +88,14 @@ export default function NewClaim() {
   const policy = useMemo(() => policies?.find((p: any) => p.id === policyId), [policies, policyId]);
   const insurer = (policy?.company || "").toUpperCase();
   const definition = useMemo(
-    () => (insurer && tramite ? getFormDefinition(insurer, tramite as TramiteType) : null),
+    () => (insurer && tramite ? getFormDefinition(insurer, tramite) : null),
     [insurer, tramite]
   );
+  const availableFormats = useMemo(
+    () => (insurer ? getAvailableFormats(insurer) : []),
+    [insurer]
+  );
+  const currentFormatLabel = availableFormats.find((f) => f.id === tramite)?.label;
 
   // Autofill al elegir póliza: solo campos vacíos
   useEffect(() => {
@@ -170,7 +174,7 @@ export default function NewClaim() {
       const folio = folioRes as string;
 
       // Usar PDF original de la aseguradora (obligatorio: sin fallback genérico)
-      const formKey = getFormKey(insurer, tramite as TramiteType) as FormCoordinatesKey | null;
+      const formKey = getFormKey(insurer, tramite) as FormCoordinatesKey | null;
       if (!formKey) {
         toast.error(`No hay formato oficial configurado para ${insurer}`);
         return;
@@ -228,15 +232,13 @@ export default function NewClaim() {
     }
   };
 
-  // Paso 0: selección trámite + póliza (no es del FormDefinition)
+  // Paso 0: selección póliza + formato (no es del FormDefinition)
   if (!definition) {
-    const availableTramites = insurer ? getAvailableTramites(insurer) : [];
-    const tramiteOptions = TRAMITE_TYPES.filter((t) => availableTramites.includes(t.value));
     return (
       <div className="space-y-6 animate-fade-in max-w-lg mx-auto pb-24">
         <h1 className="font-heading text-2xl font-bold">Nuevo Reclamo</h1>
         <Card>
-          <CardHeader><CardTitle className="text-base">Póliza y tipo de trámite</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-base">Póliza y formato</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">Póliza</Label>
@@ -244,7 +246,7 @@ export default function NewClaim() {
                 value={policyId}
                 onValueChange={(v) => {
                   setPolicyId(v);
-                  setTramite(""); // reset trámite al cambiar póliza
+                  setTramite(""); // reset formato al cambiar póliza
                 }}
               >
                 <SelectTrigger><SelectValue placeholder="Seleccionar póliza" /></SelectTrigger>
@@ -256,36 +258,36 @@ export default function NewClaim() {
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium">Tipo de trámite</Label>
+              <Label className="text-xs font-medium">Formato a llenar</Label>
               <Select
                 value={tramite}
-                onValueChange={(v) => setTramite(v as TramiteType)}
-                disabled={!policyId || tramiteOptions.length === 0}
+                onValueChange={(v) => setTramite(v)}
+                disabled={!policyId || availableFormats.length === 0}
               >
                 <SelectTrigger>
                   <SelectValue
                     placeholder={
                       !policyId
                         ? "Selecciona primero una póliza"
-                        : tramiteOptions.length === 0
+                        : availableFormats.length === 0
                           ? "Sin formatos disponibles"
-                          : "Seleccionar trámite"
+                          : "Seleccionar formato"
                     }
                   />
                 </SelectTrigger>
                 <SelectContent>
-                  {tramiteOptions.map((t) => (
-                    <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                  {availableFormats.map((f) => (
+                    <SelectItem key={f.id} value={f.id}>{f.label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              {policyId && tramiteOptions.length === 0 && (
+              {policyId && availableFormats.length === 0 && (
                 <p className="text-xs text-destructive">
-                  No hay formatos oficiales configurados para {insurer}.
+                  Esta aseguradora ({insurer}) no tiene formatos cargados.
                 </p>
               )}
             </div>
-            {tramite && policyId && !getFormDefinition(insurer, tramite as TramiteType) && (
+            {tramite && policyId && !getFormDefinition(insurer, tramite) && (
               <p className="text-xs text-destructive">No hay formulario disponible para esta combinación.</p>
             )}
           </CardContent>
@@ -305,7 +307,7 @@ export default function NewClaim() {
   return (
     <div className="space-y-4 animate-fade-in max-w-lg mx-auto pb-24">
       <h1 className="font-heading text-2xl font-bold">{definition.name}</h1>
-      <p className="text-xs text-muted-foreground">{insurer} · {TRAMITE_TYPES.find((t) => t.value === tramite)?.label}</p>
+      <p className="text-xs text-muted-foreground">{insurer} · {currentFormatLabel || tramite}</p>
 
       <AutofillBanner />
 
