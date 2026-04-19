@@ -17,7 +17,13 @@ export async function generateFilledPDF(
   formKey: FormCoordinatesKey,
   formData: Record<string, string>
 ): Promise<Uint8Array> {
-  const config = formCoordinates[formKey];
+  const config = formCoordinates[formKey] as {
+    storagePath: string;
+    fields: any[];
+    page1Fields?: any[];
+    page2Fields?: any[];
+    page3Fields?: any[];
+  };
   const pdfBytes = await getPDFFromStorage(config.storagePath);
   const allFields = [
     ...config.fields,
