@@ -111,6 +111,11 @@ export function buildOverlayData(ctx: OverlayContext): Record<string, string> {
   set("numero_poliza", data.policy_number || policy.policy_number);
   set("numero_certificado", data.numero_certificado || policy.numero_certificado);
   set("nombre_contratante", policy.contractor_name || profile.full_name);
+  // Si no hay full_name, concatenar manualmente para que aparezca en form C
+  if (!out["nombre_contratante"]) {
+    const parts = [profile.paternal_surname, profile.maternal_surname, profile.first_name].filter(Boolean);
+    if (parts.length) set("nombre_contratante", parts.join(" "));
+  }
   set("apellido_paterno", data.paternal_surname || profile.paternal_surname);
   set("apellido_materno", data.maternal_surname || profile.maternal_surname);
   set("nombres", data.first_name || profile.first_name);
@@ -134,6 +139,10 @@ export function buildOverlayData(ctx: OverlayContext): Record<string, string> {
   set("dom_colonia", profile.neighborhood);
   set("dom_cp", profile.postal_code);
   set("dom_municipio", profile.municipality);
+  // Aliases sin prefijo (spec del usuario)
+  set("municipio", profile.municipality);
+  set("estado", profile.state);
+  set("celular", profile.telefono_celular || profile.phone);
 
   // Sexo / estado civil / PEP
   const sex = (data.sex || profile.sex || "").toString().toLowerCase();

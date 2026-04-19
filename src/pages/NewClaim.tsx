@@ -13,7 +13,6 @@ import { TRAMITE_TYPES, type TramiteType } from "@/lib/constants";
 import { getFormDefinition, getFormKey } from "@/components/claims/forms/registry";
 import FormRenderer from "@/components/claims/forms/FormRenderer";
 import AutofillBanner from "@/components/claims/forms/shared/AutofillBanner";
-import { generateFormPDF } from "@/components/claims/forms/generateFormPDF";
 import { generateFilledPDF, downloadPDF, buildOverlayData } from "@/lib/generateFilledPDF";
 import type { FormCoordinatesKey } from "@/lib/formCoordinates";
 import { isValidCLABE, isValidCURP, isValidRFC } from "@/components/claims/forms/shared/validators";
@@ -170,34 +169,20 @@ export default function NewClaim() {
       if (folioErr) throw folioErr;
       const folio = folioRes as string;
 
-      // Intentar usar PDF original de la aseguradora
+      // Usar PDF original de la aseguradora (obligatorio: sin fallback genérico)
       const formKey = getFormKey(insurer, tramite as TramiteType) as FormCoordinatesKey | null;
-      let pdfBytes: Uint8Array | null = null;
-      let usedOriginal = false;
-
-      if (formKey) {
-        try {
-          const overlay = buildOverlayData({
-            data,
-            profile,
-            policy,
-            insurer,
-            tramite: tramite as string,
-          });
-          pdfBytes = await generateFilledPDF(formKey, overlay);
-          usedOriginal = true;
-        } catch (e: any) {
-          console.warn("Fallback a PDF generado:", e?.message);
-          toast.message("PDF original no disponible, generando resumen");
-        }
+      if (!formKey) {
+        toast.error(`No hay formato oficial configurado para ${insurer}`);
+        return;
       }
-
-      // Fallback: generar PDF "desde cero" con jsPDF
-      if (!pdfBytes) {
-        const doc = generateFormPDF({ definition, insurer, data, folio });
-        const out = doc.output("arraybuffer");
-        pdfBytes = new Uint8Array(out);
-      }
+      const overlay = buildOverlayData({
+        data,
+        profile,
+        policy,
+        insurer,
+        tramite: tramite as string,
+      });
+      const pdfBytes = await generateFilledPDF(formKey, overlay);
 
       const blob = new Blob([pdfBytes as BlobPart], { type: "application/pdf" });
       const path = `claim-forms/${user.id}/${folio}.pdf`;
@@ -212,11 +197,7 @@ export default function NewClaim() {
 
       // Descargar localmente
       downloadPDF(pdfBytes, `${folio}.pdf`);
-      toast.success(
-        usedOriginal
-          ? `Formato oficial llenado · Folio ${folio}`
-          : `Resumen generado · Folio ${folio}`
-      );
+      toast.success(`Formato oficial llenado · Folio ${folio}`);
       navigate("/reclamos");
     } catch (e: any) {
       console.error("[handleGenerate] error:", e);

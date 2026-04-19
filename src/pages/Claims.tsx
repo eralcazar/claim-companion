@@ -6,13 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useNavigate } from "react-router-dom";
-import { Plus, FileText, Download, FileDown, Pencil, FileEdit, Trash2, FileCheck } from "lucide-react";
+import { Plus, FileText, FileDown, Download, Pencil, FileEdit, Trash2, FileCheck } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { toast } from "sonner";
 import { defaultFormData, type ClaimFormData } from "@/components/claims/types";
-import { generateClaimPDF } from "@/components/claims/generateClaimPDF";
-import { fillOriginalPDF } from "@/components/claims/fillOriginalPDF";
 import { TRAMITE_TYPES, type TramiteType } from "@/lib/constants";
 import { getFormKey } from "@/components/claims/forms/registry";
 import {
@@ -146,20 +144,6 @@ export default function Claims() {
     aprobado: "Aprobado",
     rechazado: "Rechazado",
     en_revision: "En revisión",
-  };
-
-  const handleDownloadPDF = (claim: any) => {
-    if (!profile) return;
-    const pol = (claim as any).insurance_policies;
-    if (!pol) return;
-    const form = claimToFormData(claim);
-    const doc = generateClaimPDF(form, profile, {
-      policy_number: pol.policy_number,
-      company: pol.company,
-    });
-    const fileName = `${pol.company.replace(/\s/g, "_")}_Resumen_${new Date().toISOString().split("T")[0]}.pdf`;
-    doc.save(fileName);
-    toast.success("PDF resumen descargado");
   };
 
   const handleDownloadOriginalPDF = async (claim: any) => {
@@ -326,9 +310,6 @@ export default function Claims() {
                     </Button>
                     <Button variant="outline" size="sm" onClick={() => handleDownloadOriginalPDF(claim)}>
                       <FileDown className="h-3 w-3 mr-1" /> Formato
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => handleDownloadPDF(claim)}>
-                      <Download className="h-3 w-3 mr-1" /> Resumen
                     </Button>
                     <Button
                       variant="outline"
