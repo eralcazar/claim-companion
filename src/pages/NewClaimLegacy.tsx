@@ -21,7 +21,7 @@ import StepReview from "@/components/claims/StepReview";
 import { generateClaimPDF } from "@/components/claims/generateClaimPDF";
 import { fillOriginalPDF } from "@/components/claims/fillOriginalPDF";
 
-export default function NewClaim() {
+export default function NewClaimLegacy() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
