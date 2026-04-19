@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, ArrowRight, Check, Download, Save } from "lucide-react";
 import { TRAMITE_TYPES, type TramiteType } from "@/lib/constants";
 import { getFormDefinition } from "@/components/claims/forms/registry";
@@ -16,16 +16,52 @@ import AutofillBanner from "@/components/claims/forms/shared/AutofillBanner";
 import { generateFormPDF } from "@/components/claims/forms/generateFormPDF";
 import { isValidCLABE, isValidCURP, isValidRFC } from "@/components/claims/forms/shared/validators";
 
+function fmtValue(v: any): string {
+  if (v == null || v === "") return "—";
+  if (Array.isArray(v)) {
+    if (v.length === 0) return "—";
+    if (typeof v[0] === "object") return `${v.length} elemento(s)`;
+    return v.join(", ");
+  }
+  if (typeof v === "boolean") return v ? "Sí" : "No";
+  if (typeof v === "string" && v.startsWith("data:image")) return "✓ Firma capturada";
+  return String(v);
+}
+
 export default function NewClaim() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const draftQuery = searchParams.get("draft");
   const [tramite, setTramite] = useState<TramiteType | "">("");
   const [policyId, setPolicyId] = useState<string>("");
   const [step, setStep] = useState(0);
   const [data, setData] = useState<Record<string, any>>({});
   const [draftId, setDraftId] = useState<string | null>(null);
   const [autofilled, setAutofilled] = useState(false);
+  const [draftLoaded, setDraftLoaded] = useState(false);
   const saveTimer = useRef<number | null>(null);
+
+  // Cargar borrador desde query param
+  useEffect(() => {
+    if (!user || !draftQuery || draftLoaded) return;
+    (async () => {
+      const { data: d, error } = await supabase
+        .from("claim_forms")
+        .select("*")
+        .eq("id", draftQuery)
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (error || !d) { toast.error("Borrador no encontrado"); setDraftLoaded(true); return; }
+      setDraftId(d.id);
+      setTramite((d.tramite_type as TramiteType) || "");
+      setPolicyId(d.policy_id || "");
+      setData((d.data as Record<string, any>) || {});
+      setAutofilled(true); // ya tiene datos, no sobreescribir
+      setDraftLoaded(true);
+      toast.success("Borrador cargado");
+    })();
+  }, [user, draftQuery, draftLoaded]);
 
   const { data: policies } = useQuery({
     queryKey: ["policies-active", user?.id],
@@ -247,15 +283,44 @@ export default function NewClaim() {
             <FormRenderer definition={definition} section={currentSection} data={data} onChange={onChange} />
           ) : (
             <div className="space-y-3 text-sm">
-              <p className="text-muted-foreground">Revisa los datos y genera el PDF oficial. El folio se asigna automáticamente.</p>
-              {sections.map((s) => (
-                <div key={s.id} className="rounded-md border p-3">
-                  <p className="font-medium text-xs mb-1">{s.title}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {Object.entries(data).filter(([k]) => (s.fields || []).some((f) => f.name === k) || k === s.tableName || k === s.doctorsName).length} campos completados
-                  </p>
-                </div>
-              ))}
+              <p className="text-muted-foreground text-xs">
+                Revisa todos los datos antes de generar el PDF oficial. El folio se asigna automáticamente.
+              </p>
+              {sections.map((s) => {
+                if (s.showWhen && !s.showWhen(data)) return null;
+                return (
+                  <div key={s.id} className="rounded-md border p-3 space-y-1.5">
+                    <p className="font-semibold text-xs text-primary mb-1">{s.title}</p>
+                    {s.kind === "dynamic_table" ? (
+                      <div className="text-xs">
+                        <p className="text-muted-foreground">
+                          {((data[s.tableName!] as any[]) || []).length} fila(s)
+                        </p>
+                        {s.showTotal && (
+                          <p className="font-medium mt-1">
+                            Total: ${((data[s.tableName!] as any[]) || []).reduce((sum: number, r: any) => sum + (parseFloat(r.amount) || 0), 0).toLocaleString("es-MX", { minimumFractionDigits: 2 })}
+                          </p>
+                        )}
+                      </div>
+                    ) : s.kind === "dynamic_doctors" ? (
+                      <p className="text-xs text-muted-foreground">
+                        {((data[s.doctorsName || "doctors"] as any[]) || []).length} médico(s) registrado(s)
+                      </p>
+                    ) : (
+                      <div className="grid grid-cols-1 gap-1 text-xs">
+                        {(s.fields || [])
+                          .filter((f) => f.type !== "static_text" && (!f.showWhen || f.showWhen(data)))
+                          .map((f) => (
+                            <div key={f.name} className="flex justify-between gap-2 border-b border-border/40 py-0.5 last:border-0">
+                              <span className="text-muted-foreground shrink-0 max-w-[55%] truncate">{f.label}</span>
+                              <span className="font-medium text-right truncate">{fmtValue(data[f.name])}</span>
+                            </div>
+                          ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </CardContent>
