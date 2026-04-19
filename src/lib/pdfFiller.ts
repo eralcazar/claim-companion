@@ -1,6 +1,7 @@
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 
 export interface FieldOverlay {
+  key?: string;
   page: number;        // 0-indexed
   x: number;           // puntos desde esquina inferior izquierda
   y: number;
