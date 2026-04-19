@@ -24,7 +24,7 @@ export const formCoordinates = {
   // GNP — AVISO DE ACCIDENTE O ENFERMEDAD
   // ══════════════════════════════════════════
   gnp_aviso_accidente: {
-    storagePath: "gnp/aviso_accidente.pdf",
+    storagePath: "GNP/aviso_accidente.pdf",
     fields: [
       { key: "numero_poliza", page: 0, x: 460, y: 710, fontSize: 8 },
       { key: "fecha_dia", page: 0, x: 541, y: 710, fontSize: 8 },
@@ -98,7 +98,7 @@ export const formCoordinates = {
   // GNP — INFORME MÉDICO
   // ══════════════════════════════════════════
   gnp_informe_medico: {
-    storagePath: "gnp/informe_medico.pdf",
+    storagePath: "GNP/informe_medico.pdf",
     fields: [
       { key: "check_reembolso", page: 0, x: 95, y: 730, fontSize: 8 },
       { key: "check_prog_cirugia", page: 0, x: 173, y: 730, fontSize: 8 },
@@ -166,7 +166,7 @@ export const formCoordinates = {
   // AXA — REEMBOLSO
   // ══════════════════════════════════════════
   axa_reembolso: {
-    storagePath: "axa/reembolso.pdf",
+    storagePath: "AXA/reembolso.pdf",
     fields: [
       { key: "nombre_contratante", page: 0, x: 90, y: 710, fontSize: 8, maxWidth: 320 },
       { key: "numero_poliza", page: 0, x: 430, y: 710, fontSize: 8 },
@@ -233,7 +233,7 @@ export const formCoordinates = {
   // METLIFE — REEMBOLSO
   // ══════════════════════════════════════════
   metlife_reembolso: {
-    storagePath: "metlife/reembolso.pdf",
+    storagePath: "METLIFE/reembolso.pdf",
     fields: [
       { key: "numero_poliza", page: 0, x: 90, y: 710, fontSize: 8 },
       { key: "numero_certificado", page: 0, x: 280, y: 710, fontSize: 8 },
@@ -253,7 +253,7 @@ export const formCoordinates = {
   // BANORTE — INFORME DEL RECLAMANTE
   // ══════════════════════════════════════════
   banorte_informe_reclamante: {
-    storagePath: "banorte/informe_reclamante.pdf",
+    storagePath: "BANORTE/informe_reclamante.PDF",
     fields: [
       { key: "nombre_reclamante", page: 0, x: 90, y: 700, fontSize: 8, maxWidth: 350 },
       { key: "parentesco", page: 0, x: 90, y: 678, fontSize: 8 },
@@ -269,7 +269,7 @@ export const formCoordinates = {
   // BBVA — INFORME MÉDICO
   // ══════════════════════════════════════════
   bbva_informe_medico: {
-    storagePath: "bbva/informe_medico.pdf",
+    storagePath: "BBVA/informe_medico.pdf",
     fields: [
       { key: "numero_poliza", page: 0, x: 90, y: 720, fontSize: 8 },
       { key: "apellido_paterno", page: 0, x: 90, y: 700, fontSize: 8 },
@@ -287,7 +287,7 @@ export const formCoordinates = {
   // MAPFRE — REEMBOLSO
   // ══════════════════════════════════════════
   mapfre_reembolso: {
-    storagePath: "mapfre/reembolso.pdf",
+    storagePath: "MAPFRE/reembolso.pdf",
     fields: [
       { key: "numero_poliza", page: 0, x: 90, y: 715, fontSize: 8 },
       { key: "numero_certificado", page: 0, x: 280, y: 715, fontSize: 8 },
@@ -303,7 +303,7 @@ export const formCoordinates = {
 
   // Plantillas base — coordenadas a calibrar
   allianz_informe_medico: {
-    storagePath: "allianz/informe_medico.pdf",
+    storagePath: "ALLIANZ/informe_medico.pdf",
     fields: [
       { key: "numero_poliza", page: 0, x: 90, y: 720, fontSize: 8 },
       { key: "apellido_paterno", page: 0, x: 90, y: 698, fontSize: 8 },
@@ -314,7 +314,7 @@ export const formCoordinates = {
     ],
   },
   inbursa_informe_medico: {
-    storagePath: "inbursa/informe_medico.pdf",
+    storagePath: "INBURSA/informe_medico.pdf",
     fields: [
       { key: "numero_poliza", page: 0, x: 90, y: 720, fontSize: 8 },
       { key: "apellido_paterno", page: 0, x: 90, y: 698, fontSize: 8 },
@@ -323,7 +323,7 @@ export const formCoordinates = {
     ],
   },
   plan_seguro_informe_medico: {
-    storagePath: "plan_seguro/informe_medico.pdf",
+    storagePath: "PLAN_SEGURO/informe_medico.pdf",
     fields: [
       { key: "numero_poliza", page: 0, x: 90, y: 720, fontSize: 8 },
       { key: "apellido_paterno", page: 0, x: 90, y: 698, fontSize: 8 },
@@ -332,7 +332,7 @@ export const formCoordinates = {
     ],
   },
   seguros_monterrey_informe_medico: {
-    storagePath: "seguros_monterrey/informe_medico.pdf",
+    storagePath: "SEGUROS_MONTERREY/informe_medico.pdf",
     fields: [
       { key: "numero_poliza", page: 0, x: 90, y: 720, fontSize: 8 },
       { key: "apellido_paterno", page: 0, x: 90, y: 698, fontSize: 8 },
