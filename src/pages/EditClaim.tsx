@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, ArrowRight, Check, Download, FileDown, Save } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, FileDown, Save } from "lucide-react";
 import { defaultFormData, type ClaimFormData, type ClaimType } from "@/components/claims/types";
 import StepClaimType from "@/components/claims/StepClaimType";
 import StepPolicySelect from "@/components/claims/StepPolicySelect";
@@ -18,8 +18,10 @@ import StepInvoices from "@/components/claims/StepInvoices";
 import StepPayment from "@/components/claims/StepPayment";
 import StepSurgeryInfo from "@/components/claims/StepSurgeryInfo";
 import StepReview from "@/components/claims/StepReview";
-import { generateClaimPDF } from "@/components/claims/generateClaimPDF";
-import { fillOriginalPDF } from "@/components/claims/fillOriginalPDF";
+import { TRAMITE_TYPES, type TramiteType } from "@/lib/constants";
+import { getFormKey } from "@/components/claims/forms/registry";
+import { generateFilledPDF, downloadPDF, buildOverlayData } from "@/lib/generateFilledPDF";
+import type { FormCoordinatesKey } from "@/lib/formCoordinates";
 
 function claimToFormData(claim: any): ClaimFormData {
   const fd = claim.form_data || {};

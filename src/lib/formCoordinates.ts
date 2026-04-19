@@ -23,7 +23,7 @@ export const formCoordinates = {
   // ══════════════════════════════════════════
   // GNP — AVISO DE ACCIDENTE O ENFERMEDAD
   // ══════════════════════════════════════════
-  gnp_aviso_accidente: {
+  GNP_aviso_accidente: {
     storagePath: "GNP/aviso_accidente.pdf",
     fields: [
       { key: "numero_poliza", page: 0, x: 460, y: 710, fontSize: 8 },
@@ -97,7 +97,7 @@ export const formCoordinates = {
   // ══════════════════════════════════════════
   // GNP — INFORME MÉDICO
   // ══════════════════════════════════════════
-  gnp_informe_medico: {
+  GNP_informe_medico: {
     storagePath: "GNP/informe_medico.pdf",
     fields: [
       { key: "check_reembolso", page: 0, x: 95, y: 730, fontSize: 8 },
@@ -165,7 +165,7 @@ export const formCoordinates = {
   // ══════════════════════════════════════════
   // AXA — REEMBOLSO
   // ══════════════════════════════════════════
-  axa_reembolso: {
+  AXA_reembolso: {
     storagePath: "AXA/reembolso.pdf",
     fields: [
       { key: "nombre_contratante", page: 0, x: 90, y: 710, fontSize: 8, maxWidth: 320 },
@@ -232,7 +232,7 @@ export const formCoordinates = {
   // ══════════════════════════════════════════
   // METLIFE — REEMBOLSO
   // ══════════════════════════════════════════
-  metlife_reembolso: {
+  METLIFE_reembolso: {
     storagePath: "METLIFE/reembolso.pdf",
     fields: [
       { key: "numero_poliza", page: 0, x: 90, y: 710, fontSize: 8 },
@@ -252,7 +252,7 @@ export const formCoordinates = {
   // ══════════════════════════════════════════
   // BANORTE — INFORME DEL RECLAMANTE
   // ══════════════════════════════════════════
-  banorte_informe_reclamante: {
+  BANORTE_informe_reclamante: {
     storagePath: "BANORTE/informe_reclamante.PDF",
     fields: [
       { key: "nombre_reclamante", page: 0, x: 90, y: 700, fontSize: 8, maxWidth: 350 },
@@ -268,7 +268,7 @@ export const formCoordinates = {
   // ══════════════════════════════════════════
   // BBVA — INFORME MÉDICO
   // ══════════════════════════════════════════
-  bbva_informe_medico: {
+  BBVA_informe_medico: {
     storagePath: "BBVA/informe_medico.pdf",
     fields: [
       { key: "numero_poliza", page: 0, x: 90, y: 720, fontSize: 8 },
@@ -286,7 +286,7 @@ export const formCoordinates = {
   // ══════════════════════════════════════════
   // MAPFRE — REEMBOLSO
   // ══════════════════════════════════════════
-  mapfre_reembolso: {
+  MAPFRE_reembolso: {
     storagePath: "MAPFRE/reembolso.pdf",
     fields: [
       { key: "numero_poliza", page: 0, x: 90, y: 715, fontSize: 8 },
@@ -302,7 +302,7 @@ export const formCoordinates = {
   },
 
   // Plantillas base — coordenadas a calibrar
-  allianz_informe_medico: {
+  ALLIANZ_informe_medico: {
     storagePath: "ALLIANZ/informe_medico.pdf",
     fields: [
       { key: "numero_poliza", page: 0, x: 90, y: 720, fontSize: 8 },
@@ -313,7 +313,7 @@ export const formCoordinates = {
       { key: "tratamiento", page: 0, x: 90, y: 600, fontSize: 8, maxWidth: 440 },
     ],
   },
-  inbursa_informe_medico: {
+  INBURSA_informe_medico: {
     storagePath: "INBURSA/informe_medico.pdf",
     fields: [
       { key: "numero_poliza", page: 0, x: 90, y: 720, fontSize: 8 },
@@ -322,7 +322,7 @@ export const formCoordinates = {
       { key: "diagnostico", page: 0, x: 90, y: 660, fontSize: 8, maxWidth: 440 },
     ],
   },
-  plan_seguro_informe_medico: {
+  "PLAN SEGURO_informe_medico": {
     storagePath: "PLAN_SEGURO/informe_medico.pdf",
     fields: [
       { key: "numero_poliza", page: 0, x: 90, y: 720, fontSize: 8 },
@@ -331,7 +331,7 @@ export const formCoordinates = {
       { key: "diagnostico", page: 0, x: 90, y: 660, fontSize: 8, maxWidth: 440 },
     ],
   },
-  seguros_monterrey_informe_medico: {
+  "SEGUROS MONTERREY_informe_medico": {
     storagePath: "SEGUROS_MONTERREY/informe_medico.pdf",
     fields: [
       { key: "numero_poliza", page: 0, x: 90, y: 720, fontSize: 8 },
