@@ -310,60 +310,30 @@ export default function EditClaim() {
     onError: () => toast.error("Error al actualizar reclamo"),
   });
 
-  const handleDownloadPDF = () => {
-    if (!profile || !selectedPolicy) return;
-    const doc = generateClaimPDF(form, profile, {
-      policy_number: selectedPolicy.policy_number,
-      company: selectedPolicy.company,
-    });
-    const fileName = `${company.replace(/\s/g, "_")}_${isReembolso ? "Reembolso" : "Programacion"}_${new Date().toISOString().split("T")[0]}.pdf`;
-    doc.save(fileName);
-    toast.success("PDF resumen descargado");
-  };
-
   const handleDownloadOriginalPDF = async () => {
     if (!profile || !selectedPolicy) return;
+    const insurer = (selectedPolicy.company || "").toUpperCase();
+    const tramite: TramiteType = isReembolso ? "reembolso" : "prog_cirugia";
+    const formKey = getFormKey(insurer, tramite) as FormCoordinatesKey | null;
+    if (!formKey) {
+      toast.error(`No hay formato oficial configurado para ${selectedPolicy.company}`);
+      return;
+    }
     try {
-      const pdfBytes = await fillOriginalPDF(form, profile, {
-        policy_number: selectedPolicy.policy_number,
-        company: selectedPolicy.company,
-        policy_type: selectedPolicy.policy_type,
-        contractor_name: selectedPolicy.contractor_name,
-        titular_paternal_surname: (selectedPolicy as any).titular_paternal_surname,
-        titular_maternal_surname: (selectedPolicy as any).titular_maternal_surname,
-        titular_first_name: (selectedPolicy as any).titular_first_name,
-        titular_dob: (selectedPolicy as any).titular_dob,
-        titular_birth_country: (selectedPolicy as any).titular_birth_country,
-        titular_birth_state: (selectedPolicy as any).titular_birth_state,
-        titular_nationality: (selectedPolicy as any).titular_nationality,
-        titular_occupation: (selectedPolicy as any).titular_occupation,
-        titular_rfc: (selectedPolicy as any).titular_rfc,
-        titular_street: (selectedPolicy as any).titular_street,
-        titular_ext_number: (selectedPolicy as any).titular_ext_number,
-        titular_int_number: (selectedPolicy as any).titular_int_number,
-        titular_postal_code: (selectedPolicy as any).titular_postal_code,
-        titular_neighborhood: (selectedPolicy as any).titular_neighborhood,
-        titular_municipality: (selectedPolicy as any).titular_municipality,
-        titular_city: (selectedPolicy as any).titular_city,
-        titular_state: (selectedPolicy as any).titular_state,
-        titular_country: (selectedPolicy as any).titular_country,
-        titular_cell_phone: (selectedPolicy as any).titular_cell_phone,
-        titular_landline: (selectedPolicy as any).titular_landline,
-        titular_intl_prefix: (selectedPolicy as any).titular_intl_prefix,
-        titular_email: (selectedPolicy as any).titular_email,
-        titular_auth_contact: (selectedPolicy as any).titular_auth_contact,
+      const overlay = buildOverlayData({
+        data: { ...(form as any), ...(claim?.form_data || {}) },
+        profile,
+        policy: selectedPolicy,
+        insurer,
+        tramite,
       });
-      const blob = new Blob([new Uint8Array(pdfBytes)], { type: "application/pdf" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${company.replace(/\s/g, "_")}_Formato_Oficial_${isReembolso ? "Reembolso" : "Programacion"}_${new Date().toISOString().split("T")[0]}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
+      const pdfBytes = await generateFilledPDF(formKey, overlay);
+      const fileName = `${company.replace(/\s/g, "_")}_Formato_Oficial_${new Date().toISOString().split("T")[0]}.pdf`;
+      downloadPDF(pdfBytes, fileName);
       toast.success("Formato oficial descargado");
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      toast.error("Error al generar el formato oficial");
+      toast.error(err?.message || "Error al generar el formato oficial");
     }
   };
 
@@ -434,9 +404,6 @@ export default function EditClaim() {
             <div className="flex gap-2">
               <Button variant="outline" className="flex-1" onClick={handleDownloadOriginalPDF} disabled={!selectedPolicy}>
                 <FileDown className="h-4 w-4 mr-1" /> Formato Oficial
-              </Button>
-              <Button variant="outline" className="flex-1" onClick={handleDownloadPDF} disabled={!selectedPolicy}>
-                <Download className="h-4 w-4 mr-1" /> Resumen
               </Button>
             </div>
             <Button className="w-full" onClick={() => updateMutation.mutate()} disabled={updateMutation.isPending}>
