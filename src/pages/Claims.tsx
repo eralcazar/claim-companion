@@ -229,10 +229,47 @@ export default function Claims() {
   };
 
   const handleDownloadSubmittedPDF = async (form: any) => {
-    if (!form.pdf_path) { toast.error("PDF no disponible"); return; }
-    const { data, error } = await supabase.storage.from("documents").createSignedUrl(form.pdf_path, 60);
-    if (error || !data?.signedUrl) { toast.error("Error al obtener PDF"); return; }
-    window.open(data.signedUrl, "_blank");
+    if (!profile) { toast.error("Perfil no cargado"); return; }
+    const insurer = (form.insurer || "").toUpperCase();
+    const tramite = form.tramite_type as TramiteType;
+    const formKey = getFormKey(insurer, tramite) as FormCoordinatesKey | null;
+
+    // Si no hay plantilla oficial mapeada, fallback al PDF guardado en Storage
+    if (!formKey) {
+      if (!form.pdf_path) { toast.error(`No hay formato oficial configurado para ${form.insurer}`); return; }
+      const { data, error } = await supabase.storage.from("documents").createSignedUrl(form.pdf_path, 60);
+      if (error || !data?.signedUrl) { toast.error("Error al obtener PDF"); return; }
+      window.open(data.signedUrl, "_blank");
+      return;
+    }
+
+    // Cargar póliza asociada para enriquecer el overlay
+    let policy: any = null;
+    if (form.policy_id) {
+      const { data: pol } = await supabase
+        .from("insurance_policies")
+        .select("*")
+        .eq("id", form.policy_id)
+        .maybeSingle();
+      policy = pol;
+    }
+
+    try {
+      const overlay = buildOverlayData({
+        data: form.data || {},
+        profile,
+        policy: policy || {},
+        insurer,
+        tramite,
+      });
+      const pdfBytes = await generateFilledPDF(formKey, overlay);
+      const fileName = `${form.folio || form.form_code}_${form.insurer}.pdf`;
+      downloadPDF(pdfBytes, fileName);
+      toast.success("Formato oficial descargado");
+    } catch (err: any) {
+      console.error("[handleDownloadSubmittedPDF]", err);
+      toast.error(err?.message || "Error al generar el formato oficial");
+    }
   };
 
   const tramiteLabel = (t: string) => TRAMITE_TYPES.find((x) => x.value === t)?.label || t;
