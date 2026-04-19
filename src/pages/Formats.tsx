@@ -8,33 +8,21 @@ import { Label } from "@/components/ui/label";
 import { Download, FileText } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { getAvailableFormats } from "@/components/claims/forms/registry";
 
-interface FormatItem {
-  label: string;
-  file: string;
-}
-
-function getFormats(company: string): FormatItem[] {
-  const isMetLife = company.toLowerCase().includes("metlife");
-  if (isMetLife) {
-    return [
-      { label: "Solicitud de Reembolso", file: "/forms/METLIFE_REEMBOLSO.pdf" },
-      { label: "Programación de Servicios", file: "/forms/METLIFE_PROGRAMACION_DE_SERVICIOS.pdf" },
-      { label: "Informe Médico", file: "/forms/METLIFE_INFORME_MEDICO.pdf" },
-    ];
-  }
-  return [
-    { label: "Solicitud de Reembolso", file: "/forms/MAPFRE_REEMBOLSO.pdf" },
-    { label: "Programación de Servicios", file: "/forms/MAPFRE_PROGRAMACION_DE_SERVICIOS.pdf" },
-    { label: "Informe Médico", file: "/forms/MAPFRE_INFORME_MEDICO.pdf" },
-  ];
+function normalizeInsurerFolder(insurer: string): string {
+  return (insurer || "").toUpperCase();
 }
 
 function downloadFile(url: string, fileName: string) {
   const a = document.createElement("a");
   a.href = url;
   a.download = fileName;
+  a.target = "_blank";
+  a.rel = "noopener noreferrer";
+  document.body.appendChild(a);
   a.click();
+  document.body.removeChild(a);
   toast.success(`Descargando ${fileName}`);
 }
 
@@ -57,7 +45,8 @@ export default function Formats() {
   });
 
   const selectedPolicy = policies?.find((p) => p.id === selectedPolicyId);
-  const formats = selectedPolicy ? getFormats(selectedPolicy.company) : [];
+  const insurerFolder = selectedPolicy ? normalizeInsurerFolder(selectedPolicy.company) : "";
+  const formats = selectedPolicy ? getAvailableFormats(selectedPolicy.company) : [];
 
   if (isLoading) {
     return (
@@ -106,27 +95,34 @@ export default function Formats() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {formats.map((f) => (
-              <div
-                key={f.file}
-                className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
-              >
-                <div className="flex items-center gap-3">
-                  <FileText className="h-5 w-5 text-primary shrink-0" />
-                  <span className="text-sm font-medium">{f.label}</span>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    const fileName = f.file.split("/").pop() || "formato.pdf";
-                    downloadFile(f.file, fileName);
-                  }}
+            {formats.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                Esta aseguradora no tiene formatos disponibles.
+              </p>
+            )}
+            {formats.map((f) => {
+              const { data } = supabase.storage
+                .from("formatos")
+                .getPublicUrl(`${insurerFolder}/${f.file}`);
+              return (
+                <div
+                  key={f.id}
+                  className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
                 >
-                  <Download className="h-4 w-4 mr-1" /> Descargar
-                </Button>
-              </div>
-            ))}
+                  <div className="flex items-center gap-3 min-w-0">
+                    <FileText className="h-5 w-5 text-primary shrink-0" />
+                    <span className="text-sm font-medium truncate">{f.id}</span>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => downloadFile(data.publicUrl, f.file)}
+                  >
+                    <Download className="h-4 w-4 mr-1" /> Descargar
+                  </Button>
+                </div>
+              );
+            })}
           </CardContent>
         </Card>
       )}
