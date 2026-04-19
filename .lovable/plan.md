@@ -1,135 +1,102 @@
 
 
-## Plan: Mejoras Perfil + Pólizas + Wizard Dinámico de Reclamos
+El usuario quiere implementar un sistema de llenado de PDFs originales usando pdf-lib con coordenadas absolutas. Las Partes 1 y 2 (Perfil y Pólizas) ya están implementadas según el historial. Voy a verificar el estado actual y enfocar el plan en la Parte 3 que es la novedad real.
 
-Trabajo extenso. Lo entrego en 3 fases independientes, cada una funcional por sí sola.
+Verifico estado actual de Profile, Policies, y el wizard.
 
----
+Estado verificado:
+- Perfil ya tiene: estado_civil, giro_negocio, es_pep, cargo_pep, tipo_identificacion, numero_identificacion, vigencia_identificacion, telefono_celular ✓
+- Pólizas ya tiene: numero_certificado, tipo_contratacion, deducible, coaseguro_porcentaje, tope_coaseguro, agente_* ✓
+- Aseguradoras como SELECT con las 10 opciones ✓
+- Wizard dinámico con 8 formularios A-H y generación de PDF "desde cero" con jsPDF ✓
+- Bucket "documents" existe, NO existe bucket "formatos"
+- pdf-lib NO está instalado (solo jspdf)
 
-### FASE 1 — Perfil + Pólizas (rápido, base para autocompletado)
+Por lo tanto el trabajo real es solo la PARTE 3: cambiar el motor de PDF de "generar desde cero" a "rellenar PDF original con coordenadas".
 
-**Migración SQL**
+Ámbito reducido y claro.
 
-`profiles` añadir columnas:
-- `estado_civil text`, `giro_negocio text`
-- `es_pep boolean default false`, `cargo_pep text`
-- `tipo_identificacion text`, `numero_identificacion text`, `vigencia_identificacion date`
-- `telefono_celular text`
+## Plan: Llenado de PDFs originales por coordenadas (pdf-lib)
 
-`insurance_policies` añadir columnas:
-- `numero_certificado text`
-- `tipo_contratacion text default 'individual'`
-- `deducible numeric default 0`, `coaseguro_porcentaje numeric default 0`, `tope_coaseguro numeric default 0`
-- `agente_nombre text`, `agente_clave text`, `agente_telefono text`, `agente_estado text`
+Las Partes 1 y 2 ya están implementadas. Solo se ejecuta la Parte 3.
 
-**`src/lib/constants.ts`** (nuevo) — extraer `ESTADOS_MX`, `ASEGURADORAS` (10 fijas), `ESTADOS_CIVILES`, `TIPOS_IDENTIFICACION` para reutilización.
+### 1. Infraestructura
 
-**`src/pages/Profile.tsx`**
-- Después de Ocupación: Estado civil (Select), Giro negocio (Input), PEP (RadioGroup) + Cargo PEP condicional.
-- En Contacto: agregar Teléfono celular (separado de `phone`).
-- Nueva sección "Identificación Oficial": Tipo (Select), Número (Input), Vigencia (date input).
+**Bucket nuevo `formatos` (público)** vía migración SQL + políticas de lectura pública. El usuario sube manualmente los 23 PDFs originales con los paths exactos especificados (no podemos subir binarios desde código).
 
-**`src/pages/Policies.tsx`**
-- `company` pasa de Input → Select con las 10 aseguradoras.
-- Nuevos campos: No. Certificado, Tipo contratación, Deducible, Coaseguro %, Tope coaseguro.
-- Nueva sección "Datos del Agente" (4 campos, Estado = Select 32 estados).
-- Tarjeta muestra No. Certificado debajo del No. Póliza.
+**Dependencia**: instalar `pdf-lib`.
 
----
+### 2. Archivos nuevos
 
-### FASE 2 — Arquitectura del wizard dinámico
+**`src/lib/pdfFiller.ts`** — `fillPDF(pdfBytes, fields)` y `drawCheckmark(...)` exactamente como el spec del usuario, usando Helvetica embebida y `page.drawText` con coordenadas absolutas (origen inferior izquierda).
 
-**Migración SQL — tabla nueva `claim_forms`**
-- `id`, `user_id`, `policy_id`, `insurer text`, `form_code text` (A-H), `tramite_type text`
-- `data jsonb`, `status text` ('draft' | 'submitted')
-- `folio text`, `pdf_path text`
-- `created_at`, `updated_at`
-- RLS: usuarios CRUD propios, admins ALL, brokers SELECT asignados (mismo patrón que `claims`).
-- Trigger `update_updated_at_column`.
-- Secuencia/función `gen_folio(insurer, code)` para consecutivo mensual.
+**`src/lib/formCoordinates.ts`** — diccionario completo con las coordenadas provistas por el usuario para los 13 formularios listados:
+- gnp_aviso_accidente, gnp_informe_medico
+- axa_reembolso
+- metlife_reembolso
+- banorte_informe_reclamante
+- bbva_informe_medico
+- mapfre_reembolso
+- allianz_informe_medico, inbursa_informe_medico, plan_seguro_informe_medico, seguros_monterrey_informe_medico (plantillas base)
 
-**Estructura nueva `src/components/claims/forms/`**
-```
-registry.ts            // map (insurer, tramite) → FormDefinition
-types.ts               // FormDefinition, Section, Field
-FormRenderer.tsx       // renderiza secciones/campos por definición
-shared/
-  SignatureCanvas.tsx  // firma HTML5 + Limpiar
-  DynamicTable.tsx     // filas dinámicas (gastos, médicos, documentos)
-  AutofillBanner.tsx   // alerta azul
-  validators.ts        // RFC, CURP, CLABE, requeridos
-definitions/
-  formA-informe-medico.ts
-  formB-aviso-accidente.ts
-  formC-solicitud-reembolso.ts
-  formD-programacion.ts
-  formE-consentimiento.ts
-  formF-identificacion-allianz.ts
-  formG-carta-marsh.ts
-  formH-informe-reclamante.ts
+**`src/lib/generateFilledPDF.ts`** — `generateFilledPDF(formKey, formData)` que descarga el PDF de Storage, aplana fields/page1Fields/page2Fields/page3Fields, mapea valores y llama a `fillPDF`. Más helper `downloadPDF(bytes, filename)`.
+
+### 3. Mapeo aseguradora+trámite → formKey
+
+En `src/components/claims/forms/registry.ts` agregar exportación `getFormKey(insurer, tramite)` con la tabla:
+
+```text
+GNP + aviso_accidente        → gnp_aviso_accidente
+GNP + informe_medico         → gnp_informe_medico
+AXA + reembolso              → axa_reembolso
+METLIFE + reembolso          → metlife_reembolso
+BANORTE + informe_reclamante → banorte_informe_reclamante
+BBVA + informe_medico        → bbva_informe_medico
+MAPFRE + reembolso           → mapfre_reembolso
+ALLIANZ + informe_medico     → allianz_informe_medico
+INBURSA + informe_medico     → inbursa_informe_medico
+PLAN SEGURO + informe_medico → plan_seguro_informe_medico
+SEGUROS MONTERREY + informe_medico → seguros_monterrey_informe_medico
 ```
 
-**Mapa aseguradora → trámite → formulario** (registry):
-- METLIFE: A, C, D, E
-- AXA, MAPFRE: A, C, D
-- ALLIANZ: A, B, F, G
-- GNP, INBURSA, SEGUROS MONTERREY: A, B
-- BANORTE: A, H
-- BBVA, PLAN SEGURO: A
+### 4. Mapeo de datos del wizard → keys de coordenadas
 
-**`src/pages/NewClaim.tsx`** se reescribe:
-- Paso 1: tipo de trámite (Reembolso / Prog. cirugía / Prog. medicamentos / Prog. servicios / Indemnización / Reporte hospitalario) + selección de póliza.
-- Detecta `insurer + tramite` → carga `FormDefinition` → genera pasos dinámicos.
-- Autofill `useEffect` al seleccionar póliza: llena solo campos vacíos desde profile + policy. Banner azul visible.
-- Botones por paso: Anterior, Siguiente (valida), Guardar borrador. Último paso: Resumen + Generar PDF.
-- Validación en tiempo real (RFC, CURP, CLABE, requeridos) bloquea avance.
-- Página actual queda como `NewClaimLegacy.tsx` sin link (respaldo 1 versión).
-- `EditClaim.tsx` sin cambios.
+Función `buildOverlayData(definition, data, profile, policy)` en `src/lib/generateFilledPDF.ts` que traduce los campos del wizard (ej. `paternal_surname`, `policy_number`, `cause`, etc.) a las keys que esperan las coordenadas (`apellido_paterno`, `numero_poliza`, `check_causa_accidente`, etc.).
 
----
+Maneja:
+- Strings directos
+- Checkboxes (valor "X" si está seleccionado, "" si no)
+- RFC letra-por-letra (descompone `RFC` en `rfc_l1..rfc_h3` para GNP)
+- Fechas día/mes/año (descompone DOB en `fecha_nac_dia/mes/año`)
+- Edad calculada
+- Total de gastos sumado
 
-### FASE 3 — Definiciones de formularios + PDF + borradores
+### 5. Cambio en `src/pages/NewClaim.tsx`
 
-**8 definiciones declarativas** (A-H) con todas las secciones especificadas: campos, tipos, condicionales (`showWhen`), validaciones, autofill mappings.
+Reemplazar `handleGenerate` (que usaba `generateFormPDF` jsPDF) por:
+1. Llamar `getFormKey(insurer, tramite)`
+2. Si existe → `generateFilledPDF(formKey, buildOverlayData(...))` y `downloadPDF(...)`
+3. Si no existe → fallback al generador jsPDF actual (para los formularios sin PDF original mapeado: D, E, F, G, H que el usuario no listó completos)
+4. Subir el resultado al bucket `documents`, generar folio, marcar `claim_forms.status='submitted'`
 
-**Características transversales**:
-- Tabla dinámica de gastos (Form C): hasta 10 filas, totales en tiempo real.
-- Médicos interconsultantes (Form A): 1 default + agregar hasta 3.
-- Firmas: Canvas HTML5 con touch/mouse, exporta a base64 PNG.
-- Sello médico: upload imagen al bucket `documents`.
-- Edad calculada desde DOB.
-- Máscaras RFC/CURP/CLABE.
+### 6. Archivos modificados/creados
 
-**Borrador**:
-- Autosave con debounce 1.5s al cambiar `data`, `status='draft'`.
-- Lista de borradores en `/reclamos` (pestaña "Borradores").
+```text
+nuevo:    supabase/migrations/<ts>_formatos_bucket.sql
+nuevo:    src/lib/pdfFiller.ts
+nuevo:    src/lib/formCoordinates.ts
+nuevo:    src/lib/generateFilledPDF.ts
+edita:    package.json (pdf-lib)
+edita:    src/components/claims/forms/registry.ts (getFormKey)
+edita:    src/pages/NewClaim.tsx (handleGenerate)
+```
 
-**Generación PDF** (jsPDF + autoTable):
-- Folio: `{SIGLAS}-{CODE}-{AAAAMM}-{NNNN}` (ej. `GNP-IM-202504-0001`) generado vía función SQL al pasar a `submitted`.
-- Header: nombre aseguradora (izq), nombre formulario (centro), folio + fecha (der).
-- Secciones con títulos, tablas con bordes, áreas de firma con imágenes embebidas.
-- Footer: `Documento generado por MediClaim · Folio: {folio} · {fecha}`.
-- Sube a bucket `documents/claim-forms/{user_id}/{folio}.pdf`, guarda `pdf_path`.
-- Estado pasa a `submitted`. Botones: Descargar / Volver a Mis Reclamos.
+### 7. Acción manual del usuario
 
----
-
-### Decisiones por defecto (sin preguntar)
-- Autofill **solo llena campos vacíos** (no sobrescribe ediciones).
-- Wizard nuevo reemplaza `/reclamos/nuevo`. Legacy queda como respaldo sin link.
-- `EditClaim` y reclamos viejos no se tocan.
-- Logos de aseguradoras: placeholder con nombre en texto (no se incluyen logos oficiales por derechos).
-- Texto legal de consentimiento (Form E) y autorizaciones (Form C): plantillas genéricas en español.
+Tras desplegar, el usuario debe subir los 23 PDFs originales al bucket `formatos` con los paths exactos. Le doy un enlace al bucket en el mensaje de finalización.
 
 ### Fuera de alcance
-- Editor dinámico de formularios ya enviados.
-- OCR de documentos, e.firma SAT, envío automático a aseguradoras.
-- Panel admin/broker para revisar formularios nuevos.
-
-### Entregables por fase
-| Fase | Archivos clave | Resultado visible |
-|------|----------------|-------------------|
-| 1 | Migración + Profile.tsx + Policies.tsx + constants.ts | Campos nuevos guardables |
-| 2 | Migración claim_forms + estructura forms/ + NewClaim.tsx | Wizard dinámico funcional con autofill |
-| 3 | 8 definitions + PDF + borradores | Sistema completo end-to-end |
+- Calibración fina de coordenadas (el propio spec advierte que son aproximadas y se ajustan después comparando visualmente)
+- Coordenadas para formularios D, E, F, G, H completos (el spec solo listó plantillas base)
+- Firma digital embebida como imagen en el PDF original (queda como "X" o se omite si el usuario no provee coordenadas para imagen)
 
