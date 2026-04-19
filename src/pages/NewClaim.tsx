@@ -1,0 +1,285 @@
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
+import { ArrowLeft, ArrowRight, Check, Download, Save } from "lucide-react";
+import { TRAMITE_TYPES, type TramiteType } from "@/lib/constants";
+import { getFormDefinition } from "@/components/claims/forms/registry";
+import FormRenderer from "@/components/claims/forms/FormRenderer";
+import AutofillBanner from "@/components/claims/forms/shared/AutofillBanner";
+import { generateFormPDF } from "@/components/claims/forms/generateFormPDF";
+import { isValidCLABE, isValidCURP, isValidRFC } from "@/components/claims/forms/shared/validators";
+
+export default function NewClaim() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [tramite, setTramite] = useState<TramiteType | "">("");
+  const [policyId, setPolicyId] = useState<string>("");
+  const [step, setStep] = useState(0);
+  const [data, setData] = useState<Record<string, any>>({});
+  const [draftId, setDraftId] = useState<string | null>(null);
+  const [autofilled, setAutofilled] = useState(false);
+  const saveTimer = useRef<number | null>(null);
+
+  const { data: policies } = useQuery({
+    queryKey: ["policies-active", user?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("insurance_policies")
+        .select("*")
+        .eq("user_id", user!.id)
+        .eq("status", "activa");
+      return data ?? [];
+    },
+    enabled: !!user,
+  });
+
+  const { data: profile } = useQuery({
+    queryKey: ["profile", user?.id],
+    queryFn: async () => {
+      const { data } = await supabase.from("profiles").select("*").eq("user_id", user!.id).single();
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  const policy = useMemo(() => policies?.find((p: any) => p.id === policyId), [policies, policyId]);
+  const insurer = (policy?.company || "").toUpperCase();
+  const definition = useMemo(
+    () => (insurer && tramite ? getFormDefinition(insurer, tramite as TramiteType) : null),
+    [insurer, tramite]
+  );
+
+  // Autofill al elegir póliza: solo campos vacíos
+  useEffect(() => {
+    if (!definition || !policy || !profile || autofilled) return;
+    const map = definition.autofill || {};
+    const next = { ...data };
+    let changed = false;
+    for (const [field, source] of Object.entries(map)) {
+      if (next[field] != null && next[field] !== "") continue;
+      const [origin, key] = source.split(".");
+      const src = origin === "policy" ? (policy as any) : (profile as any);
+      const v = src?.[key];
+      if (v != null && v !== "") {
+        next[field] = v;
+        changed = true;
+      }
+    }
+    if (changed) setData(next);
+    setAutofilled(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [definition, policy, profile]);
+
+  // Autosave borrador (debounced 1.5s)
+  useEffect(() => {
+    if (!user || !definition || !policy) return;
+    if (saveTimer.current) window.clearTimeout(saveTimer.current);
+    saveTimer.current = window.setTimeout(async () => {
+      const payload = {
+        user_id: user.id,
+        policy_id: policy.id,
+        insurer,
+        form_code: definition.code,
+        tramite_type: tramite,
+        data: data as any,
+        status: "draft" as const,
+      };
+      if (draftId) {
+        await supabase.from("claim_forms").update(payload).eq("id", draftId);
+      } else {
+        const { data: ins } = await supabase.from("claim_forms").insert(payload).select("id").single();
+        if (ins?.id) setDraftId(ins.id);
+      }
+    }, 1500);
+    return () => { if (saveTimer.current) window.clearTimeout(saveTimer.current); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, definition, policy]);
+
+  const onChange = (patch: Record<string, any>) => setData((d) => ({ ...d, ...patch }));
+
+  // Validación de la sección actual: requeridos + tipos especiales
+  const validateCurrent = (): boolean => {
+    if (!definition) return false;
+    const sec = definition.sections[step];
+    if (!sec || sec.kind !== "fields") return true;
+    for (const f of sec.fields || []) {
+      if (f.showWhen && !f.showWhen(data)) continue;
+      const v = data[f.name];
+      if (f.required && (v == null || v === "" || (Array.isArray(v) && v.length === 0))) return false;
+      if (v) {
+        if (f.type === "rfc" && !isValidRFC(String(v))) return false;
+        if (f.type === "curp" && !isValidCURP(String(v))) return false;
+        if (f.type === "clabe" && !isValidCLABE(String(v))) return false;
+      }
+    }
+    return true;
+  };
+
+  const handleGenerate = async () => {
+    if (!definition || !policy || !user) return;
+    try {
+      const { data: folioRes, error: folioErr } = await supabase.rpc("gen_folio", {
+        _insurer: insurer,
+        _code: definition.code,
+      });
+      if (folioErr) throw folioErr;
+      const folio = folioRes as string;
+      const doc = generateFormPDF({ definition, insurer, data, folio });
+      const blob = doc.output("blob");
+      const path = `claim-forms/${user.id}/${folio}.pdf`;
+      const { error: upErr } = await supabase.storage.from("documents").upload(path, blob, {
+        contentType: "application/pdf",
+        upsert: true,
+      });
+      if (upErr) throw upErr;
+      // marcar enviado
+      const updates = { folio, pdf_path: path, status: "submitted" as const };
+      if (draftId) await supabase.from("claim_forms").update(updates).eq("id", draftId);
+      // descargar localmente
+      doc.save(`${folio}.pdf`);
+      toast.success(`Formato generado · Folio ${folio}`);
+      navigate("/reclamos");
+    } catch (e) {
+      console.error(e);
+      toast.error("Error al generar el PDF");
+    }
+  };
+
+  const handleSaveDraft = async () => {
+    if (!user || !definition || !policy) {
+      toast.error("Selecciona aseguradora y trámite");
+      return;
+    }
+    const payload = {
+      user_id: user.id,
+      policy_id: policy.id,
+      insurer,
+      form_code: definition.code,
+      tramite_type: tramite,
+      data: data as any,
+      status: "draft" as const,
+    };
+    if (draftId) {
+      const { error } = await supabase.from("claim_forms").update(payload).eq("id", draftId);
+      if (error) toast.error("Error al guardar"); else toast.success("Borrador guardado");
+    } else {
+      const { data: ins, error } = await supabase.from("claim_forms").insert(payload).select("id").single();
+      if (error) toast.error("Error al guardar"); else { setDraftId(ins.id); toast.success("Borrador guardado"); }
+    }
+  };
+
+  // Paso 0: selección trámite + póliza (no es del FormDefinition)
+  if (!definition) {
+    return (
+      <div className="space-y-6 animate-fade-in max-w-lg mx-auto pb-24">
+        <h1 className="font-heading text-2xl font-bold">Nuevo Reclamo</h1>
+        <Card>
+          <CardHeader><CardTitle className="text-base">Tipo de trámite y póliza</CardTitle></CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Tipo de trámite</Label>
+              <Select value={tramite} onValueChange={(v) => setTramite(v as TramiteType)}>
+                <SelectTrigger><SelectValue placeholder="Seleccionar trámite" /></SelectTrigger>
+                <SelectContent>
+                  {TRAMITE_TYPES.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Póliza</Label>
+              <Select value={policyId} onValueChange={setPolicyId}>
+                <SelectTrigger><SelectValue placeholder="Seleccionar póliza" /></SelectTrigger>
+                <SelectContent>
+                  {(policies || []).map((p: any) => (
+                    <SelectItem key={p.id} value={p.id}>{p.company} — {p.policy_number}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {tramite && policyId && !getFormDefinition(insurer, tramite as TramiteType) && (
+              <p className="text-xs text-destructive">No hay formulario disponible para esta combinación.</p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const sections = definition.sections;
+  const currentSection = sections[step];
+  const isLast = step === sections.length - 1;
+  const isReview = step === sections.length; // paso extra de revisión
+
+  // El último "paso" es la revisión; paso permitido [0..sections.length]
+  const totalSteps = sections.length + 1;
+
+  return (
+    <div className="space-y-4 animate-fade-in max-w-lg mx-auto pb-24">
+      <h1 className="font-heading text-2xl font-bold">{definition.name}</h1>
+      <p className="text-xs text-muted-foreground">{insurer} · {TRAMITE_TYPES.find((t) => t.value === tramite)?.label}</p>
+
+      <AutofillBanner />
+
+      <div className="flex items-center gap-1 overflow-x-auto pb-1">
+        {Array.from({ length: totalSteps }).map((_, i) => (
+          <div key={i} className="flex items-center gap-1 shrink-0">
+            <div className={`h-7 w-7 rounded-full flex items-center justify-center text-xs font-medium ${
+              i <= step ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+            }`}>
+              {i < step ? <Check className="h-3 w-3" /> : i + 1}
+            </div>
+            {i < totalSteps - 1 && <div className={`h-0.5 w-4 ${i < step ? "bg-primary" : "bg-muted"}`} />}
+          </div>
+        ))}
+      </div>
+
+      <Card>
+        <CardHeader><CardTitle className="text-base">{step < sections.length ? currentSection.title : "Revisión y generación"}</CardTitle></CardHeader>
+        <CardContent>
+          {step < sections.length ? (
+            <FormRenderer definition={definition} section={currentSection} data={data} onChange={onChange} />
+          ) : (
+            <div className="space-y-3 text-sm">
+              <p className="text-muted-foreground">Revisa los datos y genera el PDF oficial. El folio se asigna automáticamente.</p>
+              {sections.map((s) => (
+                <div key={s.id} className="rounded-md border p-3">
+                  <p className="font-medium text-xs mb-1">{s.title}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {Object.entries(data).filter(([k]) => (s.fields || []).some((f) => f.name === k) || k === s.tableName || k === s.doctorsName).length} campos completados
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <div className="flex flex-wrap gap-2">
+        {step > 0 && (
+          <Button variant="outline" className="flex-1 min-w-[120px]" onClick={() => setStep(step - 1)}>
+            <ArrowLeft className="h-4 w-4 mr-1" /> Anterior
+          </Button>
+        )}
+        <Button variant="outline" className="flex-1 min-w-[120px]" onClick={handleSaveDraft}>
+          <Save className="h-4 w-4 mr-1" /> Guardar borrador
+        </Button>
+        {step < sections.length ? (
+          <Button className="flex-1 min-w-[120px]" disabled={!validateCurrent()} onClick={() => setStep(step + 1)}>
+            Siguiente <ArrowRight className="h-4 w-4 ml-1" />
+          </Button>
+        ) : (
+          <Button className="flex-1 min-w-[120px]" onClick={handleGenerate}>
+            <Download className="h-4 w-4 mr-1" /> Generar PDF
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
