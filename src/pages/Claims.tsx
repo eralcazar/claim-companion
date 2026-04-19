@@ -166,49 +166,47 @@ export default function Claims() {
     if (!profile) return;
     const pol = (claim as any).insurance_policies;
     if (!pol) return;
-    const form = claimToFormData(claim);
+    const insurer = (pol.company || "").toUpperCase();
+    // El reclamo legacy no tiene tramite_type explícito;
+    // mapear claim_type → tramite del nuevo sistema.
+    const tramite: TramiteType =
+      claim.claim_type === "reembolso" ? "reembolso" : "prog_cirugia";
+    const formKey = getFormKey(insurer, tramite) as FormCoordinatesKey | null;
+
+    if (!formKey) {
+      toast.error(`No hay formato oficial configurado para ${pol.company}`);
+      return;
+    }
+
     try {
-      const pdfBytes = await fillOriginalPDF(form, profile, {
-        policy_number: pol.policy_number,
-        company: pol.company,
-        policy_type: pol.policy_type,
-        contractor_name: pol.contractor_name,
-        titular_paternal_surname: pol.titular_paternal_surname,
-        titular_maternal_surname: pol.titular_maternal_surname,
-        titular_first_name: pol.titular_first_name,
-        titular_dob: pol.titular_dob,
-        titular_birth_country: pol.titular_birth_country,
-        titular_birth_state: pol.titular_birth_state,
-        titular_nationality: pol.titular_nationality,
-        titular_occupation: pol.titular_occupation,
-        titular_rfc: pol.titular_rfc,
-        titular_street: pol.titular_street,
-        titular_ext_number: pol.titular_ext_number,
-        titular_int_number: pol.titular_int_number,
-        titular_postal_code: pol.titular_postal_code,
-        titular_neighborhood: pol.titular_neighborhood,
-        titular_municipality: pol.titular_municipality,
-        titular_city: pol.titular_city,
-        titular_state: pol.titular_state,
-        titular_country: pol.titular_country,
-        titular_cell_phone: pol.titular_cell_phone,
-        titular_landline: pol.titular_landline,
-        titular_intl_prefix: pol.titular_intl_prefix,
-        titular_email: pol.titular_email,
-        titular_auth_contact: pol.titular_auth_contact,
+      // Construir overlay con los datos del reclamo + perfil + póliza
+      const overlay = buildOverlayData({
+        data: {
+          ...(claim.form_data || {}),
+          policy_number: pol.policy_number,
+          numero_certificado: pol.numero_certificado,
+          diagnosis: claim.diagnosis,
+          treatment: claim.treatment,
+          cause: claim.cause,
+          incident_date: claim.incident_date,
+          total_cost: claim.total_cost,
+          is_initial_claim: claim.is_initial_claim,
+          prior_claim_number: claim.prior_claim_number,
+        },
+        profile,
+        policy: pol,
+        insurer,
+        tramite,
       });
-      const blob = new Blob([new Uint8Array(pdfBytes)], { type: "application/pdf" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      const isReembolso = claim.claim_type === "reembolso";
-      a.download = `${pol.company.replace(/\s/g, "_")}_Formato_Oficial_${isReembolso ? "Reembolso" : "Programacion"}_${new Date().toISOString().split("T")[0]}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
+      const pdfBytes = await generateFilledPDF(formKey, overlay);
+      const fileName = `${pol.company.replace(/\s/g, "_")}_Formato_Oficial_${
+        new Date().toISOString().split("T")[0]
+      }.pdf`;
+      downloadPDF(pdfBytes, fileName);
       toast.success("Formato oficial descargado");
-    } catch (err) {
-      console.error(err);
-      toast.error("Error al generar el formato oficial");
+    } catch (err: any) {
+      console.error("[handleDownloadOriginalPDF]", err);
+      toast.error(err?.message || "Error al generar el formato oficial");
     }
   };
 
