@@ -176,17 +176,25 @@ export type Database = {
       }
       insurance_policies: {
         Row: {
+          agente_clave: string | null
+          agente_estado: string | null
+          agente_nombre: string | null
+          agente_telefono: string | null
+          coaseguro_porcentaje: number | null
           company: string
           contractor_name: string | null
           created_at: string
+          deducible: number | null
           end_date: string | null
           id: string
+          numero_certificado: string | null
           observaciones: string | null
           policy_number: string
           policy_type: string | null
           start_date: string
           status: Database["public"]["Enums"]["policy_status"]
           suma_asegurada: number | null
+          tipo_contratacion: string | null
           titular_auth_contact: boolean | null
           titular_birth_country: string | null
           titular_birth_state: string | null
@@ -210,21 +218,30 @@ export type Database = {
           titular_rfc: string | null
           titular_state: string | null
           titular_street: string | null
+          tope_coaseguro: number | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          agente_clave?: string | null
+          agente_estado?: string | null
+          agente_nombre?: string | null
+          agente_telefono?: string | null
+          coaseguro_porcentaje?: number | null
           company?: string
           contractor_name?: string | null
           created_at?: string
+          deducible?: number | null
           end_date?: string | null
           id?: string
+          numero_certificado?: string | null
           observaciones?: string | null
           policy_number: string
           policy_type?: string | null
           start_date: string
           status?: Database["public"]["Enums"]["policy_status"]
           suma_asegurada?: number | null
+          tipo_contratacion?: string | null
           titular_auth_contact?: boolean | null
           titular_birth_country?: string | null
           titular_birth_state?: string | null
@@ -248,21 +265,30 @@ export type Database = {
           titular_rfc?: string | null
           titular_state?: string | null
           titular_street?: string | null
+          tope_coaseguro?: number | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          agente_clave?: string | null
+          agente_estado?: string | null
+          agente_nombre?: string | null
+          agente_telefono?: string | null
+          coaseguro_porcentaje?: number | null
           company?: string
           contractor_name?: string | null
           created_at?: string
+          deducible?: number | null
           end_date?: string | null
           id?: string
+          numero_certificado?: string | null
           observaciones?: string | null
           policy_number?: string
           policy_type?: string | null
           start_date?: string
           status?: Database["public"]["Enums"]["policy_status"]
           suma_asegurada?: number | null
+          tipo_contratacion?: string | null
           titular_auth_contact?: boolean | null
           titular_birth_country?: string | null
           titular_birth_state?: string | null
@@ -286,6 +312,7 @@ export type Database = {
           titular_rfc?: string | null
           titular_state?: string | null
           titular_street?: string | null
+          tope_coaseguro?: number | null
           updated_at?: string
           user_id?: string
         }
@@ -365,6 +392,7 @@ export type Database = {
           address: string | null
           birth_country: string | null
           birth_state: string | null
+          cargo_pep: string | null
           certificate_number: string | null
           country: string | null
           created_at: string
@@ -373,14 +401,18 @@ export type Database = {
           email: string | null
           emergency_contact_name: string | null
           emergency_contact_phone: string | null
+          es_pep: boolean | null
+          estado_civil: string | null
           first_name: string
           full_name: string
+          giro_negocio: string | null
           id: string
           interior_number: string | null
           maternal_surname: string
           municipality: string | null
           nationality: string | null
           neighborhood: string | null
+          numero_identificacion: string | null
           occupation: string | null
           paternal_surname: string
           phone: string | null
@@ -391,13 +423,17 @@ export type Database = {
           state: string | null
           street: string | null
           street_number: string | null
+          telefono_celular: string | null
+          tipo_identificacion: string | null
           updated_at: string
           user_id: string
+          vigencia_identificacion: string | null
         }
         Insert: {
           address?: string | null
           birth_country?: string | null
           birth_state?: string | null
+          cargo_pep?: string | null
           certificate_number?: string | null
           country?: string | null
           created_at?: string
@@ -406,14 +442,18 @@ export type Database = {
           email?: string | null
           emergency_contact_name?: string | null
           emergency_contact_phone?: string | null
+          es_pep?: boolean | null
+          estado_civil?: string | null
           first_name?: string
           full_name?: string
+          giro_negocio?: string | null
           id?: string
           interior_number?: string | null
           maternal_surname?: string
           municipality?: string | null
           nationality?: string | null
           neighborhood?: string | null
+          numero_identificacion?: string | null
           occupation?: string | null
           paternal_surname?: string
           phone?: string | null
@@ -424,13 +464,17 @@ export type Database = {
           state?: string | null
           street?: string | null
           street_number?: string | null
+          telefono_celular?: string | null
+          tipo_identificacion?: string | null
           updated_at?: string
           user_id: string
+          vigencia_identificacion?: string | null
         }
         Update: {
           address?: string | null
           birth_country?: string | null
           birth_state?: string | null
+          cargo_pep?: string | null
           certificate_number?: string | null
           country?: string | null
           created_at?: string
@@ -439,14 +483,18 @@ export type Database = {
           email?: string | null
           emergency_contact_name?: string | null
           emergency_contact_phone?: string | null
+          es_pep?: boolean | null
+          estado_civil?: string | null
           first_name?: string
           full_name?: string
+          giro_negocio?: string | null
           id?: string
           interior_number?: string | null
           maternal_surname?: string
           municipality?: string | null
           nationality?: string | null
           neighborhood?: string | null
+          numero_identificacion?: string | null
           occupation?: string | null
           paternal_surname?: string
           phone?: string | null
@@ -457,8 +505,11 @@ export type Database = {
           state?: string | null
           street?: string | null
           street_number?: string | null
+          telefono_celular?: string | null
+          tipo_identificacion?: string | null
           updated_at?: string
           user_id?: string
+          vigencia_identificacion?: string | null
         }
         Relationships: []
       }
