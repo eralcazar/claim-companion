@@ -1,5 +1,5 @@
 import { useAuth } from "@/contexts/AuthContext";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -82,6 +82,7 @@ function claimToFormData(claim: any): ClaimFormData {
 export default function Claims() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const { data: claims, isLoading } = useQuery({
     queryKey: ["claims", user?.id],
@@ -211,6 +212,17 @@ export default function Claims() {
     else { toast.success("Borrador eliminado"); refetchForms(); }
   };
 
+  const handleDeleteClaim = async (id: string) => {
+    if (!confirm("¿Eliminar este reclamo? Esta acción no se puede deshacer.")) return;
+    await supabase.from("claim_documents").delete().eq("claim_id", id);
+    const { error } = await supabase.from("claims").delete().eq("id", id);
+    if (error) toast.error("Error al eliminar el reclamo");
+    else {
+      toast.success("Reclamo eliminado");
+      queryClient.invalidateQueries({ queryKey: ["claims", user?.id] });
+    }
+  };
+
   const handleDownloadSubmittedPDF = async (form: any) => {
     if (!form.pdf_path) { toast.error("PDF no disponible"); return; }
     const { data, error } = await supabase.storage.from("documents").createSignedUrl(form.pdf_path, 60);
@@ -275,6 +287,14 @@ export default function Claims() {
                     </Button>
                     <Button variant="outline" size="sm" onClick={() => handleDownloadPDF(claim)}>
                       <Download className="h-3 w-3 mr-1" /> Resumen
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDeleteClaim(claim.id)}
+                      className="text-destructive hover:text-destructive"
+                    >
+                      <Trash2 className="h-3 w-3 mr-1" /> Eliminar
                     </Button>
                   </div>
                 </CardContent>
