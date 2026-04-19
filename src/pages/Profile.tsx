@@ -6,16 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
-
-const ESTADOS_MX = [
-  "Aguascalientes", "Baja California", "Baja California Sur", "Campeche", "Chiapas",
-  "Chihuahua", "Ciudad de México", "Coahuila", "Colima", "Durango", "Estado de México",
-  "Guanajuato", "Guerrero", "Hidalgo", "Jalisco", "Michoacán", "Morelos", "Nayarit",
-  "Nuevo León", "Oaxaca", "Puebla", "Querétaro", "Quintana Roo", "San Luis Potosí",
-  "Sinaloa", "Sonora", "Tabasco", "Tamaulipas", "Tlaxcala", "Veracruz", "Yucatán", "Zacatecas",
-];
+import { ESTADOS_MX, ESTADOS_CIVILES, TIPOS_IDENTIFICACION } from "@/lib/constants";
 
 const INITIAL_FORM = {
   first_name: "",
@@ -31,6 +25,15 @@ const INITIAL_FORM = {
   occupation: "",
   certificate_number: "",
   relationship_to_titular: "",
+  // nuevos
+  estado_civil: "",
+  giro_negocio: "",
+  es_pep: false,
+  cargo_pep: "",
+  tipo_identificacion: "",
+  numero_identificacion: "",
+  vigencia_identificacion: "",
+  // dirección
   street: "",
   street_number: "",
   interior_number: "",
@@ -39,8 +42,10 @@ const INITIAL_FORM = {
   state: "",
   postal_code: "",
   country: "México",
+  // contacto
   email: "",
   phone: "",
+  telefono_celular: "",
   emergency_contact_name: "",
   emergency_contact_phone: "",
 };
@@ -61,32 +66,41 @@ export default function Profile() {
 
   useEffect(() => {
     if (profile) {
+      const p: any = profile;
       setForm({
-        first_name: (profile as any).first_name || "",
-        paternal_surname: (profile as any).paternal_surname || "",
-        maternal_surname: (profile as any).maternal_surname || "",
-        date_of_birth: profile.date_of_birth || "",
-        sex: (profile as any).sex || "",
-        rfc: (profile as any).rfc || "",
-        curp: (profile as any).curp || "",
-        birth_country: (profile as any).birth_country || "México",
-        birth_state: (profile as any).birth_state || "",
-        nationality: (profile as any).nationality || "Mexicana",
-        occupation: (profile as any).occupation || "",
-        certificate_number: (profile as any).certificate_number || "",
-        relationship_to_titular: (profile as any).relationship_to_titular || "",
-        street: (profile as any).street || "",
-        street_number: (profile as any).street_number || "",
-        interior_number: (profile as any).interior_number || "",
-        neighborhood: (profile as any).neighborhood || "",
-        municipality: (profile as any).municipality || "",
-        state: (profile as any).state || "",
-        postal_code: (profile as any).postal_code || "",
-        country: (profile as any).country || "México",
-        email: profile.email || "",
-        phone: profile.phone || "",
-        emergency_contact_name: (profile as any).emergency_contact_name || "",
-        emergency_contact_phone: (profile as any).emergency_contact_phone || "",
+        first_name: p.first_name || "",
+        paternal_surname: p.paternal_surname || "",
+        maternal_surname: p.maternal_surname || "",
+        date_of_birth: p.date_of_birth || "",
+        sex: p.sex || "",
+        rfc: p.rfc || "",
+        curp: p.curp || "",
+        birth_country: p.birth_country || "México",
+        birth_state: p.birth_state || "",
+        nationality: p.nationality || "Mexicana",
+        occupation: p.occupation || "",
+        certificate_number: p.certificate_number || "",
+        relationship_to_titular: p.relationship_to_titular || "",
+        estado_civil: p.estado_civil || "",
+        giro_negocio: p.giro_negocio || "",
+        es_pep: !!p.es_pep,
+        cargo_pep: p.cargo_pep || "",
+        tipo_identificacion: p.tipo_identificacion || "",
+        numero_identificacion: p.numero_identificacion || "",
+        vigencia_identificacion: p.vigencia_identificacion || "",
+        street: p.street || "",
+        street_number: p.street_number || "",
+        interior_number: p.interior_number || "",
+        neighborhood: p.neighborhood || "",
+        municipality: p.municipality || "",
+        state: p.state || "",
+        postal_code: p.postal_code || "",
+        country: p.country || "México",
+        email: p.email || "",
+        phone: p.phone || "",
+        telefono_celular: p.telefono_celular || "",
+        emergency_contact_name: p.emergency_contact_name || "",
+        emergency_contact_phone: p.emergency_contact_phone || "",
       });
     }
   }, [profile]);
@@ -96,13 +110,13 @@ export default function Profile() {
 
   const mutation = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase
-        .from("profiles")
-        .update({
-          ...form,
-          full_name: `${form.first_name} ${form.paternal_surname} ${form.maternal_surname}`.trim(),
-        } as any)
-        .eq("user_id", user!.id);
+      const payload: any = {
+        ...form,
+        full_name: `${form.first_name} ${form.paternal_surname} ${form.maternal_surname}`.trim(),
+        vigencia_identificacion: form.vigencia_identificacion || null,
+        cargo_pep: form.es_pep ? form.cargo_pep : null,
+      };
+      const { error } = await supabase.from("profiles").update(payload).eq("user_id", user!.id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -143,9 +157,7 @@ export default function Profile() {
           <div className="space-y-1.5">
             <Label className="text-xs font-medium">Sexo</Label>
             <Select value={form.sex} onValueChange={(v) => setForm((f) => ({ ...f, sex: v }))}>
-              <SelectTrigger>
-                <SelectValue placeholder="Seleccionar" />
-              </SelectTrigger>
+              <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="hombre">Hombre</SelectItem>
                 <SelectItem value="mujer">Mujer</SelectItem>
@@ -158,18 +170,45 @@ export default function Profile() {
           <div className="space-y-1.5">
             <Label className="text-xs font-medium">Estado de Nacimiento</Label>
             <Select value={form.birth_state} onValueChange={(v) => setForm((f) => ({ ...f, birth_state: v }))}>
-              <SelectTrigger>
-                <SelectValue placeholder="Seleccionar estado" />
-              </SelectTrigger>
+              <SelectTrigger><SelectValue placeholder="Seleccionar estado" /></SelectTrigger>
               <SelectContent>
-                {ESTADOS_MX.map((e) => (
-                  <SelectItem key={e} value={e}>{e}</SelectItem>
-                ))}
+                {ESTADOS_MX.map((e) => <SelectItem key={e} value={e}>{e}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
           {renderField("nationality", "Nacionalidad")}
           {renderField("occupation", "Ocupación")}
+
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium">Estado civil</Label>
+            <Select value={form.estado_civil} onValueChange={(v) => setForm((f) => ({ ...f, estado_civil: v }))}>
+              <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
+              <SelectContent>
+                {ESTADOS_CIVILES.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          {renderField("giro_negocio", "Actividad o giro del negocio")}
+
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium">¿Es o ha sido Persona Políticamente Expuesta (PEP) en los últimos 4 años?</Label>
+            <RadioGroup
+              value={form.es_pep ? "si" : "no"}
+              onValueChange={(v) => setForm((f) => ({ ...f, es_pep: v === "si" }))}
+              className="flex gap-4"
+            >
+              <div className="flex items-center gap-2">
+                <RadioGroupItem id="pep_si" value="si" />
+                <Label htmlFor="pep_si" className="text-sm">Sí</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <RadioGroupItem id="pep_no" value="no" />
+                <Label htmlFor="pep_no" className="text-sm">No</Label>
+              </div>
+            </RadioGroup>
+          </div>
+          {form.es_pep && renderField("cargo_pep", "Cargo que desempeña o desempeñó")}
+
           {renderField("certificate_number", "No. de Certificado")}
           {renderField("relationship_to_titular", "Parentesco con el Asegurado Titular")}
         </CardContent>
@@ -191,13 +230,9 @@ export default function Profile() {
           <div className="space-y-1.5">
             <Label className="text-xs font-medium">Estado</Label>
             <Select value={form.state} onValueChange={(v) => setForm((f) => ({ ...f, state: v }))}>
-              <SelectTrigger>
-                <SelectValue placeholder="Seleccionar estado" />
-              </SelectTrigger>
+              <SelectTrigger><SelectValue placeholder="Seleccionar estado" /></SelectTrigger>
               <SelectContent>
-                {ESTADOS_MX.map((e) => (
-                  <SelectItem key={e} value={e}>{e}</SelectItem>
-                ))}
+                {ESTADOS_MX.map((e) => <SelectItem key={e} value={e}>{e}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
@@ -213,7 +248,28 @@ export default function Profile() {
         </CardHeader>
         <CardContent className="space-y-3">
           {renderField("email", "Correo Electrónico", "email")}
-          {renderField("phone", "Teléfono", "tel")}
+          {renderField("phone", "Teléfono fijo", "tel")}
+          {renderField("telefono_celular", "Teléfono celular", "tel")}
+        </CardContent>
+      </Card>
+
+      {/* Identificación Oficial */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Identificación Oficial</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium">Tipo de identificación</Label>
+            <Select value={form.tipo_identificacion} onValueChange={(v) => setForm((f) => ({ ...f, tipo_identificacion: v }))}>
+              <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
+              <SelectContent>
+                {TIPOS_IDENTIFICACION.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          {renderField("numero_identificacion", "Número de identificación")}
+          {renderField("vigencia_identificacion", "Vigencia", "date")}
         </CardContent>
       </Card>
 

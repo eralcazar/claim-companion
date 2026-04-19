@@ -16,19 +16,30 @@ import { Plus, Shield, Pencil, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import type { Database } from "@/integrations/supabase/types";
+import { ASEGURADORAS, ESTADOS_MX, TIPOS_CONTRATACION } from "@/lib/constants";
 
 type PolicyStatus = Database["public"]["Enums"]["policy_status"];
 
 const EMPTY_FORM = {
-  company: "MetLife",
+  company: "METLIFE",
   policy_number: "",
-  policy_type: "individual",
+  numero_certificado: "",
+  tipo_contratacion: "individual",
   contractor_name: "",
   start_date: "",
   end_date: "",
   status: "activa" as PolicyStatus,
   suma_asegurada: "",
+  deducible: "",
+  coaseguro_porcentaje: "",
+  tope_coaseguro: "",
   observaciones: "",
+  // agente
+  agente_nombre: "",
+  agente_clave: "",
+  agente_telefono: "",
+  agente_estado: "",
+  // titular
   titular_paternal_surname: "",
   titular_maternal_surname: "",
   titular_first_name: "",
@@ -54,8 +65,6 @@ const EMPTY_FORM = {
   titular_auth_contact: false,
 };
 
-const ASEGURADORAS = ["MetLife", "MAPFRE"];
-
 export default function Policies() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -78,17 +87,26 @@ export default function Policies() {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const payload = {
+      const payload: any = {
         user_id: user!.id,
         company: form.company,
         policy_number: form.policy_number,
-        policy_type: form.policy_type,
+        numero_certificado: form.numero_certificado || null,
+        tipo_contratacion: form.tipo_contratacion,
+        policy_type: form.tipo_contratacion, // mantener compatibilidad
         contractor_name: form.contractor_name,
         start_date: form.start_date,
         end_date: form.end_date || null,
         status: form.status,
         suma_asegurada: form.suma_asegurada ? parseFloat(form.suma_asegurada) : 0,
+        deducible: form.deducible ? parseFloat(form.deducible) : 0,
+        coaseguro_porcentaje: form.coaseguro_porcentaje ? parseFloat(form.coaseguro_porcentaje) : 0,
+        tope_coaseguro: form.tope_coaseguro ? parseFloat(form.tope_coaseguro) : 0,
         observaciones: form.observaciones || "",
+        agente_nombre: form.agente_nombre || null,
+        agente_clave: form.agente_clave || null,
+        agente_telefono: form.agente_telefono || null,
+        agente_estado: form.agente_estado || null,
         titular_paternal_surname: form.titular_paternal_surname,
         titular_maternal_surname: form.titular_maternal_surname,
         titular_first_name: form.titular_first_name,
@@ -112,7 +130,7 @@ export default function Policies() {
         titular_intl_prefix: form.titular_intl_prefix,
         titular_email: form.titular_email,
         titular_auth_contact: form.titular_auth_contact,
-      } as any;
+      };
       if (editingId) {
         const { error } = await supabase.from("insurance_policies").update(payload).eq("id", editingId);
         if (error) throw error;
@@ -149,16 +167,27 @@ export default function Policies() {
 
   const openEdit = (p: any) => {
     setEditingId(p.id);
+    // Normalizar company para que coincida con las opciones del select (mayúsculas)
+    const upperCompany = (p.company || "METLIFE").toUpperCase();
+    const matched = ASEGURADORAS.find((a) => a === upperCompany) || "METLIFE";
     setForm({
-      company: p.company,
+      company: matched,
       policy_number: p.policy_number,
-      policy_type: p.policy_type || "individual",
+      numero_certificado: p.numero_certificado || "",
+      tipo_contratacion: p.tipo_contratacion || p.policy_type || "individual",
       contractor_name: p.contractor_name || "",
       start_date: p.start_date,
       end_date: p.end_date || "",
       status: p.status,
       suma_asegurada: p.suma_asegurada?.toString() || "",
+      deducible: p.deducible?.toString() || "",
+      coaseguro_porcentaje: p.coaseguro_porcentaje?.toString() || "",
+      tope_coaseguro: p.tope_coaseguro?.toString() || "",
       observaciones: p.observaciones || "",
+      agente_nombre: p.agente_nombre || "",
+      agente_clave: p.agente_clave || "",
+      agente_telefono: p.agente_telefono || "",
+      agente_estado: p.agente_estado || "",
       titular_paternal_surname: p.titular_paternal_surname || "",
       titular_maternal_surname: p.titular_maternal_surname || "",
       titular_first_name: p.titular_first_name || "",
@@ -204,12 +233,19 @@ export default function Policies() {
         <Input value={form.policy_number} onChange={(e) => setForm({ ...form, policy_number: e.target.value })} />
       </div>
       <div className="space-y-2">
-        <Label>Tipo de póliza</Label>
-        <Select value={form.policy_type} onValueChange={(v) => setForm({ ...form, policy_type: v })}>
+        <Label>No. de Certificado</Label>
+        <Input
+          value={form.numero_certificado}
+          onChange={(e) => setForm({ ...form, numero_certificado: e.target.value })}
+          placeholder="Número individual del asegurado"
+        />
+      </div>
+      <div className="space-y-2">
+        <Label>Tipo de contratación</Label>
+        <Select value={form.tipo_contratacion} onValueChange={(v) => setForm({ ...form, tipo_contratacion: v })}>
           <SelectTrigger><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="individual">Individual</SelectItem>
-            <SelectItem value="colectiva">Colectiva</SelectItem>
+            {TIPOS_CONTRATACION.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
           </SelectContent>
         </Select>
       </div>
@@ -217,17 +253,33 @@ export default function Policies() {
         <Label>Nombre del contratante</Label>
         <Input value={form.contractor_name} onChange={(e) => setForm({ ...form, contractor_name: e.target.value })} placeholder="Razón social o nombre del contratante" />
       </div>
-      <div className="space-y-2">
-        <Label>Fecha y hora de inicio</Label>
-        <Input type="datetime-local" value={form.start_date} onChange={(e) => setForm({ ...form, start_date: e.target.value })} />
-      </div>
-      <div className="space-y-2">
-        <Label>Fecha y hora final (opcional)</Label>
-        <Input type="datetime-local" value={form.end_date} onChange={(e) => setForm({ ...form, end_date: e.target.value })} />
+      <div className="grid grid-cols-2 gap-2">
+        <div className="space-y-2">
+          <Label>Fecha de inicio</Label>
+          <Input type="date" value={form.start_date} onChange={(e) => setForm({ ...form, start_date: e.target.value })} />
+        </div>
+        <div className="space-y-2">
+          <Label>Fecha final (opcional)</Label>
+          <Input type="date" value={form.end_date} onChange={(e) => setForm({ ...form, end_date: e.target.value })} />
+        </div>
       </div>
       <div className="space-y-2">
         <Label>Suma asegurada ($)</Label>
-        <Input type="number" value={form.suma_asegurada} onChange={(e) => setForm({ ...form, suma_asegurada: e.target.value })} placeholder="0.00" />
+        <Input type="number" min="0" step="0.01" value={form.suma_asegurada} onChange={(e) => setForm({ ...form, suma_asegurada: e.target.value })} placeholder="0.00" />
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <div className="space-y-2">
+          <Label>Deducible ($)</Label>
+          <Input type="number" min="0" step="0.01" value={form.deducible} onChange={(e) => setForm({ ...form, deducible: e.target.value })} placeholder="0.00" />
+        </div>
+        <div className="space-y-2">
+          <Label>Coaseguro (%)</Label>
+          <Input type="number" min="0" max="100" step="0.01" value={form.coaseguro_porcentaje} onChange={(e) => setForm({ ...form, coaseguro_porcentaje: e.target.value })} placeholder="0" />
+        </div>
+      </div>
+      <div className="space-y-2">
+        <Label>Tope de coaseguro ($)</Label>
+        <Input type="number" min="0" step="0.01" value={form.tope_coaseguro} onChange={(e) => setForm({ ...form, tope_coaseguro: e.target.value })} placeholder="0.00" />
       </div>
       <div className="space-y-2">
         <Label>Estado</Label>
@@ -245,8 +297,38 @@ export default function Policies() {
           value={form.observaciones}
           onChange={(e) => setForm({ ...form, observaciones: e.target.value })}
           placeholder="Notas adicionales sobre la póliza..."
-          rows={4}
+          rows={3}
         />
+      </div>
+
+      {/* Datos del Agente */}
+      <div className="border-t pt-4 mt-4">
+        <h3 className="font-medium text-sm mb-3">Datos del Agente</h3>
+        <div className="space-y-3">
+          <div className="space-y-2">
+            <Label>Nombre del agente</Label>
+            <Input value={form.agente_nombre} onChange={(e) => setForm({ ...form, agente_nombre: e.target.value })} />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-2">
+              <Label>Clave del agente</Label>
+              <Input value={form.agente_clave} onChange={(e) => setForm({ ...form, agente_clave: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <Label>Teléfono</Label>
+              <Input value={form.agente_telefono} onChange={(e) => setForm({ ...form, agente_telefono: e.target.value })} />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label>Estado donde opera</Label>
+            <Select value={form.agente_estado} onValueChange={(v) => setForm({ ...form, agente_estado: v })}>
+              <SelectTrigger><SelectValue placeholder="Seleccionar estado" /></SelectTrigger>
+              <SelectContent>
+                {ESTADOS_MX.map((e) => <SelectItem key={e} value={e}>{e}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
       </div>
 
       {/* Datos del Titular */}
@@ -270,104 +352,12 @@ export default function Policies() {
             <Input type="date" value={form.titular_dob} onChange={(e) => setForm({ ...form, titular_dob: e.target.value })} />
           </div>
           <div className="space-y-2">
-            <Label>País de nacimiento</Label>
-            <Input value={form.titular_birth_country} onChange={(e) => setForm({ ...form, titular_birth_country: e.target.value })} />
-          </div>
-          <div className="space-y-2">
-            <Label>Estado de nacimiento</Label>
-            <Input value={form.titular_birth_state} onChange={(e) => setForm({ ...form, titular_birth_state: e.target.value })} />
-          </div>
-          <div className="space-y-2">
-            <Label>Nacionalidad</Label>
-            <Input value={form.titular_nationality} onChange={(e) => setForm({ ...form, titular_nationality: e.target.value })} />
-          </div>
-          <div className="space-y-2">
-            <Label>Ocupación</Label>
-            <Input value={form.titular_occupation} onChange={(e) => setForm({ ...form, titular_occupation: e.target.value })} />
-          </div>
-          <div className="space-y-2">
             <Label>RFC</Label>
             <Input value={form.titular_rfc} onChange={(e) => setForm({ ...form, titular_rfc: e.target.value.toUpperCase() })} placeholder="XXXX000000XXX" maxLength={13} />
           </div>
-
-          {/* Dirección */}
-          <div className="border-t pt-3 mt-3">
-            <h4 className="font-medium text-xs mb-2 text-muted-foreground">Dirección del Titular</h4>
-            <div className="space-y-2">
-              <Label>Calle / Avenida</Label>
-              <Input value={form.titular_street} onChange={(e) => setForm({ ...form, titular_street: e.target.value })} />
-            </div>
-            <div className="grid grid-cols-2 gap-2 mt-2">
-              <div className="space-y-2">
-                <Label>Número exterior</Label>
-                <Input value={form.titular_ext_number} onChange={(e) => setForm({ ...form, titular_ext_number: e.target.value })} />
-              </div>
-              <div className="space-y-2">
-                <Label>Número interior</Label>
-                <Input value={form.titular_int_number} onChange={(e) => setForm({ ...form, titular_int_number: e.target.value })} />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-2 mt-2">
-              <div className="space-y-2">
-                <Label>Código postal</Label>
-                <Input value={form.titular_postal_code} onChange={(e) => setForm({ ...form, titular_postal_code: e.target.value })} maxLength={5} />
-              </div>
-              <div className="space-y-2">
-                <Label>Colonia / Barrio</Label>
-                <Input value={form.titular_neighborhood} onChange={(e) => setForm({ ...form, titular_neighborhood: e.target.value })} />
-              </div>
-            </div>
-            <div className="space-y-2 mt-2">
-              <Label>Municipio / Alcaldía</Label>
-              <Input value={form.titular_municipality} onChange={(e) => setForm({ ...form, titular_municipality: e.target.value })} />
-            </div>
-            <div className="grid grid-cols-2 gap-2 mt-2">
-              <div className="space-y-2">
-                <Label>Ciudad / Población</Label>
-                <Input value={form.titular_city} onChange={(e) => setForm({ ...form, titular_city: e.target.value })} />
-              </div>
-              <div className="space-y-2">
-                <Label>Estado / Provincia</Label>
-                <Input value={form.titular_state} onChange={(e) => setForm({ ...form, titular_state: e.target.value })} />
-              </div>
-            </div>
-            <div className="space-y-2 mt-2">
-              <Label>País</Label>
-              <Input value={form.titular_country} onChange={(e) => setForm({ ...form, titular_country: e.target.value })} />
-            </div>
-          </div>
-
-          {/* Contacto */}
-          <div className="border-t pt-3 mt-3">
-            <h4 className="font-medium text-xs mb-2 text-muted-foreground">Contacto del Titular</h4>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="space-y-2">
-                <Label>Teléfono celular</Label>
-                <Input value={form.titular_cell_phone} onChange={(e) => setForm({ ...form, titular_cell_phone: e.target.value })} placeholder="10 dígitos" />
-              </div>
-              <div className="space-y-2">
-                <Label>Teléfono fijo</Label>
-                <Input value={form.titular_landline} onChange={(e) => setForm({ ...form, titular_landline: e.target.value })} />
-              </div>
-            </div>
-            <div className="space-y-2 mt-2">
-              <Label>Prefijo internacional</Label>
-              <Input value={form.titular_intl_prefix} onChange={(e) => setForm({ ...form, titular_intl_prefix: e.target.value })} placeholder="Ej: +52" />
-            </div>
-            <div className="space-y-2 mt-2">
-              <Label>Correo electrónico</Label>
-              <Input type="email" value={form.titular_email} onChange={(e) => setForm({ ...form, titular_email: e.target.value })} />
-            </div>
-            <div className="space-y-2 mt-2">
-              <Label>Autorización para recibir información</Label>
-              <Select value={form.titular_auth_contact ? "si" : "no"} onValueChange={(v) => setForm({ ...form, titular_auth_contact: v === "si" })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="si">Sí</SelectItem>
-                  <SelectItem value="no">No</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="space-y-2">
+            <Label>Correo electrónico</Label>
+            <Input type="email" value={form.titular_email} onChange={(e) => setForm({ ...form, titular_email: e.target.value })} />
           </div>
         </div>
       </div>
@@ -379,7 +369,7 @@ export default function Policies() {
   );
 
   return (
-    <div className="space-y-6 animate-fade-in max-w-lg mx-auto">
+    <div className="space-y-6 animate-fade-in max-w-lg mx-auto pb-24">
       <div className="flex items-center justify-between">
         <h1 className="font-heading text-2xl font-bold">Mis Pólizas</h1>
         <Dialog open={open} onOpenChange={(v) => { if (!v) closeDialog(); else setOpen(true); }}>
@@ -394,11 +384,13 @@ export default function Policies() {
       </div>
 
       {isLoading ? (
-        <div className="flex justify-center p-8"><div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" /></div>
+        <div className="flex justify-center p-8">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+        </div>
       ) : policies?.length === 0 ? (
         <Card><CardContent className="p-8 text-center text-muted-foreground">No tienes pólizas registradas</CardContent></Card>
       ) : (
-        policies?.map((p) => (
+        policies?.map((p: any) => (
           <Card key={p.id}>
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
@@ -406,45 +398,42 @@ export default function Policies() {
                   <Shield className="h-4 w-4 text-primary" />
                   {p.company}
                 </CardTitle>
-                <div className="flex items-center gap-2">
-                  <Badge variant={p.status === "activa" ? "default" : "secondary"}>
-                    {p.status}
-                  </Badge>
-                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(p)}>
-                    <Pencil className="h-3.5 w-3.5" />
-                  </Button>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive">
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>¿Eliminar póliza?</AlertDialogTitle>
-                        <AlertDialogDescription>Esta acción no se puede deshacer.</AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => deleteMutation.mutate(p.id)}>Eliminar</AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </div>
+                <Badge variant={p.status === "activa" ? "default" : "secondary"}>
+                  {p.status === "activa" ? "Activa" : "Inactiva"}
+                </Badge>
               </div>
             </CardHeader>
-            <CardContent className="space-y-1">
-              <p className="text-sm text-muted-foreground">Póliza: {p.policy_number}</p>
-              {(p as any).suma_asegurada > 0 && (
-                <p className="text-sm font-medium">Suma asegurada: ${Number((p as any).suma_asegurada).toLocaleString()}</p>
+            <CardContent className="text-sm space-y-1">
+              <p className="text-muted-foreground">Póliza: {p.policy_number}</p>
+              {p.numero_certificado && (
+                <p className="text-muted-foreground">Certificado: {p.numero_certificado}</p>
               )}
-              <p className="text-xs text-muted-foreground">
-                Desde {format(new Date(p.start_date), "PPp", { locale: es })}
-                {p.end_date && ` hasta ${format(new Date(p.end_date), "PPp", { locale: es })}`}
+              <p className="text-muted-foreground text-xs">
+                Vigencia: {format(new Date(p.start_date), "PP", { locale: es })}
+                {p.end_date ? ` — ${format(new Date(p.end_date), "PP", { locale: es })}` : ""}
               </p>
-              {(p as any).observaciones && (
-                <p className="text-xs text-muted-foreground mt-1 italic">{(p as any).observaciones}</p>
-              )}
+              <div className="flex gap-2 pt-2">
+                <Button size="sm" variant="outline" onClick={() => openEdit(p)}>
+                  <Pencil className="h-3 w-3 mr-1" /> Editar
+                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button size="sm" variant="outline" className="text-destructive">
+                      <Trash2 className="h-3 w-3 mr-1" /> Eliminar
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>¿Eliminar póliza?</AlertDialogTitle>
+                      <AlertDialogDescription>Esta acción no se puede deshacer.</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => deleteMutation.mutate(p.id)}>Eliminar</AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
             </CardContent>
           </Card>
         ))
