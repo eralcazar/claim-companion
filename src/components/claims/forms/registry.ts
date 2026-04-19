@@ -116,3 +116,73 @@ export function getFormDefinition(insurer: string, tramite: TramiteType): FormDe
 export function getAllDefinitions(): FormDefinition[] {
   return Object.values(definitions);
 }
+
+// Mapa (insurer, tramite) → key del PDF original en bucket "formatos".
+// Devuelve null si no hay PDF original mapeado (se usará fallback jsPDF).
+const formKeyMatrix: Record<string, Partial<Record<TramiteType, string>>> = {
+  GNP: {
+    indemnizacion: "gnp_aviso_accidente",
+    reembolso: "gnp_informe_medico",
+    prog_cirugia: "gnp_informe_medico",
+    prog_medicamentos: "gnp_informe_medico",
+    prog_servicios: "gnp_informe_medico",
+    reporte_hospitalario: "gnp_informe_medico",
+  },
+  AXA: {
+    reembolso: "axa_reembolso",
+  },
+  METLIFE: {
+    reembolso: "metlife_reembolso",
+  },
+  BANORTE: {
+    reembolso: "banorte_informe_reclamante",
+  },
+  BBVA: {
+    reembolso: "bbva_informe_medico",
+    prog_cirugia: "bbva_informe_medico",
+    prog_medicamentos: "bbva_informe_medico",
+    prog_servicios: "bbva_informe_medico",
+    indemnizacion: "bbva_informe_medico",
+    reporte_hospitalario: "bbva_informe_medico",
+  },
+  MAPFRE: {
+    reembolso: "mapfre_reembolso",
+  },
+  ALLIANZ: {
+    reembolso: "allianz_informe_medico",
+    prog_cirugia: "allianz_informe_medico",
+    prog_medicamentos: "allianz_informe_medico",
+    prog_servicios: "allianz_informe_medico",
+    indemnizacion: "allianz_informe_medico",
+    reporte_hospitalario: "allianz_informe_medico",
+  },
+  INBURSA: {
+    reembolso: "inbursa_informe_medico",
+    prog_cirugia: "inbursa_informe_medico",
+    prog_medicamentos: "inbursa_informe_medico",
+    prog_servicios: "inbursa_informe_medico",
+    indemnizacion: "inbursa_informe_medico",
+    reporte_hospitalario: "inbursa_informe_medico",
+  },
+  "PLAN SEGURO": {
+    reembolso: "plan_seguro_informe_medico",
+    prog_cirugia: "plan_seguro_informe_medico",
+    prog_medicamentos: "plan_seguro_informe_medico",
+    prog_servicios: "plan_seguro_informe_medico",
+    indemnizacion: "plan_seguro_informe_medico",
+    reporte_hospitalario: "plan_seguro_informe_medico",
+  },
+  "SEGUROS MONTERREY": {
+    reembolso: "seguros_monterrey_informe_medico",
+    prog_cirugia: "seguros_monterrey_informe_medico",
+    prog_medicamentos: "seguros_monterrey_informe_medico",
+    prog_servicios: "seguros_monterrey_informe_medico",
+    indemnizacion: "seguros_monterrey_informe_medico",
+    reporte_hospitalario: "seguros_monterrey_informe_medico",
+  },
+};
+
+export function getFormKey(insurer: string, tramite: TramiteType): string | null {
+  const ins = (insurer || "").toUpperCase();
+  return formKeyMatrix[ins]?.[tramite] || null;
+}
