@@ -218,9 +218,9 @@ export default function NewClaim() {
           : `Resumen generado · Folio ${folio}`
       );
       navigate("/reclamos");
-    } catch (e) {
-      console.error(e);
-      toast.error("Error al generar el PDF");
+    } catch (e: any) {
+      console.error("[handleGenerate] error:", e);
+      toast.error(e?.message || "Error al generar el PDF");
     }
   };
 
