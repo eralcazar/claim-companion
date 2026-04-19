@@ -7,91 +7,110 @@ import { formE } from "./definitions/formE-consentimiento";
 import { formF } from "./definitions/formF-identificacion-allianz";
 import { formG } from "./definitions/formG-carta-marsh";
 import { formH } from "./definitions/formH-informe-reclamante";
-import type { TramiteType } from "@/lib/constants";
 
-// Mapa de aseguradora → trámite → código de formulario.
-// Para cada (aseguradora, tramite) seleccionado por el usuario,
-// devolvemos el código de formulario que aplica.
-const matrix: Record<string, Record<TramiteType, string>> = {
+// ─────────────────────────────────────────────────────────────────────────────
+// Catálogo de FORMATOS REALES por aseguradora.
+// Cada entrada corresponde 1:1 a un PDF en Storage: formatos/<INSURER>/<file>.
+// El `id` se usa como tramite_type en BD y para construir la formKey
+// (p.ej. "METLIFE" + "reembolso" → "METLIFE_reembolso").
+// ─────────────────────────────────────────────────────────────────────────────
+export interface InsurerFormat {
+  id: string;
+  label: string;
+  file: string;
+}
+
+const insurerFormats: Record<string, InsurerFormat[]> = {
+  ALLIANZ: [
+    { id: "informe_medico",         label: "Informe Médico",          file: "informe_medico.pdf" },
+    { id: "aviso_accidente",        label: "Aviso de Accidente",      file: "aviso_accidente.pdf" },
+    { id: "carta_remesa",           label: "Carta Remesa",            file: "carta_remesa.pdf" },
+    { id: "identificacion_cliente", label: "Identificación Cliente",  file: "identificacion_cliente.pdf" },
+  ],
+  AXA: [
+    { id: "reembolso",              label: "Reembolso",               file: "reembolso.pdf" },
+    { id: "informe_medico",         label: "Informe Médico",          file: "informe_medico.pdf" },
+    { id: "programacion_servicios", label: "Programación de Servicios", file: "programacion_servicios.pdf" },
+  ],
+  BANORTE: [
+    { id: "informe_medico",         label: "Informe Médico",          file: "informe_medico.pdf" },
+    { id: "informe_reclamante",     label: "Informe del Reclamante",  file: "informe_reclamante.PDF" },
+  ],
+  BBVA: [
+    { id: "informe_medico",         label: "Informe Médico",          file: "informe_medico.pdf" },
+  ],
+  GNP: [
+    { id: "informe_medico",         label: "Informe Médico",          file: "informe_medico.pdf" },
+    { id: "aviso_accidente",        label: "Aviso de Accidente",      file: "aviso_accidente.pdf" },
+  ],
+  INBURSA: [
+    { id: "informe_medico",         label: "Informe Médico",          file: "informe_medico.pdf" },
+    { id: "aviso_accidente",        label: "Aviso de Accidente",      file: "aviso_accidente.pdf" },
+  ],
+  MAPFRE: [
+    { id: "reembolso",              label: "Reembolso",               file: "reembolso.pdf" },
+    { id: "informe_medico",         label: "Informe Médico",          file: "informe_medico.pdf" },
+  ],
+  METLIFE: [
+    { id: "reembolso",              label: "Reembolso",               file: "reembolso.pdf" },
+    { id: "informe_medico",         label: "Informe Médico",          file: "informe_medico.pdf" },
+    { id: "programacion_servicios", label: "Programación de Servicios", file: "programacion_servicios.pdf" },
+    { id: "consentimiento_informado", label: "Consentimiento Informado", file: "consentimiento_informado.pdf" },
+  ],
+  "PLAN SEGURO": [
+    { id: "informe_medico",         label: "Informe Médico",          file: "informe_medico.pdf" },
+  ],
+  "SEGUROS MONTERREY": [
+    { id: "informe_medico",         label: "Informe Médico",          file: "informe_medico.pdf" },
+    { id: "aviso_accidente",        label: "Aviso de Accidente",      file: "aviso_accidente.pdf" },
+  ],
+};
+
+// Mapeo (aseguradora, formatId) → código de definición de formulario A..H.
+// Define los campos a llenar en el wizard.
+const definitionMatrix: Record<string, Record<string, string>> = {
   ALLIANZ: {
-    reembolso: "C", // ALLIANZ no tiene C oficialmente, pero ofrecemos A+B+F+G
-    prog_cirugia: "A",
-    prog_medicamentos: "A",
-    prog_servicios: "A",
-    indemnizacion: "B",
-    reporte_hospitalario: "A",
+    informe_medico: "A",
+    aviso_accidente: "B",
+    carta_remesa: "G",
+    identificacion_cliente: "F",
   },
   AXA: {
     reembolso: "C",
-    prog_cirugia: "D",
-    prog_medicamentos: "D",
-    prog_servicios: "D",
-    indemnizacion: "A",
-    reporte_hospitalario: "A",
+    informe_medico: "A",
+    programacion_servicios: "D",
   },
   BANORTE: {
-    reembolso: "H",
-    prog_cirugia: "A",
-    prog_medicamentos: "A",
-    prog_servicios: "A",
-    indemnizacion: "A",
-    reporte_hospitalario: "A",
+    informe_medico: "A",
+    informe_reclamante: "H",
   },
   BBVA: {
-    reembolso: "A",
-    prog_cirugia: "A",
-    prog_medicamentos: "A",
-    prog_servicios: "A",
-    indemnizacion: "A",
-    reporte_hospitalario: "A",
+    informe_medico: "A",
   },
   GNP: {
-    reembolso: "A",
-    prog_cirugia: "A",
-    prog_medicamentos: "A",
-    prog_servicios: "A",
-    indemnizacion: "B",
-    reporte_hospitalario: "A",
+    informe_medico: "A",
+    aviso_accidente: "B",
   },
   INBURSA: {
-    reembolso: "A",
-    prog_cirugia: "A",
-    prog_medicamentos: "A",
-    prog_servicios: "A",
-    indemnizacion: "B",
-    reporte_hospitalario: "A",
+    informe_medico: "A",
+    aviso_accidente: "B",
   },
   MAPFRE: {
     reembolso: "C",
-    prog_cirugia: "D",
-    prog_medicamentos: "D",
-    prog_servicios: "D",
-    indemnizacion: "A",
-    reporte_hospitalario: "A",
+    informe_medico: "A",
   },
   METLIFE: {
     reembolso: "C",
-    prog_cirugia: "D",
-    prog_medicamentos: "D",
-    prog_servicios: "D",
-    indemnizacion: "A",
-    reporte_hospitalario: "A",
+    informe_medico: "A",
+    programacion_servicios: "D",
+    consentimiento_informado: "E",
   },
   "PLAN SEGURO": {
-    reembolso: "A",
-    prog_cirugia: "A",
-    prog_medicamentos: "A",
-    prog_servicios: "A",
-    indemnizacion: "A",
-    reporte_hospitalario: "A",
+    informe_medico: "A",
   },
   "SEGUROS MONTERREY": {
-    reembolso: "A",
-    prog_cirugia: "A",
-    prog_medicamentos: "A",
-    prog_servicios: "A",
-    indemnizacion: "B",
-    reporte_hospitalario: "A",
+    informe_medico: "A",
+    aviso_accidente: "B",
   },
 };
 
@@ -106,123 +125,41 @@ const definitions: Record<string, FormDefinition> = {
   H: formH,
 };
 
-export function getFormDefinition(insurer: string, tramite: TramiteType): FormDefinition | null {
-  const ins = (insurer || "").toUpperCase();
-  const code = matrix[ins]?.[tramite];
+function normalizeInsurer(insurer: string): string {
+  return (insurer || "").toUpperCase();
+}
+
+/**
+ * Devuelve los formatos PDF reales que existen en Storage para esta aseguradora.
+ * Cada uno corresponde a un archivo en formatos/<INSURER>/.
+ */
+export function getAvailableFormats(insurer: string): InsurerFormat[] {
+  return insurerFormats[normalizeInsurer(insurer)] || [];
+}
+
+/**
+ * Devuelve la key de coordenadas (p.ej. "METLIFE_reembolso") para llenar el PDF.
+ * Construida como `${INSURER_NORMALIZED}_${formatId}`, donde el insurer normaliza
+ * espacios por "_" (ej. "PLAN SEGURO" → "PLAN_SEGURO").
+ */
+export function getFormKey(insurer: string, formatId: string): string | null {
+  const ins = normalizeInsurer(insurer);
+  const formats = insurerFormats[ins];
+  if (!formats || !formats.find((f) => f.id === formatId)) return null;
+  return `${ins.replace(/\s+/g, "_")}_${formatId}`;
+}
+
+/**
+ * Devuelve la definición del formulario (campos a capturar en el wizard)
+ * para una combinación (aseguradora, formato).
+ */
+export function getFormDefinition(insurer: string, formatId: string): FormDefinition | null {
+  const ins = normalizeInsurer(insurer);
+  const code = definitionMatrix[ins]?.[formatId];
   if (!code) return null;
   return definitions[code] || null;
 }
 
 export function getAllDefinitions(): FormDefinition[] {
   return Object.values(definitions);
-}
-
-// Mapa (insurer, tramite) → key del PDF original en bucket "formatos".
-// Cada key debe existir en src/lib/formCoordinates.ts y su archivo en Storage.
-// Estructura real de carpetas verificada en bucket "formatos":
-//   ALLIANZ/: aviso_accidente, carta_remesa, identificacion_cliente, informe_medico
-//   AXA/: informe_medico, programacion_servicios, reembolso
-//   BANORTE/: informe_medico, informe_reclamante.PDF
-//   BBVA/: informe_medico
-//   GNP/: aviso_accidente, informe_medico
-//   INBURSA/: aviso_accidente, informe_medico
-//   MAPFRE/: informe_medico, reembolso
-//   METLIFE/: consentimiento_informado, informe_medico, programacion_servicios, reembolso
-//   PLAN_SEGURO/: informe_medico
-//   SEGUROS_MONTERREY/: aviso_accidente, informe_medico
-const formKeyMatrix: Record<string, Partial<Record<TramiteType, string>>> = {
-  ALLIANZ: {
-    reembolso: "ALLIANZ_informe_medico",
-    prog_cirugia: "ALLIANZ_informe_medico",
-    prog_medicamentos: "ALLIANZ_informe_medico",
-    prog_servicios: "ALLIANZ_informe_medico",
-    reporte_hospitalario: "ALLIANZ_informe_medico",
-    indemnizacion: "ALLIANZ_aviso_accidente",
-  },
-  AXA: {
-    reembolso: "AXA_reembolso",
-    prog_cirugia: "AXA_programacion_servicios",
-    prog_medicamentos: "AXA_programacion_servicios",
-    prog_servicios: "AXA_programacion_servicios",
-    indemnizacion: "AXA_informe_medico",
-    reporte_hospitalario: "AXA_informe_medico",
-  },
-  BANORTE: {
-    reembolso: "BANORTE_informe_reclamante",
-    prog_cirugia: "BANORTE_informe_medico",
-    prog_medicamentos: "BANORTE_informe_medico",
-    prog_servicios: "BANORTE_informe_medico",
-    indemnizacion: "BANORTE_informe_medico",
-    reporte_hospitalario: "BANORTE_informe_medico",
-  },
-  BBVA: {
-    reembolso: "BBVA_informe_medico",
-    prog_cirugia: "BBVA_informe_medico",
-    prog_medicamentos: "BBVA_informe_medico",
-    prog_servicios: "BBVA_informe_medico",
-    indemnizacion: "BBVA_informe_medico",
-    reporte_hospitalario: "BBVA_informe_medico",
-  },
-  GNP: {
-    reembolso: "GNP_informe_medico",
-    prog_cirugia: "GNP_informe_medico",
-    prog_medicamentos: "GNP_informe_medico",
-    prog_servicios: "GNP_informe_medico",
-    reporte_hospitalario: "GNP_informe_medico",
-    indemnizacion: "GNP_aviso_accidente",
-  },
-  INBURSA: {
-    reembolso: "INBURSA_informe_medico",
-    prog_cirugia: "INBURSA_informe_medico",
-    prog_medicamentos: "INBURSA_informe_medico",
-    prog_servicios: "INBURSA_informe_medico",
-    reporte_hospitalario: "INBURSA_informe_medico",
-    indemnizacion: "INBURSA_aviso_accidente",
-  },
-  MAPFRE: {
-    reembolso: "MAPFRE_reembolso",
-    prog_cirugia: "MAPFRE_informe_medico",
-    prog_medicamentos: "MAPFRE_informe_medico",
-    prog_servicios: "MAPFRE_informe_medico",
-    indemnizacion: "MAPFRE_informe_medico",
-    reporte_hospitalario: "MAPFRE_informe_medico",
-  },
-  METLIFE: {
-    reembolso: "METLIFE_reembolso",
-    prog_cirugia: "METLIFE_programacion_servicios",
-    prog_medicamentos: "METLIFE_programacion_servicios",
-    prog_servicios: "METLIFE_programacion_servicios",
-    indemnizacion: "METLIFE_informe_medico",
-    reporte_hospitalario: "METLIFE_informe_medico",
-  },
-  "PLAN SEGURO": {
-    reembolso: "PLAN_SEGURO_informe_medico",
-    prog_cirugia: "PLAN_SEGURO_informe_medico",
-    prog_medicamentos: "PLAN_SEGURO_informe_medico",
-    prog_servicios: "PLAN_SEGURO_informe_medico",
-    indemnizacion: "PLAN_SEGURO_informe_medico",
-    reporte_hospitalario: "PLAN_SEGURO_informe_medico",
-  },
-  "SEGUROS MONTERREY": {
-    reembolso: "SEGUROS_MONTERREY_informe_medico",
-    prog_cirugia: "SEGUROS_MONTERREY_informe_medico",
-    prog_medicamentos: "SEGUROS_MONTERREY_informe_medico",
-    prog_servicios: "SEGUROS_MONTERREY_informe_medico",
-    reporte_hospitalario: "SEGUROS_MONTERREY_informe_medico",
-    indemnizacion: "SEGUROS_MONTERREY_aviso_accidente",
-  },
-};
-
-export function getFormKey(insurer: string, tramite: TramiteType): string | null {
-  const ins = (insurer || "").toUpperCase();
-  return formKeyMatrix[ins]?.[tramite] || null;
-}
-
-// Devuelve los trámites disponibles para una aseguradora,
-// según las entradas presentes en formKeyMatrix (es decir, los PDFs configurados).
-export function getAvailableTramites(insurer: string): TramiteType[] {
-  const ins = (insurer || "").toUpperCase();
-  const entry = formKeyMatrix[ins];
-  if (!entry) return [];
-  return Object.keys(entry).filter((k) => !!entry[k as TramiteType]) as TramiteType[];
 }
