@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, ArrowRight, Check, Download, Save } from "lucide-react";
 import { TRAMITE_TYPES, type TramiteType } from "@/lib/constants";
-import { getFormDefinition, getFormKey } from "@/components/claims/forms/registry";
+import { getFormDefinition, getFormKey, getAvailableTramites } from "@/components/claims/forms/registry";
 import FormRenderer from "@/components/claims/forms/FormRenderer";
 import AutofillBanner from "@/components/claims/forms/shared/AutofillBanner";
 import { generateFilledPDF, downloadPDF, buildOverlayData } from "@/lib/generateFilledPDF";
