@@ -4,14 +4,16 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useNavigate } from "react-router-dom";
-import { Plus, FileText, Download, FileDown, Pencil } from "lucide-react";
+import { Plus, FileText, Download, FileDown, Pencil, FileEdit, Trash2, FileCheck } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { toast } from "sonner";
 import { defaultFormData, type ClaimFormData } from "@/components/claims/types";
 import { generateClaimPDF } from "@/components/claims/generateClaimPDF";
 import { fillOriginalPDF } from "@/components/claims/fillOriginalPDF";
+import { TRAMITE_TYPES } from "@/lib/constants";
 
 function claimToFormData(claim: any): ClaimFormData {
   const fd = claim.form_data || {};
@@ -93,6 +95,22 @@ export default function Claims() {
     },
     enabled: !!user,
   });
+
+  const { data: claimForms, isLoading: loadingForms, refetch: refetchForms } = useQuery({
+    queryKey: ["claim_forms", user?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("claim_forms")
+        .select("*")
+        .eq("user_id", user!.id)
+        .order("updated_at", { ascending: false });
+      return data ?? [];
+    },
+    enabled: !!user,
+  });
+
+  const drafts = (claimForms || []).filter((f: any) => f.status === "draft");
+  const submitted = (claimForms || []).filter((f: any) => f.status === "submitted");
 
   const { data: profile } = useQuery({
     queryKey: ["profile", user?.id],
@@ -186,8 +204,24 @@ export default function Claims() {
     }
   };
 
+  const handleDeleteDraft = async (id: string) => {
+    if (!confirm("¿Eliminar este borrador?")) return;
+    const { error } = await supabase.from("claim_forms").delete().eq("id", id);
+    if (error) toast.error("Error al eliminar");
+    else { toast.success("Borrador eliminado"); refetchForms(); }
+  };
+
+  const handleDownloadSubmittedPDF = async (form: any) => {
+    if (!form.pdf_path) { toast.error("PDF no disponible"); return; }
+    const { data, error } = await supabase.storage.from("documents").createSignedUrl(form.pdf_path, 60);
+    if (error || !data?.signedUrl) { toast.error("Error al obtener PDF"); return; }
+    window.open(data.signedUrl, "_blank");
+  };
+
+  const tramiteLabel = (t: string) => TRAMITE_TYPES.find((x) => x.value === t)?.label || t;
+
   return (
-    <div className="space-y-6 animate-fade-in max-w-lg mx-auto">
+    <div className="space-y-4 animate-fade-in max-w-lg mx-auto pb-24">
       <div className="flex items-center justify-between">
         <h1 className="font-heading text-2xl font-bold">Mis Reclamos</h1>
         <Button size="sm" onClick={() => navigate("/reclamos/nuevo")}>
@@ -195,64 +229,133 @@ export default function Claims() {
         </Button>
       </div>
 
-      {isLoading ? (
-        <div className="flex justify-center p-8"><div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" /></div>
-      ) : claims?.length === 0 ? (
-        <Card><CardContent className="p-8 text-center text-muted-foreground">No tienes reclamos</CardContent></Card>
-      ) : (
-        claims?.map((claim) => (
-          <Card key={claim.id}>
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <FileText className="h-4 w-4 text-primary" />
-                  {claim.diagnosis}
-                </CardTitle>
-                <Badge variant={statusVariant[claim.status]}>
-                  {statusLabel[claim.status]}
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-2">
-                <p className="text-sm text-muted-foreground">
-                  {(claim as any).insurance_policies?.company} — {(claim as any).insurance_policies?.policy_number}
-                </p>
-                <Badge variant="outline" className="text-xs bg-accent">
-                  {claimTypeLabel[claim.claim_type] || claim.claim_type}
-                </Badge>
-              </div>
-              <div className="flex justify-between mt-2 text-xs text-muted-foreground">
-                <span>Costo: ${Number(claim.total_cost).toLocaleString()}</span>
-                <span>{format(new Date(claim.created_at), "PP", { locale: es })}</span>
-              </div>
-              <div className="flex gap-2 mt-3 flex-wrap">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => navigate(`/reclamos/editar/${claim.id}`)}
-                >
-                  <Pencil className="h-3 w-3 mr-1" /> Editar
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleDownloadOriginalPDF(claim)}
-                >
-                  <FileDown className="h-3 w-3 mr-1" /> Formato
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleDownloadPDF(claim)}
-                >
-                  <Download className="h-3 w-3 mr-1" /> Resumen
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))
-      )}
+      <Tabs defaultValue="claims" className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="claims">Reclamos {claims?.length ? `(${claims.length})` : ""}</TabsTrigger>
+          <TabsTrigger value="drafts">Borradores {drafts.length ? `(${drafts.length})` : ""}</TabsTrigger>
+          <TabsTrigger value="submitted">Enviados {submitted.length ? `(${submitted.length})` : ""}</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="claims" className="space-y-3 mt-4">
+          {isLoading ? (
+            <div className="flex justify-center p-8"><div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" /></div>
+          ) : claims?.length === 0 ? (
+            <Card><CardContent className="p-8 text-center text-muted-foreground text-sm">No tienes reclamos</CardContent></Card>
+          ) : (
+            claims?.map((claim) => (
+              <Card key={claim.id}>
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <FileText className="h-4 w-4 text-primary" />
+                      {claim.diagnosis}
+                    </CardTitle>
+                    <Badge variant={statusVariant[claim.status]}>{statusLabel[claim.status]}</Badge>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm text-muted-foreground">
+                      {(claim as any).insurance_policies?.company} — {(claim as any).insurance_policies?.policy_number}
+                    </p>
+                    <Badge variant="outline" className="text-xs bg-accent">
+                      {claimTypeLabel[claim.claim_type] || claim.claim_type}
+                    </Badge>
+                  </div>
+                  <div className="flex justify-between mt-2 text-xs text-muted-foreground">
+                    <span>Costo: ${Number(claim.total_cost).toLocaleString()}</span>
+                    <span>{format(new Date(claim.created_at), "PP", { locale: es })}</span>
+                  </div>
+                  <div className="flex gap-2 mt-3 flex-wrap">
+                    <Button variant="outline" size="sm" onClick={() => navigate(`/reclamos/editar/${claim.id}`)}>
+                      <Pencil className="h-3 w-3 mr-1" /> Editar
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => handleDownloadOriginalPDF(claim)}>
+                      <FileDown className="h-3 w-3 mr-1" /> Formato
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => handleDownloadPDF(claim)}>
+                      <Download className="h-3 w-3 mr-1" /> Resumen
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          )}
+        </TabsContent>
+
+        <TabsContent value="drafts" className="space-y-3 mt-4">
+          {loadingForms ? (
+            <div className="flex justify-center p-8"><div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" /></div>
+          ) : drafts.length === 0 ? (
+            <Card><CardContent className="p-8 text-center text-muted-foreground text-sm">No tienes borradores</CardContent></Card>
+          ) : (
+            drafts.map((d: any) => (
+              <Card key={d.id}>
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <FileEdit className="h-4 w-4 text-primary" />
+                      {d.insurer} · Formato {d.form_code}
+                    </CardTitle>
+                    <Badge variant="secondary">Borrador</Badge>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">{tramiteLabel(d.tramite_type)}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Actualizado {format(new Date(d.updated_at), "PPp", { locale: es })}
+                  </p>
+                  <div className="flex gap-2 mt-3">
+                    <Button variant="outline" size="sm" onClick={() => navigate(`/reclamos/nuevo?draft=${d.id}`)}>
+                      <Pencil className="h-3 w-3 mr-1" /> Continuar
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => handleDeleteDraft(d.id)}>
+                      <Trash2 className="h-3 w-3 mr-1" /> Eliminar
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          )}
+        </TabsContent>
+
+        <TabsContent value="submitted" className="space-y-3 mt-4">
+          {loadingForms ? (
+            <div className="flex justify-center p-8"><div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" /></div>
+          ) : submitted.length === 0 ? (
+            <Card><CardContent className="p-8 text-center text-muted-foreground text-sm">No tienes formatos enviados</CardContent></Card>
+          ) : (
+            submitted.map((s: any) => (
+              <Card key={s.id}>
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <FileCheck className="h-4 w-4 text-primary" />
+                      {s.folio || `Formato ${s.form_code}`}
+                    </CardTitle>
+                    <Badge>Enviado</Badge>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">
+                    {s.insurer} · {tramiteLabel(s.tramite_type)}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Generado {format(new Date(s.updated_at), "PPp", { locale: es })}
+                  </p>
+                  {s.pdf_path && (
+                    <div className="flex gap-2 mt-3">
+                      <Button variant="outline" size="sm" onClick={() => handleDownloadSubmittedPDF(s)}>
+                        <Download className="h-3 w-3 mr-1" /> Descargar PDF
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            ))
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
