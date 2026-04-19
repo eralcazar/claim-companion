@@ -2,102 +2,47 @@
 
 ## Objetivo
 
-El segundo combo (trámite) debe mostrar **solo los formatos PDF reales** que existen en `formatos/<ASEGURADORA>/` en Storage, no una lista genérica derivada de `TRAMITE_TYPES`.
+En `/formatos`, al seleccionar una póliza, mostrar **solo los formatos PDF reales** que existen en `formatos/<ASEGURADORA>/` en Storage, listados con el nombre del archivo **sin la extensión** (ej. `informe_medico`, `aviso_accidente`).
 
 ## Problema actual
 
-Hoy `getAvailableTramites(insurer)` devuelve claves de `TRAMITE_TYPES` (reembolso, prog_cirugia, indemnizacion, reporte_hospitalario...) mapeadas en `formKeyMatrix`. Eso obliga a inventar mapeos artificiales (ej. ALLIANZ usa `informe_medico` para "reembolso" y "prog_cirugia" — los dos llevan al mismo PDF). El usuario ve duplicados y opciones que no corresponden a archivos reales.
-
-La realidad de Storage es plana: cada aseguradora tiene 1–4 PDFs con nombres fijos (`reembolso`, `informe_medico`, `aviso_accidente`, `programacion_servicios`, `consentimiento_informado`, `carta_remesa`, `identificacion_cliente`, `informe_reclamante`).
+`src/pages/Formats.tsx` tiene una función local `getFormats(company)` hardcodeada que solo distingue MetLife vs MAPFRE y apunta a rutas inexistentes (`/forms/METLIFE_REEMBOLSO.pdf` en `public/`). No refleja las 10 aseguradoras reales ni los 23 PDFs en el bucket `formatos`.
 
 ## Solución
 
-### 1. Nuevo modelo: el trámite ES el archivo
+### 1. Reutilizar el catálogo `getAvailableFormats` del registry
 
-Reemplazar `formKeyMatrix` (insurer × tramite → key) por un catálogo directo `insurerFormats` (insurer → lista de archivos reales):
+Ya existe en `src/components/claims/forms/registry.ts` el catálogo `insurerFormats` con las 10 aseguradoras y sus archivos reales. Lo importamos en `Formats.tsx`.
 
-```ts
-const insurerFormats: Record<string, Array<{ id: string; label: string; file: string }>> = {
-  ALLIANZ: [
-    { id: "informe_medico",        label: "Informe Médico",        file: "informe_medico.pdf" },
-    { id: "aviso_accidente",       label: "Aviso de Accidente",    file: "aviso_accidente.pdf" },
-    { id: "carta_remesa",          label: "Carta Remesa",          file: "carta_remesa.pdf" },
-    { id: "identificacion_cliente",label: "Identificación Cliente",file: "identificacion_cliente.pdf" },
-  ],
-  AXA: [
-    { id: "reembolso",             label: "Reembolso",             file: "reembolso.pdf" },
-    { id: "informe_medico",        label: "Informe Médico",        file: "informe_medico.pdf" },
-    { id: "programacion_servicios",label: "Programación de Servicios", file: "programacion_servicios.pdf" },
-  ],
-  BANORTE: [
-    { id: "informe_medico",        label: "Informe Médico",        file: "informe_medico.pdf" },
-    { id: "informe_reclamante",    label: "Informe del Reclamante",file: "informe_reclamante.PDF" }, // mayúsculas
-  ],
-  BBVA: [
-    { id: "informe_medico",        label: "Informe Médico",        file: "informe_medico.pdf" },
-  ],
-  GNP: [
-    { id: "informe_medico",        label: "Informe Médico",        file: "informe_medico.pdf" },
-    { id: "aviso_accidente",       label: "Aviso de Accidente",    file: "aviso_accidente.pdf" },
-  ],
-  INBURSA: [
-    { id: "informe_medico",        label: "Informe Médico",        file: "informe_medico.pdf" },
-    { id: "aviso_accidente",       label: "Aviso de Accidente",    file: "aviso_accidente.pdf" },
-  ],
-  MAPFRE: [
-    { id: "reembolso",             label: "Reembolso",             file: "reembolso.pdf" },
-    { id: "informe_medico",        label: "Informe Médico",        file: "informe_medico.pdf" },
-  ],
-  METLIFE: [
-    { id: "reembolso",             label: "Reembolso",             file: "reembolso.pdf" },
-    { id: "informe_medico",        label: "Informe Médico",        file: "informe_medico.pdf" },
-    { id: "programacion_servicios",label: "Programación de Servicios", file: "programacion_servicios.pdf" },
-    { id: "consentimiento_informado", label: "Consentimiento Informado", file: "consentimiento_informado.pdf" },
-  ],
-  "PLAN SEGURO": [
-    { id: "informe_medico",        label: "Informe Médico",        file: "informe_medico.pdf" },
-  ],
-  "SEGUROS MONTERREY": [
-    { id: "informe_medico",        label: "Informe Médico",        file: "informe_medico.pdf" },
-    { id: "aviso_accidente",       label: "Aviso de Accidente",    file: "aviso_accidente.pdf" },
-  ],
-};
-```
+### 2. Reescribir `Formats.tsx`
 
-Total: **23 entradas**, una por archivo en Storage.
+- Eliminar `getFormats()` local y el array hardcodeado.
+- Al seleccionar póliza → llamar `getAvailableFormats(policy.company)` → renderizar lista.
+- Cada item muestra el `id` del formato (ya viene sin extensión: `informe_medico`, `aviso_accidente`, `carta_remesa`, etc.) como el nombre principal solicitado.
+- Botón "Descargar" usa Supabase Storage:
+  ```ts
+  const { data } = supabase.storage
+    .from("formatos")
+    .getPublicUrl(`${insurer}/${format.file}`);
+  ```
+  El bucket `formatos` ya es público.
+- Si la aseguradora no tiene formatos en el catálogo → mensaje "Esta aseguradora no tiene formatos disponibles".
 
-### 2. API pública del registry
+### 3. Detalles de UX
 
-```ts
-getAvailableFormats(insurer): Array<{id, label, file}>   // ← reemplaza getAvailableTramites
-getFormKey(insurer, formatId): string | null              // sigue devolviendo "METLIFE_reembolso" para coordenadas
-getFormDefinition(insurer, formatId): FormDefinition|null // lookup por id de formato
-```
-
-`getFormKey` se mapea simple: `${INSURER_NORMALIZED}_${formatId}` (ej. `PLAN_SEGURO_informe_medico`). Esas son las keys que ya existen en `src/lib/formCoordinates.ts`.
-
-### 3. Cambios en `NewClaim.tsx`
-
-- El segundo select itera sobre `getAvailableFormats(insurer)` y muestra `label`.
-- El estado `tramite` ahora guarda el `id` del formato (ej. `"informe_medico"`, `"aviso_accidente"`) en lugar de un `TramiteType` global.
-- Si la aseguradora no está en el catálogo → mensaje "Esta aseguradora no tiene formatos cargados".
-
-### 4. Compatibilidad con código existente
-
-- `TRAMITE_TYPES` en `constants.ts` se conserva (lo usa `Claims.tsx` para etiquetas históricas y la columna `claim_type` en BD).
-- `getFormDefinition` recibe el nuevo `formatId`; el mapeo a definición A/B/C/D/E/F/G/H se hace con una tabla pequeña por (insurer, formatId).
-- `EditClaim.tsx` no se toca: lee `claim.claim_type` ya guardado.
+- Nombre mostrado: `format.id` (ej. `informe_medico`) — sin extensión, como pidió el usuario.
+- Descarga: usar `<a href={publicUrl} download={fileName} target="_blank">` para abrir/descargar desde Storage.
+- Mantener el toast de confirmación.
 
 ## Archivos a modificar
 
 ```text
-edita: src/components/claims/forms/registry.ts   (catálogo insurerFormats + nueva API)
-edita: src/pages/NewClaim.tsx                    (segundo select usa getAvailableFormats)
+edita: src/pages/Formats.tsx   (usar getAvailableFormats + descargar desde Storage)
 ```
 
 ## Notas
 
-- No se crean ni renombran archivos en Storage.
-- No se tocan coordenadas; las keys ya coinciden (`METLIFE_reembolso`, `BANORTE_informe_reclamante`, etc.).
-- Banorte `informe_reclamante.PDF` se respeta en mayúsculas dentro del campo `file`.
+- No se tocan archivos en Storage.
+- No se modifica `registry.ts` (ya tiene la API necesaria).
+- El bucket `formatos` ya es público → `getPublicUrl` funciona sin firma.
 
