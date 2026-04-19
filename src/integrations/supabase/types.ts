@@ -103,6 +103,51 @@ export type Database = {
           },
         ]
       }
+      claim_forms: {
+        Row: {
+          created_at: string
+          data: Json
+          folio: string | null
+          form_code: string
+          id: string
+          insurer: string
+          pdf_path: string | null
+          policy_id: string | null
+          status: string
+          tramite_type: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          data?: Json
+          folio?: string | null
+          form_code: string
+          id?: string
+          insurer: string
+          pdf_path?: string | null
+          policy_id?: string | null
+          status?: string
+          tramite_type?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          data?: Json
+          folio?: string | null
+          form_code?: string
+          id?: string
+          insurer?: string
+          pdf_path?: string | null
+          policy_id?: string | null
+          status?: string
+          tramite_type?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       claims: {
         Row: {
           cause: string | null
@@ -539,6 +584,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      gen_folio: { Args: { _code: string; _insurer: string }; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
