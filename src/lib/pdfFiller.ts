@@ -1,6 +1,7 @@
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 
 export interface FieldOverlay {
+  key?: string;
   page: number;        // 0-indexed
   x: number;           // puntos desde esquina inferior izquierda
   y: number;
@@ -21,8 +22,17 @@ export async function fillPDF(
     if (field.value == null || String(field.value).trim() === "") continue;
     const page = pages[field.page];
     if (!page) continue;
+    // Sanitizar: WinAnsi (Helvetica estándar) no soporta todos los unicode.
+    // Reemplazamos caracteres problemáticos para evitar que pdf-lib lance.
+    const safe = String(field.value)
+      .replace(/[\u2018\u2019]/g, "'")
+      .replace(/[\u201C\u201D]/g, '"')
+      .replace(/[\u2013\u2014]/g, "-")
+      .replace(/\u2026/g, "...")
+      // eliminar cualquier carácter fuera del rango básico latino-1
+      .replace(/[^\x00-\xFF]/g, "");
     try {
-      page.drawText(String(field.value), {
+      page.drawText(safe, {
         x: field.x,
         y: field.y,
         size: field.fontSize || 8,
@@ -30,8 +40,8 @@ export async function fillPDF(
         color: rgb(0, 0, 0),
         maxWidth: field.maxWidth,
       });
-    } catch {
-      // Ignorar caracteres que la fuente no soporte
+    } catch (err) {
+      console.warn(`[fillPDF] no se pudo dibujar campo`, field.key, err);
     }
   }
 
