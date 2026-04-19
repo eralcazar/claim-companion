@@ -13,7 +13,14 @@ import { toast } from "sonner";
 import { defaultFormData, type ClaimFormData } from "@/components/claims/types";
 import { generateClaimPDF } from "@/components/claims/generateClaimPDF";
 import { fillOriginalPDF } from "@/components/claims/fillOriginalPDF";
-import { TRAMITE_TYPES } from "@/lib/constants";
+import { TRAMITE_TYPES, type TramiteType } from "@/lib/constants";
+import { getFormKey } from "@/components/claims/forms/registry";
+import {
+  generateFilledPDF,
+  downloadPDF,
+  buildOverlayData,
+} from "@/lib/generateFilledPDF";
+import type { FormCoordinatesKey } from "@/lib/formCoordinates";
 
 function claimToFormData(claim: any): ClaimFormData {
   const fd = claim.form_data || {};
