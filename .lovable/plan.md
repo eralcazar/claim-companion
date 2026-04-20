@@ -2,105 +2,98 @@
 
 ## Objetivo
 
-Crear `/admin/gestor-archivos`: gestor de archivos con árbol de aseguradoras + sus PDFs (desde `formularios`), y al seleccionar un formulario, una **tabla editable de campos** (`campos`) con sus mapeos a `profiles` / `insurance_policies` / `claims` y coordenadas. Solo accesible por rol `admin`.
+Pieza 3: **editor visual de coordenadas**. Abrir un PDF dentro del Gestor de Formatos, ver overlays de los campos existentes encima del PDF, y permitir **mover/redimensionar/crear** cajas con drag para fijar las coordenadas (% relativas a la página).
 
-## Layout
+## UX
+
+Nueva tab **"Editor visual"** en el detalle del formulario, junto a Campos / Secciones / Info.
 
 ```text
-┌─────────────────────────────────────────────────────────────────┐
-│ Gestor de Formatos                            [+ Nuevo campo]   │
-├──────────────────┬──────────────────────────────────────────────┤
-│ ÁRBOL (izq)      │ DETALLE FORMULARIO (der)                     │
-│                  │                                              │
-│ ▼ ALLIANZ (4)    │ Informe Médico — ALLIANZ                     │
-│   ├ informe_med  │ formatos/ALLIANZ/informe_medico.pdf  [Abrir] │
-│   ├ aviso_acc    │ Páginas: 2 · Campos estimados: 25            │
-│   ├ carta_remesa │                                              │
-│   └ ident_clien  │ Tabs: [Campos] [Secciones] [Info]            │
-│ ▶ AXA (3)        │                                              │
-│ ▶ BANORTE (2)    │ Tabla campos:                                │
-│ ▶ ...            │ ┌──┬──────┬──────┬─────┬──────┬────────────┐ │
-│                  │ │# │Clave │Etiq. │Tipo │Mapeo │Coords      │ │
-│                  │ │1 │NOMBRE│Nombre│texto│perfil│p1 X,Y W×H  │ │
-│                  │ │  │      │      │     │.NOM..│            │ │
-│                  │ └──┴──────┴──────┴─────┴──────┴────────────┘ │
-│                  │ [Guardar cambios] [Eliminar] [Duplicar]      │
-└──────────────────┴──────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│ Editor visual — Informe Médico (ALLIANZ)                    │
+│ Página: [◀] 1 / 2 [▶]   Zoom: [─●──] 100%   [+ Nuevo campo] │
+├──────────────────────────────────┬──────────────────────────┤
+│  ┌────────────────────────────┐  │ Campo seleccionado       │
+│  │                            │  │                          │
+│  │   PDF página 1 renderizado │  │ Clave:  [NOMBRE_PAC]     │
+│  │                            │  │ Etiq.:  [Nombre paciente]│
+│  │   ┌────┐  ← caja campo     │  │ Tipo:   [texto ▼]        │
+│  │   │NOMB│    (drag/resize)  │  │ Mapeo:  [perfil.full_..] │
+│  │   └────┘                   │  │ Pág:1 X:32% Y:18% ...    │
+│  │                            │  │                          │
+│  │   ┌──────┐                 │  │ [Eliminar] [Duplicar]    │
+│  │   │CURP  │                 │  │                          │
+│  │   └──────┘                 │  │ ─── Modo creación ───    │
+│  │                            │  │ Click+arrastra sobre el  │
+│  └────────────────────────────┘  │ PDF para crear un campo  │
+└──────────────────────────────────┴──────────────────────────┘
 ```
 
-Vista mobile (<768px): árbol arriba como Select de aseguradora + lista de formularios; tabla scrolleable horizontal.
+Mobile (<768px): el panel lateral colapsa a Sheet inferior; el visor ocupa el ancho completo.
 
 ## Funcionalidad
 
-**Árbol** (panel izq, desktop) / **Select** (mobile):
-- Lista 10 aseguradoras desde `aseguradoras` con conteo de formularios.
-- Expandir muestra los `formularios` de esa aseguradora.
-- Click en un formulario lo selecciona en el panel derecho.
+**Visor PDF** (`react-pdf` + `pdfjs-dist`):
+- Carga el PDF desde `getPublicUrl(formulario.storage_path)`.
+- Renderiza una página a la vez, navegable con flechas y atajos `←`/`→`.
+- Slider de zoom 50–200%.
+- Layer absoluto encima del canvas con los `campos` cuya `campo_pagina === pagina_actual`.
 
-**Panel derecho** — header del formulario:
-- Nombre, aseguradora, `storage_path`, páginas, total campos en BD vs estimado.
-- Botón **Abrir PDF** → abre `getPublicUrl` del bucket `formatos`.
+**Cajas (overlays)**:
+- Posición y tamaño calculados desde `campo_x/y/ancho/alto` (% del page rect).
+- Componente `<FieldBox>` con:
+  - **Drag** del centro para mover.
+  - **8 handles** para redimensionar (esquinas + lados).
+  - Hover muestra `clave`; click la selecciona (ring azul).
+  - Doble-click abre edición rápida del label en el panel.
+- Cambios live: se reflejan en `campo_x/y/ancho/alto` en estado local; al soltar (`onMouseUp`) se hace `upsert` debounceado a `campos`.
 
-**Tab "Campos"** — tabla editable inline:
-- Columnas: `#`, `Clave`, `Etiqueta`, `Tipo`, `Mapeo` (3 selects encadenados: tabla → columna), `Página`, `X%`, `Y%`, `W%`, `H%`, `Requerido`, `Acciones`.
-- Edición inline con `Input`/`Select`. Cambios pendientes marcados con dot amarillo.
-- **Guardar cambios** → upsert batch a `campos`.
-- **+ Nuevo campo** → fila nueva con defaults.
-- **Eliminar** fila individual (con confirm).
-- Filtro por sección + búsqueda por clave/etiqueta.
+**Modo "Nuevo campo"**:
+- Toggle del botón → cursor crosshair.
+- Mouse-down + drag sobre el PDF dibuja una caja nueva.
+- Al soltar, se crea fila en `campos` con clave autogenerada (`CAMPO_<n>`), página actual y coordenadas en %; queda seleccionada.
 
-**Tab "Secciones"**:
-- Lista simple `secciones` del formulario con orden y página.
-- CRUD básico (agregar/renombrar/eliminar/reordenar).
+**Panel lateral** (campo seleccionado):
+- Reuso del editor inline de `FieldsTable` — mismos inputs (clave, etiqueta, tipo, requerido) + `MappingSelects`.
+- Inputs numéricos para X/Y/W/H (sincronizados con el drag).
 
-**Tab "Info"**:
-- Editar `nombre_display`, `total_paginas`, `total_campos_estimado`, `activo`.
+**Sin selección**: panel muestra resumen (total campos en la página, total en el formulario, leyenda de colores por mapeo).
 
-## Mapeo (3 dropdowns)
+## Coordenadas
 
-```
-Tabla:    [— Sin mapeo ▼]  [perfiles] [polizas] [siniestros]
-Campo:    [— Seleccionar ▼] (depende de la tabla)
-```
+- Almacenamiento: % (0-100) relativos al page rect renderizado por pdf.js.
+- Conversión drag→%: `((eventX - pageRect.left) / pageRect.width) * 100`.
+- Esto coincide con lo ya definido en el esquema (`campo_x float`, etc.) y es resolución-agnóstico.
 
-- Opciones cargadas de `mapeo_perfiles` / `mapeo_polizas` / `mapeo_siniestros`.
-- Solo se permite **una** asignación a la vez (las otras dos columnas se limpian).
-- Badge `⚡ Mapeado` (verde) o `○ Manual` (gris) al final de la fila.
+## Persistencia
 
-## Acceso y seguridad
+- Mutación `upsert` a `campos` con debounce 400ms tras drag/resize.
+- Crear/eliminar usan los hooks ya existentes (`useUpsertCampos`, `useDeleteCampo`).
+- Toast solo en errores; los saves silenciosos para no spamear durante drag.
 
-- Ruta `/admin/gestor-archivos` envuelta en `ProtectedRoute` + check `roles.includes("admin")`. Si no es admin → redirect a `/`.
-- RLS ya está: solo admin puede `INSERT/UPDATE/DELETE` en `campos`/`secciones`/`formularios`. No se requiere migración.
+## Dependencias nuevas
+
+- `react-pdf` (^9) + `pdfjs-dist` (^4): renderizado del PDF en canvas.
+- Worker de pdf.js servido desde CDN (sin tocar Vite config).
+- Sin libs de drag externas — usamos `pointer events` nativos para mantener bundle pequeño.
 
 ## Archivos
 
 ```text
-crea:  src/pages/admin/FormatManager.tsx          (página principal + layout)
-crea:  src/components/admin/InsurerTree.tsx       (árbol aseguradoras+formularios)
-crea:  src/components/admin/FormHeader.tsx        (info formulario seleccionado)
-crea:  src/components/admin/FieldsTable.tsx       (tabla editable de campos)
-crea:  src/components/admin/SectionsList.tsx      (CRUD secciones)
-crea:  src/components/admin/MappingSelects.tsx    (3 selects encadenados)
-crea:  src/hooks/useFormatos.ts                   (queries: aseguradoras, formularios, campos, mapeos)
-edita: src/App.tsx                                (ruta /admin/gestor-archivos, gated por rol admin)
-edita: src/components/AppSidebar.tsx              (link "Gestor de Formatos" en sección Admin)
+crea:  src/components/admin/PDFCanvasEditor.tsx   (visor + capa de overlays + crear con drag)
+crea:  src/components/admin/FieldBox.tsx          (caja draggable/resizable individual)
+crea:  src/components/admin/FieldSidebar.tsx      (panel derecho: edición del campo seleccionado)
+crea:  src/components/admin/VisualEditor.tsx      (orquesta canvas + sidebar + selección)
+crea:  src/lib/pdfWorker.ts                       (configura el worker de pdfjs-dist)
+edita: src/pages/admin/FormatManager.tsx          (nueva tab "Editor visual")
+edita: src/hooks/useFormatos.ts                   (helper updateCampo individual sin toast para drag)
+edita: package.json                               (react-pdf + pdfjs-dist)
 ```
-
-## Stack técnico
-
-- React Query para `aseguradoras`, `formularios`, `campos`, `secciones`, `mapeo_*`.
-- Mutaciones con `supabase.from(...).upsert/update/delete` + invalidación de queries.
-- shadcn `Table`, `Input`, `Select`, `Tabs`, `Collapsible`, `Badge`, `Button`, `AlertDialog` (confirm delete), `Sonner` toasts.
-- Sin nuevas dependencias.
 
 ## Lo que NO incluye
 
-- Visor PDF con overlay interactivo de coordenadas (eso es la pieza 3 — Field Mapper visual).
-- Análisis IA de PDFs.
-- Subida de nuevos PDFs al bucket (los 23 ya están).
-- Generación de PDFs llenados.
-
-## Tras aprobar
-
-Implemento todo en una sola pasada. Listo para que entres como admin a `/admin/gestor-archivos` y empieces a poblar campos manualmente formulario por formulario, o esperar a la pieza 3 (editor visual con drag).
+- Edición de **labels** (las cajas `label_*`). Mismo patrón aplica; lo añadimos en una iteración posterior si quieres.
+- Detección automática de campos por IA / OCR.
+- Multi-selección y operaciones en lote (alinear, distribuir).
+- Snap a grid o a otros campos.
 
