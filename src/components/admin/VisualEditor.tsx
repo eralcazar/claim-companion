@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { ChevronLeft, ChevronRight, Plus, Settings2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Settings2, Sparkles, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   getFormatoPublicUrl,
@@ -18,6 +18,21 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { PDFCanvasEditor } from "./PDFCanvasEditor";
 import { FieldSidebar } from "./FieldSidebar";
+import { ProposalsPanel } from "./ProposalsPanel";
+import { pdfjs } from "react-pdf";
+import "@/lib/pdfWorker";
+
+export interface ProposedField {
+  clave: string;
+  etiqueta: string;
+  tipo: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  page: number;
+  accepted?: boolean;
+}
 
 interface Props {
   formulario: Formulario;
@@ -36,6 +51,10 @@ export function VisualEditor({ formulario }: Props) {
   const [zoom, setZoom] = useState(1);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const [proposals, setProposals] = useState<ProposedField[]>([]);
+  const [selectedProposalKey, setSelectedProposalKey] = useState<string | null>(null);
+  const [detecting, setDetecting] = useState(false);
+  const [savingProposals, setSavingProposals] = useState(false);
 
   // Local in-flight overrides for live drag without waiting for server.
   const [overrides, setOverrides] = useState<Record<string, Partial<Campo>>>({});
@@ -150,6 +169,103 @@ export function VisualEditor({ formulario }: Props) {
     setSelectedId(null);
   };
 
+  const handleDetect = async () => {
+    setDetecting(true);
+    try {
+      // Render current page to PNG via pdfjs
+      const loadingTask = pdfjs.getDocument(url);
+      const pdf = await loadingTask.promise;
+      const pdfPage = await pdf.getPage(page);
+      const viewport = pdfPage.getViewport({ scale: 2 });
+      const canvas = document.createElement("canvas");
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("No se pudo crear canvas");
+      await pdfPage.render({ canvasContext: ctx, viewport, canvas } as any).promise;
+      const image_base64 = canvas.toDataURL("image/png");
+
+      const { data, error } = await supabase.functions.invoke("detect-form-fields", {
+        body: {
+          image_base64,
+          page_number: page,
+          formulario_nombre: formulario.nombre_display ?? formulario.nombre,
+        },
+      });
+      if (error) throw error;
+      const raw = (data as any)?.propuestas ?? [];
+      // Filter duplicates against existing campos in this page
+      const existingKeys = new Set(camposEnPagina.map((c) => c.clave));
+      const cleaned: ProposedField[] = raw
+        .filter((p: any) => !existingKeys.has(p.clave))
+        .map((p: any) => ({ ...p, page, accepted: true }));
+
+      // Avoid clave collisions with previous proposals
+      setProposals((prev) => {
+        const others = prev.filter((p) => p.page !== page);
+        return [...others, ...cleaned];
+      });
+      setSelectedProposalKey(null);
+      if (cleaned.length === 0) {
+        toast.info("No se detectaron campos nuevos en esta página.");
+      } else {
+        toast.success(`${cleaned.length} propuestas detectadas.`);
+      }
+    } catch (e: any) {
+      toast.error(e?.message ?? "Error al detectar campos");
+    } finally {
+      setDetecting(false);
+    }
+  };
+
+  const updateProposal = (key: string, patch: Partial<ProposedField>) => {
+    setProposals((prev) => prev.map((p) => (p.clave === key ? { ...p, ...patch } : p)));
+    if (patch.clave && patch.clave !== key && selectedProposalKey === key) {
+      setSelectedProposalKey(patch.clave);
+    }
+  };
+
+  const acceptAllProposals = async () => {
+    const accepted = proposals.filter((p) => p.accepted !== false);
+    if (accepted.length === 0) return;
+    setSavingProposals(true);
+    try {
+      const baseOrden = campos.length;
+      const rows = accepted.map((p, i) => ({
+        formulario_id: formulario.id,
+        clave: p.clave,
+        etiqueta: p.etiqueta || p.clave,
+        tipo: p.tipo || "texto",
+        origen: "auto_ia",
+        campo_pagina: p.page,
+        campo_x: round(p.x),
+        campo_y: round(p.y),
+        campo_ancho: round(p.w),
+        campo_alto: round(p.h),
+        orden: baseOrden + i + 1,
+        requerido: false,
+      }));
+      const { error } = await supabase.from("campos").insert(rows as any);
+      if (error) throw error;
+      qc.invalidateQueries({ queryKey: ["campos", formulario.id] });
+      toast.success(`${rows.length} campos guardados.`);
+      setProposals((prev) => prev.filter((p) => p.page !== page || p.accepted === false));
+      setSelectedProposalKey(null);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Error al guardar campos");
+    } finally {
+      setSavingProposals(false);
+    }
+  };
+
+  const discardAllProposals = () => {
+    setProposals((prev) => prev.filter((p) => p.page !== page));
+    setSelectedProposalKey(null);
+  };
+
+  const proposalsEnPagina = proposals.filter((p) => p.page === page);
+  const showProposalsPanel = proposalsEnPagina.length > 0;
+
   const sidebar = (
     <FieldSidebar
       campo={selected}
@@ -160,6 +276,20 @@ export function VisualEditor({ formulario }: Props) {
       onDelete={handleDelete}
       onDuplicate={handleDuplicate}
     />
+  );
+
+  const rightPanel = showProposalsPanel ? (
+    <ProposalsPanel
+      proposals={proposalsEnPagina}
+      selectedKey={selectedProposalKey}
+      saving={savingProposals}
+      onSelect={setSelectedProposalKey}
+      onUpdate={updateProposal}
+      onAcceptAll={acceptAllProposals}
+      onDiscardAll={discardAllProposals}
+    />
+  ) : (
+    sidebar
   );
 
   return (
@@ -208,6 +338,20 @@ export function VisualEditor({ formulario }: Props) {
           <Plus className="h-4 w-4" />
           {creating ? "Cancelar" : "Nuevo campo"}
         </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleDetect}
+          disabled={detecting}
+          className="border-warning text-warning hover:bg-warning/10 hover:text-warning"
+        >
+          {detecting ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Sparkles className="h-4 w-4" />
+          )}
+          {detecting ? "Detectando..." : "Detectar campos"}
+        </Button>
         <Badge variant="outline" className="ml-auto text-xs">
           {camposEnPagina.length} en esta página
         </Badge>
@@ -220,7 +364,7 @@ export function VisualEditor({ formulario }: Props) {
             </Button>
           </SheetTrigger>
           <SheetContent side="bottom" className="max-h-[80vh] overflow-y-auto">
-            <div className="pt-4">{sidebar}</div>
+            <div className="pt-4">{rightPanel}</div>
           </SheetContent>
         </Sheet>
       </Card>
@@ -241,13 +385,20 @@ export function VisualEditor({ formulario }: Props) {
               onCommitCampo={handleCommit}
               onCreate={handleCreate}
               onLoadSuccess={setNumPages}
+              proposals={proposals}
+              selectedProposalKey={selectedProposalKey}
+              onSelectProposal={setSelectedProposalKey}
             />
           </div>
         </Card>
 
         {/* Desktop sidebar */}
-        <div className="hidden lg:block">{sidebar}</div>
+        <div className="hidden lg:block">{rightPanel}</div>
       </div>
     </div>
   );
+}
+
+function round(v: number) {
+  return Math.round(v * 100) / 100;
 }
