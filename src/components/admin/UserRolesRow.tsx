@@ -5,12 +5,24 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { ALL_ROLES, type AppRoleLite } from "@/lib/features";
 import { useQueryClient } from "@tanstack/react-query";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface UserWithRoles {
   user_id: string;
   full_name: string;
   email: string | null;
   roles: AppRoleLite[];
+}
+
+interface BrokerOption {
+  user_id: string;
+  full_name: string;
 }
 
 const ROLE_LABEL: Record<AppRoleLite, string> = {
@@ -20,10 +32,20 @@ const ROLE_LABEL: Record<AppRoleLite, string> = {
   medico: "Médico",
 };
 
-export function UserRolesRow({ user }: { user: UserWithRoles }) {
+export function UserRolesRow({
+  user,
+  brokers,
+  assignedBrokerId,
+}: {
+  user: UserWithRoles;
+  brokers: BrokerOption[];
+  assignedBrokerId: string | null;
+}) {
   const qc = useQueryClient();
   const [pending, setPending] = useState<AppRoleLite | null>(null);
   const [localRoles, setLocalRoles] = useState<AppRoleLite[]>(user.roles);
+  const [assignedBroker, setAssignedBroker] = useState<string>(assignedBrokerId ?? "__none__");
+  const [savingBroker, setSavingBroker] = useState(false);
 
   const toggleRole = async (role: AppRoleLite, checked: boolean) => {
     setPending(role);
@@ -42,6 +64,12 @@ export function UserRolesRow({ user }: { user: UserWithRoles }) {
           .eq("role", role);
         if (error) throw error;
         setLocalRoles((r) => r.filter((x) => x !== role));
+        // If removing 'paciente' role, also clear broker assignment
+        if (role === "paciente") {
+          await supabase.from("broker_patients").delete().eq("patient_id", user.user_id);
+          setAssignedBroker("__none__");
+          qc.invalidateQueries({ queryKey: ["broker_assignments"] });
+        }
       }
       qc.invalidateQueries({ queryKey: ["users_with_roles"] });
       toast({ title: "Rol actualizado", description: `${ROLE_LABEL[role]} ${checked ? "asignado" : "removido"}` });
@@ -52,10 +80,65 @@ export function UserRolesRow({ user }: { user: UserWithRoles }) {
     }
   };
 
+  const isPatient = localRoles.includes("paciente");
+
+  const handleBrokerChange = async (val: string) => {
+    const newBrokerId = val === "__none__" ? null : val;
+    setSavingBroker(true);
+    try {
+      // Always remove existing assignment first (one broker per patient)
+      const { error: delErr } = await supabase
+        .from("broker_patients")
+        .delete()
+        .eq("patient_id", user.user_id);
+      if (delErr) throw delErr;
+
+      if (newBrokerId) {
+        const { error: insErr } = await supabase
+          .from("broker_patients")
+          .insert({ broker_id: newBrokerId, patient_id: user.user_id });
+        if (insErr) throw insErr;
+      }
+      setAssignedBroker(val);
+      qc.invalidateQueries({ queryKey: ["broker_assignments"] });
+      toast({
+        title: "Broker actualizado",
+        description: newBrokerId ? "Asignación guardada" : "Asignación eliminada",
+      });
+    } catch (e: any) {
+      toast({
+        title: "Error",
+        description: e.message ?? "No se pudo guardar la asignación",
+        variant: "destructive",
+      });
+    } finally {
+      setSavingBroker(false);
+    }
+  };
+
   return (
     <TableRow>
       <TableCell className="font-medium">{user.full_name || "(sin nombre)"}</TableCell>
       <TableCell className="text-muted-foreground">{user.email || "—"}</TableCell>
+      <TableCell>
+        {isPatient ? (
+          <Select value={assignedBroker} onValueChange={handleBrokerChange} disabled={savingBroker}>
+            <SelectTrigger className="h-8 text-xs min-w-[160px]">
+              <SelectValue placeholder="Sin broker" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none__">Sin broker</SelectItem>
+              {brokers.map((b) => (
+                <SelectItem key={b.user_id} value={b.user_id}>
+                  {b.full_name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        ) : (
+          <span className="text-xs text-muted-foreground">—</span>
+        )}
+      </TableCell>
       {ALL_ROLES.map((role) => (
         <TableCell key={role} className="text-center">
           <div className="flex flex-col items-center gap-1">
