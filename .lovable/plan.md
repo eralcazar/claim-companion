@@ -1,49 +1,71 @@
 
 
-## Diagnóstico
+## Objetivo
 
-El código **ya tiene** la columna "Broker asignado" en `UserManager.tsx` (línea 139) y la celda con el `Select` de brokers en `UserRolesRow.tsx` (líneas 123-141). Está renderizada y funcional.
+Permitir que el admin **cree usuarios manualmente** desde el grid (con email, contraseña inicial, nombre y roles) y **elimine usuarios** existentes. Hoy solo se pueden gestionar roles de usuarios que ya se registraron por sí mismos.
 
-El problema es **visibilidad**:
-- La tabla tiene 7 columnas: Usuario · Email · Broker asignado · Admin · Broker · Paciente · Médico
-- En tu viewport de 984px y con `overflow-x-auto`, las primeras 3 columnas quedan visibles solo si haces scroll horizontal o reduces ancho de las otras
-- En la sesión, lo que veo en pantalla es el final de la tabla (Médico, Paciente, Broker, Admin) y solo si haces scroll a la derecha ves Usuario/Email/Broker asignado, o al revés
+## Por qué necesita un edge function
 
-Además, hoy solo hay **1 usuario** en el sistema (tú: ERIK) y tiene rol `paciente`, así que la columna "Broker asignado" debería mostrar un `Select` con la opción "Sin broker" disponible. El único broker disponible para asignar serías tú mismo.
+Crear y borrar usuarios en `auth.users` requiere la **service role key** de Supabase, que nunca debe exponerse al navegador. Por eso la creación/eliminación se hace vía edge function, no con el cliente directamente.
 
-## Plan
+## Cambios
 
-### 1. Reordenar columnas para priorizar lo importante
+### 1. Edge function `admin-users` (nueva)
 
-Nuevo orden: **Usuario · Broker asignado · [Admin · Broker · Paciente · Médico] · Email**
+`supabase/functions/admin-users/index.ts` con dos acciones:
 
-Email pasa al final (información secundaria), y "Broker asignado" queda inmediatamente después del nombre del usuario, donde se ve sin scroll.
+- **`create`**: recibe `{ email, password, full_name, roles[] }`.
+  - Verifica que el caller sea admin (revisa JWT + `has_role(uid,'admin')`).
+  - Llama `supabase.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { full_name } })`.
+  - El trigger `handle_new_user` crea automáticamente `profiles` y rol `paciente`.
+  - Si `roles[]` incluye otros roles, los inserta en `user_roles`. Si NO incluye `paciente`, elimina el rol paciente por defecto.
+  - Devuelve el `user_id` creado.
 
-### 2. Hacer la columna "Broker asignado" más visible
+- **`delete`**: recibe `{ user_id }`.
+  - Verifica admin.
+  - Bloquea borrarse a sí mismo.
+  - Llama `supabase.auth.admin.deleteUser(user_id)`. Las tablas relacionadas (profiles, user_roles, broker_patients, etc.) se limpian por cascada o se borran en la propia función antes.
 
-- Ancho mínimo fijo `min-w-[180px]` en el header
-- Fondo sutil `bg-muted/30` en la celda para distinguirla visualmente
-- Header con texto destacado (negrita)
+Configurada con `verify_jwt = true` para que llegue el JWT del admin.
 
-### 3. Ajustar columnas de roles para que ocupen menos
+### 2. UI en `UserManager.tsx`
 
-- Cada switch column con `w-20` para que no consuman tanto ancho
-- Etiqueta más pequeña debajo del switch en mobile (ya está)
+**Botón "Nuevo usuario"** en la cabecera (junto a Descargar plantilla / Importar):
+- Abre un diálogo `CreateUserDialog` con campos:
+  - Nombre completo (requerido)
+  - Email (requerido, validación de formato)
+  - Contraseña inicial (requerida, mínimo 8 caracteres, con generador "🎲 Generar")
+  - Roles (checkboxes: Admin, Broker, Paciente, Médico — Paciente marcado por defecto)
+- Al guardar: invoca el edge function `admin-users` acción `create`. Toast de éxito y refresca la query `users_with_roles`.
+- Muestra la contraseña generada en pantalla con botón "Copiar" para que el admin pueda compartirla.
 
-### 4. Mensaje informativo cuando no hay otros brokers
+**Botón "Eliminar"** (icono papelera) al final de cada fila:
+- Confirmación con `AlertDialog`: "¿Eliminar a {nombre}? Esta acción no se puede deshacer."
+- Bloqueado para el propio usuario admin actual (oculto/deshabilitado en su fila).
+- Invoca edge function `admin-users` acción `delete`. Toast y refresh.
 
-Si el único broker disponible es el mismo usuario en la fila, mostrar un texto pequeño al lado del Select: "No puedes asignarte como broker de ti mismo" — y filtrar al usuario actual de la lista de brokers seleccionables.
+### 3. Archivos
 
-### 5. Indicador visual cuando ya tiene broker asignado
+Nuevos:
+- `supabase/functions/admin-users/index.ts`
+- `src/components/admin/CreateUserDialog.tsx`
 
-Badge verde pequeño al lado del Select cuando hay un broker asignado, para que quede obvio.
+Modificados:
+- `src/pages/admin/UserManager.tsx` — botón "Nuevo usuario" + columna acciones
+- `src/components/admin/UserRolesRow.tsx` — celda final con botón eliminar (con `AlertDialog`)
+- `supabase/config.toml` — registrar la función `admin-users` (verify_jwt = true por defecto)
 
-## Archivos a tocar
+### 4. Seguridad
 
-- `src/pages/admin/UserManager.tsx` — reordenar `<TableHead>` y mover Email al final
-- `src/components/admin/UserRolesRow.tsx` — reordenar celdas igual, agregar estilos de visibilidad, filtrar self-broker, badge visual
+- El edge function valida con `service_role` que el caller tenga rol admin antes de cualquier acción → evita escalada de privilegios.
+- No se expone la service key al cliente.
+- Bloqueo explícito de auto-eliminación.
+- Política RLS actual de `user_roles` y `broker_patients` ya permite a admins gestionar todo, no requiere migraciones.
 
 ## Resultado esperado
 
-En tu viewport de 984px verás sin scroll: **Usuario | Broker asignado (con Select destacado) | Admin | Broker | Paciente | Médico** y Email al final accesible con scroll. La columna "Broker asignado" será imposible de no ver.
+En `/admin/usuarios`:
+- Nuevo botón **"Nuevo usuario"** crea usuarios completos (auth + profile + roles) en un solo paso.
+- Nueva columna con icono de **papelera** elimina usuarios con confirmación.
+- El grid se refresca automáticamente tras cada acción.
 
