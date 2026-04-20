@@ -222,19 +222,20 @@ export function VisualEditor({ formulario }: Props) {
       const raw = (data as any)?.propuestas ?? [];
       const rawSections = (data as any)?.secciones ?? [];
       const descartadas = (data as any)?.descartadas ?? 0;
+      // No filtramos por clave existente: si ya existe, al aceptar se ACTUALIZAN
+      // sus coordenadas. Si no existe, se inserta.
       const existingKeys = new Set(camposEnPagina.map((c) => c.clave));
-      const cleaned: ProposedField[] = raw
-        .filter((p: any) => !existingKeys.has(p.clave))
-        .map((p: any) => ({
-          clave: p.clave,
-          etiqueta: p.etiqueta ?? p.clave,
-          tipo: p.tipo ?? "texto",
-          page,
-          campo: p.campo,
-          label: p.label ?? null,
-          seccion_sugerida: p.seccion_sugerida ?? null,
-          accepted: true,
-        }));
+      const cleaned: ProposedField[] = raw.map((p: any) => ({
+        clave: p.clave,
+        etiqueta: p.etiqueta ?? p.clave,
+        tipo: p.tipo ?? "texto",
+        page,
+        campo: p.campo,
+        label: p.label ?? null,
+        seccion_sugerida: p.seccion_sugerida ?? null,
+        accepted: true,
+      }));
+      const reusables = cleaned.filter((p) => existingKeys.has(p.clave)).length;
 
       setProposals((prev) => {
         const others = prev.filter((p) => p.page !== page);
@@ -260,8 +261,9 @@ export function VisualEditor({ formulario }: Props) {
         );
       } else {
         const extra = descartadas > 0 ? ` · ${descartadas} descartados` : "";
+        const reuseLabel = reusables > 0 ? ` (${reusables} actualizarán existentes)` : "";
         toast.success(
-          `${cleaned.length} campos · ${rawSections.length} secciones detectadas${extra}.`,
+          `${cleaned.length} campos${reuseLabel} · ${rawSections.length} secciones detectadas${extra}.`,
         );
       }
     } catch (e: any) {
@@ -324,7 +326,7 @@ export function VisualEditor({ formulario }: Props) {
         return match?.id ?? null;
       };
 
-      // 2) Insertar campos con coords campo + label + seccion_id
+      // 2) Separar propuestas: existentes (UPDATE coords) vs nuevas (INSERT)
       const baseOrden = campos.length;
       const sinCoords = accepted.filter(
         (p) => !p.campo || p.campo.w === 0 || p.campo.h === 0,
@@ -335,41 +337,88 @@ export function VisualEditor({ formulario }: Props) {
           sinCoords.map((p) => p.clave),
         );
       }
-      const rows = accepted.map((p, i) => ({
-        formulario_id: formulario.id,
-        clave: p.clave,
-        etiqueta: p.etiqueta || p.clave,
-        tipo: p.tipo || "texto",
-        origen: "auto_ia",
-        seccion_id: findSectionId(p.seccion_sugerida, p.page),
-        campo_pagina: p.page,
-        campo_x: round(p.campo.x),
-        campo_y: round(p.campo.y),
-        campo_ancho: round(p.campo.w),
-        campo_alto: round(p.campo.h),
-        label_pagina: p.label ? p.page : null,
-        label_x: p.label ? round(p.label.x) : null,
-        label_y: p.label ? round(p.label.y) : null,
-        label_ancho: p.label ? round(p.label.w) : null,
-        label_alto: p.label ? round(p.label.h) : null,
-        orden: baseOrden + i + 1,
-        requerido: false,
-      }));
-      const { data: inserted, error } = await supabase
-        .from("campos")
-        .insert(rows as any)
-        .select("id, clave, etiqueta, tipo");
-      if (error) throw error;
+      const camposByClave = new Map(serverCampos.map((c) => [c.clave, c]));
+      const existingMatches = accepted.filter((p) => camposByClave.has(p.clave));
+      const newProposals = accepted.filter((p) => !camposByClave.has(p.clave));
+
+      // 2a) UPDATE coordenadas/sección en campos existentes
+      let updatedRows: { id: string; clave: string; etiqueta: string | null; tipo: string }[] = [];
+      if (existingMatches.length > 0) {
+        const updates = await Promise.all(
+          existingMatches.map(async (p) => {
+            const existing = camposByClave.get(p.clave)!;
+            const seccionId = findSectionId(p.seccion_sugerida, p.page) ?? existing.seccion_id;
+            const patch: any = {
+              campo_pagina: p.page,
+              campo_x: round(p.campo.x),
+              campo_y: round(p.campo.y),
+              campo_ancho: round(p.campo.w),
+              campo_alto: round(p.campo.h),
+              label_pagina: p.label ? p.page : null,
+              label_x: p.label ? round(p.label.x) : null,
+              label_y: p.label ? round(p.label.y) : null,
+              label_ancho: p.label ? round(p.label.w) : null,
+              label_alto: p.label ? round(p.label.h) : null,
+              seccion_id: seccionId,
+            };
+            const { data, error: errUpd } = await supabase
+              .from("campos")
+              .update(patch)
+              .eq("id", existing.id)
+              .select("id, clave, etiqueta, tipo")
+              .single();
+            if (errUpd) throw errUpd;
+            return data as any;
+          }),
+        );
+        updatedRows = updates;
+      }
+
+      // 2b) INSERT propuestas nuevas
+      let inserted: { id: string; clave: string; etiqueta: string | null; tipo: string }[] = [];
+      if (newProposals.length > 0) {
+        const rows = newProposals.map((p, i) => ({
+          formulario_id: formulario.id,
+          clave: p.clave,
+          etiqueta: p.etiqueta || p.clave,
+          tipo: p.tipo || "texto",
+          origen: "auto_ia",
+          seccion_id: findSectionId(p.seccion_sugerida, p.page),
+          campo_pagina: p.page,
+          campo_x: round(p.campo.x),
+          campo_y: round(p.campo.y),
+          campo_ancho: round(p.campo.w),
+          campo_alto: round(p.campo.h),
+          label_pagina: p.label ? p.page : null,
+          label_x: p.label ? round(p.label.x) : null,
+          label_y: p.label ? round(p.label.y) : null,
+          label_ancho: p.label ? round(p.label.w) : null,
+          label_alto: p.label ? round(p.label.h) : null,
+          orden: baseOrden + i + 1,
+          requerido: false,
+        }));
+        const { data: ins, error } = await supabase
+          .from("campos")
+          .insert(rows as any)
+          .select("id, clave, etiqueta, tipo");
+        if (error) throw error;
+        inserted = (ins ?? []) as any;
+      }
+
       qc.invalidateQueries({ queryKey: ["campos", formulario.id] });
       qc.invalidateQueries({ queryKey: ["secciones", formulario.id] });
-      toast.success(
-        `${rows.length} campos · ${createdSections.length} secciones guardadas.`,
-      );
+
+      const parts: string[] = [];
+      if (inserted.length > 0) parts.push(`${inserted.length} nuevos`);
+      if (updatedRows.length > 0) parts.push(`${updatedRows.length} actualizados`);
+      if (createdSections.length > 0) parts.push(`${createdSections.length} secciones`);
+      toast.success(parts.length > 0 ? parts.join(" + ") : "Sin cambios.");
+
       setProposals((prev) => prev.filter((p) => p.page !== page || p.accepted === false));
       setProposedSections((prev) => prev.filter((s) => s.pagina !== page));
       setSelectedProposalKey(null);
-      // Trigger second AI pass: suggest mappings for newly inserted fields.
-      if (inserted && inserted.length > 0) {
+      // Trigger second AI pass solo para campos nuevos (los existentes ya tienen mapeo).
+      if (inserted.length > 0) {
         await requestMappingSuggestions(inserted as any);
       }
     } catch (e: any) {
