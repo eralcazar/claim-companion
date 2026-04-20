@@ -224,7 +224,9 @@ export function VisualEditor({ formulario }: Props) {
       const descartadas = (data as any)?.descartadas ?? 0;
       // No filtramos por clave existente: si ya existe, al aceptar se ACTUALIZAN
       // sus coordenadas. Si no existe, se inserta.
-      const existingKeys = new Set(camposEnPagina.map((c) => c.clave));
+      const existingKeysNorm = new Set(
+        camposEnPagina.map((c) => normalizeClave(c.clave)),
+      );
       const cleaned: ProposedField[] = raw.map((p: any) => ({
         clave: p.clave,
         etiqueta: p.etiqueta ?? p.clave,
@@ -235,7 +237,9 @@ export function VisualEditor({ formulario }: Props) {
         seccion_sugerida: p.seccion_sugerida ?? null,
         accepted: true,
       }));
-      const reusables = cleaned.filter((p) => existingKeys.has(p.clave)).length;
+      const reusables = cleaned.filter((p) =>
+        existingKeysNorm.has(normalizeClave(p.clave)),
+      ).length;
 
       setProposals((prev) => {
         const others = prev.filter((p) => p.page !== page);
@@ -337,16 +341,33 @@ export function VisualEditor({ formulario }: Props) {
           sinCoords.map((p) => p.clave),
         );
       }
-      const camposByClave = new Map(serverCampos.map((c) => [c.clave, c]));
-      const existingMatches = accepted.filter((p) => camposByClave.has(p.clave));
-      const newProposals = accepted.filter((p) => !camposByClave.has(p.clave));
+      // Match por clave normalizada (case-insensitive, separadores unificados)
+      // para evitar duplicados cuando la IA devuelve MAYÚSCULAS y el CSV usa
+      // minúsculas u otros separadores.
+      const camposByClaveNorm = new Map(
+        serverCampos.map((c) => [normalizeClave(c.clave), c]),
+      );
+      const seenNorm = new Set<string>();
+      const existingMatches: typeof accepted = [];
+      const newProposals: typeof accepted = [];
+      let collisions = 0;
+      for (const p of accepted) {
+        const norm = normalizeClave(p.clave);
+        if (seenNorm.has(norm)) {
+          collisions += 1;
+          continue;
+        }
+        seenNorm.add(norm);
+        if (camposByClaveNorm.has(norm)) existingMatches.push(p);
+        else newProposals.push(p);
+      }
 
       // 2a) UPDATE coordenadas/sección en campos existentes
       let updatedRows: { id: string; clave: string; etiqueta: string | null; tipo: string }[] = [];
       if (existingMatches.length > 0) {
         const updates = await Promise.all(
           existingMatches.map(async (p) => {
-            const existing = camposByClave.get(p.clave)!;
+            const existing = camposByClaveNorm.get(normalizeClave(p.clave))!;
             const seccionId = findSectionId(p.seccion_sugerida, p.page) ?? existing.seccion_id;
             const patch: any = {
               campo_pagina: p.page,
@@ -412,7 +433,10 @@ export function VisualEditor({ formulario }: Props) {
       if (inserted.length > 0) parts.push(`${inserted.length} nuevos`);
       if (updatedRows.length > 0) parts.push(`${updatedRows.length} actualizados`);
       if (createdSections.length > 0) parts.push(`${createdSections.length} secciones`);
-      toast.success(parts.length > 0 ? parts.join(" + ") : "Sin cambios.");
+      const collisionsMsg = collisions > 0 ? ` · ${collisions} duplicados omitidos` : "";
+      toast.success(
+        (parts.length > 0 ? parts.join(" + ") : "Sin cambios.") + collisionsMsg,
+      );
 
       setProposals((prev) => prev.filter((p) => p.page !== page || p.accepted === false));
       setProposedSections((prev) => prev.filter((s) => s.pagina !== page));
@@ -681,4 +705,20 @@ export function VisualEditor({ formulario }: Props) {
 
 function round(v: number) {
   return Math.round(v * 100) / 100;
+}
+
+/**
+ * Normaliza una clave para comparar campos:
+ * - trim
+ * - mayúsculas
+ * - unifica separadores (espacios, guiones, puntos) a "_"
+ * - colapsa "_" repetidos
+ */
+function normalizeClave(clave: string | null | undefined): string {
+  if (!clave) return "";
+  return String(clave)
+    .trim()
+    .toUpperCase()
+    .replace(/[\s\-.]+/g, "_")
+    .replace(/_+/g, "_");
 }
