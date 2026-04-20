@@ -304,10 +304,13 @@ export default function Claims() {
       </div>
 
       <Tabs defaultValue="claims" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="claims">Reclamos {claims?.length ? `(${claims.length})` : ""}</TabsTrigger>
           <TabsTrigger value="drafts">Borradores {drafts.length ? `(${drafts.length})` : ""}</TabsTrigger>
           <TabsTrigger value="submitted">Enviados {submitted.length ? `(${submitted.length})` : ""}</TabsTrigger>
+          <TabsTrigger value="errors">
+            Errores {errored.length ? `(${errored.length})` : ""}
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="claims" className="space-y-3 mt-4">
