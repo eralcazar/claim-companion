@@ -214,7 +214,7 @@ export function FieldsTable({ formularioId, secciones }: Props) {
             )}
             {filtered.map((c, idx) => {
               const isDirty = dirty.has(c.id);
-              const isMapped = !!(c.mapeo_perfil || c.mapeo_poliza || c.mapeo_siniestro);
+              const isMapped = !!(c.mapeo_perfil || c.mapeo_poliza || c.mapeo_siniestro || c.mapeo_medico);
               return (
                 <TableRow key={c.id} className={cn(isDirty && "bg-warning/5")}>
                   <TableCell className="text-xs text-muted-foreground">
