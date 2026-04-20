@@ -234,8 +234,30 @@ export function FieldsTable({ formularioId, secciones }: Props) {
               ))}
             </SelectContent>
           </Select>
+          <Select value={filterPagina} onValueChange={setFilterPagina}>
+            <SelectTrigger className="sm:w-36">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL_PAGES}>Todas las páginas</SelectItem>
+              {paginasDetectadas.map((p) => (
+                <SelectItem key={p} value={String(p)}>Página {p}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <div className="flex gap-2">
+          {selected.size > 0 && (
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => setBulkConfirm(true)}
+              disabled={bulkRemove.isPending}
+            >
+              <Trash2 className="h-4 w-4" />
+              Eliminar ({selected.size})
+            </Button>
+          )}
           <Button variant="outline" size="sm" onClick={addNew}>
             <Plus className="h-4 w-4" />
             Nuevo campo
