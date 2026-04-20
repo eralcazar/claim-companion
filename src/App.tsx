@@ -20,6 +20,7 @@ import BrokerPanel from "@/pages/BrokerPanel";
 import DoctorPanel from "@/pages/DoctorPanel";
 import AdminPanel from "@/pages/AdminPanel";
 import PipelineStatus from "@/pages/admin/PipelineStatus";
+import FormatManager from "@/pages/admin/FormatManager";
 import Formats from "@/pages/Formats";
 import NotFound from "@/pages/NotFound";
 
@@ -49,6 +50,7 @@ const App = () => (
               <Route path="/medico" element={<DoctorPanel />} />
               <Route path="/admin" element={<AdminPanel />} />
               <Route path="/admin/pipeline-status" element={<PipelineStatus />} />
+              <Route path="/admin/gestor-archivos" element={<FormatManager />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
