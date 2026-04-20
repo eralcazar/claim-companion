@@ -1,100 +1,50 @@
 
-Diagnóstico claro: sí se detectan coordenadas, pero hoy no siempre se registran en los campos que ya existen.
+Objetivo: hacer que las coordenadas sí se reflejen claramente en el tab Campos después de la detección automática.
 
-## Qué está pasando
+Diagnóstico:
+- El tab Campos ya tiene columnas `X% / Y% / W% / H%` en `FieldsTable.tsx`, así que no falta la UI base.
+- En la sesión se ve que esas celdas sí existen, pero en este viewport quedan muy a la derecha por el ancho de la tabla.
+- Además, en `VisualEditor.tsx` la actualización de campos existentes se hace por `clave` exacta. La detección IA genera claves en MAYÚSCULAS, mientras que muchos CSV/manuales pueden tener claves en minúsculas o con formato distinto. En ese caso no actualiza el campo existente: inserta otro nuevo.
 
-Revisé el flujo completo y el problema principal está en `VisualEditor.tsx`:
+Plan
 
-1. En `handleDetect`, las propuestas nuevas se filtran así:
-   - toma las claves ya existentes en `camposEnPagina`
-   - elimina cualquier propuesta cuya `clave` ya exista
+1. Corregir el match de campos en `src/components/admin/VisualEditor.tsx`
+- Crear un normalizador de clave para comparar ignorando mayúsculas/minúsculas y variaciones simples de formato.
+- Usar ese normalizador en:
+  - el conteo de reutilizables en `handleDetect`
+  - la separación `existingMatches` vs `newProposals` en `acceptAllProposals`
+- Mantener la `clave` original del campo existente; solo actualizar coordenadas y sección.
 
-2. Luego, en `acceptAllProposals`, el guardado hace solo:
-   - `insert` de nuevos registros en `campos`
-   - nunca hace `update` sobre campos existentes
+2. Evitar duplicados “invisibles”
+- Si una propuesta coincide por clave normalizada con un campo existente, hacer `update`, no `insert`.
+- Si varias propuestas colisionan con la misma clave normalizada, aceptar solo una y reportarlo en el toast para evitar resultados confusos.
 
-## Consecuencia real
+3. Hacer visibles las coordenadas en el tab Campos
+- Reubicar las columnas de coordenadas para que no queden tan lejos a la derecha, o agruparlas en una columna compacta “Coords”.
+- Añadir una señal visual por fila:
+  - `Con coords` / `Sin coords`
+  - o un resumen tipo `X: 25.5 · Y: 2.7 · W: 78.9 · H: 17.2`
+- Mantener edición manual de coordenadas.
 
-Si tú ya tenías campos creados antes:
-- por CSV
-- manualmente
-- por una detección previa
+4. Mejorar feedback al aceptar propuestas
+- Toast más claro:
+  - `8 actualizados, 3 nuevos`
+  - y si hubo coincidencias por normalización, indicarlo.
+- Si se insertan nuevos por no encontrar match, dejarlo explícito para que no parezca que “no se guardó”.
 
-y vuelves a correr detección automática, la IA puede detectar bien las coordenadas, pero esas propuestas se descartan antes de aceptar porque la `clave` ya existe.
+5. Verificación
+- Detectar sobre un formulario con campos importados por CSV en minúsculas.
+- Aceptar propuestas.
+- Confirmar que:
+  - no se crean duplicados por diferencia de mayúsculas
+  - el tab Campos muestra coordenadas visibles sin depender tanto del scroll horizontal
+  - los campos previamente existentes ahora reciben `campo_x`, `campo_y`, `campo_ancho`, `campo_alto`
 
-Entonces:
-- ves cajas/propuestas durante la detección
-- pero al aceptar no se actualizan los campos existentes
-- por eso en el tab **Campos** sigues viendo `X%, Y%, W%, H%` vacíos
-
-## Evidencia en el código
-
-- `VisualEditor.tsx`:
-  - `existingKeys = new Set(camposEnPagina.map((c) => c.clave))`
-  - luego `raw.filter((p) => !existingKeys.has(p.clave))`
-- `acceptAllProposals()`:
-  - construye `rows`
-  - hace `.insert(rows)`
-  - no busca coincidencias para actualizar coordenadas
-
-## Plan de corrección
-
-### 1. Cambiar la lógica de aceptación en `VisualEditor.tsx`
-Separar propuestas aceptadas en dos grupos:
-- `existingMatches`: ya existe un campo con la misma `clave`
-- `newRows`: no existe y sí debe insertarse
-
-### 2. Actualizar campos existentes
-Para cada match existente, guardar:
-- `campo_pagina`
-- `campo_x`
-- `campo_y`
-- `campo_ancho`
-- `campo_alto`
-- `label_pagina`
-- `label_x`
-- `label_y`
-- `label_ancho`
-- `label_alto`
-- `seccion_id` si aplica
-
-Así la detección automática podrá “rellenar coordenadas” sobre campos ya creados.
-
-### 3. Mantener insert para los que no existan
-Las propuestas realmente nuevas seguirán entrando como `insert`, igual que hoy.
-
-### 4. Mejorar feedback visual
-Actualizar el toast final para algo como:
-- `12 campos actualizados`
-- `8 nuevos + 12 actualizados`
-- `0 nuevos + 15 actualizados`
-
-Eso hará evidente que la detección no solo crea campos, también puede posicionarlos.
-
-### 5. Ajuste opcional recomendado
-Agregar una opción en el panel de propuestas:
-- `Actualizar campos existentes por clave`
-
-Esto evita dudas y deja explícito el comportamiento.
-
-## Archivos a tocar
-
+Archivos a tocar
 - `src/components/admin/VisualEditor.tsx`
-  - cambiar filtro de propuestas
-  - hacer `update` + `insert`
-  - mejorar resumen final
+- `src/components/admin/FieldsTable.tsx`
 
-## Nota importante
-
-Hay dos warnings secundarios en consola que no explican este problema de coordenadas:
-- `Badge` no usa `forwardRef`
-- `DialogContent` sin `DialogTitle/Description` en algún diálogo
-
-Conviene corregirlos después, pero no son la causa de que no veas las coordenadas registradas.
-
-## Resultado esperado después del cambio
-
-Cuando ejecutes detección automática y aceptes:
-- si el campo ya existía, se le escribirán sus coordenadas
-- si no existía, se creará
-- el tab **Campos** mostrará `X%, Y%, W%, H%` llenos correctamente
+Detalles técnicos
+- El cambio principal es de lógica de matching, no de base de datos.
+- No se requieren migraciones.
+- La comparación debería normalizar al menos: `trim + uppercase`; idealmente también unificar separadores (`espacios/guiones` a `_`) para que la IA y el CSV hablen “el mismo idioma”.
