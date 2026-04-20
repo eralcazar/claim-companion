@@ -476,7 +476,22 @@ export function VisualEditor({ formulario }: Props) {
     />
   );
 
-  const rightPanel = showProposalsPanel ? (
+  const rightPanel = suggestions.length > 0 || suggesting ? (
+    suggesting && suggestions.length === 0 ? (
+      <Card className="p-6 flex items-center gap-3 text-sm text-muted-foreground">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        Generando sugerencias de mapeo…
+      </Card>
+    ) : (
+      <MappingSuggestionsPanel
+        rows={suggestions}
+        saving={applyingSuggestions}
+        onUpdate={updateSuggestion}
+        onAcceptAll={applyAllSuggestions}
+        onDiscardAll={discardAllSuggestions}
+      />
+    )
+  ) : showProposalsPanel ? (
     <ProposalsPanel
       proposals={proposalsEnPagina}
       sections={proposedSections.filter((s) => s.pagina === page)}
