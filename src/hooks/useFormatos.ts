@@ -146,7 +146,7 @@ export function useMapeos() {
         perfiles: perfiles.data as Mapeo[],
         polizas: polizas.data as Mapeo[],
         siniestros: siniestros.data as Mapeo[],
-        medicos: (medicos.data ?? []) as Mapeo[],
+        medicos: ((medicos.data ?? []) as unknown) as Mapeo[],
       };
     },
   });
