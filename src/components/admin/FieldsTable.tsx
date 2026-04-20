@@ -139,12 +139,6 @@ export function FieldsTable({ formularioId, secciones }: Props) {
     });
   }, [draft, filterSeccion, filterPagina, search]);
 
-  const seccionesPorId = useMemo(() => {
-    const map = new Map<string, Seccion>();
-    secciones.forEach((s) => map.set(s.id, s));
-    return map;
-  }, [secciones]);
-
   const allFilteredSelected =
     filtered.length > 0 && filtered.every((c) => selected.has(c.id));
 
