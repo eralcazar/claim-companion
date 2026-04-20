@@ -430,8 +430,55 @@ export default function Claims() {
                       <Button variant="outline" size="sm" onClick={() => handleDownloadSubmittedPDF(s)}>
                         <Download className="h-3 w-3 mr-1" /> Descargar PDF
                       </Button>
+                      <Button variant="outline" size="sm" onClick={() => handleRegenerate(s)}>
+                        <RefreshCw className="h-3 w-3 mr-1" /> Regenerar
+                      </Button>
                     </div>
                   )}
+                </CardContent>
+              </Card>
+            ))
+          )}
+        </TabsContent>
+
+        <TabsContent value="errors" className="space-y-3 mt-4">
+          {loadingForms ? (
+            <div className="flex justify-center p-8"><div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" /></div>
+          ) : errored.length === 0 ? (
+            <Card><CardContent className="p-8 text-center text-muted-foreground text-sm">No hay trámites con error</CardContent></Card>
+          ) : (
+            errored.map((e: any) => (
+              <Card key={e.id} className="border-destructive/50">
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <AlertTriangle className="h-4 w-4 text-destructive" />
+                      {e.insurer} · Formato {e.form_code}
+                    </CardTitle>
+                    <Badge variant="destructive">Error</Badge>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">{tramiteLabel(e.tramite_type)}</p>
+                  {e.error_message && (
+                    <p className="text-xs text-destructive mt-2 p-2 rounded-md bg-destructive/10">
+                      {e.error_message}
+                    </p>
+                  )}
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Último intento {format(new Date(e.updated_at), "PPp", { locale: es })}
+                  </p>
+                  <div className="flex gap-2 mt-3 flex-wrap">
+                    <Button variant="outline" size="sm" onClick={() => handleRegenerate(e)}>
+                      <RefreshCw className="h-3 w-3 mr-1" /> Reintentar
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => navigate(`/reclamos/nuevo?draft=${e.id}`)}>
+                      <Pencil className="h-3 w-3 mr-1" /> Editar datos
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => handleDeleteDraft(e.id)}>
+                      <Trash2 className="h-3 w-3 mr-1" /> Eliminar
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             ))
