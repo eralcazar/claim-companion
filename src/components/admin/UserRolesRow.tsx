@@ -177,10 +177,12 @@ export function UserRolesRow({
               </SelectContent>
             </Select>
             {assignedBroker !== "__none__" && (
-              <Badge variant="secondary" className="gap-1 bg-success/15 text-success border-success/20">
-                <CheckCircle2 className="h-3 w-3" />
-                Asignado
-              </Badge>
+              <span className="inline-flex">
+                <Badge variant="secondary" className="gap-1 bg-success/15 text-success border-success/20">
+                  <CheckCircle2 className="h-3 w-3" />
+                  Asignado
+                </Badge>
+              </span>
             )}
           </div>
         ) : (
