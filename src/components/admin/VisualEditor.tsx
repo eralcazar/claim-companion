@@ -14,6 +14,7 @@ import {
   type Campo,
   type Formulario,
 } from "@/hooks/useFormatos";
+import { useSecciones } from "@/hooks/useFormatos";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { PDFCanvasEditor } from "./PDFCanvasEditor";
@@ -22,16 +23,28 @@ import { ProposalsPanel } from "./ProposalsPanel";
 import { pdfjs } from "react-pdf";
 import "@/lib/pdfWorker";
 
-export interface ProposedField {
-  clave: string;
-  etiqueta: string;
-  tipo: string;
+export interface ProposedRect {
   x: number;
   y: number;
   w: number;
   h: number;
+}
+
+export interface ProposedField {
+  clave: string;
+  etiqueta: string;
+  tipo: string;
   page: number;
+  campo: ProposedRect;
+  label?: ProposedRect | null;
+  seccion_sugerida?: string | null;
   accepted?: boolean;
+}
+
+export interface ProposedSection {
+  nombre: string;
+  pagina: number;
+  orden: number;
 }
 
 interface Props {
@@ -40,6 +53,7 @@ interface Props {
 
 export function VisualEditor({ formulario }: Props) {
   const { data: serverCampos = [] } = useCampos(formulario.id);
+  const { data: secciones = [] } = useSecciones(formulario.id);
   const update = useUpdateCampoSilent(formulario.id);
   const remove = useDeleteCampo(formulario.id);
   const qc = useQueryClient();
@@ -52,6 +66,7 @@ export function VisualEditor({ formulario }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [proposals, setProposals] = useState<ProposedField[]>([]);
+  const [proposedSections, setProposedSections] = useState<ProposedSection[]>([]);
   const [selectedProposalKey, setSelectedProposalKey] = useState<string | null>(null);
   const [detecting, setDetecting] = useState(false);
   const [savingProposals, setSavingProposals] = useState(false);
@@ -199,22 +214,41 @@ export function VisualEditor({ formulario }: Props) {
       });
       if (error) throw error;
       const raw = (data as any)?.propuestas ?? [];
-      // Filter duplicates against existing campos in this page
+      const rawSections = (data as any)?.secciones ?? [];
       const existingKeys = new Set(camposEnPagina.map((c) => c.clave));
       const cleaned: ProposedField[] = raw
         .filter((p: any) => !existingKeys.has(p.clave))
-        .map((p: any) => ({ ...p, page, accepted: true }));
+        .map((p: any) => ({
+          clave: p.clave,
+          etiqueta: p.etiqueta ?? p.clave,
+          tipo: p.tipo ?? "texto",
+          page,
+          campo: p.campo,
+          label: p.label ?? null,
+          seccion_sugerida: p.seccion_sugerida ?? null,
+          accepted: true,
+        }));
 
-      // Avoid clave collisions with previous proposals
       setProposals((prev) => {
         const others = prev.filter((p) => p.page !== page);
         return [...others, ...cleaned];
+      });
+      setProposedSections((prev) => {
+        const others = prev.filter((s) => s.pagina !== page);
+        const fresh: ProposedSection[] = (rawSections as any[])
+          .filter((s) => s && typeof s.nombre === "string")
+          .map((s, i) => ({
+            nombre: String(s.nombre).trim(),
+            pagina: typeof s.pagina === "number" ? s.pagina : page,
+            orden: typeof s.orden === "number" ? s.orden : i,
+          }));
+        return [...others, ...fresh];
       });
       setSelectedProposalKey(null);
       if (cleaned.length === 0) {
         toast.info("No se detectaron campos nuevos en esta página.");
       } else {
-        toast.success(`${cleaned.length} propuestas detectadas.`);
+        toast.success(`${cleaned.length} campos · ${rawSections.length} secciones detectadas.`);
       }
     } catch (e: any) {
       toast.error(e?.message ?? "Error al detectar campos");
@@ -235,6 +269,48 @@ export function VisualEditor({ formulario }: Props) {
     if (accepted.length === 0) return;
     setSavingProposals(true);
     try {
+      // 1) Upsert nuevas secciones de las páginas que tengan propuestas aceptadas
+      const acceptedPages = new Set(accepted.map((p) => p.page));
+      const sectionsToCreate = proposedSections.filter((ps) => {
+        if (!acceptedPages.has(ps.pagina)) return false;
+        return !secciones.some(
+          (s) =>
+            s.pagina === ps.pagina &&
+            s.nombre.toLowerCase() === ps.nombre.toLowerCase(),
+        );
+      });
+
+      let createdSections: { id: string; nombre: string; pagina: number }[] = [];
+      if (sectionsToCreate.length > 0) {
+        const baseOrdenSec = secciones.length;
+        const rowsSec = sectionsToCreate.map((s, i) => ({
+          formulario_id: formulario.id,
+          nombre: s.nombre,
+          pagina: s.pagina,
+          orden: baseOrdenSec + i,
+        }));
+        const { data: insSec, error: errSec } = await supabase
+          .from("secciones")
+          .insert(rowsSec)
+          .select("id, nombre, pagina");
+        if (errSec) throw errSec;
+        createdSections = (insSec ?? []) as any;
+      }
+
+      const allSections = [
+        ...secciones.map((s) => ({ id: s.id, nombre: s.nombre, pagina: s.pagina })),
+        ...createdSections,
+      ];
+      const findSectionId = (name: string | null | undefined, pagina: number) => {
+        if (!name) return null;
+        const target = name.toLowerCase().trim();
+        const match = allSections.find(
+          (s) => s.pagina === pagina && s.nombre.toLowerCase().trim() === target,
+        );
+        return match?.id ?? null;
+      };
+
+      // 2) Insertar campos con coords campo + label + seccion_id
       const baseOrden = campos.length;
       const rows = accepted.map((p, i) => ({
         formulario_id: formulario.id,
@@ -242,19 +318,29 @@ export function VisualEditor({ formulario }: Props) {
         etiqueta: p.etiqueta || p.clave,
         tipo: p.tipo || "texto",
         origen: "auto_ia",
+        seccion_id: findSectionId(p.seccion_sugerida, p.page),
         campo_pagina: p.page,
-        campo_x: round(p.x),
-        campo_y: round(p.y),
-        campo_ancho: round(p.w),
-        campo_alto: round(p.h),
+        campo_x: round(p.campo.x),
+        campo_y: round(p.campo.y),
+        campo_ancho: round(p.campo.w),
+        campo_alto: round(p.campo.h),
+        label_pagina: p.label ? p.page : null,
+        label_x: p.label ? round(p.label.x) : null,
+        label_y: p.label ? round(p.label.y) : null,
+        label_ancho: p.label ? round(p.label.w) : null,
+        label_alto: p.label ? round(p.label.h) : null,
         orden: baseOrden + i + 1,
         requerido: false,
       }));
       const { error } = await supabase.from("campos").insert(rows as any);
       if (error) throw error;
       qc.invalidateQueries({ queryKey: ["campos", formulario.id] });
-      toast.success(`${rows.length} campos guardados.`);
+      qc.invalidateQueries({ queryKey: ["secciones", formulario.id] });
+      toast.success(
+        `${rows.length} campos · ${createdSections.length} secciones guardadas.`,
+      );
       setProposals((prev) => prev.filter((p) => p.page !== page || p.accepted === false));
+      setProposedSections((prev) => prev.filter((s) => s.pagina !== page));
       setSelectedProposalKey(null);
     } catch (e: any) {
       toast.error(e?.message ?? "Error al guardar campos");
@@ -265,6 +351,7 @@ export function VisualEditor({ formulario }: Props) {
 
   const discardAllProposals = () => {
     setProposals((prev) => prev.filter((p) => p.page !== page));
+    setProposedSections((prev) => prev.filter((s) => s.pagina !== page));
     setSelectedProposalKey(null);
   };
 
@@ -286,6 +373,7 @@ export function VisualEditor({ formulario }: Props) {
   const rightPanel = showProposalsPanel ? (
     <ProposalsPanel
       proposals={proposalsEnPagina}
+      sections={proposedSections.filter((s) => s.pagina === page)}
       selectedKey={selectedProposalKey}
       saving={savingProposals}
       onSelect={setSelectedProposalKey}
