@@ -367,7 +367,7 @@ export function VisualEditor({ formulario }: Props) {
       if (existingMatches.length > 0) {
         const updates = await Promise.all(
           existingMatches.map(async (p) => {
-            const existing = camposByClave.get(p.clave)!;
+            const existing = camposByClaveNorm.get(normalizeClave(p.clave))!;
             const seccionId = findSectionId(p.seccion_sugerida, p.page) ?? existing.seccion_id;
             const patch: any = {
               campo_pagina: p.page,
