@@ -137,6 +137,7 @@ function FormDetail({
           <TabsTrigger value="campos">Campos ({campos.length})</TabsTrigger>
           <TabsTrigger value="secciones">Secciones ({secciones.length})</TabsTrigger>
           <TabsTrigger value="visual">Editor visual</TabsTrigger>
+          <TabsTrigger value="archivos">Archivos</TabsTrigger>
           <TabsTrigger value="info">Info</TabsTrigger>
         </TabsList>
         <TabsContent value="campos" className="mt-4">
@@ -147,6 +148,9 @@ function FormDetail({
         </TabsContent>
         <TabsContent value="visual" className="mt-4">
           <VisualEditor formulario={formulario} />
+        </TabsContent>
+        <TabsContent value="archivos" className="mt-4">
+          <StorageManager />
         </TabsContent>
         <TabsContent value="info" className="mt-4">
           <InfoTab formulario={formulario} />
