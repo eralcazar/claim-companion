@@ -36,6 +36,8 @@ import {
   useCampos,
   useDeleteCampo,
   useUpsertCampos,
+  useBulkDeleteCampos,
+  useMapeos,
 } from "@/hooks/useFormatos";
 import { cn } from "@/lib/utils";
 
@@ -46,6 +48,8 @@ const TIPOS = [
 
 const ALL_SECTIONS = "__all__";
 const NO_SECTION = "__none__";
+const ALL_PAGES = "__all_pages__";
+const NO_SECTION_VALUE = "__none_section__";
 
 function blankCampo(formularioId: string, orden: number): Campo {
   return {
@@ -87,25 +91,42 @@ interface Props {
 
 export function FieldsTable({ formularioId, secciones }: Props) {
   const { data: campos = [], isLoading } = useCampos(formularioId);
+  const { data: mapeos } = useMapeos();
   const upsert = useUpsertCampos(formularioId);
   const remove = useDeleteCampo(formularioId);
+  const bulkRemove = useBulkDeleteCampos(formularioId);
 
   const [draft, setDraft] = useState<Campo[]>([]);
   const [dirty, setDirty] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
   const [filterSeccion, setFilterSeccion] = useState<string>(ALL_SECTIONS);
+  const [filterPagina, setFilterPagina] = useState<string>(ALL_PAGES);
   const [toDelete, setToDelete] = useState<Campo | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkConfirm, setBulkConfirm] = useState(false);
 
   useEffect(() => {
     setDraft(campos);
     setDirty(new Set());
+    setSelected(new Set());
   }, [campos]);
+
+  const paginasDetectadas = useMemo(() => {
+    const set = new Set<number>();
+    draft.forEach((c) => {
+      if (typeof c.campo_pagina === "number") set.add(c.campo_pagina);
+    });
+    return Array.from(set).sort((a, b) => a - b);
+  }, [draft]);
 
   const filtered = useMemo(() => {
     return draft.filter((c) => {
       if (filterSeccion !== ALL_SECTIONS) {
         if (filterSeccion === NO_SECTION && c.seccion_id) return false;
         if (filterSeccion !== NO_SECTION && c.seccion_id !== filterSeccion) return false;
+      }
+      if (filterPagina !== ALL_PAGES) {
+        if (Number(filterPagina) !== (c.campo_pagina ?? 1)) return false;
       }
       if (search.trim()) {
         const q = search.toLowerCase();
@@ -116,7 +137,49 @@ export function FieldsTable({ formularioId, secciones }: Props) {
       }
       return true;
     });
-  }, [draft, filterSeccion, search]);
+  }, [draft, filterSeccion, filterPagina, search]);
+
+  const allFilteredSelected =
+    filtered.length > 0 && filtered.every((c) => selected.has(c.id));
+
+  const toggleAll = (v: boolean) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (v) filtered.forEach((c) => next.add(c.id));
+      else filtered.forEach((c) => next.delete(c.id));
+      return next;
+    });
+  };
+
+  const toggleOne = (id: string, v: boolean) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (v) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  };
+
+  const getMapeoPreview = (c: Campo) => {
+    if (!mapeos) return null;
+    if (c.mapeo_perfil) {
+      const m = mapeos.perfiles.find((x) => x.id === c.mapeo_perfil);
+      return m ? { label: "Perfil", display: m.nombre_display, col: m.columna_origen } : null;
+    }
+    if (c.mapeo_poliza) {
+      const m = mapeos.polizas.find((x) => x.id === c.mapeo_poliza);
+      return m ? { label: "Póliza", display: m.nombre_display, col: m.columna_origen } : null;
+    }
+    if (c.mapeo_siniestro) {
+      const m = mapeos.siniestros.find((x) => x.id === c.mapeo_siniestro);
+      return m ? { label: "Siniestro", display: m.nombre_display, col: m.columna_origen } : null;
+    }
+    if (c.mapeo_medico) {
+      const m = mapeos.medicos.find((x) => x.id === c.mapeo_medico);
+      return m ? { label: "Médico", display: m.nombre_display, col: m.columna_origen } : null;
+    }
+    return null;
+  };
 
   const update = (id: string, patch: Partial<Campo>) => {
     setDraft((prev) => prev.map((c) => (c.id === id ? { ...c, ...patch } : c)));
@@ -165,8 +228,30 @@ export function FieldsTable({ formularioId, secciones }: Props) {
               ))}
             </SelectContent>
           </Select>
+          <Select value={filterPagina} onValueChange={setFilterPagina}>
+            <SelectTrigger className="sm:w-36">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL_PAGES}>Todas las páginas</SelectItem>
+              {paginasDetectadas.map((p) => (
+                <SelectItem key={p} value={String(p)}>Página {p}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <div className="flex gap-2">
+          {selected.size > 0 && (
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => setBulkConfirm(true)}
+              disabled={bulkRemove.isPending}
+            >
+              <Trash2 className="h-4 w-4" />
+              Eliminar ({selected.size})
+            </Button>
+          )}
           <Button variant="outline" size="sm" onClick={addNew}>
             <Plus className="h-4 w-4" />
             Nuevo campo
@@ -182,12 +267,21 @@ export function FieldsTable({ formularioId, secciones }: Props) {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-10">
+                <Checkbox
+                  checked={allFilteredSelected}
+                  onCheckedChange={(v) => toggleAll(!!v)}
+                  aria-label="Seleccionar todos"
+                />
+              </TableHead>
               <TableHead className="w-12">#</TableHead>
               <TableHead className="min-w-[140px]">Clave</TableHead>
               <TableHead className="min-w-[160px]">Etiqueta</TableHead>
               <TableHead className="min-w-[110px]">Tipo</TableHead>
-              <TableHead className="min-w-[180px]">Mapeo</TableHead>
               <TableHead className="w-16">Pág</TableHead>
+              <TableHead className="min-w-[160px]">Sección</TableHead>
+              <TableHead className="min-w-[180px]">Mapeo</TableHead>
+              <TableHead className="min-w-[180px]">Valor mapeado</TableHead>
               <TableHead className="w-20">X%</TableHead>
               <TableHead className="w-20">Y%</TableHead>
               <TableHead className="w-20">W%</TableHead>
@@ -200,14 +294,14 @@ export function FieldsTable({ formularioId, secciones }: Props) {
           <TableBody>
             {isLoading && (
               <TableRow>
-                <TableCell colSpan={13} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={15} className="text-center text-muted-foreground py-8">
                   Cargando…
                 </TableCell>
               </TableRow>
             )}
             {!isLoading && filtered.length === 0 && (
               <TableRow>
-                <TableCell colSpan={13} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={15} className="text-center text-muted-foreground py-8">
                   Sin campos. Agrega el primero con "Nuevo campo".
                 </TableCell>
               </TableRow>
@@ -215,8 +309,24 @@ export function FieldsTable({ formularioId, secciones }: Props) {
             {filtered.map((c, idx) => {
               const isDirty = dirty.has(c.id);
               const isMapped = !!(c.mapeo_perfil || c.mapeo_poliza || c.mapeo_siniestro || c.mapeo_medico);
+              const isSelected = selected.has(c.id);
+              const preview = getMapeoPreview(c);
+              const seccionesPagina = secciones.filter(
+                (s) => s.pagina === (c.campo_pagina ?? 1),
+              );
+              const seccionesOpts = seccionesPagina.length > 0 ? seccionesPagina : secciones;
               return (
-                <TableRow key={c.id} className={cn(isDirty && "bg-warning/5")}>
+                <TableRow
+                  key={c.id}
+                  className={cn(isDirty && "bg-warning/5", isSelected && "bg-primary/5")}
+                >
+                  <TableCell>
+                    <Checkbox
+                      checked={isSelected}
+                      onCheckedChange={(v) => toggleOne(c.id, !!v)}
+                      aria-label={`Seleccionar ${c.clave}`}
+                    />
+                  </TableCell>
                   <TableCell className="text-xs text-muted-foreground">
                     <div className="flex items-center gap-1">
                       {isDirty && <span className="h-1.5 w-1.5 rounded-full bg-warning" />}
@@ -252,6 +362,34 @@ export function FieldsTable({ formularioId, secciones }: Props) {
                     </Select>
                   </TableCell>
                   <TableCell>
+                    <Input
+                      type="number"
+                      value={numField(c.campo_pagina)}
+                      onChange={(e) => update(c.id, { campo_pagina: parseNum(e.target.value) })}
+                      className="h-8 text-xs"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Select
+                      value={c.seccion_id ?? NO_SECTION_VALUE}
+                      onValueChange={(v) =>
+                        update(c.id, { seccion_id: v === NO_SECTION_VALUE ? null : v })
+                      }
+                    >
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue placeholder="Sin sección" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={NO_SECTION_VALUE}>Sin sección</SelectItem>
+                        {seccionesOpts.map((s) => (
+                          <SelectItem key={s.id} value={s.id}>
+                            {s.nombre} {s.pagina ? `· p${s.pagina}` : ""}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
+                  <TableCell>
                     <MappingSelects
                       value={{
                         perfil: c.mapeo_perfil,
@@ -270,12 +408,21 @@ export function FieldsTable({ formularioId, secciones }: Props) {
                     />
                   </TableCell>
                   <TableCell>
-                    <Input
-                      type="number"
-                      value={numField(c.campo_pagina)}
-                      onChange={(e) => update(c.id, { campo_pagina: parseNum(e.target.value) })}
-                      className="h-8 text-xs"
-                    />
+                    {preview ? (
+                      <div className="flex flex-col gap-0.5 text-xs">
+                        <div className="flex items-center gap-1">
+                          <Badge variant="secondary" className="text-[10px]">
+                            {preview.label}
+                          </Badge>
+                          <span className="truncate">{preview.display}</span>
+                        </div>
+                        <span className="font-mono text-[10px] text-muted-foreground truncate">
+                          {preview.col}
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    )}
                   </TableCell>
                   <TableCell>
                     <Input
@@ -365,6 +512,38 @@ export function FieldsTable({ formularioId, secciones }: Props) {
                   }
                   setToDelete(null);
                 }
+              }}
+            >
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={bulkConfirm} onOpenChange={setBulkConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar {selected.size} campos?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción no se puede deshacer. Los campos seleccionados se eliminarán
+              de la base de datos.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                const ids = Array.from(selected);
+                const persistedIds = ids.filter((id) => campos.some((c) => c.id === id));
+                const localIds = new Set(ids.filter((id) => !persistedIds.includes(id)));
+                if (localIds.size > 0) {
+                  setDraft((prev) => prev.filter((c) => !localIds.has(c.id)));
+                }
+                if (persistedIds.length > 0) {
+                  bulkRemove.mutate(persistedIds);
+                }
+                setSelected(new Set());
+                setBulkConfirm(false);
               }}
             >
               Eliminar
