@@ -341,9 +341,26 @@ export function VisualEditor({ formulario }: Props) {
           sinCoords.map((p) => p.clave),
         );
       }
-      const camposByClave = new Map(serverCampos.map((c) => [c.clave, c]));
-      const existingMatches = accepted.filter((p) => camposByClave.has(p.clave));
-      const newProposals = accepted.filter((p) => !camposByClave.has(p.clave));
+      // Match por clave normalizada (case-insensitive, separadores unificados)
+      // para evitar duplicados cuando la IA devuelve MAYÚSCULAS y el CSV usa
+      // minúsculas u otros separadores.
+      const camposByClaveNorm = new Map(
+        serverCampos.map((c) => [normalizeClave(c.clave), c]),
+      );
+      const seenNorm = new Set<string>();
+      const existingMatches: typeof accepted = [];
+      const newProposals: typeof accepted = [];
+      let collisions = 0;
+      for (const p of accepted) {
+        const norm = normalizeClave(p.clave);
+        if (seenNorm.has(norm)) {
+          collisions += 1;
+          continue;
+        }
+        seenNorm.add(norm);
+        if (camposByClaveNorm.has(norm)) existingMatches.push(p);
+        else newProposals.push(p);
+      }
 
       // 2a) UPDATE coordenadas/sección en campos existentes
       let updatedRows: { id: string; clave: string; etiqueta: string | null; tipo: string }[] = [];
@@ -416,7 +433,10 @@ export function VisualEditor({ formulario }: Props) {
       if (inserted.length > 0) parts.push(`${inserted.length} nuevos`);
       if (updatedRows.length > 0) parts.push(`${updatedRows.length} actualizados`);
       if (createdSections.length > 0) parts.push(`${createdSections.length} secciones`);
-      toast.success(parts.length > 0 ? parts.join(" + ") : "Sin cambios.");
+      const collisionsMsg = collisions > 0 ? ` · ${collisions} duplicados omitidos` : "";
+      toast.success(
+        (parts.length > 0 ? parts.join(" + ") : "Sin cambios.") + collisionsMsg,
+      );
 
       setProposals((prev) => prev.filter((p) => p.page !== page || p.accepted === false));
       setProposedSections((prev) => prev.filter((s) => s.pagina !== page));
