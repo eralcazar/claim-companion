@@ -428,22 +428,60 @@ export function FieldsTable({ formularioId, secciones }: Props) {
                     </Select>
                   </TableCell>
                   <TableCell>
-                    <MappingSelects
-                      value={{
-                        perfil: c.mapeo_perfil,
-                        poliza: c.mapeo_poliza,
-                        siniestro: c.mapeo_siniestro,
-                        medico: c.mapeo_medico,
-                      }}
-                      onChange={(v) =>
-                        update(c.id, {
-                          mapeo_perfil: v.perfil,
-                          mapeo_poliza: v.poliza,
-                          mapeo_siniestro: v.siniestro,
-                          mapeo_medico: v.medico,
-                        })
+                    <Select
+                      value={getCatalogo(c) ?? NO_CATALOG}
+                      onValueChange={(v) =>
+                        setCatalogo(c.id, v === NO_CATALOG ? null : (v as CatalogoTipo))
                       }
-                    />
+                    >
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={NO_CATALOG}>Sin mapeo</SelectItem>
+                        <SelectItem value="perfil">Perfil</SelectItem>
+                        <SelectItem value="poliza">Póliza</SelectItem>
+                        <SelectItem value="siniestro">Siniestro</SelectItem>
+                        <SelectItem value="medico">Médico</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
+                  <TableCell>
+                    {(() => {
+                      const cat = getCatalogo(c);
+                      const opciones = opcionesCatalogo(cat);
+                      const currentId =
+                        cat === "perfil" ? c.mapeo_perfil :
+                        cat === "poliza" ? c.mapeo_poliza :
+                        cat === "siniestro" ? c.mapeo_siniestro :
+                        cat === "medico" ? c.mapeo_medico : null;
+                      return (
+                        <Select
+                          value={currentId && currentId !== "" ? currentId : NO_MAPPING}
+                          onValueChange={(v) =>
+                            cat && setCampoMapeo(c.id, cat, v === NO_MAPPING ? null : v)
+                          }
+                          disabled={!cat}
+                        >
+                          <SelectTrigger className="h-8 text-xs">
+                            <SelectValue placeholder={cat ? "Seleccionar campo…" : "Elige catálogo"} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value={NO_MAPPING}>—</SelectItem>
+                            {opciones.map((o) => (
+                              <SelectItem key={o.id} value={o.id}>
+                                <div className="flex flex-col">
+                                  <span>{o.nombre_display}</span>
+                                  <span className="font-mono text-[10px] text-muted-foreground">
+                                    {o.columna_origen}
+                                  </span>
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      );
+                    })()}
                   </TableCell>
                   <TableCell>
                     {preview ? (
