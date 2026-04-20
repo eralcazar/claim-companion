@@ -3,6 +3,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { BottomNav } from "@/components/BottomNav";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { ImpersonationBanner } from "@/components/ImpersonationBanner";
 
 export function AppLayout() {
   const isMobile = useIsMobile();
@@ -29,6 +30,8 @@ export function AppLayout() {
               </h1>
             </header>
           )}
+
+          <ImpersonationBanner />
 
           <main className={`flex-1 p-4 ${isMobile ? "pb-20" : ""}`}>
             <Outlet />
