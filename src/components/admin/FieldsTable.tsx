@@ -525,6 +525,38 @@ export function FieldsTable({ formularioId, secciones }: Props) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AlertDialog open={bulkConfirm} onOpenChange={setBulkConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar {selected.size} campos?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción no se puede deshacer. Los campos seleccionados se eliminarán
+              de la base de datos.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                const ids = Array.from(selected);
+                const persistedIds = ids.filter((id) => campos.some((c) => c.id === id));
+                const localIds = new Set(ids.filter((id) => !persistedIds.includes(id)));
+                if (localIds.size > 0) {
+                  setDraft((prev) => prev.filter((c) => !localIds.has(c.id)));
+                }
+                if (persistedIds.length > 0) {
+                  bulkRemove.mutate(persistedIds);
+                }
+                setSelected(new Set());
+                setBulkConfirm(false);
+              }}
+            >
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
