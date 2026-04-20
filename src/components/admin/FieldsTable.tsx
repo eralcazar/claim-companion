@@ -317,28 +317,29 @@ export function FieldsTable({ formularioId, secciones }: Props) {
               <TableHead className="min-w-[110px]">Tipo</TableHead>
               <TableHead className="w-16">Pág</TableHead>
               <TableHead className="min-w-[160px]">Sección</TableHead>
-              <TableHead className="min-w-[180px]">Mapeo</TableHead>
+              <TableHead className="w-32">Catálogo</TableHead>
+              <TableHead className="min-w-[200px]">Campo de mapeo</TableHead>
               <TableHead className="min-w-[180px]">Valor mapeado</TableHead>
               <TableHead className="w-20">X%</TableHead>
               <TableHead className="w-20">Y%</TableHead>
               <TableHead className="w-20">W%</TableHead>
               <TableHead className="w-20">H%</TableHead>
               <TableHead className="w-16">Req</TableHead>
-              <TableHead className="w-24">Estado</TableHead>
+              <TableHead className="w-28">Estado</TableHead>
               <TableHead className="w-12"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading && (
               <TableRow>
-                <TableCell colSpan={15} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={16} className="text-center text-muted-foreground py-8">
                   Cargando…
                 </TableCell>
               </TableRow>
             )}
             {!isLoading && filtered.length === 0 && (
               <TableRow>
-                <TableCell colSpan={15} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={16} className="text-center text-muted-foreground py-8">
                   Sin campos. Agrega el primero con "Nuevo campo".
                 </TableCell>
               </TableRow>
