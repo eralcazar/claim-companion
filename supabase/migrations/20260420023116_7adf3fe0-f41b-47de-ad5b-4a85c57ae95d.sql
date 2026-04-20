@@ -1,0 +1,1 @@
+ALTER TABLE public.claim_forms ADD COLUMN IF NOT EXISTS error_message text;
