@@ -7,6 +7,7 @@ import { formE } from "./definitions/formE-consentimiento";
 import { formF } from "./definitions/formF-identificacion-allianz";
 import { formG } from "./definitions/formG-carta-marsh";
 import { formH } from "./definitions/formH-informe-reclamante";
+import { supabase } from "@/integrations/supabase/client";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Catálogo de FORMATOS REALES por aseguradora.
@@ -162,4 +163,42 @@ export function getFormDefinition(insurer: string, formatId: string): FormDefini
 
 export function getAllDefinitions(): FormDefinition[] {
   return Object.values(definitions);
+}
+
+/**
+ * Devuelve la URL pública de un formato en Storage (`formatos/<INSURER>/<file>`).
+ */
+export function getFormatPublicUrl(insurer: string, formatId: string): string | null {
+  const ins = normalizeInsurer(insurer);
+  const fmt = (insurerFormats[ins] || []).find((f) => f.id === formatId);
+  if (!fmt) return null;
+  const path = `${ins}/${fmt.file}`;
+  const { data } = supabase.storage.from("formatos").getPublicUrl(path);
+  return data.publicUrl;
+}
+
+/**
+ * Verifica con un HEAD que el PDF original exista en Storage.
+ * Devuelve true si responde 200, false en cualquier otro caso.
+ */
+export async function checkFormatExists(insurer: string, formatId: string): Promise<boolean> {
+  const url = getFormatPublicUrl(insurer, formatId);
+  if (!url) return false;
+  try {
+    const res = await fetch(url, { method: "HEAD" });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Lista plana de todos los formatos del catálogo (insurer × formato).
+ */
+export function listAllFormats(): Array<{ insurer: string; format: InsurerFormat }> {
+  const out: Array<{ insurer: string; format: InsurerFormat }> = [];
+  for (const [insurer, formats] of Object.entries(insurerFormats)) {
+    for (const format of formats) out.push({ insurer, format });
+  }
+  return out;
 }

@@ -19,6 +19,7 @@ import MedicalRecords from "@/pages/MedicalRecords";
 import BrokerPanel from "@/pages/BrokerPanel";
 import DoctorPanel from "@/pages/DoctorPanel";
 import AdminPanel from "@/pages/AdminPanel";
+import PipelineStatus from "@/pages/admin/PipelineStatus";
 import Formats from "@/pages/Formats";
 import NotFound from "@/pages/NotFound";
 
@@ -47,6 +48,7 @@ const App = () => (
               <Route path="/broker" element={<BrokerPanel />} />
               <Route path="/medico" element={<DoctorPanel />} />
               <Route path="/admin" element={<AdminPanel />} />
+              <Route path="/admin/pipeline-status" element={<PipelineStatus />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>

@@ -107,6 +107,7 @@ export type Database = {
         Row: {
           created_at: string
           data: Json
+          error_message: string | null
           folio: string | null
           form_code: string
           id: string
@@ -121,6 +122,7 @@ export type Database = {
         Insert: {
           created_at?: string
           data?: Json
+          error_message?: string | null
           folio?: string | null
           form_code: string
           id?: string
@@ -135,6 +137,7 @@ export type Database = {
         Update: {
           created_at?: string
           data?: Json
+          error_message?: string | null
           folio?: string | null
           form_code?: string
           id?: string
