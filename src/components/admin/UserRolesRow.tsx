@@ -201,6 +201,42 @@ export function UserRolesRow({
         </TableCell>
       ))}
       <TableCell className="text-muted-foreground text-xs">{user.email || "—"}</TableCell>
+      <TableCell className="text-right w-12">
+        {!isSelf && (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                disabled={deleting}
+                aria-label={`Eliminar ${user.full_name}`}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>¿Eliminar usuario?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Se eliminará permanentemente a <strong>{user.full_name}</strong>
+                  {user.email ? ` (${user.email})` : ""} y todos sus datos asociados.
+                  Esta acción no se puede deshacer.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleDelete}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  Eliminar
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
+      </TableCell>
     </TableRow>
   );
 }
