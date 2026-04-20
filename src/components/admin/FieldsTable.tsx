@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Trash2, Save, Search } from "lucide-react";
+import { Plus, Trash2, Save, Search, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -37,8 +37,11 @@ import {
   useUpsertCampos,
   useBulkDeleteCampos,
   useMapeos,
+  useImportCampos,
+  type CampoImportRow,
 } from "@/hooks/useFormatos";
 import { cn } from "@/lib/utils";
+import { CSVImportDialog, type CSVValidationResult } from "./CSVImportDialog";
 
 const TIPOS = [
   "texto", "numero", "fecha", "checkbox", "radio", "select",
@@ -98,6 +101,7 @@ export function FieldsTable({ formularioId, secciones }: Props) {
   const upsert = useUpsertCampos(formularioId);
   const remove = useDeleteCampo(formularioId);
   const bulkRemove = useBulkDeleteCampos(formularioId);
+  const importMut = useImportCampos(formularioId);
 
   const [draft, setDraft] = useState<Campo[]>([]);
   const [dirty, setDirty] = useState<Set<string>>(new Set());
@@ -107,6 +111,7 @@ export function FieldsTable({ formularioId, secciones }: Props) {
   const [toDelete, setToDelete] = useState<Campo | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkConfirm, setBulkConfirm] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
   useEffect(() => {
     setDraft(campos);
@@ -292,6 +297,10 @@ export function FieldsTable({ formularioId, secciones }: Props) {
           <Button variant="outline" size="sm" onClick={addNew}>
             <Plus className="h-4 w-4" />
             Nuevo campo
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
+            <Upload className="h-4 w-4" />
+            Importar CSV
           </Button>
           <Button size="sm" onClick={save} disabled={dirty.size === 0 || upsert.isPending}>
             <Save className="h-4 w-4" />

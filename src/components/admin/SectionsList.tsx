@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Trash2, Save } from "lucide-react";
+import { Plus, Trash2, Save, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -26,7 +26,9 @@ import {
   useDeleteSeccion,
   useUpsertSeccion,
   useBulkDeleteSecciones,
+  useImportSecciones,
 } from "@/hooks/useFormatos";
+import { CSVImportDialog, type CSVValidationResult } from "./CSVImportDialog";
 
 interface Props {
   formularioId: string;
@@ -37,11 +39,13 @@ export function SectionsList({ formularioId, secciones }: Props) {
   const upsert = useUpsertSeccion(formularioId);
   const remove = useDeleteSeccion(formularioId);
   const bulkRemove = useBulkDeleteSecciones(formularioId);
+  const importMut = useImportSecciones(formularioId);
   const [editing, setEditing] = useState<Record<string, Partial<Seccion>>>({});
   const [newName, setNewName] = useState("");
   const [toDelete, setToDelete] = useState<Seccion | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkConfirm, setBulkConfirm] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
   useEffect(() => {
     setSelected(new Set());
@@ -98,6 +102,10 @@ export function SectionsList({ formularioId, secciones }: Props) {
         <Button onClick={addNew} disabled={!newName.trim()}>
           <Plus className="h-4 w-4" />
           Agregar
+        </Button>
+        <Button variant="outline" onClick={() => setImportOpen(true)}>
+          <Upload className="h-4 w-4" />
+          Importar CSV
         </Button>
         {selected.size > 0 && (
           <Button
@@ -244,6 +252,39 @@ export function SectionsList({ formularioId, secciones }: Props) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <CSVImportDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        title="Importar secciones desde CSV"
+        description="Columnas: nombre, orden, pagina. Las secciones existentes con el mismo nombre se actualizarán."
+        templateHeaders={["nombre", "orden", "pagina"]}
+        templateExampleRow={["Datos del paciente", "0", "1"]}
+        templateFilename="plantilla_secciones.csv"
+        previewColumns={[
+          { key: "nombre", label: "Nombre" },
+          { key: "orden", label: "Orden" },
+          { key: "pagina", label: "Página" },
+        ]}
+        rowToPreview={(r) => r as any}
+        isImporting={importMut.isPending}
+        parseRow={(raw): CSVValidationResult<{ nombre: string; orden: number; pagina: number }> => {
+          const errors: string[] = [];
+          const nombre = (raw.nombre ?? "").trim();
+          if (!nombre) errors.push("nombre requerido");
+          const ordenRaw = (raw.orden ?? "").trim();
+          const paginaRaw = (raw.pagina ?? "").trim();
+          const orden = ordenRaw === "" ? 0 : Number(ordenRaw);
+          const pagina = paginaRaw === "" ? 1 : Number(paginaRaw);
+          if (Number.isNaN(orden)) errors.push("orden inválido");
+          if (Number.isNaN(pagina)) errors.push("página inválida");
+          if (errors.length > 0) return { ok: false, row: null, errors };
+          return { ok: true, row: { nombre, orden, pagina }, errors: [] };
+        }}
+        onImport={async (rows) => {
+          await importMut.mutateAsync(rows);
+        }}
+      />
     </div>
   );
 }
