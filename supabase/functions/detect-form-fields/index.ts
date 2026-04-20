@@ -191,19 +191,50 @@ Identifica todos los campos rellenables visibles en la imagen y devuelve el resu
       typeof r.x === "number" && typeof r.y === "number" &&
       typeof r.w === "number" && typeof r.h === "number" &&
       r.x >= 0 && r.x <= 100 && r.y >= 0 && r.y <= 100 &&
-      r.w >= 0.3 && r.w <= 100 && r.h >= 0.3 && r.h <= 100 &&
-      r.x + r.w <= 101 && r.y + r.h <= 101;
+      r.w >= 0.1 && r.w <= 100 && r.h >= 0.1 && r.h <= 100;
+
+    // Clamp rect to page bounds [0..100] instead of rejecting near-edge fields.
+    const clampRect = (r: any) => {
+      if (!validRect(r)) return null;
+      const x = Math.max(0, Math.min(100, r.x));
+      const y = Math.max(0, Math.min(100, r.y));
+      const w = Math.max(0.1, Math.min(100 - x, r.w));
+      const h = Math.max(0.1, Math.min(100 - y, r.h));
+      return { x, y, w, h };
+    };
+
+    const totalRecibidas = propuestas.length;
+    let descartadasSinClave = 0;
+    let descartadasSinCampo = 0;
 
     propuestas = propuestas
-      .filter((p) => typeof p.clave === "string" && p.clave.length > 0)
-      .map((p) => ({
-        ...p,
-        page: typeof p.page === "number" ? p.page : (page_number ?? 1),
-        // Backwards compat: if model returned old flat coords, lift them into campo
-        campo: validRect(p.campo) ? p.campo : (validRect(p) ? { x: p.x, y: p.y, w: p.w, h: p.h } : null),
-        label: validRect(p.label) ? p.label : null,
-      }))
-      .filter((p) => p.campo);
+      .filter((p) => {
+        const ok = typeof p.clave === "string" && p.clave.length > 0;
+        if (!ok) descartadasSinClave++;
+        return ok;
+      })
+      .map((p) => {
+        const campoRect = clampRect(p.campo) ?? clampRect({ x: p.x, y: p.y, w: p.w, h: p.h });
+        return {
+          ...p,
+          page: typeof p.page === "number" ? p.page : (page_number ?? 1),
+          campo: campoRect,
+          label: clampRect(p.label),
+        };
+      })
+      .filter((p) => {
+        if (!p.campo) {
+          descartadasSinCampo++;
+          console.warn("[detect-form-fields] descartado sin coords válidas:", p.clave);
+          return false;
+        }
+        return true;
+      });
+
+    const descartadas = descartadasSinClave + descartadasSinCampo;
+    console.log(
+      `[detect-form-fields] page=${page_number} recibidas=${totalRecibidas} aceptadas=${propuestas.length} descartadas=${descartadas} (sin_clave=${descartadasSinClave}, sin_campo=${descartadasSinCampo})`,
+    );
 
     secciones = secciones
       .filter((s) => s && typeof s.nombre === "string" && s.nombre.trim().length > 0)
@@ -213,7 +244,7 @@ Identifica todos los campos rellenables visibles en la imagen y devuelve el resu
         orden: typeof s.orden === "number" ? s.orden : i,
       }));
 
-    return new Response(JSON.stringify({ propuestas, secciones }), {
+    return new Response(JSON.stringify({ propuestas, secciones, descartadas }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
