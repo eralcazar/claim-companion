@@ -16,11 +16,20 @@ export default function BrokerPanel() {
   const { data: patients, isLoading } = useQuery({
     queryKey: ["broker-patients", user?.id],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data: assignments, error: aErr } = await supabase
         .from("broker_patients")
-        .select("patient_id, profiles!broker_patients_patient_id_fkey(full_name, email, phone)")
+        .select("patient_id")
         .eq("broker_id", user!.id);
-      return data ?? [];
+      if (aErr) throw aErr;
+      const ids = (assignments ?? []).map((a) => a.patient_id);
+      if (ids.length === 0) return [];
+      const { data: profiles, error: pErr } = await supabase
+        .from("profiles")
+        .select("user_id, full_name, first_name, paternal_surname, email, phone")
+        .in("user_id", ids);
+      if (pErr) throw pErr;
+      const byId = new Map((profiles ?? []).map((p) => [p.user_id, p]));
+      return ids.map((id) => ({ patient_id: id, profile: byId.get(id) ?? null }));
     },
     enabled: !!user,
   });
@@ -40,29 +49,46 @@ export default function BrokerPanel() {
       {isLoading ? (
         <div className="flex justify-center p-8"><div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" /></div>
       ) : patients?.length === 0 ? (
-        <Card><CardContent className="p-8 text-center text-muted-foreground">Sin pacientes asignados</CardContent></Card>
+        <Card>
+          <CardContent className="p-8 text-center space-y-2">
+            <p className="text-muted-foreground">Aún no tienes pacientes asignados</p>
+            <p className="text-xs text-muted-foreground">
+              Contacta al administrador para que te asigne pacientes desde el panel de usuarios.
+            </p>
+          </CardContent>
+        </Card>
       ) : (
         <div className="space-y-3">
-          {patients?.map((p: any) => (
-            <Card key={p.patient_id}>
-              <CardContent className="p-4 space-y-3">
-                <div>
-                  <p className="font-medium">{p.profiles?.full_name || "Sin nombre"}</p>
-                  <p className="text-sm text-muted-foreground">{p.profiles?.email}</p>
-                  <p className="text-sm text-muted-foreground">{p.profiles?.phone}</p>
-                </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => handleActAs(p.patient_id, p.profiles?.full_name)}
-                >
-                  <UserCog className="h-4 w-4 mr-2" />
-                  Ver / actuar como
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
+          {patients?.map((p: any) => {
+            const composedName =
+              p.profile?.full_name?.trim() ||
+              [p.profile?.first_name, p.profile?.paternal_surname].filter(Boolean).join(" ").trim() ||
+              "Sin nombre";
+            return (
+              <Card key={p.patient_id}>
+                <CardContent className="p-4 space-y-3">
+                  <div>
+                    <p className="font-medium">{composedName}</p>
+                    {p.profile?.email && (
+                      <p className="text-sm text-muted-foreground">{p.profile.email}</p>
+                    )}
+                    {p.profile?.phone && (
+                      <p className="text-sm text-muted-foreground">{p.profile.phone}</p>
+                    )}
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => handleActAs(p.patient_id, composedName)}
+                  >
+                    <UserCog className="h-4 w-4 mr-2" />
+                    Ver / actuar como
+                  </Button>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
     </div>
