@@ -543,11 +543,18 @@ export function FieldsTable({ formularioId, secciones }: Props) {
                     />
                   </TableCell>
                   <TableCell>
-                    {isMapped ? (
-                      <Badge variant="default" className="text-[10px]">⚡ Mapeado</Badge>
-                    ) : (
-                      <Badge variant="outline" className="text-[10px]">○ Manual</Badge>
-                    )}
+                    <Select
+                      value={c.origen ?? "auto"}
+                      onValueChange={(v) => update(c.id, { origen: v })}
+                    >
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="auto">⚡ Auto</SelectItem>
+                        <SelectItem value="manual">○ Manual</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </TableCell>
                   <TableCell>
                     <Button
