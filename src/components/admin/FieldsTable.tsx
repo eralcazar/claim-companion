@@ -325,6 +325,7 @@ export function FieldsTable({ formularioId, secciones }: Props) {
               <TableHead className="min-w-[160px]">Etiqueta</TableHead>
               <TableHead className="min-w-[110px]">Tipo</TableHead>
               <TableHead className="w-16">Pág</TableHead>
+              <TableHead className="w-28">Coords</TableHead>
               <TableHead className="min-w-[160px]">Sección</TableHead>
               <TableHead className="w-32">Catálogo</TableHead>
               <TableHead className="min-w-[200px]">Campo de mapeo</TableHead>
