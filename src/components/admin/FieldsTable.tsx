@@ -273,12 +273,21 @@ export function FieldsTable({ formularioId, secciones }: Props) {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-10">
+                <Checkbox
+                  checked={allFilteredSelected}
+                  onCheckedChange={(v) => toggleAll(!!v)}
+                  aria-label="Seleccionar todos"
+                />
+              </TableHead>
               <TableHead className="w-12">#</TableHead>
               <TableHead className="min-w-[140px]">Clave</TableHead>
               <TableHead className="min-w-[160px]">Etiqueta</TableHead>
               <TableHead className="min-w-[110px]">Tipo</TableHead>
-              <TableHead className="min-w-[180px]">Mapeo</TableHead>
               <TableHead className="w-16">Pág</TableHead>
+              <TableHead className="min-w-[160px]">Sección</TableHead>
+              <TableHead className="min-w-[180px]">Mapeo</TableHead>
+              <TableHead className="min-w-[180px]">Valor mapeado</TableHead>
               <TableHead className="w-20">X%</TableHead>
               <TableHead className="w-20">Y%</TableHead>
               <TableHead className="w-20">W%</TableHead>
@@ -291,14 +300,14 @@ export function FieldsTable({ formularioId, secciones }: Props) {
           <TableBody>
             {isLoading && (
               <TableRow>
-                <TableCell colSpan={13} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={15} className="text-center text-muted-foreground py-8">
                   Cargando…
                 </TableCell>
               </TableRow>
             )}
             {!isLoading && filtered.length === 0 && (
               <TableRow>
-                <TableCell colSpan={13} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={15} className="text-center text-muted-foreground py-8">
                   Sin campos. Agrega el primero con "Nuevo campo".
                 </TableCell>
               </TableRow>
@@ -306,8 +315,24 @@ export function FieldsTable({ formularioId, secciones }: Props) {
             {filtered.map((c, idx) => {
               const isDirty = dirty.has(c.id);
               const isMapped = !!(c.mapeo_perfil || c.mapeo_poliza || c.mapeo_siniestro || c.mapeo_medico);
+              const isSelected = selected.has(c.id);
+              const preview = getMapeoPreview(c);
+              const seccionesPagina = secciones.filter(
+                (s) => s.pagina === (c.campo_pagina ?? 1),
+              );
+              const seccionesOpts = seccionesPagina.length > 0 ? seccionesPagina : secciones;
               return (
-                <TableRow key={c.id} className={cn(isDirty && "bg-warning/5")}>
+                <TableRow
+                  key={c.id}
+                  className={cn(isDirty && "bg-warning/5", isSelected && "bg-primary/5")}
+                >
+                  <TableCell>
+                    <Checkbox
+                      checked={isSelected}
+                      onCheckedChange={(v) => toggleOne(c.id, !!v)}
+                      aria-label={`Seleccionar ${c.clave}`}
+                    />
+                  </TableCell>
                   <TableCell className="text-xs text-muted-foreground">
                     <div className="flex items-center gap-1">
                       {isDirty && <span className="h-1.5 w-1.5 rounded-full bg-warning" />}
@@ -343,6 +368,34 @@ export function FieldsTable({ formularioId, secciones }: Props) {
                     </Select>
                   </TableCell>
                   <TableCell>
+                    <Input
+                      type="number"
+                      value={numField(c.campo_pagina)}
+                      onChange={(e) => update(c.id, { campo_pagina: parseNum(e.target.value) })}
+                      className="h-8 text-xs"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Select
+                      value={c.seccion_id ?? NO_SECTION_VALUE}
+                      onValueChange={(v) =>
+                        update(c.id, { seccion_id: v === NO_SECTION_VALUE ? null : v })
+                      }
+                    >
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue placeholder="Sin sección" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={NO_SECTION_VALUE}>Sin sección</SelectItem>
+                        {seccionesOpts.map((s) => (
+                          <SelectItem key={s.id} value={s.id}>
+                            {s.nombre} {s.pagina ? `· p${s.pagina}` : ""}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
+                  <TableCell>
                     <MappingSelects
                       value={{
                         perfil: c.mapeo_perfil,
@@ -361,12 +414,21 @@ export function FieldsTable({ formularioId, secciones }: Props) {
                     />
                   </TableCell>
                   <TableCell>
-                    <Input
-                      type="number"
-                      value={numField(c.campo_pagina)}
-                      onChange={(e) => update(c.id, { campo_pagina: parseNum(e.target.value) })}
-                      className="h-8 text-xs"
-                    />
+                    {preview ? (
+                      <div className="flex flex-col gap-0.5 text-xs">
+                        <div className="flex items-center gap-1">
+                          <Badge variant="secondary" className="text-[10px]">
+                            {preview.label}
+                          </Badge>
+                          <span className="truncate">{preview.display}</span>
+                        </div>
+                        <span className="font-mono text-[10px] text-muted-foreground truncate">
+                          {preview.col}
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    )}
                   </TableCell>
                   <TableCell>
                     <Input
