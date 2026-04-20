@@ -29,7 +29,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { MappingSelects } from "./MappingSelects";
 import {
   type Campo,
   type Seccion,
@@ -50,6 +49,10 @@ const ALL_SECTIONS = "__all__";
 const NO_SECTION = "__none__";
 const ALL_PAGES = "__all_pages__";
 const NO_SECTION_VALUE = "__none_section__";
+const NO_CATALOG = "__no_catalog__";
+const NO_MAPPING = "__no_mapping__";
+
+type CatalogoTipo = "perfil" | "poliza" | "siniestro" | "medico";
 
 function blankCampo(formularioId: string, orden: number): Campo {
   return {
