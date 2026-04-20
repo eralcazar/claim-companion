@@ -5,6 +5,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { ALL_ROLES, type AppRoleLite } from "@/lib/features";
 import { useQueryClient } from "@tanstack/react-query";
+import { Badge } from "@/components/ui/badge";
+import { CheckCircle2 } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -119,28 +121,37 @@ export function UserRolesRow({
   return (
     <TableRow>
       <TableCell className="font-medium">{user.full_name || "(sin nombre)"}</TableCell>
-      <TableCell className="text-muted-foreground">{user.email || "—"}</TableCell>
-      <TableCell>
+      <TableCell className="bg-muted/30">
         {isPatient ? (
-          <Select value={assignedBroker} onValueChange={handleBrokerChange} disabled={savingBroker}>
-            <SelectTrigger className="h-8 text-xs min-w-[160px]">
-              <SelectValue placeholder="Sin broker" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__none__">Sin broker</SelectItem>
-              {brokers.map((b) => (
-                <SelectItem key={b.user_id} value={b.user_id}>
-                  {b.full_name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-2">
+            <Select value={assignedBroker} onValueChange={handleBrokerChange} disabled={savingBroker}>
+              <SelectTrigger className="h-8 text-xs min-w-[160px]">
+                <SelectValue placeholder="Sin broker" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">Sin broker</SelectItem>
+                {brokers
+                  .filter((b) => b.user_id !== user.user_id)
+                  .map((b) => (
+                    <SelectItem key={b.user_id} value={b.user_id}>
+                      {b.full_name}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+            {assignedBroker !== "__none__" && (
+              <Badge variant="secondary" className="gap-1 bg-success/15 text-success border-success/20">
+                <CheckCircle2 className="h-3 w-3" />
+                Asignado
+              </Badge>
+            )}
+          </div>
         ) : (
-          <span className="text-xs text-muted-foreground">—</span>
+          <span className="text-xs text-muted-foreground">Solo pacientes</span>
         )}
       </TableCell>
       {ALL_ROLES.map((role) => (
-        <TableCell key={role} className="text-center">
+        <TableCell key={role} className="text-center w-20">
           <div className="flex flex-col items-center gap-1">
             <Switch
               checked={localRoles.includes(role)}
@@ -152,6 +163,7 @@ export function UserRolesRow({
           </div>
         </TableCell>
       ))}
+      <TableCell className="text-muted-foreground text-xs">{user.email || "—"}</TableCell>
     </TableRow>
   );
 }
