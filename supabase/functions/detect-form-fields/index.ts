@@ -1,4 +1,8 @@
-import { corsHeaders } from "@supabase/supabase-js/cors";
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+};
 
 const SYSTEM_PROMPT = `Eres un experto en análisis de formularios médicos y de seguros en español. Recibirás la imagen de UNA página de un PDF de formulario. Tu tarea: identificar TODOS los campos rellenables (líneas en blanco, casillas, recuadros para escribir) y devolver sus coordenadas como porcentaje del ancho/alto de la página (0–100).
 
