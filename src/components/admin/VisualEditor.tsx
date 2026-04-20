@@ -20,6 +20,7 @@ import { toast } from "sonner";
 import { PDFCanvasEditor } from "./PDFCanvasEditor";
 import { FieldSidebar } from "./FieldSidebar";
 import { ProposalsPanel } from "./ProposalsPanel";
+import { MappingSuggestionsPanel, type SuggestionRow } from "./MappingSuggestionsPanel";
 import { pdfjs } from "react-pdf";
 import "@/lib/pdfWorker";
 
