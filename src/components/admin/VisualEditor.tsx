@@ -20,6 +20,7 @@ import { toast } from "sonner";
 import { PDFCanvasEditor } from "./PDFCanvasEditor";
 import { FieldSidebar } from "./FieldSidebar";
 import { ProposalsPanel } from "./ProposalsPanel";
+import { MappingSuggestionsPanel, type SuggestionRow } from "./MappingSuggestionsPanel";
 import { pdfjs } from "react-pdf";
 import "@/lib/pdfWorker";
 
@@ -70,6 +71,11 @@ export function VisualEditor({ formulario }: Props) {
   const [selectedProposalKey, setSelectedProposalKey] = useState<string | null>(null);
   const [detecting, setDetecting] = useState(false);
   const [savingProposals, setSavingProposals] = useState(false);
+
+  // Mapping suggestions state (second AI pass after accepting fields)
+  const [suggestions, setSuggestions] = useState<SuggestionRow[]>([]);
+  const [suggesting, setSuggesting] = useState(false);
+  const [applyingSuggestions, setApplyingSuggestions] = useState(false);
 
   // Local in-flight overrides for live drag without waiting for server.
   const [overrides, setOverrides] = useState<Record<string, Partial<Campo>>>({});
@@ -332,7 +338,10 @@ export function VisualEditor({ formulario }: Props) {
         orden: baseOrden + i + 1,
         requerido: false,
       }));
-      const { error } = await supabase.from("campos").insert(rows as any);
+      const { data: inserted, error } = await supabase
+        .from("campos")
+        .insert(rows as any)
+        .select("id, clave, etiqueta, tipo");
       if (error) throw error;
       qc.invalidateQueries({ queryKey: ["campos", formulario.id] });
       qc.invalidateQueries({ queryKey: ["secciones", formulario.id] });
@@ -342,6 +351,10 @@ export function VisualEditor({ formulario }: Props) {
       setProposals((prev) => prev.filter((p) => p.page !== page || p.accepted === false));
       setProposedSections((prev) => prev.filter((s) => s.pagina !== page));
       setSelectedProposalKey(null);
+      // Trigger second AI pass: suggest mappings for newly inserted fields.
+      if (inserted && inserted.length > 0) {
+        await requestMappingSuggestions(inserted as any);
+      }
     } catch (e: any) {
       toast.error(e?.message ?? "Error al guardar campos");
     } finally {
@@ -354,6 +367,99 @@ export function VisualEditor({ formulario }: Props) {
     setProposedSections((prev) => prev.filter((s) => s.pagina !== page));
     setSelectedProposalKey(null);
   };
+
+  const requestMappingSuggestions = async (
+    nuevos: { id: string; clave: string; etiqueta: string | null; tipo: string }[],
+  ) => {
+    setSuggesting(true);
+    try {
+      // Pull current option catalogs from cache (same hook used by MappingSelects).
+      const mapeos: any = qc.getQueryData(["mapeos"]) ?? null;
+      const opciones = {
+        perfil: (mapeos?.perfiles ?? []).map((o: any) => ({ id: o.id, nombre_display: o.nombre_display })),
+        poliza: (mapeos?.polizas ?? []).map((o: any) => ({ id: o.id, nombre_display: o.nombre_display })),
+        siniestro: (mapeos?.siniestros ?? []).map((o: any) => ({ id: o.id, nombre_display: o.nombre_display })),
+        medico: (mapeos?.medicos ?? []).map((o: any) => ({ id: o.id, nombre_display: o.nombre_display })),
+      };
+      const camposPayload = nuevos.map((c) => ({
+        clave: c.clave,
+        etiqueta: c.etiqueta ?? c.clave,
+        tipo: c.tipo,
+      }));
+      const { data, error } = await supabase.functions.invoke("suggest-field-mappings", {
+        body: { campos: camposPayload, opciones },
+      });
+      if (error) throw error;
+      const sug = ((data as any)?.sugerencias ?? []) as Array<{
+        clave: string;
+        tabla: SuggestionRow["tabla"];
+        columna_id: string | null;
+        confianza: SuggestionRow["confianza"];
+      }>;
+      const byClave = new Map(sug.map((s) => [s.clave, s]));
+      const rows: SuggestionRow[] = nuevos.map((c) => {
+        const s = byClave.get(c.clave);
+        const tabla = s?.tabla ?? "ninguno";
+        const columna_id = s?.columna_id ?? null;
+        return {
+          campo_id: c.id,
+          clave: c.clave,
+          etiqueta: c.etiqueta ?? c.clave,
+          tabla,
+          columna_id,
+          confianza: s?.confianza ?? "baja",
+          accepted: tabla !== "ninguno" && !!columna_id,
+        };
+      });
+      setSuggestions(rows);
+      const conMapeo = rows.filter((r) => r.tabla !== "ninguno" && r.columna_id).length;
+      if (conMapeo > 0) {
+        toast.success(`${conMapeo} sugerencias de mapeo listas para revisar.`);
+      } else {
+        toast.info("La IA no encontró mapeos confiables.");
+      }
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e?.message ?? "Error al sugerir mapeos");
+    } finally {
+      setSuggesting(false);
+    }
+  };
+
+  const updateSuggestion = (campo_id: string, patch: Partial<SuggestionRow>) => {
+    setSuggestions((prev) => prev.map((r) => (r.campo_id === campo_id ? { ...r, ...patch } : r)));
+  };
+
+  const applyAllSuggestions = async () => {
+    const accepted = suggestions.filter((r) => r.accepted && r.tabla !== "ninguno" && r.columna_id);
+    if (accepted.length === 0) return;
+    setApplyingSuggestions(true);
+    try {
+      // Run updates in parallel; each campo gets a single mapping cleared on the other 3 columns.
+      await Promise.all(
+        accepted.map((r) =>
+          supabase
+            .from("campos")
+            .update({
+              mapeo_perfil: r.tabla === "perfil" ? r.columna_id : null,
+              mapeo_poliza: r.tabla === "poliza" ? r.columna_id : null,
+              mapeo_siniestro: r.tabla === "siniestro" ? r.columna_id : null,
+              mapeo_medico: r.tabla === "medico" ? r.columna_id : null,
+            })
+            .eq("id", r.campo_id),
+        ),
+      );
+      qc.invalidateQueries({ queryKey: ["campos", formulario.id] });
+      toast.success(`${accepted.length} mapeos aplicados.`);
+      setSuggestions([]);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Error al aplicar mapeos");
+    } finally {
+      setApplyingSuggestions(false);
+    }
+  };
+
+  const discardAllSuggestions = () => setSuggestions([]);
 
   const proposalsEnPagina = proposals.filter((p) => p.page === page);
   const showProposalsPanel = proposalsEnPagina.length > 0;
@@ -370,7 +476,22 @@ export function VisualEditor({ formulario }: Props) {
     />
   );
 
-  const rightPanel = showProposalsPanel ? (
+  const rightPanel = suggestions.length > 0 || suggesting ? (
+    suggesting && suggestions.length === 0 ? (
+      <Card className="p-6 flex items-center gap-3 text-sm text-muted-foreground">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        Generando sugerencias de mapeo…
+      </Card>
+    ) : (
+      <MappingSuggestionsPanel
+        rows={suggestions}
+        saving={applyingSuggestions}
+        onUpdate={updateSuggestion}
+        onAcceptAll={applyAllSuggestions}
+        onDiscardAll={discardAllSuggestions}
+      />
+    )
+  ) : showProposalsPanel ? (
     <ProposalsPanel
       proposals={proposalsEnPagina}
       sections={proposedSections.filter((s) => s.pagina === page)}
