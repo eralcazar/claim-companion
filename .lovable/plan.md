@@ -1,105 +1,93 @@
 
 
+## Contexto
+
+En el editor visual actual (`/admin/gestor-archivos` → tab **Editor visual**) solo hay:
+- **Nuevo campo**: dibujas una caja a mano sobre el PDF.
+- Mover/redimensionar/eliminar las existentes.
+
+**No existe** botón de detección automática. Eso quedó marcado como "no incluido" en la pieza 3. Ahora lo añadimos.
+
 ## Objetivo
 
-Agregar al panel Admin dos nuevas piezas:
-1. **Gestor de Usuarios** — listar usuarios y asignar roles (admin / broker / paciente).
-2. **Gestor de Perfiles de Acceso** — definir qué funciones de MediClaim puede ver/usar cada rol.
+Botón **"Detectar campos automáticamente"** en la barra del Editor visual que analiza la página actual del PDF y propone cajas (campos + sus etiquetas) usando IA. Las propuestas se muestran como overlays "fantasma" amarillos; el admin acepta/descarta cada una o "Aceptar todas".
 
-## Decisiones tomadas (sin preguntar)
-
-- "usuario" en tu mensaje = `paciente` en el enum existente (`app_role: admin | broker | paciente | medico`). Mantengo los 4 roles y muestro `medico` también — no tiene sentido ocultarlo si ya existe.
-- Rol = un usuario puede tener varios (ya lo soporta `user_roles`). El gestor permite marcar/desmarcar cada rol con switches.
-- "Perfiles de acceso" = matriz **rol × función**. Lo guardo en una tabla nueva `role_permissions` (rol + clave de función + permitido). El sidebar y rutas leen de ahí en lugar de hardcodear `roles.includes("admin")`.
-
-## Pieza A — Gestor de Usuarios (`/admin/usuarios`)
+## UX
 
 ```text
-┌──────────────────────────────────────────────────────────────┐
-│ Gestor de Usuarios                          [Buscar: ____]   │
-├──────────────────────────────────────────────────────────────┤
-│ Usuario              │ Email             │ Roles asignados   │
-│ ─────────────────────┼───────────────────┼────────────────── │
-│ Erick Alcázar        │ eralcazar@...     │ [✓admin] [✓brk]   │
-│                      │                   │ [☐pac] [☐med]     │
-│ Juan Pérez           │ jperez@...        │ [☐adm] [☐brk]     │
-│                      │                   │ [✓pac] [☐med]     │
-└──────────────────────────────────────────────────────────────┘
+[◀] 1/3 [▶]   Zoom ──●── 100%   [+ Nuevo campo]   [✨ Detectar campos]
+                                                       │
+                                                       ▼ (al click)
+                            ┌──────────────────────────────────────┐
+                            │ Detectando campos página 1...        │
+                            │ ████████░░░░ 60%                     │
+                            └──────────────────────────────────────┘
+
+Tras detectar:
+┌─ PDF página 1 ──────────────────┐  ┌─ Propuestas (12) ────────────┐
+│  ┌────┐ ← amarillo punteado     │  │ ☑ NOMBRE_PACIENTE  [editar]  │
+│  │NOMB│   (propuesta)           │  │ ☑ CURP            [editar]  │
+│  └────┘                          │  │ ☐ FECHA_NAC       [editar]  │
+│  ┌────────┐                     │  │ ☑ DIRECCION       [editar]  │
+│  │CURP____│                     │  │ ...                          │
+│  └────────┘                     │  │                              │
+│                                  │  │ [Aceptar 9]  [Descartar]    │
+└──────────────────────────────────┘  └──────────────────────────────┘
 ```
 
-- Lista todos los `profiles` con sus roles (join con `user_roles`).
-- Búsqueda por nombre/email.
-- Cambiar un switch hace `INSERT`/`DELETE` en `user_roles` y refresca.
-- Solo accesible si `has_role(admin)`.
+- Cajas amarillas punteadas = propuestas aún no guardadas.
+- Cajas azules sólidas = campos ya persistidos (sin cambios).
+- Click sobre una propuesta la selecciona y permite editar clave/etiqueta antes de aceptar.
 
-## Pieza B — Gestor de Perfiles de Acceso (`/admin/perfiles-acceso`)
+## Cómo detecta (pipeline)
 
-```text
-┌─────────────────────────────────────────────────────────┐
-│ Perfiles de Acceso                                      │
-├─────────────────────────────────────────────────────────┤
-│ Función              │ admin │ broker │ paciente │ med  │
-│ ─────────────────────┼───────┼────────┼──────────┼──────│
-│ Inicio               │  ✓    │   ✓    │    ✓     │  ✓   │
-│ Reclamos             │  ✓    │   ✓    │    ✓     │  ☐   │
-│ Pólizas              │  ✓    │   ✓    │    ✓     │  ☐   │
-│ Panel Broker         │  ✓    │   ✓    │    ☐     │  ☐   │
-│ Panel Médico         │  ✓    │   ☐    │    ☐     │  ✓   │
-│ Gestor de Formatos   │  ✓    │   ☐    │    ☐     │  ☐   │
-│ Gestor de Usuarios   │  ✓    │   ☐    │    ☐     │  ☐   │
-└─────────────────────────────────────────────────────────┘
-```
+1. **Cliente** renderiza la página actual del PDF a PNG con `pdf.js` (canvas → `toDataURL`).
+2. POST a edge function `detect-form-fields` con `{ image_base64, page_number, formulario_nombre }`.
+3. **Edge function** llama a Lovable AI Gateway con `google/gemini-2.5-pro` (multimodal, fuerte en visión + razonamiento). Prompt pide devolver JSON con array de:
+   ```json
+   { "clave": "NOMBRE_PACIENTE", "etiqueta": "Nombre del paciente",
+     "tipo": "texto", "x": 12.5, "y": 18.2, "w": 35.0, "h": 3.5 }
+   ```
+   Coordenadas en % del page rect (lo mismo que ya usamos).
+4. Edge devuelve `{ propuestas: [...] }` al cliente.
+5. Cliente muestra como overlays amarillos en el `PDFCanvasEditor`.
+6. Al **Aceptar**, hace `insert` batch en `campos` con `origen = 'auto_ia'`.
 
-- Matriz de switches. Cada toggle hace upsert en `role_permissions`.
-- Las claves de función vienen de un array fijo en código (`AVAILABLE_FEATURES`) que coincide con las rutas/items del sidebar.
+## Dónde encaja en el código
 
-## Esquema de BD nuevo
+- **Botón** en la toolbar de `VisualEditor.tsx` (al lado de "Nuevo campo").
+- **Estado nuevo** en `VisualEditor`: `proposals: ProposedField[]`, `detecting: boolean`.
+- **`PDFCanvasEditor`** recibe nueva prop `proposals` y las pinta con `<ProposalBox>` (variante amarilla punteada de `FieldBox`, no editable, click = seleccionar).
+- **Panel lateral derecho** muestra lista de propuestas con checkboxes y botones cuando `proposals.length > 0`; oculta el detalle del campo seleccionado mientras esté en modo revisión.
+- **Edge function** `detect-form-fields` nueva, usa `LOVABLE_API_KEY` ya disponible en Cloud (sin secret nuevo).
 
-```sql
-CREATE TABLE public.role_permissions (
-  role app_role NOT NULL,
-  feature_key text NOT NULL,
-  allowed boolean NOT NULL DEFAULT false,
-  updated_at timestamptz NOT NULL DEFAULT now(),
-  PRIMARY KEY (role, feature_key)
-);
+## Esquema BD
 
-ALTER TABLE public.role_permissions ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Authenticated can read permissions"
-  ON public.role_permissions FOR SELECT TO authenticated USING (true);
-
-CREATE POLICY "Admins manage permissions"
-  ON public.role_permissions FOR ALL TO authenticated
-  USING (has_role(auth.uid(), 'admin'))
-  WITH CHECK (has_role(auth.uid(), 'admin'));
-```
-
-Seed con los defaults visibles en la matriz de arriba para `inicio, reclamos, polizas, formatos, agenda, medicamentos, registros, perfil, broker_panel, doctor_panel, admin_panel, format_manager, user_manager, access_manager`.
-
-## Integración con sidebar y rutas
-
-- Hook nuevo `usePermissions()` que carga `role_permissions` filtrado por los roles del usuario actual y devuelve `can(featureKey)`.
-- `AppSidebar` reemplaza los `roles.includes("admin")` por `can("format_manager")`, etc. Si el admin desactiva una función para su rol, deja de verla. (Para evitar lock-out: el ítem `access_manager` queda **siempre visible para admin** vía guard en código.)
-- `ProtectedRoute` (o un nuevo `<RequireFeature feature="...">`) protege las rutas equivalentes y redirige a `/` si no hay permiso.
+Sin cambios. Reutiliza tabla `campos`. Solo se rellena `origen = 'auto_ia'` para distinguirlas en reportes futuros.
 
 ## Archivos
 
 ```text
-crea:  supabase/migrations/<ts>_role_permissions.sql      (tabla + RLS + seed)
-crea:  src/hooks/usePermissions.ts                        (carga matriz, expone can())
-crea:  src/lib/features.ts                                (lista AVAILABLE_FEATURES con label/icono/ruta)
-crea:  src/pages/admin/UserManager.tsx                    (Pieza A)
-crea:  src/pages/admin/AccessManager.tsx                  (Pieza B)
-crea:  src/components/admin/UserRolesRow.tsx              (fila usuario + switches de roles)
-crea:  src/components/admin/PermissionMatrix.tsx          (tabla rol × función)
-edita: src/App.tsx                                        (rutas /admin/usuarios y /admin/perfiles-acceso)
-edita: src/components/AppSidebar.tsx                      (usar can(); añadir 2 links nuevos en Admin)
+crea:  supabase/functions/detect-form-fields/index.ts   (edge function: imagen → Gemini → JSON propuestas)
+crea:  src/components/admin/ProposalBox.tsx              (overlay amarillo punteado, no draggable)
+crea:  src/components/admin/ProposalsPanel.tsx           (lista propuestas con accept/discard)
+edita: src/components/admin/VisualEditor.tsx             (botón "Detectar", estado, render proposals)
+edita: src/components/admin/PDFCanvasEditor.tsx          (acepta prop `proposals` y las pinta)
+edita: supabase/config.toml                              (verify_jwt=false para la nueva función pública admin)
 ```
+
+## Detalles técnicos
+
+- **Render de página a imagen**: usar `page.getViewport({ scale: 2 })` + canvas + `canvas.toDataURL("image/png")`. Escala 2 para que Gemini vea texto pequeño con calidad.
+- **Modelo**: `google/gemini-2.5-pro` (mejor para visión + razonamiento estructurado). Fallback a `gemini-2.5-flash` si timeout.
+- **Prompt** estricto con `response_format: { type: "json_object" }` + few-shot de 1-2 ejemplos de formularios médicos en español.
+- **Validación**: cliente filtra propuestas con coordenadas inválidas (fuera de 0–100, w/h < 0.5%) o clave duplicada con campos existentes.
+- **Costos**: ~1 llamada por página por click. Usuario consciente porque debe pulsar el botón.
 
 ## Lo que NO incluye
 
-- Crear/eliminar usuarios (los crea el flujo de signup; eliminar requiere service role en edge function, lo dejamos para otra pieza si lo pides).
-- Permisos a nivel de campo dentro de una página (sólo visibilidad de página/sección).
-- Auditoría/historial de cambios de rol.
+- Detección por OCR puro / Tesseract local (Gemini ya hace OCR + estructura mejor).
+- Detección automática de **mapeos** (perfil/poliza/siniestro) — eso es otra pasada de IA, lo dejamos para iteración siguiente.
+- Detección de cajas de **etiqueta** (`label_x/y/...`).
+- Auto-detección al abrir el PDF (sería caro y no deseado); siempre bajo demanda.
 
