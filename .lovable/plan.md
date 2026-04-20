@@ -1,59 +1,82 @@
 
 
-El usuario quiere que las coordenadas X%, Y%, W%, H% aparezcan en columnas separadas (no solo en el badge "Coords") y que sean editables inline en la tabla.
+## Objetivo
 
-Reviso `FieldsTable.tsx` actual para entender qué hay.
-<lov-tool-use id="toolu_vrtx_01BTZiDhMpbU6DLiFp3Ys8FT" name="code--view" integration-id="code" data="{\"file_path\": \"src/components/admin/FieldsTable.tsx\"}">
-</lov-tool-use>
+Permitir asignar un broker responsable a cada paciente desde el grid de usuarios, con carga masiva por CSV (descarga de plantilla + importación), y que el broker vea y opere en nombre de sus pacientes en el panel.
 
-<lov-tool-use id="toolu_vrtx_01JLgDiGpyxCXmCx4CtG8ocD" name="code--view" integration-id="code" data="{\"file_path\": \"src/components/admin/FieldsTable.tsx\"}">
-</lov-tool-use>
-I have what I need. The X% Y% W% H% columns already exist in the header (lines 333-336) but are at the far right of a wide table. The user wants them visible and editable. Let me check the body section briefly to see if those input cells exist.
-<lov-tool-use id="toolu_vrtx_01UpWKbH1vuVCZ8FDz1ynLm7" name="code--view" integration-id="code" data="{\"file_path\": \"src/components/admin/FieldsTable.tsx\", \"lines\": \"469-600\"}">
-</lov-tool-use>
-Now I understand the situation. The X%/Y%/W%/H% columns AND inputs already exist (lines 333-336 headers, 527-562 editable inputs), but they're at the far right of a very wide table (18 columns), so on a 984px viewport they're hidden behind horizontal scroll. The user wants them visible without scrolling.
+## Cambios
 
-<lov-plan>
+### 1. Nueva columna "Broker asignado" en `/admin/usuarios`
 
-## Diagnóstico
+En el grid, agregar columna entre "Email" y los toggles de roles:
+- Si el usuario **tiene rol paciente** → muestra un `Select` con la lista de brokers disponibles (más opción "Sin broker"), seleccionable inline.
+- Si el usuario **no es paciente** → muestra `—` deshabilitado.
+- Al cambiar la selección: hace `upsert` en `broker_patients` (borra asignación previa, inserta la nueva). Toast de confirmación.
+- Si se quita el rol paciente, se limpia automáticamente la asignación de broker.
 
-Las columnas **X%, Y%, W%, H%** ya existen en `FieldsTable.tsx` y ya son editables (inputs numéricos en líneas 527–562). El problema es de **visibilidad**: la tabla tiene 18 columnas y esas 4 quedan a la derecha del todo, ocultas tras el scroll horizontal en un viewport de 984px.
+**Archivos:**
+- `src/components/admin/UserRolesRow.tsx` — agregar celda con Select de brokers, lógica de asignar/desasignar.
+- `src/pages/admin/UserManager.tsx` — query incluye lista de brokers + asignaciones existentes; pasa props al row.
 
-Además, hoy hay duplicación visual:
-- una columna compacta **"Coords"** con un badge (✓ X,Y / Sin coords)
-- y al final las 4 columnas editables **X% Y% W% H%**
+### 2. Botones de carga masiva en la cabecera del grid
 
-Eso ocupa el doble de espacio y empuja los inputs editables fuera de la vista.
+Junto al buscador, agregar dos botones:
+- **"Descargar plantilla"** → genera CSV con headers: `email_paciente, email_broker`. Incluye una fila de ejemplo.
+- **"Importar asignaciones"** → abre el `CSVImportDialog` (ya existe, reutilizable). Valida que cada email exista en `profiles`, que el broker tenga rol `broker` y el paciente tenga rol `paciente`. Muestra preview, ejecuta upsert masivo en `broker_patients`.
 
-## Plan
+**Archivos:**
+- `src/pages/admin/UserManager.tsx` — botones + estado del diálogo.
+- `src/components/admin/BrokerAssignmentImportDialog.tsx` (nuevo) — wrapper de `CSVImportDialog` con validación y lógica de import específica.
 
-### 1. Reordenar columnas en `FieldsTable.tsx`
-Mover las 4 columnas editables `X% Y% W% H%` justo después de la columna **Pág**, en el lado izquierdo de la tabla. Así quedan visibles sin scroll en 984px.
+### 3. Panel del Broker mejorado
 
-Nuevo orden propuesto:
-`☐ · # · Clave · Etiqueta · Tipo · Pág · X% · Y% · W% · H% · Sección · Catálogo · Campo de mapeo · Valor mapeado · Req · Estado · 🗑`
+`BrokerPanel.tsx` ya muestra la lista. Mejorar para que pueda **operar en nombre del paciente**:
+- Cada tarjeta de paciente con un botón **"Ver / actuar como"** que abre la vista del paciente.
+- Al entrar en modo "actuar como", se guarda el `patient_id` activo en un contexto (`ImpersonationContext`) y aparece un banner superior fijo: `"Operando en nombre de [Nombre]" [Salir]`.
+- Mientras esté activo, las páginas de pólizas, reclamos, citas, medicamentos y registros usan ese `patient_id` en lugar del `user.id` propio del broker.
 
-### 2. Eliminar la columna redundante "Coords"
-El badge resumen ya no aporta porque los 4 inputs están visibles e indican el estado por sí mismos (vacío = sin coords). Quitar header y celda.
+**Archivos:**
+- `src/contexts/ImpersonationContext.tsx` (nuevo) — guarda `actingAsPatientId` + nombre, con `setActingAs` y `clearActingAs`.
+- `src/components/ImpersonationBanner.tsx` (nuevo) — banner fijo en el `AppLayout`.
+- `src/pages/BrokerPanel.tsx` — botón "Actuar como" por paciente.
+- `src/components/AppLayout.tsx` — montar el banner.
+- Páginas `Policies.tsx`, `Claims.tsx`, `NewClaim.tsx`, `Appointments.tsx`, `Medications.tsx`, `MedicalRecords.tsx` — leer `actingAsPatientId ?? user.id` al consultar y al insertar.
 
-### 3. Ajustar anchos para que entren bien
-- `X% Y% W% H%`: `w-16` (64px) cada una con input compacto `h-8 text-xs px-1`
-- `Pág`: mantener `w-14`
-- Mantener `overflow-x-auto` por seguridad en pantallas muy chicas
+### 4. Permisos de base de datos
 
-### 4. Pequeñas mejoras de UX en los inputs de coordenadas
-- Resaltar visualmente cuando una fila tiene coordenadas completas vs incompletas (borde sutil del grupo de 4 inputs)
-- Placeholder `—` cuando estén vacías
-- Mantener `step="0.01"` y el commit en `onChange` que ya existe
+Las RLS actuales **ya permiten** al broker leer pólizas, claims, profiles y claim_forms de pacientes asignados. Falta agregar permisos de **escritura** para que pueda crear/editar en nombre del paciente:
 
-### 5. Actualizar `colSpan` del estado vacío
-Las filas "Cargando…" y "Sin campos" usan `colSpan={17}`. Tras eliminar "Coords" quedan 17 columnas igualmente (18 − 1 Coords = 17), así que el `colSpan` sigue válido. Verificar y dejar consistente.
+- `claims`: ya tiene `Brokers can update assigned claims`. Falta `INSERT` para brokers.
+- `claim_forms`: solo SELECT para brokers. Falta `INSERT` y `UPDATE`.
+- `insurance_policies`: solo SELECT. Falta `INSERT` y `UPDATE`.
+- `appointments`, `medications`, `medical_records`: agregar políticas para brokers asignados (SELECT/INSERT/UPDATE).
 
-## Archivos a tocar
-- `src/components/admin/FieldsTable.tsx` (único archivo; solo reordenar columnas, quitar "Coords", ajustar anchos)
+Migración SQL nueva con esas políticas, validando vía `EXISTS (SELECT 1 FROM broker_patients WHERE broker_id = auth.uid() AND patient_id = X.user_id)` y `has_role(auth.uid(),'broker')`.
 
-Sin migraciones. Sin cambios de lógica de guardado: los inputs editables y `update(id, { campo_x, ... })` ya funcionan, solo dejarán de estar escondidos.
+### 5. Validaciones
+
+- Un paciente solo puede tener **un broker** asignado a la vez. Si se reasigna, se elimina la fila previa.
+- En import CSV: filas con email inexistente, broker sin rol broker, o paciente sin rol paciente → marcadas como inválidas y se omiten.
+- Solo admin puede asignar brokers (RLS ya lo permite).
+
+## Resumen archivos
+
+Nuevos:
+- `src/components/admin/BrokerAssignmentImportDialog.tsx`
+- `src/contexts/ImpersonationContext.tsx`
+- `src/components/ImpersonationBanner.tsx`
+- Migración SQL para políticas de broker
+
+Modificados:
+- `src/pages/admin/UserManager.tsx`
+- `src/components/admin/UserRolesRow.tsx`
+- `src/pages/BrokerPanel.tsx`
+- `src/components/AppLayout.tsx`
+- `src/main.tsx` (envolver con `ImpersonationProvider`)
+- Páginas de paciente para respetar `actingAsPatientId`
 
 ## Resultado esperado
-En el tab **Campos**, sin necesidad de scroll horizontal, verás 4 columnas editables `X% Y% W% H%` justo al lado de **Pág**, ya con los valores que vengan de la detección automática o del CSV, y podrás editarlas inline.
+
+- Admin asigna broker a paciente desde el grid o por CSV masivo.
+- Broker entra a su panel, ve a sus pacientes, hace clic en "Actuar como" y puede crear pólizas, reclamos, citas, etc. en nombre del paciente, con un banner visible siempre que indica en nombre de quién está operando.
 
