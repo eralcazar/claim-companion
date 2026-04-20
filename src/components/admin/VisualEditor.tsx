@@ -224,7 +224,9 @@ export function VisualEditor({ formulario }: Props) {
       const descartadas = (data as any)?.descartadas ?? 0;
       // No filtramos por clave existente: si ya existe, al aceptar se ACTUALIZAN
       // sus coordenadas. Si no existe, se inserta.
-      const existingKeys = new Set(camposEnPagina.map((c) => c.clave));
+      const existingKeysNorm = new Set(
+        camposEnPagina.map((c) => normalizeClave(c.clave)),
+      );
       const cleaned: ProposedField[] = raw.map((p: any) => ({
         clave: p.clave,
         etiqueta: p.etiqueta ?? p.clave,
@@ -235,7 +237,9 @@ export function VisualEditor({ formulario }: Props) {
         seccion_sugerida: p.seccion_sugerida ?? null,
         accepted: true,
       }));
-      const reusables = cleaned.filter((p) => existingKeys.has(p.clave)).length;
+      const reusables = cleaned.filter((p) =>
+        existingKeysNorm.has(normalizeClave(p.clave)),
+      ).length;
 
       setProposals((prev) => {
         const others = prev.filter((p) => p.page !== page);
