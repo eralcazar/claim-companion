@@ -1,63 +1,67 @@
 
 
-## Diagnóstico: por qué no se importan las coordenadas
+El usuario quiere importación masiva por CSV en los tabs **Campos** y **Secciones** del `FormatManager`.
 
-Hice un trazado completo del flujo **detectar → aceptar → guardar en BD**. Las coordenadas SÍ se calculan correctamente en `VisualEditor.tsx` líneas 329-337, pero hay un **problema de contrato entre el edge function y el cliente** que está causando que se descarten antes de llegar al insert.
+## Plan
 
-### La causa real
+### 1. Botón "Importar CSV" en cada tab
 
-En `supabase/functions/detect-form-fields/index.ts` línea 194:
+**Tab Secciones** (`SectionsList.tsx`):
+- Botón **"Importar CSV"** junto a "Agregar" en la toolbar.
+- Botón **"Plantilla CSV"** que descarga template vacío con headers correctos.
 
-```ts
-r.w >= 0.3 && r.w <= 100 && r.h >= 0.3 && r.h <= 100
+**Tab Campos** (`FieldsTable.tsx`):
+- Botón **"Importar CSV"** en la toolbar superior.
+- Botón **"Plantilla CSV"** para descargar template.
+
+### 2. Diálogo de importación (compartido)
+
+Nuevo componente `src/components/admin/CSVImportDialog.tsx`:
+- Input file (acepta `.csv`).
+- Parser con **PapaParse** (`papaparse` ya soporta headers, comillas, encoding).
+- Preview de las primeras 10 filas en tabla.
+- Validación: muestra errores por fila (campos requeridos faltantes, tipos inválidos, secciones inexistentes).
+- Resumen: "X filas válidas · Y con errores · Z se omitirán".
+- Botón **"Importar N filas"** confirma; las inválidas se omiten.
+
+### 3. Esquemas CSV
+
+**Secciones** (`secciones.csv`):
 ```
-
-El validador `validRect` exige que **ancho y alto sean mínimo 0.3%**. Pero Gemini muy a menudo devuelve casillas (checkbox, firma corta, números pequeños) con `h` o `w` redondeados a `0` o `0.1`. Cuando eso pasa:
-
-1. `validRect(p.campo)` → `false`
-2. Línea 206: `.filter((p) => p.campo)` → **elimina toda la propuesta** (no solo el rect, el campo entero).
-
-Resultado: propuestas con coords pequeñas **nunca llegan al cliente**, así que al "Aceptar" no hay nada que importar para esos campos. Y los que sí llegan, llegan correctos.
-
-### Segundo problema (silencioso)
-
-El validador rechaza también si `x + w > 101` o `y + h > 101`. Gemini frecuentemente devuelve `x=95, w=8` (suma 103) en campos del borde derecho — todos esos también se descartan en silencio.
-
-### Tercer problema (UX)
-
-Cuando el filtro descarta propuestas, el usuario solo ve el toast `"X campos detectados"` con un número menor del real, o `"No se detectaron campos nuevos"` sin saber que sí los hubo pero fueron filtrados. No hay log de cuántas se cayeron.
-
-## Solución propuesta
-
-### 1. `supabase/functions/detect-form-fields/index.ts`
-
-- **Bajar mínimos** a `w >= 0.1` y `h >= 0.1` (un checkbox mide ~0.4% en una hoja A4 a 1600px).
-- **Clamp en lugar de rechazar** cuando `x+w > 100`: ajustar `w = min(w, 100-x)`. Igual para `y+h`.
-- **Logear** cuántas propuestas se descartaron y por qué (visible en los logs del edge function).
-- Devolver además del `propuestas` un contador `descartadas: number` para que el cliente lo muestre.
-
-### 2. `src/components/admin/VisualEditor.tsx`
-
-- En `handleDetect` (línea 257): mostrar toast con el conteo de descartadas si lo hay (`"12 campos · 3 descartados por coords inválidas"`).
-- En `acceptAllProposals`: añadir un `console.warn` si alguna propuesta aceptada tiene `campo.w === 0` o `campo.h === 0` (defensa en profundidad).
-
-### 3. Verificación
-
-Después del fix, al detectar y aceptar una página, los campos insertados deben aparecer en el editor visual con sus rectángulos en la posición correcta. Si quieres, puedes confirmar con esta query (read-only):
-
-```sql
-SELECT clave, campo_pagina, campo_x, campo_y, campo_ancho, campo_alto
-FROM campos
-WHERE formulario_id = '<id>' AND origen = 'auto_ia'
-ORDER BY orden DESC LIMIT 20;
+nombre,orden,pagina
+Datos del paciente,0,1
+Datos médicos,1,1
 ```
+- `nombre` requerido. `orden` y `pagina` enteros (default 0/1).
+- Match por `nombre` para upsert (si existe, actualiza orden/pagina).
 
-Hoy probablemente verás `campo_ancho` y `campo_alto` con valores razonables solo en algunos, o filas faltando completamente respecto a lo que la IA detectó visualmente.
+**Campos** (`campos.csv`):
+```
+clave,etiqueta,tipo,seccion_nombre,pagina,requerido,longitud_max,opciones,mapeo_perfil,mapeo_poliza,mapeo_siniestro,mapeo_medico,campo_x,campo_y,campo_ancho,campo_alto
+nombre,Nombre completo,texto,Datos del paciente,1,true,100,,full_name,,,,10.5,12.3,40,4
+sexo,Sexo,seleccion,Datos del paciente,1,true,,M;F,sex,,,,55,12.3,20,4
+```
+- `clave`, `etiqueta`, `tipo` requeridos.
+- `seccion_nombre` se resuelve a `seccion_id` con la lista actual; si no existe, se crea automáticamente.
+- `opciones` separadas por `;` (se guardan como JSON array).
+- `requerido` acepta `true/false/sí/no/1/0`.
+- Coordenadas opcionales (números entre 0–100).
 
-## Archivos a tocar
+### 4. Lógica de importación
 
-- `supabase/functions/detect-form-fields/index.ts` — relajar `validRect`, clamp de bordes, log de descartes, devolver contador.
-- `src/components/admin/VisualEditor.tsx` — toast con descartes + warn defensivo.
+Hooks nuevos en `useFormatos.ts`:
+- `useImportSecciones(formularioId)` — bulk upsert con match por nombre.
+- `useImportCampos(formularioId)` — resuelve `seccion_id` por nombre, crea secciones faltantes, hace bulk insert.
 
-Sin migraciones de BD. Sin cambios en `acceptAllProposals` (su lógica de inserción es correcta).
+Toast final: "Importadas N secciones / N campos" o "X errores, ver consola".
+
+### 5. Archivos a tocar
+
+- `src/components/admin/CSVImportDialog.tsx` (nuevo) — diálogo reutilizable.
+- `src/components/admin/SectionsList.tsx` — botones Importar/Plantilla.
+- `src/components/admin/FieldsTable.tsx` — botones Importar/Plantilla.
+- `src/hooks/useFormatos.ts` — `useImportSecciones`, `useImportCampos`.
+- Dependencia: `papaparse` + `@types/papaparse`.
+
+Sin migraciones de BD.
 
