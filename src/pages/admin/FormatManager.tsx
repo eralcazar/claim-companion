@@ -28,8 +28,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { FolderTree, Save, HardDrive } from "lucide-react";
-import { StorageManager } from "@/components/admin/StorageManager";
+import { FolderTree, Save } from "lucide-react";
 
 export default function FormatManager() {
   const { roles } = useAuth();
@@ -66,24 +65,6 @@ export default function FormatManager() {
                 selectedId={selectedId}
                 onSelect={(f) => setSelectedId(f.id)}
               />
-            </div>
-          </SheetContent>
-        </Sheet>
-        {/* Global storage manager */}
-        <Sheet>
-          <SheetTrigger asChild>
-            <Button variant="outline" size="sm">
-              <HardDrive className="h-4 w-4" />
-              Archivos del bucket
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="right" className="w-full sm:max-w-2xl overflow-y-auto">
-            <div className="space-y-3 pt-4">
-              <h2 className="text-lg font-semibold">Archivos del bucket "formatos"</h2>
-              <p className="text-sm text-muted-foreground">
-                Gestiona carpetas y archivos PDF de los formatos de aseguradoras.
-              </p>
-              <StorageManager />
             </div>
           </SheetContent>
         </Sheet>
@@ -137,7 +118,6 @@ function FormDetail({
           <TabsTrigger value="campos">Campos ({campos.length})</TabsTrigger>
           <TabsTrigger value="secciones">Secciones ({secciones.length})</TabsTrigger>
           <TabsTrigger value="visual">Editor visual</TabsTrigger>
-          <TabsTrigger value="archivos">Archivos</TabsTrigger>
           <TabsTrigger value="info">Info</TabsTrigger>
         </TabsList>
         <TabsContent value="campos" className="mt-4">
@@ -148,9 +128,6 @@ function FormDetail({
         </TabsContent>
         <TabsContent value="visual" className="mt-4">
           <VisualEditor formulario={formulario} />
-        </TabsContent>
-        <TabsContent value="archivos" className="mt-4">
-          <StorageManager />
         </TabsContent>
         <TabsContent value="info" className="mt-4">
           <InfoTab formulario={formulario} />
