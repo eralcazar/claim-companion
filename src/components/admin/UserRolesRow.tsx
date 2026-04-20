@@ -6,7 +6,19 @@ import { toast } from "@/hooks/use-toast";
 import { ALL_ROLES, type AppRoleLite } from "@/lib/features";
 import { useQueryClient } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import {
   Select,
   SelectContent,
@@ -38,16 +50,41 @@ export function UserRolesRow({
   user,
   brokers,
   assignedBrokerId,
+  isSelf,
 }: {
   user: UserWithRoles;
   brokers: BrokerOption[];
   assignedBrokerId: string | null;
+  isSelf: boolean;
 }) {
   const qc = useQueryClient();
   const [pending, setPending] = useState<AppRoleLite | null>(null);
   const [localRoles, setLocalRoles] = useState<AppRoleLite[]>(user.roles);
   const [assignedBroker, setAssignedBroker] = useState<string>(assignedBrokerId ?? "__none__");
   const [savingBroker, setSavingBroker] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-users", {
+        body: { action: "delete", user_id: user.user_id },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      qc.invalidateQueries({ queryKey: ["users_with_roles"] });
+      qc.invalidateQueries({ queryKey: ["broker_assignments"] });
+      toast({ title: "Usuario eliminado", description: user.full_name });
+    } catch (e: any) {
+      toast({
+        title: "Error",
+        description: e.message ?? "No se pudo eliminar el usuario",
+        variant: "destructive",
+      });
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const toggleRole = async (role: AppRoleLite, checked: boolean) => {
     setPending(role);
