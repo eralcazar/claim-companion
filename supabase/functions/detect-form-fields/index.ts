@@ -19,7 +19,24 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
-    const { image_base64, page_number, formulario_nombre } = await req.json();
+    const rawBody = await req.text();
+    if (!rawBody) {
+      return new Response(JSON.stringify({ error: "Cuerpo vacío. La imagen puede ser demasiado grande." }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    let parsed: any;
+    try {
+      parsed = JSON.parse(rawBody);
+    } catch (e) {
+      console.error("JSON parse failed, body length:", rawBody.length);
+      return new Response(JSON.stringify({ error: "JSON inválido. Imagen probablemente demasiado grande (>4MB). Reduce la escala." }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const { image_base64, page_number, formulario_nombre } = parsed;
     if (!image_base64) {
       return new Response(JSON.stringify({ error: "image_base64 es requerido" }), {
         status: 400,

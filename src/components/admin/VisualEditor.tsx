@@ -176,14 +176,19 @@ export function VisualEditor({ formulario }: Props) {
       const loadingTask = pdfjs.getDocument(url);
       const pdf = await loadingTask.promise;
       const pdfPage = await pdf.getPage(page);
-      const viewport = pdfPage.getViewport({ scale: 2 });
+      // Keep image small enough for edge function body limits (~4MB).
+      // Target ~1600px wide max, then JPEG compress.
+      const baseViewport = pdfPage.getViewport({ scale: 1 });
+      const targetWidth = 1600;
+      const scale = Math.min(2, targetWidth / baseViewport.width);
+      const viewport = pdfPage.getViewport({ scale });
       const canvas = document.createElement("canvas");
       canvas.width = viewport.width;
       canvas.height = viewport.height;
       const ctx = canvas.getContext("2d");
       if (!ctx) throw new Error("No se pudo crear canvas");
       await pdfPage.render({ canvasContext: ctx, viewport, canvas } as any).promise;
-      const image_base64 = canvas.toDataURL("image/png");
+      const image_base64 = canvas.toDataURL("image/jpeg", 0.85);
 
       const { data, error } = await supabase.functions.invoke("detect-form-fields", {
         body: {
