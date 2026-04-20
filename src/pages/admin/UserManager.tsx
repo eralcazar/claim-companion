@@ -135,11 +135,13 @@ export default function UserManager() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Usuario</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Broker asignado</TableHead>
+                  <TableHead className="min-w-[200px] font-bold bg-muted/30">
+                    Broker asignado
+                  </TableHead>
                   {ALL_ROLES.map((r) => (
-                    <TableHead key={r} className="text-center">{ROLE_LABEL[r]}</TableHead>
+                    <TableHead key={r} className="text-center w-20">{ROLE_LABEL[r]}</TableHead>
                   ))}
+                  <TableHead>Email</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
