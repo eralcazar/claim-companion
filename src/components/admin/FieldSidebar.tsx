@@ -47,7 +47,7 @@ export function FieldSidebar({
         <div className="space-y-2 pt-2 border-t">
           <p className="text-xs font-medium">Leyenda</p>
           <div className="flex items-center gap-2 text-xs">
-            <div className="h-3 w-3 border-2 border-emerald-500 bg-emerald-500/10 rounded-sm" />
+            <div className="h-3 w-3 border-2 border-success bg-success/10 rounded-sm" />
             <span>Mapeado</span>
           </div>
           <div className="flex items-center gap-2 text-xs">

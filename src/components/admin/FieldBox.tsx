@@ -113,7 +113,7 @@ export function FieldBox({
   };
 
   const colorClass = hasMapping
-    ? "border-emerald-500 bg-emerald-500/10"
+    ? "border-success bg-success/10"
     : "border-primary bg-primary/10";
 
   const handles: { pos: Handle; cls: string }[] = [
