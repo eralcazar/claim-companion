@@ -13,6 +13,7 @@ import { InsurerTree } from "@/components/admin/InsurerTree";
 import { FormHeader } from "@/components/admin/FormHeader";
 import { FieldsTable } from "@/components/admin/FieldsTable";
 import { SectionsList } from "@/components/admin/SectionsList";
+import { VisualEditor } from "@/components/admin/VisualEditor";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -116,6 +117,7 @@ function FormDetail({
         <TabsList>
           <TabsTrigger value="campos">Campos ({campos.length})</TabsTrigger>
           <TabsTrigger value="secciones">Secciones ({secciones.length})</TabsTrigger>
+          <TabsTrigger value="visual">Editor visual</TabsTrigger>
           <TabsTrigger value="info">Info</TabsTrigger>
         </TabsList>
         <TabsContent value="campos" className="mt-4">
@@ -123,6 +125,9 @@ function FormDetail({
         </TabsContent>
         <TabsContent value="secciones" className="mt-4">
           <SectionsList formularioId={formulario.id} secciones={secciones} />
+        </TabsContent>
+        <TabsContent value="visual" className="mt-4">
+          <VisualEditor formulario={formulario} />
         </TabsContent>
         <TabsContent value="info" className="mt-4">
           <InfoTab formulario={formulario} />
