@@ -293,7 +293,7 @@ export default function NewClaim() {
               </p>
             )}
             {tramite && formatAvailable === true && (
-              <p className="text-xs text-green-600">✓ Formato oficial disponible</p>
+              <p className="text-xs text-primary">✓ Formato oficial disponible</p>
             )}
           </CardContent>
         </Card>
