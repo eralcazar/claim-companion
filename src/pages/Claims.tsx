@@ -21,6 +21,7 @@ import {
 import type { FormCoordinatesKey } from "@/lib/formCoordinates";
 import { runClaimPipeline } from "@/lib/claimPipeline";
 import { RefreshCw, AlertTriangle } from "lucide-react";
+import { useEffectiveUserId } from "@/contexts/ImpersonationContext";
 
 function claimToFormData(claim: any): ClaimFormData {
   const fd = claim.form_data || {};
@@ -88,33 +89,34 @@ function claimToFormData(claim: any): ClaimFormData {
 
 export default function Claims() {
   const { user } = useAuth();
+  const effectiveUserId = useEffectiveUserId(user?.id);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   const { data: claims, isLoading } = useQuery({
-    queryKey: ["claims", user?.id],
+    queryKey: ["claims", effectiveUserId],
     queryFn: async () => {
       const { data } = await supabase
         .from("claims")
         .select("*, insurance_policies(company, policy_number, policy_type, contractor_name, titular_paternal_surname, titular_maternal_surname, titular_first_name, titular_dob, titular_birth_country, titular_birth_state, titular_nationality, titular_occupation, titular_rfc, titular_street, titular_ext_number, titular_int_number, titular_postal_code, titular_neighborhood, titular_municipality, titular_city, titular_state, titular_country, titular_cell_phone, titular_landline, titular_intl_prefix, titular_email, titular_auth_contact)")
-        .eq("user_id", user!.id)
+        .eq("user_id", effectiveUserId!)
         .order("created_at", { ascending: false });
       return data ?? [];
     },
-    enabled: !!user,
+    enabled: !!effectiveUserId,
   });
 
   const { data: claimForms, isLoading: loadingForms, refetch: refetchForms } = useQuery({
-    queryKey: ["claim_forms", user?.id],
+    queryKey: ["claim_forms", effectiveUserId],
     queryFn: async () => {
       const { data } = await supabase
         .from("claim_forms")
         .select("*")
-        .eq("user_id", user!.id)
+        .eq("user_id", effectiveUserId!)
         .order("updated_at", { ascending: false });
       return data ?? [];
     },
-    enabled: !!user,
+    enabled: !!effectiveUserId,
   });
 
   const drafts = (claimForms || []).filter((f: any) => f.status === "draft");
@@ -122,12 +124,12 @@ export default function Claims() {
   const errored = (claimForms || []).filter((f: any) => f.status === "error");
 
   const { data: profile } = useQuery({
-    queryKey: ["profile", user?.id],
+    queryKey: ["profile", effectiveUserId],
     queryFn: async () => {
-      const { data } = await supabase.from("profiles").select("*").eq("user_id", user!.id).single();
+      const { data } = await supabase.from("profiles").select("*").eq("user_id", effectiveUserId!).single();
       return data;
     },
-    enabled: !!user,
+    enabled: !!effectiveUserId,
   });
 
   const claimTypeLabel: Record<string, string> = {
