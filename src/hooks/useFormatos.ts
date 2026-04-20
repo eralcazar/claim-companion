@@ -163,6 +163,26 @@ export function useUpsertCampos(formularioId: string | null) {
   });
 }
 
+/**
+ * Silent variant for live drag/resize updates. No success toast, only errors.
+ */
+export function useUpdateCampoSilent(formularioId: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (campo: Partial<Campo> & { id: string }) => {
+      const { error } = await supabase
+        .from("campos")
+        .update(campo)
+        .eq("id", campo.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["campos", formularioId] });
+    },
+    onError: (e: any) => toast.error(e.message ?? "Error al guardar coordenadas"),
+  });
+}
+
 export function useDeleteCampo(formularioId: string | null) {
   const qc = useQueryClient();
   return useMutation({
