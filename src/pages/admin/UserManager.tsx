@@ -11,6 +11,8 @@ import { ALL_ROLES, type AppRoleLite } from "@/lib/features";
 import { Search, Download, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BrokerAssignmentImportDialog } from "@/components/admin/BrokerAssignmentImportDialog";
+import { CreateUserDialog } from "@/components/admin/CreateUserDialog";
+import { UserPlus } from "lucide-react";
 
 const ROLE_LABEL: Record<AppRoleLite, string> = {
   admin: "Admin",
@@ -20,9 +22,10 @@ const ROLE_LABEL: Record<AppRoleLite, string> = {
 };
 
 export default function UserManager() {
-  const { roles, loading } = useAuth();
+  const { roles, loading, user } = useAuth();
   const [search, setSearch] = useState("");
   const [importOpen, setImportOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
 
   const { data: users, isLoading } = useQuery({
     queryKey: ["users_with_roles"],
@@ -101,7 +104,7 @@ export default function UserManager() {
   if (loading) return null;
   if (!roles.includes("admin")) return <Navigate to="/" replace />;
 
-  const colCount = 3 + ALL_ROLES.length; // user, email, broker, ...roles
+  const colCount = 4 + ALL_ROLES.length; // user, broker, ...roles, email, actions
 
   return (
     <div className="container mx-auto p-4 md:p-6 space-y-4">
@@ -128,6 +131,10 @@ export default function UserManager() {
               <Upload className="h-4 w-4" />
               Importar asignaciones
             </Button>
+            <Button size="sm" onClick={() => setCreateOpen(true)}>
+              <UserPlus className="h-4 w-4" />
+              Nuevo usuario
+            </Button>
           </div>
 
           <div className="rounded-md border overflow-x-auto">
@@ -142,6 +149,7 @@ export default function UserManager() {
                     <TableHead key={r} className="text-center w-20">{ROLE_LABEL[r]}</TableHead>
                   ))}
                   <TableHead>Email</TableHead>
+                  <TableHead className="w-12 text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -165,6 +173,7 @@ export default function UserManager() {
                     user={u}
                     brokers={brokers}
                     assignedBrokerId={assignedBrokerByPatient.get(u.user_id) ?? null}
+                    isSelf={u.user_id === user?.id}
                   />
                 ))}
               </TableBody>
@@ -178,6 +187,7 @@ export default function UserManager() {
         onOpenChange={setImportOpen}
         users={users ?? []}
       />
+      <CreateUserDialog open={createOpen} onOpenChange={setCreateOpen} />
     </div>
   );
 }
