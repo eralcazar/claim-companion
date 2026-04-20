@@ -284,6 +284,148 @@ export function useUpdateFormulario() {
   });
 }
 
+export function useImportSecciones(formularioId: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (rows: Array<{ nombre: string; orden: number; pagina: number }>) => {
+      if (!formularioId) throw new Error("Sin formulario");
+      if (rows.length === 0) return { inserted: 0, updated: 0 };
+
+      const { data: existing, error: exErr } = await supabase
+        .from("secciones")
+        .select("id, nombre")
+        .eq("formulario_id", formularioId);
+      if (exErr) throw exErr;
+
+      const byName = new Map((existing ?? []).map((s) => [s.nombre.toLowerCase(), s.id]));
+      const payload = rows.map((r) => {
+        const existId = byName.get(r.nombre.toLowerCase());
+        return existId
+          ? { id: existId, formulario_id: formularioId, nombre: r.nombre, orden: r.orden, pagina: r.pagina }
+          : { formulario_id: formularioId, nombre: r.nombre, orden: r.orden, pagina: r.pagina };
+      });
+
+      const inserted = payload.filter((p) => !("id" in p)).length;
+      const updated = payload.length - inserted;
+      const { error } = await supabase.from("secciones").upsert(payload as any);
+      if (error) throw error;
+      return { inserted, updated };
+    },
+    onSuccess: ({ inserted, updated }) => {
+      qc.invalidateQueries({ queryKey: ["secciones", formularioId] });
+      toast.success(`Importadas: ${inserted} nuevas, ${updated} actualizadas`);
+    },
+    onError: (e: any) => toast.error(e.message ?? "Error al importar"),
+  });
+}
+
+export type CampoImportRow = {
+  clave: string;
+  etiqueta: string;
+  tipo: string;
+  seccion_nombre?: string | null;
+  pagina?: number | null;
+  requerido?: boolean;
+  longitud_max?: number | null;
+  opciones?: string[] | null;
+  mapeo_perfil?: string | null;
+  mapeo_poliza?: string | null;
+  mapeo_siniestro?: string | null;
+  mapeo_medico?: string | null;
+  campo_x?: number | null;
+  campo_y?: number | null;
+  campo_ancho?: number | null;
+  campo_alto?: number | null;
+};
+
+export function useImportCampos(formularioId: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (rows: CampoImportRow[]) => {
+      if (!formularioId) throw new Error("Sin formulario");
+      if (rows.length === 0) return { inserted: 0, sectionsCreated: 0 };
+
+      // Resolve section names → ids (create missing)
+      const { data: existingSecs, error: secErr } = await supabase
+        .from("secciones")
+        .select("id, nombre, pagina")
+        .eq("formulario_id", formularioId);
+      if (secErr) throw secErr;
+      const secByName = new Map(
+        (existingSecs ?? []).map((s) => [s.nombre.toLowerCase(), s.id]),
+      );
+
+      const neededNames = new Set<string>();
+      rows.forEach((r) => {
+        if (r.seccion_nombre && !secByName.has(r.seccion_nombre.toLowerCase())) {
+          neededNames.add(r.seccion_nombre);
+        }
+      });
+
+      let sectionsCreated = 0;
+      if (neededNames.size > 0) {
+        const newSecs = Array.from(neededNames).map((nombre, i) => ({
+          formulario_id: formularioId,
+          nombre,
+          orden: (existingSecs?.length ?? 0) + i,
+          pagina: 1,
+        }));
+        const { data: created, error: cErr } = await supabase
+          .from("secciones")
+          .insert(newSecs)
+          .select("id, nombre");
+        if (cErr) throw cErr;
+        (created ?? []).forEach((s) => secByName.set(s.nombre.toLowerCase(), s.id));
+        sectionsCreated = created?.length ?? 0;
+      }
+
+      // Get current max orden
+      const { data: maxRow } = await supabase
+        .from("campos")
+        .select("orden")
+        .eq("formulario_id", formularioId)
+        .order("orden", { ascending: false })
+        .limit(1);
+      let nextOrden = (maxRow?.[0]?.orden ?? -1) + 1;
+
+      const payload = rows.map((r) => ({
+        formulario_id: formularioId,
+        clave: r.clave,
+        etiqueta: r.etiqueta,
+        tipo: r.tipo,
+        seccion_id: r.seccion_nombre
+          ? secByName.get(r.seccion_nombre.toLowerCase()) ?? null
+          : null,
+        campo_pagina: r.pagina ?? 1,
+        requerido: r.requerido ?? false,
+        longitud_max: r.longitud_max ?? null,
+        opciones: r.opciones && r.opciones.length > 0 ? r.opciones : null,
+        mapeo_perfil: r.mapeo_perfil ?? null,
+        mapeo_poliza: r.mapeo_poliza ?? null,
+        mapeo_siniestro: r.mapeo_siniestro ?? null,
+        mapeo_medico: r.mapeo_medico ?? null,
+        campo_x: r.campo_x ?? null,
+        campo_y: r.campo_y ?? null,
+        campo_ancho: r.campo_ancho ?? null,
+        campo_alto: r.campo_alto ?? null,
+        origen: "csv_import",
+        orden: nextOrden++,
+      }));
+
+      const { error } = await supabase.from("campos").insert(payload as any);
+      if (error) throw error;
+      return { inserted: payload.length, sectionsCreated };
+    },
+    onSuccess: ({ inserted, sectionsCreated }) => {
+      qc.invalidateQueries({ queryKey: ["campos", formularioId] });
+      qc.invalidateQueries({ queryKey: ["secciones", formularioId] });
+      const extra = sectionsCreated > 0 ? ` (+${sectionsCreated} secciones nuevas)` : "";
+      toast.success(`Importados ${inserted} campos${extra}`);
+    },
+    onError: (e: any) => toast.error(e.message ?? "Error al importar"),
+  });
+}
+
 export function getFormatoPublicUrl(storagePath: string) {
   // storage_path stored like "formatos/ALLIANZ/informe_medico.pdf" — strip bucket prefix
   const path = storagePath.replace(/^formatos\//, "");

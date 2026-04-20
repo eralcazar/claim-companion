@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Trash2, Save, Search } from "lucide-react";
+import { Plus, Trash2, Save, Search, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -37,8 +37,11 @@ import {
   useUpsertCampos,
   useBulkDeleteCampos,
   useMapeos,
+  useImportCampos,
+  type CampoImportRow,
 } from "@/hooks/useFormatos";
 import { cn } from "@/lib/utils";
+import { CSVImportDialog, type CSVValidationResult } from "./CSVImportDialog";
 
 const TIPOS = [
   "texto", "numero", "fecha", "checkbox", "radio", "select",
@@ -98,6 +101,7 @@ export function FieldsTable({ formularioId, secciones }: Props) {
   const upsert = useUpsertCampos(formularioId);
   const remove = useDeleteCampo(formularioId);
   const bulkRemove = useBulkDeleteCampos(formularioId);
+  const importMut = useImportCampos(formularioId);
 
   const [draft, setDraft] = useState<Campo[]>([]);
   const [dirty, setDirty] = useState<Set<string>>(new Set());
@@ -107,6 +111,7 @@ export function FieldsTable({ formularioId, secciones }: Props) {
   const [toDelete, setToDelete] = useState<Campo | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkConfirm, setBulkConfirm] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
   useEffect(() => {
     setDraft(campos);
@@ -292,6 +297,10 @@ export function FieldsTable({ formularioId, secciones }: Props) {
           <Button variant="outline" size="sm" onClick={addNew}>
             <Plus className="h-4 w-4" />
             Nuevo campo
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
+            <Upload className="h-4 w-4" />
+            Importar CSV
           </Button>
           <Button size="sm" onClick={save} disabled={dirty.size === 0 || upsert.isPending}>
             <Save className="h-4 w-4" />
@@ -633,6 +642,96 @@ export function FieldsTable({ formularioId, secciones }: Props) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <CSVImportDialog<CampoImportRow>
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        title="Importar campos desde CSV"
+        description="Columnas: clave, etiqueta, tipo, seccion_nombre, pagina, requerido, longitud_max, opciones (separadas por ;), mapeo_perfil, mapeo_poliza, mapeo_siniestro, mapeo_medico, campo_x, campo_y, campo_ancho, campo_alto. Las secciones que no existan se crearán automáticamente."
+        templateHeaders={[
+          "clave", "etiqueta", "tipo", "seccion_nombre", "pagina", "requerido",
+          "longitud_max", "opciones", "mapeo_perfil", "mapeo_poliza",
+          "mapeo_siniestro", "mapeo_medico",
+          "campo_x", "campo_y", "campo_ancho", "campo_alto",
+        ]}
+        templateExampleRow={[
+          "nombre", "Nombre completo", "texto", "Datos del paciente", "1", "true",
+          "100", "", "full_name", "", "", "", "10.5", "12.3", "40", "4",
+        ]}
+        templateFilename="plantilla_campos.csv"
+        previewColumns={[
+          { key: "clave", label: "Clave" },
+          { key: "etiqueta", label: "Etiqueta" },
+          { key: "tipo", label: "Tipo" },
+          { key: "seccion_nombre", label: "Sección" },
+          { key: "pagina", label: "Pág" },
+        ]}
+        rowToPreview={(r) => ({
+          clave: r.clave,
+          etiqueta: r.etiqueta,
+          tipo: r.tipo,
+          seccion_nombre: r.seccion_nombre ?? "—",
+          pagina: r.pagina ?? 1,
+        })}
+        isImporting={importMut.isPending}
+        parseRow={(raw): CSVValidationResult<CampoImportRow> => {
+          const errors: string[] = [];
+          const clave = (raw.clave ?? "").trim();
+          const etiqueta = (raw.etiqueta ?? "").trim();
+          const tipo = (raw.tipo ?? "").trim() || "texto";
+          if (!clave) errors.push("clave requerida");
+          if (!etiqueta) errors.push("etiqueta requerida");
+          if (!TIPOS.includes(tipo)) errors.push(`tipo inválido (${tipo})`);
+
+          const parseBool = (s: string) => {
+            const v = s.trim().toLowerCase();
+            return ["true", "1", "sí", "si", "yes", "y", "x"].includes(v);
+          };
+          const parseNumOpt = (s: string | undefined): number | null => {
+            if (s === undefined) return null;
+            const t = s.trim();
+            if (t === "") return null;
+            const n = Number(t);
+            return Number.isNaN(n) ? null : n;
+          };
+          const parseCoord = (s: string | undefined, label: string): number | null => {
+            const n = parseNumOpt(s);
+            if (n === null) return null;
+            if (n < 0 || n > 100) errors.push(`${label} fuera de rango 0-100`);
+            return n;
+          };
+
+          const opcionesStr = (raw.opciones ?? "").trim();
+          const opciones = opcionesStr
+            ? opcionesStr.split(";").map((s) => s.trim()).filter(Boolean)
+            : null;
+
+          const row: CampoImportRow = {
+            clave,
+            etiqueta,
+            tipo,
+            seccion_nombre: (raw.seccion_nombre ?? "").trim() || null,
+            pagina: parseNumOpt(raw.pagina) ?? 1,
+            requerido: parseBool(raw.requerido ?? ""),
+            longitud_max: parseNumOpt(raw.longitud_max),
+            opciones,
+            mapeo_perfil: (raw.mapeo_perfil ?? "").trim() || null,
+            mapeo_poliza: (raw.mapeo_poliza ?? "").trim() || null,
+            mapeo_siniestro: (raw.mapeo_siniestro ?? "").trim() || null,
+            mapeo_medico: (raw.mapeo_medico ?? "").trim() || null,
+            campo_x: parseCoord(raw.campo_x, "campo_x"),
+            campo_y: parseCoord(raw.campo_y, "campo_y"),
+            campo_ancho: parseCoord(raw.campo_ancho, "campo_ancho"),
+            campo_alto: parseCoord(raw.campo_alto, "campo_alto"),
+          };
+
+          if (errors.length > 0) return { ok: false, row: null, errors };
+          return { ok: true, row, errors: [] };
+        }}
+        onImport={async (rows) => {
+          await importMut.mutateAsync(rows);
+        }}
+      />
     </div>
   );
 }
