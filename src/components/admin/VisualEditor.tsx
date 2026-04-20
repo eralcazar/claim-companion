@@ -221,6 +221,7 @@ export function VisualEditor({ formulario }: Props) {
       if (error) throw error;
       const raw = (data as any)?.propuestas ?? [];
       const rawSections = (data as any)?.secciones ?? [];
+      const descartadas = (data as any)?.descartadas ?? 0;
       const existingKeys = new Set(camposEnPagina.map((c) => c.clave));
       const cleaned: ProposedField[] = raw
         .filter((p: any) => !existingKeys.has(p.clave))
@@ -252,9 +253,16 @@ export function VisualEditor({ formulario }: Props) {
       });
       setSelectedProposalKey(null);
       if (cleaned.length === 0) {
-        toast.info("No se detectaron campos nuevos en esta página.");
+        toast.info(
+          descartadas > 0
+            ? `No se detectaron campos nuevos. ${descartadas} descartados por coordenadas inválidas.`
+            : "No se detectaron campos nuevos en esta página.",
+        );
       } else {
-        toast.success(`${cleaned.length} campos · ${rawSections.length} secciones detectadas.`);
+        const extra = descartadas > 0 ? ` · ${descartadas} descartados` : "";
+        toast.success(
+          `${cleaned.length} campos · ${rawSections.length} secciones detectadas${extra}.`,
+        );
       }
     } catch (e: any) {
       toast.error(e?.message ?? "Error al detectar campos");
