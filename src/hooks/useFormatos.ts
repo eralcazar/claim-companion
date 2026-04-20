@@ -44,6 +44,7 @@ export type Campo = {
   mapeo_perfil: string | null;
   mapeo_poliza: string | null;
   mapeo_siniestro: string | null;
+  mapeo_medico: string | null;
   requerido: boolean;
   longitud_max: number | null;
   patron_validacion: string | null;
@@ -131,18 +132,21 @@ export function useMapeos() {
   return useQuery({
     queryKey: ["mapeos"],
     queryFn: async () => {
-      const [perfiles, polizas, siniestros] = await Promise.all([
+      const [perfiles, polizas, siniestros, medicos] = await Promise.all([
         supabase.from("mapeo_perfiles").select("*").order("nombre_display"),
         supabase.from("mapeo_polizas").select("*").order("nombre_display"),
         supabase.from("mapeo_siniestros").select("*").order("nombre_display"),
+        supabase.from("mapeo_medicos" as any).select("*").order("nombre_display"),
       ]);
       if (perfiles.error) throw perfiles.error;
       if (polizas.error) throw polizas.error;
       if (siniestros.error) throw siniestros.error;
+      if (medicos.error) throw medicos.error;
       return {
         perfiles: perfiles.data as Mapeo[],
         polizas: polizas.data as Mapeo[],
         siniestros: siniestros.data as Mapeo[],
+        medicos: (medicos.data ?? []) as Mapeo[],
       };
     },
   });
@@ -198,6 +202,23 @@ export function useDeleteCampo(formularioId: string | null) {
   });
 }
 
+export function useBulkDeleteCampos(formularioId: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (ids: string[]) => {
+      if (ids.length === 0) return 0;
+      const { error } = await supabase.from("campos").delete().in("id", ids);
+      if (error) throw error;
+      return ids.length;
+    },
+    onSuccess: (n) => {
+      qc.invalidateQueries({ queryKey: ["campos", formularioId] });
+      if (n) toast.success(`${n} campos eliminados`);
+    },
+    onError: (e: any) => toast.error(e.message ?? "Error al eliminar"),
+  });
+}
+
 export function useUpsertSeccion(formularioId: string | null) {
   const qc = useQueryClient();
   return useMutation({
@@ -223,6 +244,23 @@ export function useDeleteSeccion(formularioId: string | null) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["secciones", formularioId] });
       toast.success("Sección eliminada");
+    },
+    onError: (e: any) => toast.error(e.message ?? "Error al eliminar"),
+  });
+}
+
+export function useBulkDeleteSecciones(formularioId: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (ids: string[]) => {
+      if (ids.length === 0) return 0;
+      const { error } = await supabase.from("secciones").delete().in("id", ids);
+      if (error) throw error;
+      return ids.length;
+    },
+    onSuccess: (n) => {
+      qc.invalidateQueries({ queryKey: ["secciones", formularioId] });
+      if (n) toast.success(`${n} secciones eliminadas`);
     },
     onError: (e: any) => toast.error(e.message ?? "Error al eliminar"),
   });
