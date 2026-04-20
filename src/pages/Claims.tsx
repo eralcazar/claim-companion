@@ -19,6 +19,8 @@ import {
   buildOverlayData,
 } from "@/lib/generateFilledPDF";
 import type { FormCoordinatesKey } from "@/lib/formCoordinates";
+import { runClaimPipeline } from "@/lib/claimPipeline";
+import { RefreshCw, AlertTriangle } from "lucide-react";
 
 function claimToFormData(claim: any): ClaimFormData {
   const fd = claim.form_data || {};
@@ -117,6 +119,7 @@ export default function Claims() {
 
   const drafts = (claimForms || []).filter((f: any) => f.status === "draft");
   const submitted = (claimForms || []).filter((f: any) => f.status === "submitted");
+  const errored = (claimForms || []).filter((f: any) => f.status === "error");
 
   const { data: profile } = useQuery({
     queryKey: ["profile", user?.id],
@@ -257,6 +260,39 @@ export default function Claims() {
   };
 
   const tramiteLabel = (t: string) => TRAMITE_TYPES.find((x) => x.value === t)?.label || t;
+
+  const handleRegenerate = async (form: any) => {
+    if (!user || !profile) { toast.error("Perfil no cargado"); return; }
+    let policy: any = null;
+    if (form.policy_id) {
+      const { data: pol } = await supabase
+        .from("insurance_policies")
+        .select("*")
+        .eq("id", form.policy_id)
+        .maybeSingle();
+      policy = pol;
+    }
+    try {
+      const result = await runClaimPipeline({
+        userId: user.id,
+        insurer: form.insurer,
+        formatId: form.tramite_type,
+        policyId: form.policy_id,
+        formCode: form.form_code,
+        data: form.data || {},
+        profile,
+        policy: policy || {},
+        existingDraftId: form.id,
+      });
+      downloadPDF(result.pdfBytes, `${result.folio}.pdf`);
+      toast.success(`PDF regenerado · Folio ${result.folio}`);
+      refetchForms();
+    } catch (e: any) {
+      console.error("[handleRegenerate]", e);
+      toast.error(e?.message || "Error al regenerar el PDF");
+      refetchForms();
+    }
+  };
 
   return (
     <div className="space-y-4 animate-fade-in max-w-lg mx-auto pb-24">
