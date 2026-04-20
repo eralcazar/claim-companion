@@ -172,18 +172,38 @@ Identifica todos los campos rellenables visibles en la imagen y devuelve el resu
       });
     }
 
-    const json = await aiResp.json();
+    const aiText = await aiResp.text();
+    if (!aiText) {
+      console.error("AI gateway returned empty body");
+      return new Response(
+        JSON.stringify({ error: "Respuesta vacía de la IA. Reintenta en unos segundos." }),
+        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+    let json: any;
+    try {
+      json = JSON.parse(aiText);
+    } catch (e) {
+      console.error("AI gateway returned non-JSON:", aiText.slice(0, 300));
+      return new Response(
+        JSON.stringify({ error: "Respuesta inválida de la IA." }),
+        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
     const toolCall = json?.choices?.[0]?.message?.tool_calls?.[0];
     let propuestas: any[] = [];
     let secciones: any[] = [];
     if (toolCall?.function?.arguments) {
       try {
-        const args = JSON.parse(toolCall.function.arguments);
+        const rawArgs = toolCall.function.arguments;
+        const args = typeof rawArgs === "string" ? JSON.parse(rawArgs) : rawArgs;
         propuestas = Array.isArray(args.propuestas) ? args.propuestas : [];
         secciones = Array.isArray(args.secciones) ? args.secciones : [];
       } catch (e) {
-        console.error("Error parseando tool args", e);
+        console.error("Error parseando tool args:", e, "raw:", String(toolCall.function.arguments).slice(0, 300));
       }
+    } else {
+      console.warn("AI no devolvió tool_call. message:", JSON.stringify(json?.choices?.[0]?.message ?? {}).slice(0, 300));
     }
 
     const validRect = (r: any) =>
