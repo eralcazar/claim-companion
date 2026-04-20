@@ -189,6 +189,40 @@ export function FieldsTable({ formularioId, secciones }: Props) {
     setDirty((prev) => new Set(prev).add(id));
   };
 
+  const getCatalogo = (c: Campo): CatalogoTipo | null => {
+    if (c.mapeo_perfil !== null && c.mapeo_perfil !== undefined) return "perfil";
+    if (c.mapeo_poliza !== null && c.mapeo_poliza !== undefined) return "poliza";
+    if (c.mapeo_siniestro !== null && c.mapeo_siniestro !== undefined) return "siniestro";
+    if (c.mapeo_medico !== null && c.mapeo_medico !== undefined) return "medico";
+    return null;
+  };
+
+  const setCatalogo = (id: string, t: CatalogoTipo | null) => {
+    update(id, {
+      mapeo_perfil: t === "perfil" ? "" : null,
+      mapeo_poliza: t === "poliza" ? "" : null,
+      mapeo_siniestro: t === "siniestro" ? "" : null,
+      mapeo_medico: t === "medico" ? "" : null,
+    });
+  };
+
+  const setCampoMapeo = (id: string, t: CatalogoTipo, mapeoId: string | null) => {
+    update(id, {
+      mapeo_perfil: t === "perfil" ? mapeoId : null,
+      mapeo_poliza: t === "poliza" ? mapeoId : null,
+      mapeo_siniestro: t === "siniestro" ? mapeoId : null,
+      mapeo_medico: t === "medico" ? mapeoId : null,
+    });
+  };
+
+  const opcionesCatalogo = (t: CatalogoTipo | null) => {
+    if (!t || !mapeos) return [];
+    if (t === "perfil") return mapeos.perfiles;
+    if (t === "poliza") return mapeos.polizas;
+    if (t === "siniestro") return mapeos.siniestros;
+    return mapeos.medicos;
+  };
+
   const addNew = () => {
     const next = blankCampo(formularioId, draft.length);
     setDraft((prev) => [...prev, next]);
