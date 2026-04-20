@@ -183,11 +183,11 @@ export default function NewClaim() {
   };
 
   const handleGenerate = async () => {
-    if (!definition || !policy || !user) return;
+    if (!definition || !policy || !effectiveUserId) return;
     setGenerating(true);
     try {
       const result = await runClaimPipeline({
-        userId: user.id,
+        userId: effectiveUserId,
         insurer,
         formatId: tramite,
         policyId: policy.id,
@@ -209,12 +209,12 @@ export default function NewClaim() {
   };
 
   const handleSaveDraft = async () => {
-    if (!user || !definition || !policy) {
+    if (!effectiveUserId || !definition || !policy) {
       toast.error("Selecciona aseguradora y trámite");
       return;
     }
     const payload = {
-      user_id: user.id,
+      user_id: effectiveUserId,
       policy_id: policy.id,
       insurer,
       form_code: definition.code,

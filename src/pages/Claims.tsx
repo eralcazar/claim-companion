@@ -213,7 +213,7 @@ export default function Claims() {
     if (error) toast.error("Error al eliminar el reclamo");
     else {
       toast.success("Reclamo eliminado");
-      queryClient.invalidateQueries({ queryKey: ["claims", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["claims", effectiveUserId] });
     }
   };
 
@@ -264,7 +264,7 @@ export default function Claims() {
   const tramiteLabel = (t: string) => TRAMITE_TYPES.find((x) => x.value === t)?.label || t;
 
   const handleRegenerate = async (form: any) => {
-    if (!user || !profile) { toast.error("Perfil no cargado"); return; }
+    if (!effectiveUserId || !profile) { toast.error("Perfil no cargado"); return; }
     let policy: any = null;
     if (form.policy_id) {
       const { data: pol } = await supabase
@@ -276,7 +276,7 @@ export default function Claims() {
     }
     try {
       const result = await runClaimPipeline({
-        userId: user.id,
+        userId: effectiveUserId,
         insurer: form.insurer,
         formatId: form.tramite_type,
         policyId: form.policy_id,
