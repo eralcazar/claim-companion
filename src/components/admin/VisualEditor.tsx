@@ -326,6 +326,15 @@ export function VisualEditor({ formulario }: Props) {
 
       // 2) Insertar campos con coords campo + label + seccion_id
       const baseOrden = campos.length;
+      const sinCoords = accepted.filter(
+        (p) => !p.campo || p.campo.w === 0 || p.campo.h === 0,
+      );
+      if (sinCoords.length > 0) {
+        console.warn(
+          "[VisualEditor] propuestas aceptadas con coords vacías:",
+          sinCoords.map((p) => p.clave),
+        );
+      }
       const rows = accepted.map((p, i) => ({
         formulario_id: formulario.id,
         clave: p.clave,
