@@ -164,7 +164,7 @@ export function PDFCanvasEditor({
             campo={c}
             selected={c.id === selectedId}
             containerRect={containerRect}
-            hasMapping={!!(c.mapeo_perfil || c.mapeo_poliza || c.mapeo_siniestro)}
+            hasMapping={!!(c.mapeo_perfil || c.mapeo_poliza || c.mapeo_siniestro || c.mapeo_medico)}
             onSelect={() => onSelect(c.id)}
             onChange={(patch) => onChangeCampo(c.id, patch)}
             onCommit={(patch) => onCommitCampo(c.id, patch)}

@@ -5,6 +5,7 @@ export type MappingValue = {
   perfil: string | null;
   poliza: string | null;
   siniestro: string | null;
+  medico: string | null;
 };
 
 interface Props {
@@ -17,15 +18,17 @@ const NONE = "__none__";
 export function MappingSelects({ value, onChange }: Props) {
   const { data: mapeos } = useMapeos();
 
-  const tabla: "perfil" | "poliza" | "siniestro" | null = value.perfil
+  const tabla: "perfil" | "poliza" | "siniestro" | "medico" | null = value.perfil
     ? "perfil"
     : value.poliza
     ? "poliza"
     : value.siniestro
     ? "siniestro"
+    : value.medico
+    ? "medico"
     : null;
 
-  const columna = value.perfil ?? value.poliza ?? value.siniestro ?? null;
+  const columna = value.perfil ?? value.poliza ?? value.siniestro ?? value.medico ?? null;
 
   const opciones =
     tabla === "perfil"
@@ -34,16 +37,19 @@ export function MappingSelects({ value, onChange }: Props) {
       ? mapeos?.polizas
       : tabla === "siniestro"
       ? mapeos?.siniestros
+      : tabla === "medico"
+      ? mapeos?.medicos
       : [];
 
   const setTabla = (t: string) => {
     if (t === NONE) {
-      onChange({ perfil: null, poliza: null, siniestro: null });
+      onChange({ perfil: null, poliza: null, siniestro: null, medico: null });
     } else {
       onChange({
         perfil: t === "perfil" ? value.perfil : null,
         poliza: t === "poliza" ? value.poliza : null,
         siniestro: t === "siniestro" ? value.siniestro : null,
+        medico: t === "medico" ? value.medico : null,
       });
     }
   };
@@ -54,6 +60,7 @@ export function MappingSelects({ value, onChange }: Props) {
       perfil: tabla === "perfil" ? v : null,
       poliza: tabla === "poliza" ? v : null,
       siniestro: tabla === "siniestro" ? v : null,
+      medico: tabla === "medico" ? v : null,
     });
   };
 
@@ -68,6 +75,7 @@ export function MappingSelects({ value, onChange }: Props) {
           <SelectItem value="perfil">Perfil</SelectItem>
           <SelectItem value="poliza">Póliza</SelectItem>
           <SelectItem value="siniestro">Siniestro</SelectItem>
+          <SelectItem value="medico">Médico</SelectItem>
         </SelectContent>
       </Select>
       {tabla && (

@@ -66,9 +66,10 @@ export function FieldSidebar({
     perfil: campo.mapeo_perfil,
     poliza: campo.mapeo_poliza,
     siniestro: campo.mapeo_siniestro,
+    medico: campo.mapeo_medico,
   };
 
-  const hasMapping = !!(campo.mapeo_perfil || campo.mapeo_poliza || campo.mapeo_siniestro);
+  const hasMapping = !!(campo.mapeo_perfil || campo.mapeo_poliza || campo.mapeo_siniestro || campo.mapeo_medico);
 
   return (
     <Card className="p-4 space-y-3 text-sm">

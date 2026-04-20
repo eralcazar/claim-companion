@@ -70,6 +70,7 @@ function blankCampo(formularioId: string, orden: number): Campo {
     mapeo_perfil: null,
     mapeo_poliza: null,
     mapeo_siniestro: null,
+    mapeo_medico: null,
     requerido: false,
     longitud_max: null,
     patron_validacion: null,
@@ -213,7 +214,7 @@ export function FieldsTable({ formularioId, secciones }: Props) {
             )}
             {filtered.map((c, idx) => {
               const isDirty = dirty.has(c.id);
-              const isMapped = !!(c.mapeo_perfil || c.mapeo_poliza || c.mapeo_siniestro);
+              const isMapped = !!(c.mapeo_perfil || c.mapeo_poliza || c.mapeo_siniestro || c.mapeo_medico);
               return (
                 <TableRow key={c.id} className={cn(isDirty && "bg-warning/5")}>
                   <TableCell className="text-xs text-muted-foreground">
@@ -256,12 +257,14 @@ export function FieldsTable({ formularioId, secciones }: Props) {
                         perfil: c.mapeo_perfil,
                         poliza: c.mapeo_poliza,
                         siniestro: c.mapeo_siniestro,
+                        medico: c.mapeo_medico,
                       }}
                       onChange={(v) =>
                         update(c.id, {
                           mapeo_perfil: v.perfil,
                           mapeo_poliza: v.poliza,
                           mapeo_siniestro: v.siniestro,
+                          mapeo_medico: v.medico,
                         })
                       }
                     />

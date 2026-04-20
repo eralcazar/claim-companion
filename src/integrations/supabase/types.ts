@@ -117,6 +117,7 @@ export type Database = {
           label_x: number | null
           label_y: number | null
           longitud_max: number | null
+          mapeo_medico: string | null
           mapeo_perfil: string | null
           mapeo_poliza: string | null
           mapeo_siniestro: string | null
@@ -148,6 +149,7 @@ export type Database = {
           label_x?: number | null
           label_y?: number | null
           longitud_max?: number | null
+          mapeo_medico?: string | null
           mapeo_perfil?: string | null
           mapeo_poliza?: string | null
           mapeo_siniestro?: string | null
@@ -179,6 +181,7 @@ export type Database = {
           label_x?: number | null
           label_y?: number | null
           longitud_max?: number | null
+          mapeo_medico?: string | null
           mapeo_perfil?: string | null
           mapeo_poliza?: string | null
           mapeo_siniestro?: string | null
@@ -198,6 +201,13 @@ export type Database = {
             columns: ["formulario_id"]
             isOneToOne: false
             referencedRelation: "formularios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campos_mapeo_medico_fkey"
+            columns: ["mapeo_medico"]
+            isOneToOne: false
+            referencedRelation: "mapeo_medicos"
             referencedColumns: ["id"]
           },
           {
@@ -383,6 +393,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      especialidades: {
+        Row: {
+          activa: boolean
+          created_at: string
+          id: string
+          nombre: string
+        }
+        Insert: {
+          activa?: boolean
+          created_at?: string
+          id?: string
+          nombre: string
+        }
+        Update: {
+          activa?: boolean
+          created_at?: string
+          id?: string
+          nombre?: string
+        }
+        Relationships: []
       }
       formularios: {
         Row: {
@@ -575,6 +606,27 @@ export type Database = {
         }
         Relationships: []
       }
+      mapeo_medicos: {
+        Row: {
+          columna_origen: string
+          id: string
+          nombre_display: string
+          tipo: string
+        }
+        Insert: {
+          columna_origen: string
+          id: string
+          nombre_display: string
+          tipo?: string
+        }
+        Update: {
+          columna_origen?: string
+          id?: string
+          nombre_display?: string
+          tipo?: string
+        }
+        Relationships: []
+      }
       mapeo_perfiles: {
         Row: {
           columna_origen: string
@@ -702,6 +754,120 @@ export type Database = {
           id?: string
           name?: string
           start_date?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      medico_documentos: {
+        Row: {
+          created_at: string
+          especialidad_id: string | null
+          file_name: string
+          file_path: string
+          id: string
+          medico_id: string
+          tipo: string
+        }
+        Insert: {
+          created_at?: string
+          especialidad_id?: string | null
+          file_name?: string
+          file_path: string
+          id?: string
+          medico_id: string
+          tipo: string
+        }
+        Update: {
+          created_at?: string
+          especialidad_id?: string | null
+          file_name?: string
+          file_path?: string
+          id?: string
+          medico_id?: string
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "medico_documentos_especialidad_id_fkey"
+            columns: ["especialidad_id"]
+            isOneToOne: false
+            referencedRelation: "especialidades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "medico_documentos_medico_id_fkey"
+            columns: ["medico_id"]
+            isOneToOne: false
+            referencedRelation: "medicos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      medico_especialidades: {
+        Row: {
+          cedula_especialidad: string | null
+          created_at: string
+          especialidad_id: string
+          id: string
+          medico_id: string
+        }
+        Insert: {
+          cedula_especialidad?: string | null
+          created_at?: string
+          especialidad_id: string
+          id?: string
+          medico_id: string
+        }
+        Update: {
+          cedula_especialidad?: string | null
+          created_at?: string
+          especialidad_id?: string
+          id?: string
+          medico_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "medico_especialidades_especialidad_id_fkey"
+            columns: ["especialidad_id"]
+            isOneToOne: false
+            referencedRelation: "especialidades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "medico_especialidades_medico_id_fkey"
+            columns: ["medico_id"]
+            isOneToOne: false
+            referencedRelation: "medicos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      medicos: {
+        Row: {
+          cedula_general: string | null
+          created_at: string
+          direccion_consultorio: string | null
+          id: string
+          telefono_consultorio: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cedula_general?: string | null
+          created_at?: string
+          direccion_consultorio?: string | null
+          id?: string
+          telefono_consultorio?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          cedula_general?: string | null
+          created_at?: string
+          direccion_consultorio?: string | null
+          id?: string
+          telefono_consultorio?: string | null
           updated_at?: string
           user_id?: string
         }

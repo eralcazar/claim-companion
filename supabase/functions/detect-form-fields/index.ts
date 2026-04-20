@@ -4,14 +4,20 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const SYSTEM_PROMPT = `Eres un experto en análisis de formularios médicos y de seguros en español. Recibirás la imagen de UNA página de un PDF de formulario. Tu tarea: identificar TODOS los campos rellenables (líneas en blanco, casillas, recuadros para escribir) y devolver sus coordenadas como porcentaje del ancho/alto de la página (0–100).
+const SYSTEM_PROMPT = `Eres un experto en análisis de formularios médicos y de seguros en español. Recibirás la imagen de UNA página de un PDF de formulario. Tu tarea: identificar TODOS los campos rellenables y las secciones temáticas, devolviendo sus coordenadas como porcentaje del ancho/alto de la página (0–100).
 
 Reglas:
-- Devuelve solo los recuadros donde el usuario debe ESCRIBIR algo (no los textos impresos).
-- Para cada campo, infiere una clave en MAYÚSCULAS_CON_GUION_BAJO basada en la etiqueta cercana (ej: NOMBRE_PACIENTE, FECHA_NACIMIENTO, CURP, RFC, FIRMA).
-- Etiqueta = el texto humano legible que aparece cerca del campo.
+- Devuelve los recuadros donde el usuario debe ESCRIBIR algo (líneas, casillas, espacios en blanco).
+- Para cada campo entrega DOS rectángulos:
+    * label = la etiqueta/pregunta impresa visible (texto que describe qué se pide).
+    * campo = el espacio en blanco donde el usuario escribirá la respuesta.
+- Si no se distingue una etiqueta cercana, usa los mismos valores en label y campo.
+- Para cada campo infiere una clave en MAYÚSCULAS_CON_GUION_BAJO basada en la etiqueta (ej: NOMBRE_PACIENTE, FECHA_NACIMIENTO, CURP, RFC, FIRMA).
+- etiqueta = el texto humano legible que aparece cerca del campo.
 - tipo = "texto" | "fecha" | "numero" | "checkbox" | "firma" | "email" | "telefono".
-- Coordenadas: x = borde izquierdo, y = borde superior, w = ancho, h = alto. TODO en porcentaje (0–100).
+- seccion_sugerida = nombre del bloque temático en el que se ubica el campo (ej: "Datos del paciente", "Diagnóstico", "Datos del médico"). Usa el título visible en el PDF si existe.
+- Coordenadas (x,y,w,h): x = borde izquierdo, y = borde superior, w = ancho, h = alto. TODO en porcentaje (0–100).
+- También devuelve un arreglo "secciones" con los bloques temáticos detectados en esta página (nombre + página + orden de arriba abajo).
 - No inventes campos donde no hay espacio para escribir.
 - Devuelve entre 1 y 80 campos por página.`;
 
@@ -71,10 +77,23 @@ Identifica todos los campos rellenables visibles en la imagen y devuelve el resu
           type: "function",
           function: {
             name: "proponer_campos",
-            description: "Devuelve la lista de campos rellenables detectados en la página.",
+            description: "Devuelve la lista de campos rellenables y las secciones detectadas en la página.",
             parameters: {
               type: "object",
               properties: {
+                secciones: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      nombre: { type: "string", description: "Título visible del bloque" },
+                      pagina: { type: "number", description: "Número de página" },
+                      orden: { type: "number", description: "Orden de aparición en la página (de arriba a abajo)" },
+                    },
+                    required: ["nombre", "pagina", "orden"],
+                    additionalProperties: false,
+                  },
+                },
                 propuestas: {
                   type: "array",
                   items: {
@@ -86,17 +105,35 @@ Identifica todos los campos rellenables visibles en la imagen y devuelve el resu
                         type: "string",
                         enum: ["texto", "fecha", "numero", "checkbox", "firma", "email", "telefono"],
                       },
-                      x: { type: "number", description: "0-100, % desde borde izq" },
-                      y: { type: "number", description: "0-100, % desde borde sup" },
-                      w: { type: "number", description: "0-100, % ancho" },
-                      h: { type: "number", description: "0-100, % alto" },
+                      page: { type: "number", description: "Número de página (igual al de la imagen)" },
+                      seccion_sugerida: { type: "string", description: "Nombre de la sección a la que pertenece" },
+                      label: {
+                        type: "object",
+                        description: "Rect de la pregunta/etiqueta impresa",
+                        properties: {
+                          x: { type: "number" }, y: { type: "number" },
+                          w: { type: "number" }, h: { type: "number" },
+                        },
+                        required: ["x", "y", "w", "h"],
+                        additionalProperties: false,
+                      },
+                      campo: {
+                        type: "object",
+                        description: "Rect del espacio en blanco a llenar",
+                        properties: {
+                          x: { type: "number" }, y: { type: "number" },
+                          w: { type: "number" }, h: { type: "number" },
+                        },
+                        required: ["x", "y", "w", "h"],
+                        additionalProperties: false,
+                      },
                     },
-                    required: ["clave", "etiqueta", "tipo", "x", "y", "w", "h"],
+                    required: ["clave", "etiqueta", "tipo", "page", "label", "campo"],
                     additionalProperties: false,
                   },
                 },
               },
-              required: ["propuestas"],
+              required: ["propuestas", "secciones"],
               additionalProperties: false,
             },
           },
@@ -138,32 +175,45 @@ Identifica todos los campos rellenables visibles en la imagen y devuelve el resu
     const json = await aiResp.json();
     const toolCall = json?.choices?.[0]?.message?.tool_calls?.[0];
     let propuestas: any[] = [];
+    let secciones: any[] = [];
     if (toolCall?.function?.arguments) {
       try {
         const args = JSON.parse(toolCall.function.arguments);
         propuestas = Array.isArray(args.propuestas) ? args.propuestas : [];
+        secciones = Array.isArray(args.secciones) ? args.secciones : [];
       } catch (e) {
         console.error("Error parseando tool args", e);
       }
     }
 
-    // Validación: descartar coords inválidas
-    propuestas = propuestas.filter(
-      (p) =>
-        typeof p.x === "number" &&
-        typeof p.y === "number" &&
-        typeof p.w === "number" &&
-        typeof p.h === "number" &&
-        p.x >= 0 && p.x <= 100 &&
-        p.y >= 0 && p.y <= 100 &&
-        p.w >= 0.5 && p.w <= 100 &&
-        p.h >= 0.5 && p.h <= 100 &&
-        p.x + p.w <= 101 &&
-        p.y + p.h <= 101 &&
-        typeof p.clave === "string" && p.clave.length > 0,
-    );
+    const validRect = (r: any) =>
+      r &&
+      typeof r.x === "number" && typeof r.y === "number" &&
+      typeof r.w === "number" && typeof r.h === "number" &&
+      r.x >= 0 && r.x <= 100 && r.y >= 0 && r.y <= 100 &&
+      r.w >= 0.3 && r.w <= 100 && r.h >= 0.3 && r.h <= 100 &&
+      r.x + r.w <= 101 && r.y + r.h <= 101;
 
-    return new Response(JSON.stringify({ propuestas }), {
+    propuestas = propuestas
+      .filter((p) => typeof p.clave === "string" && p.clave.length > 0)
+      .map((p) => ({
+        ...p,
+        page: typeof p.page === "number" ? p.page : (page_number ?? 1),
+        // Backwards compat: if model returned old flat coords, lift them into campo
+        campo: validRect(p.campo) ? p.campo : (validRect(p) ? { x: p.x, y: p.y, w: p.w, h: p.h } : null),
+        label: validRect(p.label) ? p.label : null,
+      }))
+      .filter((p) => p.campo);
+
+    secciones = secciones
+      .filter((s) => s && typeof s.nombre === "string" && s.nombre.trim().length > 0)
+      .map((s, i) => ({
+        nombre: s.nombre.trim(),
+        pagina: typeof s.pagina === "number" ? s.pagina : (page_number ?? 1),
+        orden: typeof s.orden === "number" ? s.orden : i,
+      }));
+
+    return new Response(JSON.stringify({ propuestas, secciones }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
