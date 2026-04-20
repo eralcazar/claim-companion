@@ -47,6 +47,36 @@ export type Database = {
         }
         Relationships: []
       }
+      aseguradoras: {
+        Row: {
+          activa: boolean
+          carpeta_storage: string
+          color_primario: string
+          created_at: string
+          id: string
+          nombre: string
+          slug: string
+        }
+        Insert: {
+          activa?: boolean
+          carpeta_storage: string
+          color_primario?: string
+          created_at?: string
+          id?: string
+          nombre: string
+          slug: string
+        }
+        Update: {
+          activa?: boolean
+          carpeta_storage?: string
+          color_primario?: string
+          created_at?: string
+          id?: string
+          nombre?: string
+          slug?: string
+        }
+        Relationships: []
+      }
       broker_patients: {
         Row: {
           broker_id: string
@@ -67,6 +97,138 @@ export type Database = {
           patient_id?: string
         }
         Relationships: []
+      }
+      campos: {
+        Row: {
+          campo_alto: number | null
+          campo_ancho: number | null
+          campo_pagina: number | null
+          campo_x: number | null
+          campo_y: number | null
+          clave: string
+          created_at: string
+          descripcion: string | null
+          etiqueta: string | null
+          formulario_id: string
+          id: string
+          label_alto: number | null
+          label_ancho: number | null
+          label_pagina: number | null
+          label_x: number | null
+          label_y: number | null
+          longitud_max: number | null
+          mapeo_perfil: string | null
+          mapeo_poliza: string | null
+          mapeo_siniestro: string | null
+          opciones: Json | null
+          orden: number
+          origen: string
+          patron_validacion: string | null
+          requerido: boolean
+          seccion_id: string | null
+          tipo: string
+          updated_at: string
+          valor_defecto: string | null
+        }
+        Insert: {
+          campo_alto?: number | null
+          campo_ancho?: number | null
+          campo_pagina?: number | null
+          campo_x?: number | null
+          campo_y?: number | null
+          clave: string
+          created_at?: string
+          descripcion?: string | null
+          etiqueta?: string | null
+          formulario_id: string
+          id?: string
+          label_alto?: number | null
+          label_ancho?: number | null
+          label_pagina?: number | null
+          label_x?: number | null
+          label_y?: number | null
+          longitud_max?: number | null
+          mapeo_perfil?: string | null
+          mapeo_poliza?: string | null
+          mapeo_siniestro?: string | null
+          opciones?: Json | null
+          orden?: number
+          origen?: string
+          patron_validacion?: string | null
+          requerido?: boolean
+          seccion_id?: string | null
+          tipo?: string
+          updated_at?: string
+          valor_defecto?: string | null
+        }
+        Update: {
+          campo_alto?: number | null
+          campo_ancho?: number | null
+          campo_pagina?: number | null
+          campo_x?: number | null
+          campo_y?: number | null
+          clave?: string
+          created_at?: string
+          descripcion?: string | null
+          etiqueta?: string | null
+          formulario_id?: string
+          id?: string
+          label_alto?: number | null
+          label_ancho?: number | null
+          label_pagina?: number | null
+          label_x?: number | null
+          label_y?: number | null
+          longitud_max?: number | null
+          mapeo_perfil?: string | null
+          mapeo_poliza?: string | null
+          mapeo_siniestro?: string | null
+          opciones?: Json | null
+          orden?: number
+          origen?: string
+          patron_validacion?: string | null
+          requerido?: boolean
+          seccion_id?: string | null
+          tipo?: string
+          updated_at?: string
+          valor_defecto?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campos_formulario_id_fkey"
+            columns: ["formulario_id"]
+            isOneToOne: false
+            referencedRelation: "formularios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campos_mapeo_perfil_fkey"
+            columns: ["mapeo_perfil"]
+            isOneToOne: false
+            referencedRelation: "mapeo_perfiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campos_mapeo_poliza_fkey"
+            columns: ["mapeo_poliza"]
+            isOneToOne: false
+            referencedRelation: "mapeo_polizas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campos_mapeo_siniestro_fkey"
+            columns: ["mapeo_siniestro"]
+            isOneToOne: false
+            referencedRelation: "mapeo_siniestros"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campos_seccion_id_fkey"
+            columns: ["seccion_id"]
+            isOneToOne: false
+            referencedRelation: "secciones"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       claim_documents: {
         Row: {
@@ -222,6 +384,53 @@ export type Database = {
           },
         ]
       }
+      formularios: {
+        Row: {
+          activo: boolean
+          aseguradora_id: string
+          created_at: string
+          id: string
+          nombre: string
+          nombre_display: string
+          storage_path: string
+          total_campos_estimado: number
+          total_paginas: number
+          updated_at: string
+        }
+        Insert: {
+          activo?: boolean
+          aseguradora_id: string
+          created_at?: string
+          id?: string
+          nombre: string
+          nombre_display: string
+          storage_path: string
+          total_campos_estimado?: number
+          total_paginas?: number
+          updated_at?: string
+        }
+        Update: {
+          activo?: boolean
+          aseguradora_id?: string
+          created_at?: string
+          id?: string
+          nombre?: string
+          nombre_display?: string
+          storage_path?: string
+          total_campos_estimado?: number
+          total_paginas?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "formularios_aseguradora_id_fkey"
+            columns: ["aseguradora_id"]
+            isOneToOne: false
+            referencedRelation: "aseguradoras"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       insurance_policies: {
         Row: {
           agente_clave: string | null
@@ -363,6 +572,69 @@ export type Database = {
           tope_coaseguro?: number | null
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      mapeo_perfiles: {
+        Row: {
+          columna_origen: string
+          id: string
+          nombre_display: string
+          tipo: string
+        }
+        Insert: {
+          columna_origen: string
+          id: string
+          nombre_display: string
+          tipo?: string
+        }
+        Update: {
+          columna_origen?: string
+          id?: string
+          nombre_display?: string
+          tipo?: string
+        }
+        Relationships: []
+      }
+      mapeo_polizas: {
+        Row: {
+          columna_origen: string
+          id: string
+          nombre_display: string
+          tipo: string
+        }
+        Insert: {
+          columna_origen: string
+          id: string
+          nombre_display: string
+          tipo?: string
+        }
+        Update: {
+          columna_origen?: string
+          id?: string
+          nombre_display?: string
+          tipo?: string
+        }
+        Relationships: []
+      }
+      mapeo_siniestros: {
+        Row: {
+          columna_origen: string
+          id: string
+          nombre_display: string
+          tipo: string
+        }
+        Insert: {
+          columna_origen: string
+          id: string
+          nombre_display: string
+          tipo?: string
+        }
+        Update: {
+          columna_origen?: string
+          id?: string
+          nombre_display?: string
+          tipo?: string
         }
         Relationships: []
       }
@@ -560,6 +832,41 @@ export type Database = {
           vigencia_identificacion?: string | null
         }
         Relationships: []
+      }
+      secciones: {
+        Row: {
+          created_at: string
+          formulario_id: string
+          id: string
+          nombre: string
+          orden: number
+          pagina: number
+        }
+        Insert: {
+          created_at?: string
+          formulario_id: string
+          id?: string
+          nombre: string
+          orden?: number
+          pagina?: number
+        }
+        Update: {
+          created_at?: string
+          formulario_id?: string
+          id?: string
+          nombre?: string
+          orden?: number
+          pagina?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "secciones_formulario_id_fkey"
+            columns: ["formulario_id"]
+            isOneToOne: false
+            referencedRelation: "formularios"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
