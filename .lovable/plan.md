@@ -2,98 +2,104 @@
 
 ## Objetivo
 
-Pieza 3: **editor visual de coordenadas**. Abrir un PDF dentro del Gestor de Formatos, ver overlays de los campos existentes encima del PDF, y permitir **mover/redimensionar/crear** cajas con drag para fijar las coordenadas (% relativas a la página).
+Agregar al panel Admin dos nuevas piezas:
+1. **Gestor de Usuarios** — listar usuarios y asignar roles (admin / broker / paciente).
+2. **Gestor de Perfiles de Acceso** — definir qué funciones de MediClaim puede ver/usar cada rol.
 
-## UX
+## Decisiones tomadas (sin preguntar)
 
-Nueva tab **"Editor visual"** en el detalle del formulario, junto a Campos / Secciones / Info.
+- "usuario" en tu mensaje = `paciente` en el enum existente (`app_role: admin | broker | paciente | medico`). Mantengo los 4 roles y muestro `medico` también — no tiene sentido ocultarlo si ya existe.
+- Rol = un usuario puede tener varios (ya lo soporta `user_roles`). El gestor permite marcar/desmarcar cada rol con switches.
+- "Perfiles de acceso" = matriz **rol × función**. Lo guardo en una tabla nueva `role_permissions` (rol + clave de función + permitido). El sidebar y rutas leen de ahí en lugar de hardcodear `roles.includes("admin")`.
+
+## Pieza A — Gestor de Usuarios (`/admin/usuarios`)
 
 ```text
-┌─────────────────────────────────────────────────────────────┐
-│ Editor visual — Informe Médico (ALLIANZ)                    │
-│ Página: [◀] 1 / 2 [▶]   Zoom: [─●──] 100%   [+ Nuevo campo] │
-├──────────────────────────────────┬──────────────────────────┤
-│  ┌────────────────────────────┐  │ Campo seleccionado       │
-│  │                            │  │                          │
-│  │   PDF página 1 renderizado │  │ Clave:  [NOMBRE_PAC]     │
-│  │                            │  │ Etiq.:  [Nombre paciente]│
-│  │   ┌────┐  ← caja campo     │  │ Tipo:   [texto ▼]        │
-│  │   │NOMB│    (drag/resize)  │  │ Mapeo:  [perfil.full_..] │
-│  │   └────┘                   │  │ Pág:1 X:32% Y:18% ...    │
-│  │                            │  │                          │
-│  │   ┌──────┐                 │  │ [Eliminar] [Duplicar]    │
-│  │   │CURP  │                 │  │                          │
-│  │   └──────┘                 │  │ ─── Modo creación ───    │
-│  │                            │  │ Click+arrastra sobre el  │
-│  └────────────────────────────┘  │ PDF para crear un campo  │
-└──────────────────────────────────┴──────────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│ Gestor de Usuarios                          [Buscar: ____]   │
+├──────────────────────────────────────────────────────────────┤
+│ Usuario              │ Email             │ Roles asignados   │
+│ ─────────────────────┼───────────────────┼────────────────── │
+│ Erick Alcázar        │ eralcazar@...     │ [✓admin] [✓brk]   │
+│                      │                   │ [☐pac] [☐med]     │
+│ Juan Pérez           │ jperez@...        │ [☐adm] [☐brk]     │
+│                      │                   │ [✓pac] [☐med]     │
+└──────────────────────────────────────────────────────────────┘
 ```
 
-Mobile (<768px): el panel lateral colapsa a Sheet inferior; el visor ocupa el ancho completo.
+- Lista todos los `profiles` con sus roles (join con `user_roles`).
+- Búsqueda por nombre/email.
+- Cambiar un switch hace `INSERT`/`DELETE` en `user_roles` y refresca.
+- Solo accesible si `has_role(admin)`.
 
-## Funcionalidad
+## Pieza B — Gestor de Perfiles de Acceso (`/admin/perfiles-acceso`)
 
-**Visor PDF** (`react-pdf` + `pdfjs-dist`):
-- Carga el PDF desde `getPublicUrl(formulario.storage_path)`.
-- Renderiza una página a la vez, navegable con flechas y atajos `←`/`→`.
-- Slider de zoom 50–200%.
-- Layer absoluto encima del canvas con los `campos` cuya `campo_pagina === pagina_actual`.
+```text
+┌─────────────────────────────────────────────────────────┐
+│ Perfiles de Acceso                                      │
+├─────────────────────────────────────────────────────────┤
+│ Función              │ admin │ broker │ paciente │ med  │
+│ ─────────────────────┼───────┼────────┼──────────┼──────│
+│ Inicio               │  ✓    │   ✓    │    ✓     │  ✓   │
+│ Reclamos             │  ✓    │   ✓    │    ✓     │  ☐   │
+│ Pólizas              │  ✓    │   ✓    │    ✓     │  ☐   │
+│ Panel Broker         │  ✓    │   ✓    │    ☐     │  ☐   │
+│ Panel Médico         │  ✓    │   ☐    │    ☐     │  ✓   │
+│ Gestor de Formatos   │  ✓    │   ☐    │    ☐     │  ☐   │
+│ Gestor de Usuarios   │  ✓    │   ☐    │    ☐     │  ☐   │
+└─────────────────────────────────────────────────────────┘
+```
 
-**Cajas (overlays)**:
-- Posición y tamaño calculados desde `campo_x/y/ancho/alto` (% del page rect).
-- Componente `<FieldBox>` con:
-  - **Drag** del centro para mover.
-  - **8 handles** para redimensionar (esquinas + lados).
-  - Hover muestra `clave`; click la selecciona (ring azul).
-  - Doble-click abre edición rápida del label en el panel.
-- Cambios live: se reflejan en `campo_x/y/ancho/alto` en estado local; al soltar (`onMouseUp`) se hace `upsert` debounceado a `campos`.
+- Matriz de switches. Cada toggle hace upsert en `role_permissions`.
+- Las claves de función vienen de un array fijo en código (`AVAILABLE_FEATURES`) que coincide con las rutas/items del sidebar.
 
-**Modo "Nuevo campo"**:
-- Toggle del botón → cursor crosshair.
-- Mouse-down + drag sobre el PDF dibuja una caja nueva.
-- Al soltar, se crea fila en `campos` con clave autogenerada (`CAMPO_<n>`), página actual y coordenadas en %; queda seleccionada.
+## Esquema de BD nuevo
 
-**Panel lateral** (campo seleccionado):
-- Reuso del editor inline de `FieldsTable` — mismos inputs (clave, etiqueta, tipo, requerido) + `MappingSelects`.
-- Inputs numéricos para X/Y/W/H (sincronizados con el drag).
+```sql
+CREATE TABLE public.role_permissions (
+  role app_role NOT NULL,
+  feature_key text NOT NULL,
+  allowed boolean NOT NULL DEFAULT false,
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (role, feature_key)
+);
 
-**Sin selección**: panel muestra resumen (total campos en la página, total en el formulario, leyenda de colores por mapeo).
+ALTER TABLE public.role_permissions ENABLE ROW LEVEL SECURITY;
 
-## Coordenadas
+CREATE POLICY "Authenticated can read permissions"
+  ON public.role_permissions FOR SELECT TO authenticated USING (true);
 
-- Almacenamiento: % (0-100) relativos al page rect renderizado por pdf.js.
-- Conversión drag→%: `((eventX - pageRect.left) / pageRect.width) * 100`.
-- Esto coincide con lo ya definido en el esquema (`campo_x float`, etc.) y es resolución-agnóstico.
+CREATE POLICY "Admins manage permissions"
+  ON public.role_permissions FOR ALL TO authenticated
+  USING (has_role(auth.uid(), 'admin'))
+  WITH CHECK (has_role(auth.uid(), 'admin'));
+```
 
-## Persistencia
+Seed con los defaults visibles en la matriz de arriba para `inicio, reclamos, polizas, formatos, agenda, medicamentos, registros, perfil, broker_panel, doctor_panel, admin_panel, format_manager, user_manager, access_manager`.
 
-- Mutación `upsert` a `campos` con debounce 400ms tras drag/resize.
-- Crear/eliminar usan los hooks ya existentes (`useUpsertCampos`, `useDeleteCampo`).
-- Toast solo en errores; los saves silenciosos para no spamear durante drag.
+## Integración con sidebar y rutas
 
-## Dependencias nuevas
-
-- `react-pdf` (^9) + `pdfjs-dist` (^4): renderizado del PDF en canvas.
-- Worker de pdf.js servido desde CDN (sin tocar Vite config).
-- Sin libs de drag externas — usamos `pointer events` nativos para mantener bundle pequeño.
+- Hook nuevo `usePermissions()` que carga `role_permissions` filtrado por los roles del usuario actual y devuelve `can(featureKey)`.
+- `AppSidebar` reemplaza los `roles.includes("admin")` por `can("format_manager")`, etc. Si el admin desactiva una función para su rol, deja de verla. (Para evitar lock-out: el ítem `access_manager` queda **siempre visible para admin** vía guard en código.)
+- `ProtectedRoute` (o un nuevo `<RequireFeature feature="...">`) protege las rutas equivalentes y redirige a `/` si no hay permiso.
 
 ## Archivos
 
 ```text
-crea:  src/components/admin/PDFCanvasEditor.tsx   (visor + capa de overlays + crear con drag)
-crea:  src/components/admin/FieldBox.tsx          (caja draggable/resizable individual)
-crea:  src/components/admin/FieldSidebar.tsx      (panel derecho: edición del campo seleccionado)
-crea:  src/components/admin/VisualEditor.tsx      (orquesta canvas + sidebar + selección)
-crea:  src/lib/pdfWorker.ts                       (configura el worker de pdfjs-dist)
-edita: src/pages/admin/FormatManager.tsx          (nueva tab "Editor visual")
-edita: src/hooks/useFormatos.ts                   (helper updateCampo individual sin toast para drag)
-edita: package.json                               (react-pdf + pdfjs-dist)
+crea:  supabase/migrations/<ts>_role_permissions.sql      (tabla + RLS + seed)
+crea:  src/hooks/usePermissions.ts                        (carga matriz, expone can())
+crea:  src/lib/features.ts                                (lista AVAILABLE_FEATURES con label/icono/ruta)
+crea:  src/pages/admin/UserManager.tsx                    (Pieza A)
+crea:  src/pages/admin/AccessManager.tsx                  (Pieza B)
+crea:  src/components/admin/UserRolesRow.tsx              (fila usuario + switches de roles)
+crea:  src/components/admin/PermissionMatrix.tsx          (tabla rol × función)
+edita: src/App.tsx                                        (rutas /admin/usuarios y /admin/perfiles-acceso)
+edita: src/components/AppSidebar.tsx                      (usar can(); añadir 2 links nuevos en Admin)
 ```
 
 ## Lo que NO incluye
 
-- Edición de **labels** (las cajas `label_*`). Mismo patrón aplica; lo añadimos en una iteración posterior si quieres.
-- Detección automática de campos por IA / OCR.
-- Multi-selección y operaciones en lote (alinear, distribuir).
-- Snap a grid o a otros campos.
+- Crear/eliminar usuarios (los crea el flujo de signup; eliminar requiere service role en edge function, lo dejamos para otra pieza si lo pides).
+- Permisos a nivel de campo dentro de una página (sólo visibilidad de página/sección).
+- Auditoría/historial de cambios de rol.
 
