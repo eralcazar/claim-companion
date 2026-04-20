@@ -368,6 +368,99 @@ export function VisualEditor({ formulario }: Props) {
     setSelectedProposalKey(null);
   };
 
+  const requestMappingSuggestions = async (
+    nuevos: { id: string; clave: string; etiqueta: string | null; tipo: string }[],
+  ) => {
+    setSuggesting(true);
+    try {
+      // Pull current option catalogs from cache (same hook used by MappingSelects).
+      const mapeos: any = qc.getQueryData(["mapeos"]) ?? null;
+      const opciones = {
+        perfil: (mapeos?.perfiles ?? []).map((o: any) => ({ id: o.id, nombre_display: o.nombre_display })),
+        poliza: (mapeos?.polizas ?? []).map((o: any) => ({ id: o.id, nombre_display: o.nombre_display })),
+        siniestro: (mapeos?.siniestros ?? []).map((o: any) => ({ id: o.id, nombre_display: o.nombre_display })),
+        medico: (mapeos?.medicos ?? []).map((o: any) => ({ id: o.id, nombre_display: o.nombre_display })),
+      };
+      const camposPayload = nuevos.map((c) => ({
+        clave: c.clave,
+        etiqueta: c.etiqueta ?? c.clave,
+        tipo: c.tipo,
+      }));
+      const { data, error } = await supabase.functions.invoke("suggest-field-mappings", {
+        body: { campos: camposPayload, opciones },
+      });
+      if (error) throw error;
+      const sug = ((data as any)?.sugerencias ?? []) as Array<{
+        clave: string;
+        tabla: SuggestionRow["tabla"];
+        columna_id: string | null;
+        confianza: SuggestionRow["confianza"];
+      }>;
+      const byClave = new Map(sug.map((s) => [s.clave, s]));
+      const rows: SuggestionRow[] = nuevos.map((c) => {
+        const s = byClave.get(c.clave);
+        const tabla = s?.tabla ?? "ninguno";
+        const columna_id = s?.columna_id ?? null;
+        return {
+          campo_id: c.id,
+          clave: c.clave,
+          etiqueta: c.etiqueta ?? c.clave,
+          tabla,
+          columna_id,
+          confianza: s?.confianza ?? "baja",
+          accepted: tabla !== "ninguno" && !!columna_id,
+        };
+      });
+      setSuggestions(rows);
+      const conMapeo = rows.filter((r) => r.tabla !== "ninguno" && r.columna_id).length;
+      if (conMapeo > 0) {
+        toast.success(`${conMapeo} sugerencias de mapeo listas para revisar.`);
+      } else {
+        toast.info("La IA no encontró mapeos confiables.");
+      }
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e?.message ?? "Error al sugerir mapeos");
+    } finally {
+      setSuggesting(false);
+    }
+  };
+
+  const updateSuggestion = (campo_id: string, patch: Partial<SuggestionRow>) => {
+    setSuggestions((prev) => prev.map((r) => (r.campo_id === campo_id ? { ...r, ...patch } : r)));
+  };
+
+  const applyAllSuggestions = async () => {
+    const accepted = suggestions.filter((r) => r.accepted && r.tabla !== "ninguno" && r.columna_id);
+    if (accepted.length === 0) return;
+    setApplyingSuggestions(true);
+    try {
+      // Run updates in parallel; each campo gets a single mapping cleared on the other 3 columns.
+      await Promise.all(
+        accepted.map((r) =>
+          supabase
+            .from("campos")
+            .update({
+              mapeo_perfil: r.tabla === "perfil" ? r.columna_id : null,
+              mapeo_poliza: r.tabla === "poliza" ? r.columna_id : null,
+              mapeo_siniestro: r.tabla === "siniestro" ? r.columna_id : null,
+              mapeo_medico: r.tabla === "medico" ? r.columna_id : null,
+            })
+            .eq("id", r.campo_id),
+        ),
+      );
+      qc.invalidateQueries({ queryKey: ["campos", formulario.id] });
+      toast.success(`${accepted.length} mapeos aplicados.`);
+      setSuggestions([]);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Error al aplicar mapeos");
+    } finally {
+      setApplyingSuggestions(false);
+    }
+  };
+
+  const discardAllSuggestions = () => setSuggestions([]);
+
   const proposalsEnPagina = proposals.filter((p) => p.page === page);
   const showProposalsPanel = proposalsEnPagina.length > 0;
 
