@@ -325,15 +325,14 @@ export function FieldsTable({ formularioId, secciones }: Props) {
               <TableHead className="min-w-[160px]">Etiqueta</TableHead>
               <TableHead className="min-w-[110px]">Tipo</TableHead>
               <TableHead className="w-16">Pág</TableHead>
-              <TableHead className="w-28">Coords</TableHead>
+              <TableHead className="w-16">X%</TableHead>
+              <TableHead className="w-16">Y%</TableHead>
+              <TableHead className="w-16">W%</TableHead>
+              <TableHead className="w-16">H%</TableHead>
               <TableHead className="min-w-[160px]">Sección</TableHead>
               <TableHead className="w-32">Catálogo</TableHead>
               <TableHead className="min-w-[200px]">Campo de mapeo</TableHead>
               <TableHead className="min-w-[180px]">Valor mapeado</TableHead>
-              <TableHead className="w-20">X%</TableHead>
-              <TableHead className="w-20">Y%</TableHead>
-              <TableHead className="w-20">W%</TableHead>
-              <TableHead className="w-20">H%</TableHead>
               <TableHead className="w-16">Req</TableHead>
               <TableHead className="w-28">Estado</TableHead>
               <TableHead className="w-12"></TableHead>
@@ -417,19 +416,44 @@ export function FieldsTable({ formularioId, secciones }: Props) {
                     />
                   </TableCell>
                   <TableCell>
-                    {c.campo_x != null && c.campo_y != null && c.campo_ancho != null && c.campo_alto != null ? (
-                      <Badge
-                        variant="secondary"
-                        className="font-mono text-[10px]"
-                        title={`X:${c.campo_x} Y:${c.campo_y} W:${c.campo_ancho} H:${c.campo_alto}`}
-                      >
-                        ✓ {Math.round(c.campo_x)},{Math.round(c.campo_y)}
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline" className="text-[10px] text-muted-foreground">
-                        Sin coords
-                      </Badge>
-                    )}
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={numField(c.campo_x)}
+                      onChange={(e) => update(c.id, { campo_x: parseNum(e.target.value) })}
+                      className="h-8 text-xs px-1 font-mono"
+                      placeholder="—"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={numField(c.campo_y)}
+                      onChange={(e) => update(c.id, { campo_y: parseNum(e.target.value) })}
+                      className="h-8 text-xs px-1 font-mono"
+                      placeholder="—"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={numField(c.campo_ancho)}
+                      onChange={(e) => update(c.id, { campo_ancho: parseNum(e.target.value) })}
+                      className="h-8 text-xs px-1 font-mono"
+                      placeholder="—"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={numField(c.campo_alto)}
+                      onChange={(e) => update(c.id, { campo_alto: parseNum(e.target.value) })}
+                      className="h-8 text-xs px-1 font-mono"
+                      placeholder="—"
+                    />
                   </TableCell>
                   <TableCell>
                     <Select
@@ -523,42 +547,6 @@ export function FieldsTable({ formularioId, secciones }: Props) {
                     ) : (
                       <span className="text-xs text-muted-foreground">—</span>
                     )}
-                  </TableCell>
-                  <TableCell>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={numField(c.campo_x)}
-                      onChange={(e) => update(c.id, { campo_x: parseNum(e.target.value) })}
-                      className="h-8 text-xs"
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={numField(c.campo_y)}
-                      onChange={(e) => update(c.id, { campo_y: parseNum(e.target.value) })}
-                      className="h-8 text-xs"
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={numField(c.campo_ancho)}
-                      onChange={(e) => update(c.id, { campo_ancho: parseNum(e.target.value) })}
-                      className="h-8 text-xs"
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={numField(c.campo_alto)}
-                      onChange={(e) => update(c.id, { campo_alto: parseNum(e.target.value) })}
-                      className="h-8 text-xs"
-                    />
                   </TableCell>
                   <TableCell>
                     <Checkbox
