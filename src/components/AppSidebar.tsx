@@ -1,5 +1,5 @@
 import {
-  Home, FileText, Calendar, Pill, User, Shield, Users, Stethoscope, FolderOpen, Download, LogOut, FolderTree, UserCog, KeyRound
+  Home, FileText, Calendar, Pill, User, Shield, Users, Stethoscope, FolderOpen, Download, LogOut, FolderTree, UserCog, KeyRound, GraduationCap, BadgeCheck
 } from "lucide-react";
 import { NavLink as RouterNavLink, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -30,11 +30,14 @@ const brokerItems: Item[] = [
 
 const doctorItems: Item[] = [
   { title: "Panel Médico", url: "/medico", icon: Stethoscope, feature: "doctor_panel" },
+  { title: "Mi Perfil Médico", url: "/medico/perfil", icon: BadgeCheck, feature: "doctor_profile" },
 ];
 
 const adminItems: Item[] = [
   { title: "Panel Admin", url: "/admin", icon: Shield, feature: "admin_panel" },
   { title: "Gestor de Formatos", url: "/admin/gestor-archivos", icon: FolderTree, feature: "format_manager" },
+  { title: "Médicos", url: "/admin/medicos", icon: BadgeCheck, feature: "admin_medicos" },
+  { title: "Especialidades", url: "/admin/especialidades", icon: GraduationCap, feature: "admin_especialidades" },
   { title: "Gestor de Usuarios", url: "/admin/usuarios", icon: UserCog, feature: "user_manager" },
   { title: "Perfiles de Acceso", url: "/admin/perfiles-acceso", icon: KeyRound, feature: "access_manager" },
 ];

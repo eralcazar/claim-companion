@@ -23,6 +23,9 @@ import PipelineStatus from "@/pages/admin/PipelineStatus";
 import FormatManager from "@/pages/admin/FormatManager";
 import UserManager from "@/pages/admin/UserManager";
 import AccessManager from "@/pages/admin/AccessManager";
+import EspecialidadesCatalog from "@/pages/admin/EspecialidadesCatalog";
+import MedicosManager from "@/pages/admin/MedicosManager";
+import DoctorProfile from "@/pages/DoctorProfile";
 import Formats from "@/pages/Formats";
 import NotFound from "@/pages/NotFound";
 
@@ -55,6 +58,9 @@ const App = () => (
               <Route path="/admin/gestor-archivos" element={<FormatManager />} />
               <Route path="/admin/usuarios" element={<UserManager />} />
               <Route path="/admin/perfiles-acceso" element={<AccessManager />} />
+              <Route path="/admin/especialidades" element={<EspecialidadesCatalog />} />
+              <Route path="/admin/medicos" element={<MedicosManager />} />
+              <Route path="/medico/perfil" element={<DoctorProfile />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>

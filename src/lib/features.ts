@@ -1,6 +1,6 @@
 import {
   Home, FileText, Shield, Calendar, Pill, FolderOpen, User, Download,
-  Users, Stethoscope, FolderTree, UserCog, KeyRound,
+  Users, Stethoscope, FolderTree, UserCog, KeyRound, GraduationCap, BadgeCheck,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -8,7 +8,8 @@ export type FeatureKey =
   | "inicio" | "reclamos" | "polizas" | "formatos" | "agenda"
   | "medicamentos" | "registros" | "perfil"
   | "broker_panel" | "doctor_panel" | "admin_panel"
-  | "format_manager" | "user_manager" | "access_manager";
+  | "format_manager" | "user_manager" | "access_manager"
+  | "admin_especialidades" | "admin_medicos" | "doctor_profile";
 
 export interface FeatureDef {
   key: FeatureKey;
@@ -33,6 +34,9 @@ export const AVAILABLE_FEATURES: FeatureDef[] = [
   { key: "format_manager", label: "Gestor de Formatos", route: "/admin/gestor-archivos", icon: FolderTree, group: "admin" },
   { key: "user_manager", label: "Gestor de Usuarios", route: "/admin/usuarios", icon: UserCog, group: "admin" },
   { key: "access_manager", label: "Perfiles de Acceso", route: "/admin/perfiles-acceso", icon: KeyRound, group: "admin" },
+  { key: "admin_especialidades", label: "Especialidades", route: "/admin/especialidades", icon: GraduationCap, group: "admin" },
+  { key: "admin_medicos", label: "Médicos", route: "/admin/medicos", icon: BadgeCheck, group: "admin" },
+  { key: "doctor_profile", label: "Mi Perfil Médico", route: "/medico/perfil", icon: BadgeCheck, group: "medico" },
 ];
 
 export const ALL_ROLES = ["admin", "broker", "paciente", "medico"] as const;
