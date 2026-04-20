@@ -287,6 +287,14 @@ export default function NewClaim() {
             {tramite && policyId && !getFormDefinition(insurer, tramite) && (
               <p className="text-xs text-destructive">No hay formulario disponible para esta combinación.</p>
             )}
+            {tramite && formatAvailable === false && (
+              <p className="text-xs text-destructive">
+                ⚠️ El PDF oficial no se encontró en Storage. No podrás generar el formato hasta que esté cargado.
+              </p>
+            )}
+            {tramite && formatAvailable === true && (
+              <p className="text-xs text-green-600">✓ Formato oficial disponible</p>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -385,8 +393,13 @@ export default function NewClaim() {
             Siguiente <ArrowRight className="h-4 w-4 ml-1" />
           </Button>
         ) : (
-          <Button className="flex-1 min-w-[120px]" onClick={handleGenerate}>
-            <Download className="h-4 w-4 mr-1" /> Generar PDF
+          <Button
+            className="flex-1 min-w-[120px]"
+            onClick={handleGenerate}
+            disabled={generating || formatAvailable === false}
+          >
+            <Download className="h-4 w-4 mr-1" />
+            {generating ? "Generando..." : "Generar PDF"}
           </Button>
         )}
       </div>
