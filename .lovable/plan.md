@@ -1,71 +1,52 @@
 
 
-## Objetivo
+## Diagnóstico
 
-Permitir que el admin **cree usuarios manualmente** desde el grid (con email, contraseña inicial, nombre y roles) y **elimine usuarios** existentes. Hoy solo se pueden gestionar roles de usuarios que ya se registraron por sí mismos.
+La asignación broker→paciente **sí existe** en la base de datos (eralcazar@gmail.com → erik.alcazar@totvs.com.br), pero el panel del broker no la muestra por dos razones:
 
-## Por qué necesita un edge function
+1. **Query rota en `BrokerPanel.tsx`**: usa el hint `profiles!broker_patients_patient_id_fkey`, pero la tabla `broker_patients` no tiene foreign key declarada hacia `profiles` (sus columnas referencian `auth.users`, no `profiles.user_id`). PostgREST no puede resolver la relación y la query falla o devuelve datos vacíos.
 
-Crear y borrar usuarios en `auth.users` requiere la **service role key** de Supabase, que nunca debe exponerse al navegador. Por eso la creación/eliminación se hace vía edge function, no con el cliente directamente.
+2. **Warning secundario** (no bloqueante pero a corregir): `Badge` recibe un `ref` desde `UserRolesRow` y emite `Warning: Function components cannot be given refs`.
 
-## Cambios
+## Plan
 
-### 1. Edge function `admin-users` (nueva)
+### 1. Arreglar la carga de pacientes en `BrokerPanel.tsx`
 
-`supabase/functions/admin-users/index.ts` con dos acciones:
+Cambiar a una query en **dos pasos** (sin depender de FK declarada):
 
-- **`create`**: recibe `{ email, password, full_name, roles[] }`.
-  - Verifica que el caller sea admin (revisa JWT + `has_role(uid,'admin')`).
-  - Llama `supabase.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { full_name } })`.
-  - El trigger `handle_new_user` crea automáticamente `profiles` y rol `paciente`.
-  - Si `roles[]` incluye otros roles, los inserta en `user_roles`. Si NO incluye `paciente`, elimina el rol paciente por defecto.
-  - Devuelve el `user_id` creado.
+```ts
+// 1) Traer asignaciones
+const { data: assignments } = await supabase
+  .from("broker_patients")
+  .select("patient_id")
+  .eq("broker_id", user.id);
 
-- **`delete`**: recibe `{ user_id }`.
-  - Verifica admin.
-  - Bloquea borrarse a sí mismo.
-  - Llama `supabase.auth.admin.deleteUser(user_id)`. Las tablas relacionadas (profiles, user_roles, broker_patients, etc.) se limpian por cascada o se borran en la propia función antes.
+// 2) Traer perfiles de esos patient_ids
+const ids = (assignments ?? []).map(a => a.patient_id);
+const { data: profiles } = await supabase
+  .from("profiles")
+  .select("user_id, full_name, first_name, paternal_surname, email, phone")
+  .in("user_id", ids);
+```
 
-Configurada con `verify_jwt = true` para que llegue el JWT del admin.
+Luego mergear en memoria. Esto evita el hint de FK roto y la RLS de `profiles` (`Brokers can view assigned profiles`) ya autoriza la lectura.
 
-### 2. UI en `UserManager.tsx`
+Mejoras adicionales en la tarjeta:
+- Mostrar nombre compuesto (`first_name + paternal_surname`) si `full_name` está vacío.
+- Estado vacío más claro: si no hay asignaciones, mostrar mensaje y un link al admin para que sepa que necesita ser asignado.
 
-**Botón "Nuevo usuario"** en la cabecera (junto a Descargar plantilla / Importar):
-- Abre un diálogo `CreateUserDialog` con campos:
-  - Nombre completo (requerido)
-  - Email (requerido, validación de formato)
-  - Contraseña inicial (requerida, mínimo 8 caracteres, con generador "🎲 Generar")
-  - Roles (checkboxes: Admin, Broker, Paciente, Médico — Paciente marcado por defecto)
-- Al guardar: invoca el edge function `admin-users` acción `create`. Toast de éxito y refresca la query `users_with_roles`.
-- Muestra la contraseña generada en pantalla con botón "Copiar" para que el admin pueda compartirla.
+### 2. Corregir el warning del `Badge` ref en `UserRolesRow.tsx`
 
-**Botón "Eliminar"** (icono papelera) al final de cada fila:
-- Confirmación con `AlertDialog`: "¿Eliminar a {nombre}? Esta acción no se puede deshacer."
-- Bloqueado para el propio usuario admin actual (oculto/deshabilitado en su fila).
-- Invoca edge function `admin-users` acción `delete`. Toast y refresh.
+El `Badge` está dentro de un `<div>` y no recibe ref directamente, pero el warning dice que sí. Probablemente sea por el `Badge` siendo hijo directo de un `TableCell` con algún wrapper que pasa `ref`. Envolverlo en un `<span>` neutro o revisar si el componente `Badge` necesita `forwardRef`. El fix más seguro: envolver el `Badge` en un `<span className="inline-flex">`.
 
-### 3. Archivos
+### 3. Archivos a tocar
 
-Nuevos:
-- `supabase/functions/admin-users/index.ts`
-- `src/components/admin/CreateUserDialog.tsx`
-
-Modificados:
-- `src/pages/admin/UserManager.tsx` — botón "Nuevo usuario" + columna acciones
-- `src/components/admin/UserRolesRow.tsx` — celda final con botón eliminar (con `AlertDialog`)
-- `supabase/config.toml` — registrar la función `admin-users` (verify_jwt = true por defecto)
-
-### 4. Seguridad
-
-- El edge function valida con `service_role` que el caller tenga rol admin antes de cualquier acción → evita escalada de privilegios.
-- No se expone la service key al cliente.
-- Bloqueo explícito de auto-eliminación.
-- Política RLS actual de `user_roles` y `broker_patients` ya permite a admins gestionar todo, no requiere migraciones.
+- `src/pages/BrokerPanel.tsx` — reescribir la query a dos pasos, mejorar render del nombre y estado vacío.
+- `src/components/admin/UserRolesRow.tsx` — envolver `Badge` "Asignado" en un `<span>` para evitar el warning de ref.
 
 ## Resultado esperado
 
-En `/admin/usuarios`:
-- Nuevo botón **"Nuevo usuario"** crea usuarios completos (auth + profile + roles) en un solo paso.
-- Nueva columna con icono de **papelera** elimina usuarios con confirmación.
-- El grid se refresca automáticamente tras cada acción.
+- En el panel del broker `eralcazar@gmail.com` aparecerá la tarjeta de **erik.alcazar@totvs.com.br** con su nombre, email y botón "Ver / actuar como".
+- El warning de `Badge` ref desaparece de la consola.
+- Cualquier broker ve correctamente todos sus pacientes asignados.
 
