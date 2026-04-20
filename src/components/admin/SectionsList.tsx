@@ -253,7 +253,7 @@ export function SectionsList({ formularioId, secciones }: Props) {
         </AlertDialogContent>
       </AlertDialog>
 
-      <CSVImportDialog
+      <CSVImportDialog<{ nombre: string; orden: number; pagina: number }>
         open={importOpen}
         onOpenChange={setImportOpen}
         title="Importar secciones desde CSV"
