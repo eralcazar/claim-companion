@@ -1,70 +1,67 @@
 
 
-## Cambios solicitados
+El usuario quiere que las acciones de gestión de archivos (subir, nueva carpeta, renombrar, eliminar, descargar, drag & drop) aparezcan **dentro del árbol central de aseguradoras** que se ve en la imagen (`InsurerTree`), no en un panel aparte.
 
-1. **SectionsList**: hacer evidentes los botones "Modificar" y "Eliminar" por fila (hoy son íconos sin texto y se confunden).
-2. **FieldsTable**: separar el mapeo en dos columnas claras — **Catálogo de mapeo** (perfil/póliza/siniestro/médico) y **Campo de mapeo** (listbox con los campos del catálogo seleccionado).
-3. **FieldsTable**: hacer editable la columna **Estado** (Mapeado / Manual) usando la columna `origen` de la BD.
+## Plan
 
----
+### 1. `src/components/InsurerTree.tsx` — añadir gestión de archivos
 
-## 1. SectionsList — botones explícitos
+**Toolbar superior del árbol** (sticky arriba):
+- Botón **"Subir PDF"** (icon `Upload`) — sube al nodo expandido actual.
+- Botón **"Nueva carpeta"** (icon `FolderPlus`) — crea subcarpeta en la aseguradora.
+- Botón **"Refrescar"** (icon `RefreshCw`).
 
-En `src/components/admin/SectionsList.tsx`, reemplazar la celda de acciones (líneas 175-194) para mostrar:
-- Botón **"Modificar"** (variant `outline`, ícono `Save`, texto visible, sólo activo si `isDirty`).
-- Botón **"Eliminar"** (variant `destructive`, ícono `Trash2`, texto visible).
+**Por nodo de aseguradora** (acciones siempre visibles a la derecha, compactas):
+- `Upload` — subir PDF a esa carpeta de aseguradora.
+- `FolderPlus` — nueva subcarpeta.
+- Drop zone: arrastrar PDFs encima → upload directo. Resalta con borde primary al hover de drag.
 
-Ampliar la columna de acciones a `w-44` para que los textos quepan.
+**Por nodo de formulario/archivo** (acciones siempre visibles):
+- `Download` — descargar el PDF.
+- `Pencil` — renombrar.
+- `Trash2` — eliminar (con confirmación).
+- Drop zone: soltar PDF → reemplaza el archivo (`upsert`).
 
----
+**Diálogos integrados en el árbol**:
+- Dialog renombrar (input + Guardar).
+- Dialog nueva carpeta (input + Crear).
+- AlertDialog eliminar (confirmación destructiva).
+- Card flotante abajo-derecha con progreso de uploads activos.
 
-## 2. FieldsTable — separar Catálogo y Campo de mapeo
+### 2. `src/hooks/useStorageFormatos.ts` (nuevo)
 
-**Cambios en `src/components/admin/FieldsTable.tsx`:**
+Hook que centraliza el CRUD del bucket `formatos`, extrayendo la lógica de `StorageManager.tsx`:
+- `uploadFiles(path, files)` con progreso.
+- `createFolder(parentPath, name)` (placeholder `.emptyFolderPlaceholder`).
+- `renameItem(oldPath, newPath, isFolder)`.
+- `deleteItem(path, isFolder)` con `listAllRecursive` para carpetas.
+- Invalida `useFormularios` / `useAseguradoras` tras cambios.
 
-- Reemplazar la única columna "Mapeo" (que usa `MappingSelects` apilando dos selects) por **dos columnas independientes**:
-  - **Catálogo** (`w-32`): select con `Sin mapeo / Perfil / Póliza / Siniestro / Médico`. Al cambiar limpia los 4 ids `mapeo_*`.
-  - **Campo de mapeo** (`min-w-[200px]`): select cuyas opciones provienen de `mapeos.{perfiles|polizas|siniestros|medicos}` según el catálogo elegido. Deshabilitado si no hay catálogo. Muestra `nombre_display` y como subtítulo `columna_origen`.
-- Eliminar el componente `MappingSelects` de esta tabla (queda en uso para `MappingSuggestionsPanel` y `FieldSidebar`, no se borra el archivo).
-- Mantener la columna **"Valor mapeado"** (preview con badge) tal cual.
+### 3. `StorageManager.tsx`
 
-Helpers nuevos dentro del componente:
+Se conserva el archivo (no se borra) por si se reutiliza, pero deja de estar enlazado en cualquier UI.
 
-```text
-getCatalogo(c)        -> "perfil" | "poliza" | "siniestro" | "medico" | null
-setCatalogo(c, t)     -> update con los 4 mapeo_* (sólo el elegido = "" hasta escoger campo, resto = null)
-setCampoMapeo(c, id)  -> update del único mapeo_* correspondiente al catálogo activo
-opcionesCatalogo(t)   -> mapeos.perfiles | polizas | siniestros | medicos
-```
+## Archivos
 
----
+- `src/components/admin/InsurerTree.tsx` — toolbar + acciones por nodo + drop zones + diálogos.
+- `src/hooks/useStorageFormatos.ts` (nuevo) — CRUD del bucket.
+- `src/pages/admin/FormatManager.tsx` — sin cambios (la pestaña Archivos y el botón header ya estaban marcados para eliminar; se confirma su retiro si aún están).
 
-## 3. FieldsTable — columna Estado editable
+Sin migraciones de BD.
 
-Hoy la columna "Estado" muestra un badge derivado (`isMapped`). Cambiarla a un **Select editable** con dos opciones:
-- `auto` → "⚡ Auto" (campo detectado por IA o con mapeo)
-- `manual` → "○ Manual" (campo creado/editado a mano)
-
-Persiste en la columna `campos.origen` (ya existe en la tabla, default `'auto'`). El cambio entra al `dirty` set y se guarda con el botón "Guardar".
-
-Ajustar el ancho de la columna a `w-28`.
-
----
-
-## Detalles técnicos
-
-- Archivos editados:
-  - `src/components/admin/FieldsTable.tsx` (estructura de columnas + handlers de catálogo/campo de mapeo + select de origen).
-  - `src/components/admin/SectionsList.tsx` (botones con texto).
-- Sin migraciones de BD: todos los campos ya existen (`mapeo_perfil`, `mapeo_poliza`, `mapeo_siniestro`, `mapeo_medico`, `origen`).
-- Sin cambios en hooks: se sigue usando `useMapeos`, `useUpsertCampos`, `useUpsertSeccion`, etc.
-- `colSpan` de filas vacías/cargando se actualiza de 15 → 16 por la columna extra.
-
----
-
-## Diagrama de la tabla resultante
+## Resultado visual
 
 ```text
-[ ☐ ][ # ][ Clave ][ Etiqueta ][ Tipo ][ Pág ][ Sección ][ Catálogo ][ Campo de mapeo ][ Valor mapeado ][ X% ][ Y% ][ W% ][ H% ][ Req ][ Estado ▼ ][ 🗑 ]
+┌─────────────────────────────────────────┐
+│ [⬆ Subir PDF] [📁+ Carpeta]      [⟳]    │ ← toolbar sticky
+├─────────────────────────────────────────┤
+│ ▸ BANORTE                  (2)  ⬆ 📁+   │
+│ ▾ GNP                      (2)  ⬆ 📁+   │
+│   📄 Informe Médico              ⬇ ✎ 🗑 │
+│   📄 Solicitud de Reembolso      ⬇ ✎ 🗑 │ ← drop PDF = reemplazar
+│ ▸ MAPFRE                   (2)  ⬆ 📁+   │ ← drop PDF = subir aquí
+│ ▸ METLIFE                  (4)  ⬆ 📁+   │
+└─────────────────────────────────────────┘
+        [Subiendo: archivo.pdf 45%]  ← card flotante
 ```
 
