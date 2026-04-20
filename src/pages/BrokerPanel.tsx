@@ -3,10 +3,15 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Users } from "lucide-react";
+import { Users, UserCog } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useImpersonation } from "@/contexts/ImpersonationContext";
+import { useNavigate } from "react-router-dom";
 
 export default function BrokerPanel() {
   const { user } = useAuth();
+  const { setActingAs } = useImpersonation();
+  const navigate = useNavigate();
 
   const { data: patients, isLoading } = useQuery({
     queryKey: ["broker-patients", user?.id],
@@ -19,6 +24,11 @@ export default function BrokerPanel() {
     },
     enabled: !!user,
   });
+
+  const handleActAs = (patientId: string, name: string) => {
+    setActingAs(patientId, name || "Paciente");
+    navigate("/");
+  };
 
   return (
     <div className="space-y-6 animate-fade-in max-w-lg mx-auto">
@@ -35,10 +45,21 @@ export default function BrokerPanel() {
         <div className="space-y-3">
           {patients?.map((p: any) => (
             <Card key={p.patient_id}>
-              <CardContent className="p-4">
-                <p className="font-medium">{p.profiles?.full_name || "Sin nombre"}</p>
-                <p className="text-sm text-muted-foreground">{p.profiles?.email}</p>
-                <p className="text-sm text-muted-foreground">{p.profiles?.phone}</p>
+              <CardContent className="p-4 space-y-3">
+                <div>
+                  <p className="font-medium">{p.profiles?.full_name || "Sin nombre"}</p>
+                  <p className="text-sm text-muted-foreground">{p.profiles?.email}</p>
+                  <p className="text-sm text-muted-foreground">{p.profiles?.phone}</p>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => handleActAs(p.patient_id, p.profiles?.full_name)}
+                >
+                  <UserCog className="h-4 w-4 mr-2" />
+                  Ver / actuar como
+                </Button>
               </CardContent>
             </Card>
           ))}

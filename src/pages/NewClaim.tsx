@@ -15,6 +15,7 @@ import AutofillBanner from "@/components/claims/forms/shared/AutofillBanner";
 import { downloadPDF } from "@/lib/generateFilledPDF";
 import { runClaimPipeline } from "@/lib/claimPipeline";
 import { isValidCLABE, isValidCURP, isValidRFC } from "@/components/claims/forms/shared/validators";
+import { useEffectiveUserId } from "@/contexts/ImpersonationContext";
 
 function fmtValue(v: any): string {
   if (v == null || v === "") return "—";
@@ -30,6 +31,7 @@ function fmtValue(v: any): string {
 
 export default function NewClaim() {
   const { user } = useAuth();
+  const effectiveUserId = useEffectiveUserId(user?.id);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const draftQuery = searchParams.get("draft");
@@ -46,13 +48,13 @@ export default function NewClaim() {
 
   // Cargar borrador desde query param
   useEffect(() => {
-    if (!user || !draftQuery || draftLoaded) return;
+    if (!effectiveUserId || !draftQuery || draftLoaded) return;
     (async () => {
       const { data: d, error } = await supabase
         .from("claim_forms")
         .select("*")
         .eq("id", draftQuery)
-        .eq("user_id", user.id)
+        .eq("user_id", effectiveUserId)
         .maybeSingle();
       if (error || !d) { toast.error("Borrador no encontrado"); setDraftLoaded(true); return; }
       setDraftId(d.id);
@@ -63,28 +65,28 @@ export default function NewClaim() {
       setDraftLoaded(true);
       toast.success("Borrador cargado");
     })();
-  }, [user, draftQuery, draftLoaded]);
+  }, [effectiveUserId, draftQuery, draftLoaded]);
 
   const { data: policies } = useQuery({
-    queryKey: ["policies-active", user?.id],
+    queryKey: ["policies-active", effectiveUserId],
     queryFn: async () => {
       const { data } = await supabase
         .from("insurance_policies")
         .select("*")
-        .eq("user_id", user!.id)
+        .eq("user_id", effectiveUserId!)
         .eq("status", "activa");
       return data ?? [];
     },
-    enabled: !!user,
+    enabled: !!effectiveUserId,
   });
 
   const { data: profile } = useQuery({
-    queryKey: ["profile", user?.id],
+    queryKey: ["profile", effectiveUserId],
     queryFn: async () => {
-      const { data } = await supabase.from("profiles").select("*").eq("user_id", user!.id).single();
+      const { data } = await supabase.from("profiles").select("*").eq("user_id", effectiveUserId!).single();
       return data;
     },
-    enabled: !!user,
+    enabled: !!effectiveUserId,
   });
 
   const policy = useMemo(() => policies?.find((p: any) => p.id === policyId), [policies, policyId]);
@@ -137,11 +139,11 @@ export default function NewClaim() {
 
   // Autosave borrador (debounced 1.5s)
   useEffect(() => {
-    if (!user || !definition || !policy) return;
+    if (!effectiveUserId || !definition || !policy) return;
     if (saveTimer.current) window.clearTimeout(saveTimer.current);
     saveTimer.current = window.setTimeout(async () => {
       const payload = {
-        user_id: user.id,
+        user_id: effectiveUserId,
         policy_id: policy.id,
         insurer,
         form_code: definition.code,
@@ -181,11 +183,11 @@ export default function NewClaim() {
   };
 
   const handleGenerate = async () => {
-    if (!definition || !policy || !user) return;
+    if (!definition || !policy || !effectiveUserId) return;
     setGenerating(true);
     try {
       const result = await runClaimPipeline({
-        userId: user.id,
+        userId: effectiveUserId,
         insurer,
         formatId: tramite,
         policyId: policy.id,
@@ -207,12 +209,12 @@ export default function NewClaim() {
   };
 
   const handleSaveDraft = async () => {
-    if (!user || !definition || !policy) {
+    if (!effectiveUserId || !definition || !policy) {
       toast.error("Selecciona aseguradora y trámite");
       return;
     }
     const payload = {
-      user_id: user.id,
+      user_id: effectiveUserId,
       policy_id: policy.id,
       insurer,
       form_code: definition.code,

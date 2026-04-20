@@ -8,7 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { UserRolesRow } from "@/components/admin/UserRolesRow";
 import { ALL_ROLES, type AppRoleLite } from "@/lib/features";
-import { Search } from "lucide-react";
+import { Search, Download, Upload } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { BrokerAssignmentImportDialog } from "@/components/admin/BrokerAssignmentImportDialog";
 
 const ROLE_LABEL: Record<AppRoleLite, string> = {
   admin: "Admin",
@@ -20,6 +22,7 @@ const ROLE_LABEL: Record<AppRoleLite, string> = {
 export default function UserManager() {
   const { roles, loading } = useAuth();
   const [search, setSearch] = useState("");
+  const [importOpen, setImportOpen] = useState(false);
 
   const { data: users, isLoading } = useQuery({
     queryKey: ["users_with_roles"],
@@ -49,6 +52,32 @@ export default function UserManager() {
     enabled: roles.includes("admin"),
   });
 
+  const { data: assignments } = useQuery({
+    queryKey: ["broker_assignments"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("broker_patients")
+        .select("broker_id, patient_id");
+      if (error) throw error;
+      return data ?? [];
+    },
+    enabled: roles.includes("admin"),
+  });
+
+  const brokers = useMemo(
+    () =>
+      (users ?? [])
+        .filter((u) => u.roles.includes("broker"))
+        .map((u) => ({ user_id: u.user_id, full_name: u.full_name })),
+    [users],
+  );
+
+  const assignedBrokerByPatient = useMemo(() => {
+    const m = new Map<string, string>();
+    (assignments ?? []).forEach((a) => m.set(a.patient_id, a.broker_id));
+    return m;
+  }, [assignments]);
+
   const filtered = useMemo(() => {
     if (!users) return [];
     const q = search.trim().toLowerCase();
@@ -58,8 +87,21 @@ export default function UserManager() {
     );
   }, [users, search]);
 
+  const downloadTemplate = () => {
+    const csv = "email_paciente,email_broker\npaciente@ejemplo.com,broker@ejemplo.com\n";
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "plantilla_asignaciones_broker.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   if (loading) return null;
   if (!roles.includes("admin")) return <Navigate to="/" replace />;
+
+  const colCount = 3 + ALL_ROLES.length; // user, email, broker, ...roles
 
   return (
     <div className="container mx-auto p-4 md:p-6 space-y-4">
@@ -68,22 +110,33 @@ export default function UserManager() {
           <CardTitle>Gestor de Usuarios</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="relative max-w-sm">
-            <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Buscar por nombre o email..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-8"
-            />
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative flex-1 min-w-[200px] max-w-sm">
+              <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por nombre o email..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-8"
+              />
+            </div>
+            <Button variant="outline" size="sm" onClick={downloadTemplate}>
+              <Download className="h-4 w-4" />
+              Descargar plantilla
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
+              <Upload className="h-4 w-4" />
+              Importar asignaciones
+            </Button>
           </div>
 
-          <div className="rounded-md border">
+          <div className="rounded-md border overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Usuario</TableHead>
                   <TableHead>Email</TableHead>
+                  <TableHead>Broker asignado</TableHead>
                   {ALL_ROLES.map((r) => (
                     <TableHead key={r} className="text-center">{ROLE_LABEL[r]}</TableHead>
                   ))}
@@ -92,26 +145,37 @@ export default function UserManager() {
               <TableBody>
                 {isLoading && (
                   <TableRow>
-                    <td colSpan={2 + ALL_ROLES.length} className="p-6 text-center text-muted-foreground">
+                    <td colSpan={colCount} className="p-6 text-center text-muted-foreground">
                       Cargando...
                     </td>
                   </TableRow>
                 )}
                 {!isLoading && filtered.length === 0 && (
                   <TableRow>
-                    <td colSpan={2 + ALL_ROLES.length} className="p-6 text-center text-muted-foreground">
+                    <td colSpan={colCount} className="p-6 text-center text-muted-foreground">
                       No hay usuarios.
                     </td>
                   </TableRow>
                 )}
                 {filtered.map((u) => (
-                  <UserRolesRow key={u.user_id} user={u} />
+                  <UserRolesRow
+                    key={u.user_id}
+                    user={u}
+                    brokers={brokers}
+                    assignedBrokerId={assignedBrokerByPatient.get(u.user_id) ?? null}
+                  />
                 ))}
               </TableBody>
             </Table>
           </div>
         </CardContent>
       </Card>
+
+      <BrokerAssignmentImportDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        users={users ?? []}
+      />
     </div>
   );
 }

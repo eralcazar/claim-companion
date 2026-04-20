@@ -17,6 +17,7 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import type { Database } from "@/integrations/supabase/types";
 import { ASEGURADORAS, ESTADOS_MX, TIPOS_CONTRATACION } from "@/lib/constants";
+import { useEffectiveUserId } from "@/contexts/ImpersonationContext";
 
 type PolicyStatus = Database["public"]["Enums"]["policy_status"];
 
@@ -67,28 +68,29 @@ const EMPTY_FORM = {
 
 export default function Policies() {
   const { user } = useAuth();
+  const effectiveUserId = useEffectiveUserId(user?.id);
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
 
   const { data: policies, isLoading } = useQuery({
-    queryKey: ["policies", user?.id],
+    queryKey: ["policies", effectiveUserId],
     queryFn: async () => {
       const { data } = await supabase
         .from("insurance_policies")
         .select("*")
-        .eq("user_id", user!.id)
+        .eq("user_id", effectiveUserId!)
         .order("created_at", { ascending: false });
       return data ?? [];
     },
-    enabled: !!user,
+    enabled: !!effectiveUserId,
   });
 
   const saveMutation = useMutation({
     mutationFn: async () => {
       const payload: any = {
-        user_id: user!.id,
+        user_id: effectiveUserId!,
         company: form.company,
         policy_number: form.policy_number,
         numero_certificado: form.numero_certificado || null,

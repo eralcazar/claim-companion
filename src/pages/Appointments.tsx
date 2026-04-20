@@ -14,11 +14,13 @@ import { Plus, Calendar, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import type { Database } from "@/integrations/supabase/types";
+import { useEffectiveUserId } from "@/contexts/ImpersonationContext";
 
 type AppointmentType = Database["public"]["Enums"]["appointment_type"];
 
 export default function Appointments() {
   const { user } = useAuth();
+  const effectiveUserId = useEffectiveUserId(user?.id);
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({
@@ -28,22 +30,22 @@ export default function Appointments() {
   });
 
   const { data: appointments, isLoading } = useQuery({
-    queryKey: ["appointments", user?.id],
+    queryKey: ["appointments", effectiveUserId],
     queryFn: async () => {
       const { data } = await supabase
         .from("appointments")
         .select("*")
-        .eq("user_id", user!.id)
+        .eq("user_id", effectiveUserId!)
         .order("appointment_date", { ascending: true });
       return data ?? [];
     },
-    enabled: !!user,
+    enabled: !!effectiveUserId,
   });
 
   const createMutation = useMutation({
     mutationFn: async () => {
       const { error } = await supabase.from("appointments").insert({
-        user_id: user!.id,
+        user_id: effectiveUserId!,
         appointment_date: form.appointment_date,
         appointment_type: form.appointment_type,
         notes: form.notes,

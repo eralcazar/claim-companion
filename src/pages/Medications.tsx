@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { useState } from "react";
 import { Plus, Pill } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
+import { useEffectiveUserId } from "@/contexts/ImpersonationContext";
 
 type MedFrequency = Database["public"]["Enums"]["medication_frequency"];
 
@@ -25,6 +26,7 @@ const freqLabels: Record<string, string> = {
 
 export default function Medications() {
   const { user } = useAuth();
+  const effectiveUserId = useEffectiveUserId(user?.id);
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({
@@ -36,23 +38,23 @@ export default function Medications() {
   });
 
   const { data: medications, isLoading } = useQuery({
-    queryKey: ["medications", user?.id],
+    queryKey: ["medications", effectiveUserId],
     queryFn: async () => {
       const { data } = await supabase
         .from("medications")
         .select("*")
-        .eq("user_id", user!.id)
+        .eq("user_id", effectiveUserId!)
         .order("active", { ascending: false })
         .order("created_at", { ascending: false });
       return data ?? [];
     },
-    enabled: !!user,
+    enabled: !!effectiveUserId,
   });
 
   const createMutation = useMutation({
     mutationFn: async () => {
       const { error } = await supabase.from("medications").insert({
-        user_id: user!.id,
+        user_id: effectiveUserId!,
         ...form,
         end_date: form.end_date || null,
       });

@@ -13,6 +13,7 @@ import { Plus, FolderOpen, Trash2, FileText } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import type { Database } from "@/integrations/supabase/types";
+import { useEffectiveUserId } from "@/contexts/ImpersonationContext";
 
 type RecordType = Database["public"]["Enums"]["medical_record_type"];
 
@@ -24,6 +25,7 @@ const typeLabels: Record<string, string> = {
 
 export default function MedicalRecords() {
   const { user } = useAuth();
+  const effectiveUserId = useEffectiveUserId(user?.id);
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({
@@ -34,27 +36,27 @@ export default function MedicalRecords() {
   const [file, setFile] = useState<File | null>(null);
 
   const { data: records, isLoading } = useQuery({
-    queryKey: ["medical-records", user?.id],
+    queryKey: ["medical-records", effectiveUserId],
     queryFn: async () => {
       const { data } = await supabase
         .from("medical_records")
         .select("*")
-        .eq("user_id", user!.id)
+        .eq("user_id", effectiveUserId!)
         .order("record_date", { ascending: false });
       return data ?? [];
     },
-    enabled: !!user,
+    enabled: !!effectiveUserId,
   });
 
   const uploadMutation = useMutation({
     mutationFn: async () => {
       if (!file) throw new Error("Selecciona un archivo");
-      const filePath = `${user!.id}/${Date.now()}_${file.name}`;
+      const filePath = `${effectiveUserId}/${Date.now()}_${file.name}`;
       const { error: uploadError } = await supabase.storage.from("documents").upload(filePath, file);
       if (uploadError) throw uploadError;
 
       const { error } = await supabase.from("medical_records").insert({
-        user_id: user!.id,
+        user_id: effectiveUserId!,
         record_type: form.record_type,
         file_path: filePath,
         description: form.description,
