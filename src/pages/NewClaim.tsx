@@ -9,11 +9,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, ArrowRight, Check, Download, Save } from "lucide-react";
-import { getFormDefinition, getFormKey, getAvailableFormats } from "@/components/claims/forms/registry";
+import { getFormDefinition, getAvailableFormats, checkFormatExists } from "@/components/claims/forms/registry";
 import FormRenderer from "@/components/claims/forms/FormRenderer";
 import AutofillBanner from "@/components/claims/forms/shared/AutofillBanner";
-import { generateFilledPDF, downloadPDF, buildOverlayData } from "@/lib/generateFilledPDF";
-import type { FormCoordinatesKey } from "@/lib/formCoordinates";
+import { downloadPDF } from "@/lib/generateFilledPDF";
+import { runClaimPipeline } from "@/lib/claimPipeline";
 import { isValidCLABE, isValidCURP, isValidRFC } from "@/components/claims/forms/shared/validators";
 
 function fmtValue(v: any): string {
@@ -40,6 +40,8 @@ export default function NewClaim() {
   const [draftId, setDraftId] = useState<string | null>(null);
   const [autofilled, setAutofilled] = useState(false);
   const [draftLoaded, setDraftLoaded] = useState(false);
+  const [formatAvailable, setFormatAvailable] = useState<boolean | null>(null);
+  const [generating, setGenerating] = useState(false);
   const saveTimer = useRef<number | null>(null);
 
   // Cargar borrador desde query param
@@ -96,6 +98,21 @@ export default function NewClaim() {
     [insurer]
   );
   const currentFormatLabel = availableFormats.find((f) => f.id === tramite)?.label;
+
+  // Pre-check: verificar que el PDF original exista en Storage al elegir formato
+  useEffect(() => {
+    if (!insurer || !tramite) { setFormatAvailable(null); return; }
+    let cancelled = false;
+    setFormatAvailable(null);
+    checkFormatExists(insurer, tramite).then((ok) => {
+      if (cancelled) return;
+      setFormatAvailable(ok);
+      if (!ok) {
+        toast.error(`El formato oficial de ${insurer} (${tramite}) aún no está disponible.`);
+      }
+    });
+    return () => { cancelled = true; };
+  }, [insurer, tramite]);
 
   // Autofill al elegir póliza: solo campos vacíos
   useEffect(() => {
@@ -165,47 +182,27 @@ export default function NewClaim() {
 
   const handleGenerate = async () => {
     if (!definition || !policy || !user) return;
+    setGenerating(true);
     try {
-      const { data: folioRes, error: folioErr } = await supabase.rpc("gen_folio", {
-        _insurer: insurer,
-        _code: definition.code,
-      });
-      if (folioErr) throw folioErr;
-      const folio = folioRes as string;
-
-      // Usar PDF original de la aseguradora (obligatorio: sin fallback genérico)
-      const formKey = getFormKey(insurer, tramite) as FormCoordinatesKey | null;
-      if (!formKey) {
-        toast.error(`No hay formato oficial configurado para ${insurer}`);
-        return;
-      }
-      const overlay = buildOverlayData({
+      const result = await runClaimPipeline({
+        userId: user.id,
+        insurer,
+        formatId: tramite,
+        policyId: policy.id,
+        formCode: definition.code,
         data,
         profile,
         policy,
-        insurer,
-        tramite: tramite as string,
+        existingDraftId: draftId,
       });
-      const pdfBytes = await generateFilledPDF(formKey, overlay);
-
-      const blob = new Blob([pdfBytes as BlobPart], { type: "application/pdf" });
-      const path = `claim-forms/${user.id}/${folio}.pdf`;
-      const { error: upErr } = await supabase.storage.from("documents").upload(path, blob, {
-        contentType: "application/pdf",
-        upsert: true,
-      });
-      if (upErr) throw upErr;
-
-      const updates = { folio, pdf_path: path, status: "submitted" as const };
-      if (draftId) await supabase.from("claim_forms").update(updates).eq("id", draftId);
-
-      // Descargar localmente
-      downloadPDF(pdfBytes, `${folio}.pdf`);
-      toast.success(`Formato oficial llenado · Folio ${folio}`);
+      downloadPDF(result.pdfBytes, `${result.folio}.pdf`);
+      toast.success(`Formato oficial llenado · Folio ${result.folio}`);
       navigate("/reclamos");
     } catch (e: any) {
       console.error("[handleGenerate] error:", e);
-      toast.error(e?.message || "Error al generar el PDF");
+      toast.error(e?.message || "Error al generar el PDF. Puedes reintentar desde Reclamos.");
+    } finally {
+      setGenerating(false);
     }
   };
 
