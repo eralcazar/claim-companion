@@ -72,6 +72,11 @@ export function VisualEditor({ formulario }: Props) {
   const [detecting, setDetecting] = useState(false);
   const [savingProposals, setSavingProposals] = useState(false);
 
+  // Mapping suggestions state (second AI pass after accepting fields)
+  const [suggestions, setSuggestions] = useState<SuggestionRow[]>([]);
+  const [suggesting, setSuggesting] = useState(false);
+  const [applyingSuggestions, setApplyingSuggestions] = useState(false);
+
   // Local in-flight overrides for live drag without waiting for server.
   const [overrides, setOverrides] = useState<Record<string, Partial<Campo>>>({});
   const debounceRef = useRef<Record<string, number>>({});
