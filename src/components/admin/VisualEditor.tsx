@@ -222,19 +222,20 @@ export function VisualEditor({ formulario }: Props) {
       const raw = (data as any)?.propuestas ?? [];
       const rawSections = (data as any)?.secciones ?? [];
       const descartadas = (data as any)?.descartadas ?? 0;
+      // No filtramos por clave existente: si ya existe, al aceptar se ACTUALIZAN
+      // sus coordenadas. Si no existe, se inserta.
       const existingKeys = new Set(camposEnPagina.map((c) => c.clave));
-      const cleaned: ProposedField[] = raw
-        .filter((p: any) => !existingKeys.has(p.clave))
-        .map((p: any) => ({
-          clave: p.clave,
-          etiqueta: p.etiqueta ?? p.clave,
-          tipo: p.tipo ?? "texto",
-          page,
-          campo: p.campo,
-          label: p.label ?? null,
-          seccion_sugerida: p.seccion_sugerida ?? null,
-          accepted: true,
-        }));
+      const cleaned: ProposedField[] = raw.map((p: any) => ({
+        clave: p.clave,
+        etiqueta: p.etiqueta ?? p.clave,
+        tipo: p.tipo ?? "texto",
+        page,
+        campo: p.campo,
+        label: p.label ?? null,
+        seccion_sugerida: p.seccion_sugerida ?? null,
+        accepted: true,
+      }));
+      const reusables = cleaned.filter((p) => existingKeys.has(p.clave)).length;
 
       setProposals((prev) => {
         const others = prev.filter((p) => p.page !== page);
@@ -260,8 +261,9 @@ export function VisualEditor({ formulario }: Props) {
         );
       } else {
         const extra = descartadas > 0 ? ` · ${descartadas} descartados` : "";
+        const reuseLabel = reusables > 0 ? ` (${reusables} actualizarán existentes)` : "";
         toast.success(
-          `${cleaned.length} campos · ${rawSections.length} secciones detectadas${extra}.`,
+          `${cleaned.length} campos${reuseLabel} · ${rawSections.length} secciones detectadas${extra}.`,
         );
       }
     } catch (e: any) {
