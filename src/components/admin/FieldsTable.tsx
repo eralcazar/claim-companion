@@ -342,14 +342,14 @@ export function FieldsTable({ formularioId, secciones }: Props) {
           <TableBody>
             {isLoading && (
               <TableRow>
-                <TableCell colSpan={16} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={17} className="text-center text-muted-foreground py-8">
                   Cargando…
                 </TableCell>
               </TableRow>
             )}
             {!isLoading && filtered.length === 0 && (
               <TableRow>
-                <TableCell colSpan={16} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={17} className="text-center text-muted-foreground py-8">
                   Sin campos. Agrega el primero con "Nuevo campo".
                 </TableCell>
               </TableRow>
