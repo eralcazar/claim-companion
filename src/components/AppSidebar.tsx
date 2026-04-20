@@ -1,5 +1,5 @@
 import {
-  Home, FileText, Calendar, Pill, User, Shield, Users, Stethoscope, FolderOpen, Download, LogOut
+  Home, FileText, Calendar, Pill, User, Shield, Users, Stethoscope, FolderOpen, Download, LogOut, FolderTree
 } from "lucide-react";
 import { NavLink as RouterNavLink, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -31,6 +31,7 @@ const doctorItems = [
 
 const adminItems = [
   { title: "Panel Admin", url: "/admin", icon: Shield },
+  { title: "Gestor de Formatos", url: "/admin/gestor-archivos", icon: FolderTree },
 ];
 
 export function AppSidebar() {
