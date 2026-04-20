@@ -338,7 +338,10 @@ export function VisualEditor({ formulario }: Props) {
         orden: baseOrden + i + 1,
         requerido: false,
       }));
-      const { error } = await supabase.from("campos").insert(rows as any);
+      const { data: inserted, error } = await supabase
+        .from("campos")
+        .insert(rows as any)
+        .select("id, clave, etiqueta, tipo");
       if (error) throw error;
       qc.invalidateQueries({ queryKey: ["campos", formulario.id] });
       qc.invalidateQueries({ queryKey: ["secciones", formulario.id] });
@@ -348,6 +351,10 @@ export function VisualEditor({ formulario }: Props) {
       setProposals((prev) => prev.filter((p) => p.page !== page || p.accepted === false));
       setProposedSections((prev) => prev.filter((s) => s.pagina !== page));
       setSelectedProposalKey(null);
+      // Trigger second AI pass: suggest mappings for newly inserted fields.
+      if (inserted && inserted.length > 0) {
+        await requestMappingSuggestions(inserted as any);
+      }
     } catch (e: any) {
       toast.error(e?.message ?? "Error al guardar campos");
     } finally {
