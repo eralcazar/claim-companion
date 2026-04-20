@@ -2,47 +2,121 @@
 
 ## Objetivo
 
-En `/formatos`, al seleccionar una póliza, mostrar **solo los formatos PDF reales** que existen en `formatos/<ASEGURADORA>/` en Storage, listados con el nombre del archivo **sin la extensión** (ej. `informe_medico`, `aviso_accidente`).
+Construir el **pipeline completo** de un reclamo: desde elegir póliza+formato hasta tener el PDF oficial llenado, guardado en Storage y descargable, con folio único en BD. Hoy las piezas existen pero no están conectadas extremo a extremo de forma confiable.
 
-## Problema actual
-
-`src/pages/Formats.tsx` tiene una función local `getFormats(company)` hardcodeada que solo distingue MetLife vs MAPFRE y apunta a rutas inexistentes (`/forms/METLIFE_REEMBOLSO.pdf` en `public/`). No refleja las 10 aseguradoras reales ni los 23 PDFs en el bucket `formatos`.
-
-## Solución
-
-### 1. Reutilizar el catálogo `getAvailableFormats` del registry
-
-Ya existe en `src/components/claims/forms/registry.ts` el catálogo `insurerFormats` con las 10 aseguradoras y sus archivos reales. Lo importamos en `Formats.tsx`.
-
-### 2. Reescribir `Formats.tsx`
-
-- Eliminar `getFormats()` local y el array hardcodeado.
-- Al seleccionar póliza → llamar `getAvailableFormats(policy.company)` → renderizar lista.
-- Cada item muestra el `id` del formato (ya viene sin extensión: `informe_medico`, `aviso_accidente`, `carta_remesa`, etc.) como el nombre principal solicitado.
-- Botón "Descargar" usa Supabase Storage:
-  ```ts
-  const { data } = supabase.storage
-    .from("formatos")
-    .getPublicUrl(`${insurer}/${format.file}`);
-  ```
-  El bucket `formatos` ya es público.
-- Si la aseguradora no tiene formatos en el catálogo → mensaje "Esta aseguradora no tiene formatos disponibles".
-
-### 3. Detalles de UX
-
-- Nombre mostrado: `format.id` (ej. `informe_medico`) — sin extensión, como pidió el usuario.
-- Descarga: usar `<a href={publicUrl} download={fileName} target="_blank">` para abrir/descargar desde Storage.
-- Mantener el toast de confirmación.
-
-## Archivos a modificar
+## Estado actual del pipeline
 
 ```text
-edita: src/pages/Formats.tsx   (usar getAvailableFormats + descargar desde Storage)
+[1] /reclamos/nuevo
+     │ Selecciona póliza → filtra formatos reales del bucket  ✅ HECHO
+     │ Selecciona formato (informe_medico, reembolso, etc.)   ✅ HECHO
+     ▼
+[2] Wizard multi-paso (FormRenderer + definitions A..H)       ✅ HECHO
+     │ Autofill desde profile/policy                          ✅ HECHO
+     │ Autosave a tabla claim_forms (draft)                   ✅ HECHO
+     ▼
+[3] Generación PDF
+     │ buildOverlayData() → fillPDF() con coordenadas         ⚠️ COORDENADAS PLACEHOLDER
+     │ Sube a bucket "documents"                              ✅ HECHO
+     │ Genera folio (RPC gen_folio)                           ✅ HECHO
+     │ Marca claim_forms.status = "submitted"                 ✅ HECHO
+     ▼
+[4] /reclamos (lista)
+     │ Tab "Enviados" descarga PDF de Storage                 ✅ HECHO
+     │ Tab "Borradores" continúa el wizard                    ✅ HECHO
+     ▼
+[5] /formatos
+     │ Descarga PDF en blanco por aseguradora                 ✅ HECHO
 ```
 
-## Notas
+**Lo que falta para "pipeline completo y confiable":**
+1. Coordenadas reales para los 23 PDFs (hoy varios son placeholders).
+2. Manejo de errores robusto en cada paso (Storage caído, RPC falla, validación falla a mitad).
+3. Visibilidad: el usuario no ve en qué paso del pipeline está su trámite.
+4. Reintento de generación PDF sin re-llenar el wizard.
+5. Validación de que el archivo PDF original existe en Storage **antes** de empezar a llenar.
 
-- No se tocan archivos en Storage.
-- No se modifica `registry.ts` (ya tiene la API necesaria).
-- El bucket `formatos` ya es público → `getPublicUrl` funciona sin firma.
+## Solución propuesta
+
+### Fase A — Robustez del pipeline existente (sin tocar coordenadas)
+
+**A1. Pre-check de archivo en Storage al elegir formato**
+- En `NewClaim.tsx`, cuando el usuario elige formato, hacer un `HEAD` al `publicUrl` de `formatos/<INSURER>/<file>`.
+- Si 404 → toast error "Este formato aún no está disponible" y bloquear el wizard.
+- Evita que el usuario llene 10 pasos para descubrir al final que el PDF no existe.
+
+**A2. Estado del trámite visible en `/reclamos`**
+- Añadir badge a cada `claim_form`:
+  - `draft` → "Borrador"
+  - `submitted` → "PDF generado"
+  - `error` (nuevo) → "Error al generar — Reintentar"
+- Botón "Regenerar PDF" en submitted → vuelve a llamar `generateFilledPDF` con la `data` ya guardada, sin pasar por el wizard.
+
+**A3. Manejo de errores en `handleGenerate` (NewClaim.tsx)**
+- Hoy si falla el upload o el RPC, el draft queda en limbo. Capturar errores y:
+  - Marcar `claim_forms.status = "error"` con `error_message` (nueva columna).
+  - Toast claro con la causa.
+  - No navegar fuera, permitir reintentar.
+
+**A4. Migración BD**
+```sql
+ALTER TABLE public.claim_forms
+  ADD COLUMN IF NOT EXISTS error_message text;
+-- status ya es text libre, acepta 'error' sin cambios
+```
+
+### Fase B — Helper centralizado de pipeline
+
+Crear `src/lib/claimPipeline.ts` con una sola función:
+
+```ts
+export async function runClaimPipeline(input: {
+  userId: string;
+  insurer: string;
+  formatId: string;
+  policyId: string;
+  data: Record<string, any>;
+  profile: any;
+  policy: any;
+  existingDraftId?: string;
+}): Promise<{ folio: string; pdfPath: string; publicUrl: string }>
+```
+
+Encapsula los 5 pasos: validar storage → buildOverlay → generateFilledPDF → upload → gen_folio → update claim_forms. Devuelve la URL pública. Centraliza el manejo de errores y el marcado de status.
+
+`NewClaim.tsx` y el botón "Regenerar PDF" en `/reclamos` lo invocan igual.
+
+### Fase C — Diagnóstico visual (opcional, muy útil)
+
+Página `/admin/pipeline-status` (solo admin) que muestre:
+- Tabla con los 23 formatos (insurer × formato).
+- Por cada uno: ¿archivo existe en Storage? ¿hay coordenadas? ¿hay definición A..H?
+- Un solo vistazo para saber qué del pipeline está roto.
+
+## Archivos a tocar
+
+```text
+crea:  src/lib/claimPipeline.ts                  (helper unificado)
+edita: src/pages/NewClaim.tsx                    (usa pipeline + pre-check storage)
+edita: src/pages/Claims.tsx                      (badge estado + botón regenerar)
+edita: src/components/claims/forms/registry.ts   (exporta helper checkFormatExists)
+crea:  src/pages/admin/PipelineStatus.tsx        (Fase C — solo si confirmas)
+edita: src/App.tsx                               (ruta /admin/pipeline-status)
+migración SQL: añadir error_message a claim_forms
+```
+
+## Lo que NO incluye este plan
+
+- **Calibración de coordenadas** de los 23 PDFs (es un trabajo manual aparte, formato por formato).
+- Cambios en el bucket de Storage o en los archivos PDF.
+- Cambios en las definiciones de formularios A..H.
+
+## Decisión que necesito antes de implementar
+
+Confirma alcance:
+- **Mínimo:** Fase A (robustez) — ~30 min.
+- **Recomendado:** Fase A + B (pipeline unificado y reintento) — ~1 h.
+- **Completo:** Fase A + B + C (con dashboard admin) — ~1.5 h.
+
+¿Cuál ejecuto?
 
