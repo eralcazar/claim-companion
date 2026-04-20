@@ -36,6 +36,8 @@ import {
   useCampos,
   useDeleteCampo,
   useUpsertCampos,
+  useBulkDeleteCampos,
+  useMapeos,
 } from "@/hooks/useFormatos";
 import { cn } from "@/lib/utils";
 
@@ -46,6 +48,8 @@ const TIPOS = [
 
 const ALL_SECTIONS = "__all__";
 const NO_SECTION = "__none__";
+const ALL_PAGES = "__all_pages__";
+const NO_SECTION_VALUE = "__none_section__";
 
 function blankCampo(formularioId: string, orden: number): Campo {
   return {
@@ -87,25 +91,42 @@ interface Props {
 
 export function FieldsTable({ formularioId, secciones }: Props) {
   const { data: campos = [], isLoading } = useCampos(formularioId);
+  const { data: mapeos } = useMapeos();
   const upsert = useUpsertCampos(formularioId);
   const remove = useDeleteCampo(formularioId);
+  const bulkRemove = useBulkDeleteCampos(formularioId);
 
   const [draft, setDraft] = useState<Campo[]>([]);
   const [dirty, setDirty] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
   const [filterSeccion, setFilterSeccion] = useState<string>(ALL_SECTIONS);
+  const [filterPagina, setFilterPagina] = useState<string>(ALL_PAGES);
   const [toDelete, setToDelete] = useState<Campo | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkConfirm, setBulkConfirm] = useState(false);
 
   useEffect(() => {
     setDraft(campos);
     setDirty(new Set());
+    setSelected(new Set());
   }, [campos]);
+
+  const paginasDetectadas = useMemo(() => {
+    const set = new Set<number>();
+    draft.forEach((c) => {
+      if (typeof c.campo_pagina === "number") set.add(c.campo_pagina);
+    });
+    return Array.from(set).sort((a, b) => a - b);
+  }, [draft]);
 
   const filtered = useMemo(() => {
     return draft.filter((c) => {
       if (filterSeccion !== ALL_SECTIONS) {
         if (filterSeccion === NO_SECTION && c.seccion_id) return false;
         if (filterSeccion !== NO_SECTION && c.seccion_id !== filterSeccion) return false;
+      }
+      if (filterPagina !== ALL_PAGES) {
+        if (Number(filterPagina) !== (c.campo_pagina ?? 1)) return false;
       }
       if (search.trim()) {
         const q = search.toLowerCase();
@@ -116,7 +137,55 @@ export function FieldsTable({ formularioId, secciones }: Props) {
       }
       return true;
     });
-  }, [draft, filterSeccion, search]);
+  }, [draft, filterSeccion, filterPagina, search]);
+
+  const seccionesPorId = useMemo(() => {
+    const map = new Map<string, Seccion>();
+    secciones.forEach((s) => map.set(s.id, s));
+    return map;
+  }, [secciones]);
+
+  const allFilteredSelected =
+    filtered.length > 0 && filtered.every((c) => selected.has(c.id));
+
+  const toggleAll = (v: boolean) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (v) filtered.forEach((c) => next.add(c.id));
+      else filtered.forEach((c) => next.delete(c.id));
+      return next;
+    });
+  };
+
+  const toggleOne = (id: string, v: boolean) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (v) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  };
+
+  const getMapeoPreview = (c: Campo) => {
+    if (!mapeos) return null;
+    if (c.mapeo_perfil) {
+      const m = mapeos.perfiles.find((x) => x.id === c.mapeo_perfil);
+      return m ? { label: "Perfil", display: m.nombre_display, col: m.columna_origen } : null;
+    }
+    if (c.mapeo_poliza) {
+      const m = mapeos.polizas.find((x) => x.id === c.mapeo_poliza);
+      return m ? { label: "Póliza", display: m.nombre_display, col: m.columna_origen } : null;
+    }
+    if (c.mapeo_siniestro) {
+      const m = mapeos.siniestros.find((x) => x.id === c.mapeo_siniestro);
+      return m ? { label: "Siniestro", display: m.nombre_display, col: m.columna_origen } : null;
+    }
+    if (c.mapeo_medico) {
+      const m = mapeos.medicos.find((x) => x.id === c.mapeo_medico);
+      return m ? { label: "Médico", display: m.nombre_display, col: m.columna_origen } : null;
+    }
+    return null;
+  };
 
   const update = (id: string, patch: Partial<Campo>) => {
     setDraft((prev) => prev.map((c) => (c.id === id ? { ...c, ...patch } : c)));
