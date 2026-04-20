@@ -706,3 +706,19 @@ export function VisualEditor({ formulario }: Props) {
 function round(v: number) {
   return Math.round(v * 100) / 100;
 }
+
+/**
+ * Normaliza una clave para comparar campos:
+ * - trim
+ * - mayúsculas
+ * - unifica separadores (espacios, guiones, puntos) a "_"
+ * - colapsa "_" repetidos
+ */
+function normalizeClave(clave: string | null | undefined): string {
+  if (!clave) return "";
+  return String(clave)
+    .trim()
+    .toUpperCase()
+    .replace(/[\s\-.]+/g, "_")
+    .replace(/_+/g, "_");
+}
