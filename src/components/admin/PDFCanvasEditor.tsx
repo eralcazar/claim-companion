@@ -5,6 +5,8 @@ import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
 import type { Campo } from "@/hooks/useFormatos";
 import { FieldBox } from "./FieldBox";
+import { ProposalBox } from "./ProposalBox";
+import type { ProposedField } from "./VisualEditor";
 import { Loader2 } from "lucide-react";
 
 interface Props {
@@ -19,6 +21,9 @@ interface Props {
   onCommitCampo: (id: string, patch: Partial<Campo>) => void;
   onCreate: (rect: { x: number; y: number; w: number; h: number }) => void;
   onLoadSuccess: (numPages: number) => void;
+  proposals?: ProposedField[];
+  selectedProposalKey?: string | null;
+  onSelectProposal?: (key: string | null) => void;
 }
 
 export function PDFCanvasEditor({
@@ -33,6 +38,9 @@ export function PDFCanvasEditor({
   onCommitCampo,
   onCreate,
   onLoadSuccess,
+  proposals = [],
+  selectedProposalKey = null,
+  onSelectProposal,
 }: Props) {
   const overlayRef = useRef<HTMLDivElement | null>(null);
   const [containerRect, setContainerRect] = useState<DOMRect | null>(null);
@@ -115,6 +123,11 @@ export function PDFCanvasEditor({
     [campos, page],
   );
 
+  const proposalsPagina = useMemo(
+    () => proposals.filter((p) => p.page === page),
+    [proposals, page],
+  );
+
   return (
     <div className="relative inline-block">
       <Document
@@ -155,6 +168,14 @@ export function PDFCanvasEditor({
             onSelect={() => onSelect(c.id)}
             onChange={(patch) => onChangeCampo(c.id, patch)}
             onCommit={(patch) => onCommitCampo(c.id, patch)}
+          />
+        ))}
+        {proposalsPagina.map((p) => (
+          <ProposalBox
+            key={p.clave}
+            proposal={p}
+            selected={p.clave === selectedProposalKey}
+            onSelect={() => onSelectProposal?.(p.clave)}
           />
         ))}
         {draftRect && (
