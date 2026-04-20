@@ -5,6 +5,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { ALL_ROLES, type AppRoleLite } from "@/lib/features";
 import { useQueryClient } from "@tanstack/react-query";
+import { Badge } from "@/components/ui/badge";
+import { CheckCircle2 } from "lucide-react";
 import {
   Select,
   SelectContent,
