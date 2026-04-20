@@ -549,42 +549,6 @@ export function FieldsTable({ formularioId, secciones }: Props) {
                     )}
                   </TableCell>
                   <TableCell>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={numField(c.campo_x)}
-                      onChange={(e) => update(c.id, { campo_x: parseNum(e.target.value) })}
-                      className="h-8 text-xs"
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={numField(c.campo_y)}
-                      onChange={(e) => update(c.id, { campo_y: parseNum(e.target.value) })}
-                      className="h-8 text-xs"
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={numField(c.campo_ancho)}
-                      onChange={(e) => update(c.id, { campo_ancho: parseNum(e.target.value) })}
-                      className="h-8 text-xs"
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={numField(c.campo_alto)}
-                      onChange={(e) => update(c.id, { campo_alto: parseNum(e.target.value) })}
-                      className="h-8 text-xs"
-                    />
-                  </TableCell>
-                  <TableCell>
                     <Checkbox
                       checked={c.requerido}
                       onCheckedChange={(v) => update(c.id, { requerido: !!v })}
