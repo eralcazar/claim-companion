@@ -29,7 +29,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { MappingSelects } from "./MappingSelects";
 import {
   type Campo,
   type Seccion,
@@ -50,6 +49,10 @@ const ALL_SECTIONS = "__all__";
 const NO_SECTION = "__none__";
 const ALL_PAGES = "__all_pages__";
 const NO_SECTION_VALUE = "__none_section__";
+const NO_CATALOG = "__no_catalog__";
+const NO_MAPPING = "__no_mapping__";
+
+type CatalogoTipo = "perfil" | "poliza" | "siniestro" | "medico";
 
 function blankCampo(formularioId: string, orden: number): Campo {
   return {
@@ -186,6 +189,40 @@ export function FieldsTable({ formularioId, secciones }: Props) {
     setDirty((prev) => new Set(prev).add(id));
   };
 
+  const getCatalogo = (c: Campo): CatalogoTipo | null => {
+    if (c.mapeo_perfil !== null && c.mapeo_perfil !== undefined) return "perfil";
+    if (c.mapeo_poliza !== null && c.mapeo_poliza !== undefined) return "poliza";
+    if (c.mapeo_siniestro !== null && c.mapeo_siniestro !== undefined) return "siniestro";
+    if (c.mapeo_medico !== null && c.mapeo_medico !== undefined) return "medico";
+    return null;
+  };
+
+  const setCatalogo = (id: string, t: CatalogoTipo | null) => {
+    update(id, {
+      mapeo_perfil: t === "perfil" ? "" : null,
+      mapeo_poliza: t === "poliza" ? "" : null,
+      mapeo_siniestro: t === "siniestro" ? "" : null,
+      mapeo_medico: t === "medico" ? "" : null,
+    });
+  };
+
+  const setCampoMapeo = (id: string, t: CatalogoTipo, mapeoId: string | null) => {
+    update(id, {
+      mapeo_perfil: t === "perfil" ? mapeoId : null,
+      mapeo_poliza: t === "poliza" ? mapeoId : null,
+      mapeo_siniestro: t === "siniestro" ? mapeoId : null,
+      mapeo_medico: t === "medico" ? mapeoId : null,
+    });
+  };
+
+  const opcionesCatalogo = (t: CatalogoTipo | null) => {
+    if (!t || !mapeos) return [];
+    if (t === "perfil") return mapeos.perfiles;
+    if (t === "poliza") return mapeos.polizas;
+    if (t === "siniestro") return mapeos.siniestros;
+    return mapeos.medicos;
+  };
+
   const addNew = () => {
     const next = blankCampo(formularioId, draft.length);
     setDraft((prev) => [...prev, next]);
@@ -280,35 +317,35 @@ export function FieldsTable({ formularioId, secciones }: Props) {
               <TableHead className="min-w-[110px]">Tipo</TableHead>
               <TableHead className="w-16">Pág</TableHead>
               <TableHead className="min-w-[160px]">Sección</TableHead>
-              <TableHead className="min-w-[180px]">Mapeo</TableHead>
+              <TableHead className="w-32">Catálogo</TableHead>
+              <TableHead className="min-w-[200px]">Campo de mapeo</TableHead>
               <TableHead className="min-w-[180px]">Valor mapeado</TableHead>
               <TableHead className="w-20">X%</TableHead>
               <TableHead className="w-20">Y%</TableHead>
               <TableHead className="w-20">W%</TableHead>
               <TableHead className="w-20">H%</TableHead>
               <TableHead className="w-16">Req</TableHead>
-              <TableHead className="w-24">Estado</TableHead>
+              <TableHead className="w-28">Estado</TableHead>
               <TableHead className="w-12"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading && (
               <TableRow>
-                <TableCell colSpan={15} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={16} className="text-center text-muted-foreground py-8">
                   Cargando…
                 </TableCell>
               </TableRow>
             )}
             {!isLoading && filtered.length === 0 && (
               <TableRow>
-                <TableCell colSpan={15} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={16} className="text-center text-muted-foreground py-8">
                   Sin campos. Agrega el primero con "Nuevo campo".
                 </TableCell>
               </TableRow>
             )}
             {filtered.map((c, idx) => {
               const isDirty = dirty.has(c.id);
-              const isMapped = !!(c.mapeo_perfil || c.mapeo_poliza || c.mapeo_siniestro || c.mapeo_medico);
               const isSelected = selected.has(c.id);
               const preview = getMapeoPreview(c);
               const seccionesPagina = secciones.filter(
@@ -390,22 +427,60 @@ export function FieldsTable({ formularioId, secciones }: Props) {
                     </Select>
                   </TableCell>
                   <TableCell>
-                    <MappingSelects
-                      value={{
-                        perfil: c.mapeo_perfil,
-                        poliza: c.mapeo_poliza,
-                        siniestro: c.mapeo_siniestro,
-                        medico: c.mapeo_medico,
-                      }}
-                      onChange={(v) =>
-                        update(c.id, {
-                          mapeo_perfil: v.perfil,
-                          mapeo_poliza: v.poliza,
-                          mapeo_siniestro: v.siniestro,
-                          mapeo_medico: v.medico,
-                        })
+                    <Select
+                      value={getCatalogo(c) ?? NO_CATALOG}
+                      onValueChange={(v) =>
+                        setCatalogo(c.id, v === NO_CATALOG ? null : (v as CatalogoTipo))
                       }
-                    />
+                    >
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={NO_CATALOG}>Sin mapeo</SelectItem>
+                        <SelectItem value="perfil">Perfil</SelectItem>
+                        <SelectItem value="poliza">Póliza</SelectItem>
+                        <SelectItem value="siniestro">Siniestro</SelectItem>
+                        <SelectItem value="medico">Médico</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
+                  <TableCell>
+                    {(() => {
+                      const cat = getCatalogo(c);
+                      const opciones = opcionesCatalogo(cat);
+                      const currentId =
+                        cat === "perfil" ? c.mapeo_perfil :
+                        cat === "poliza" ? c.mapeo_poliza :
+                        cat === "siniestro" ? c.mapeo_siniestro :
+                        cat === "medico" ? c.mapeo_medico : null;
+                      return (
+                        <Select
+                          value={currentId && currentId !== "" ? currentId : NO_MAPPING}
+                          onValueChange={(v) =>
+                            cat && setCampoMapeo(c.id, cat, v === NO_MAPPING ? null : v)
+                          }
+                          disabled={!cat}
+                        >
+                          <SelectTrigger className="h-8 text-xs">
+                            <SelectValue placeholder={cat ? "Seleccionar campo…" : "Elige catálogo"} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value={NO_MAPPING}>—</SelectItem>
+                            {opciones.map((o) => (
+                              <SelectItem key={o.id} value={o.id}>
+                                <div className="flex flex-col">
+                                  <span>{o.nombre_display}</span>
+                                  <span className="font-mono text-[10px] text-muted-foreground">
+                                    {o.columna_origen}
+                                  </span>
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      );
+                    })()}
                   </TableCell>
                   <TableCell>
                     {preview ? (
@@ -467,11 +542,18 @@ export function FieldsTable({ formularioId, secciones }: Props) {
                     />
                   </TableCell>
                   <TableCell>
-                    {isMapped ? (
-                      <Badge variant="default" className="text-[10px]">⚡ Mapeado</Badge>
-                    ) : (
-                      <Badge variant="outline" className="text-[10px]">○ Manual</Badge>
-                    )}
+                    <Select
+                      value={c.origen ?? "auto"}
+                      onValueChange={(v) => update(c.id, { origen: v })}
+                    >
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="auto">⚡ Auto</SelectItem>
+                        <SelectItem value="manual">○ Manual</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </TableCell>
                   <TableCell>
                     <Button

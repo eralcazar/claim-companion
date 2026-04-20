@@ -125,7 +125,7 @@ export function SectionsList({ formularioId, secciones }: Props) {
               <TableHead className="w-16">Orden</TableHead>
               <TableHead>Nombre</TableHead>
               <TableHead className="w-20">Página</TableHead>
-              <TableHead className="w-32"></TableHead>
+              <TableHead className="w-44">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -173,22 +173,23 @@ export function SectionsList({ formularioId, secciones }: Props) {
                     />
                   </TableCell>
                   <TableCell>
-                    <div className="flex gap-1">
+                    <div className="flex gap-2">
                       <Button
                         size="sm"
                         variant="outline"
                         disabled={!isDirty}
                         onClick={() => saveRow(s)}
                       >
-                        <Save className="h-3.5 w-3.5" />
+                        <Save className="h-3.5 w-3.5 mr-1" />
+                        Modificar
                       </Button>
                       <Button
                         size="sm"
-                        variant="ghost"
-                        className="text-destructive"
+                        variant="destructive"
                         onClick={() => setToDelete(s)}
                       >
-                        <Trash2 className="h-3.5 w-3.5" />
+                        <Trash2 className="h-3.5 w-3.5 mr-1" />
+                        Eliminar
                       </Button>
                     </div>
                   </TableCell>
