@@ -1,67 +1,63 @@
 
 
-El usuario quiere que las acciones de gestión de archivos (subir, nueva carpeta, renombrar, eliminar, descargar, drag & drop) aparezcan **dentro del árbol central de aseguradoras** que se ve en la imagen (`InsurerTree`), no en un panel aparte.
+## Diagnóstico: por qué no se importan las coordenadas
 
-## Plan
+Hice un trazado completo del flujo **detectar → aceptar → guardar en BD**. Las coordenadas SÍ se calculan correctamente en `VisualEditor.tsx` líneas 329-337, pero hay un **problema de contrato entre el edge function y el cliente** que está causando que se descarten antes de llegar al insert.
 
-### 1. `src/components/InsurerTree.tsx` — añadir gestión de archivos
+### La causa real
 
-**Toolbar superior del árbol** (sticky arriba):
-- Botón **"Subir PDF"** (icon `Upload`) — sube al nodo expandido actual.
-- Botón **"Nueva carpeta"** (icon `FolderPlus`) — crea subcarpeta en la aseguradora.
-- Botón **"Refrescar"** (icon `RefreshCw`).
+En `supabase/functions/detect-form-fields/index.ts` línea 194:
 
-**Por nodo de aseguradora** (acciones siempre visibles a la derecha, compactas):
-- `Upload` — subir PDF a esa carpeta de aseguradora.
-- `FolderPlus` — nueva subcarpeta.
-- Drop zone: arrastrar PDFs encima → upload directo. Resalta con borde primary al hover de drag.
-
-**Por nodo de formulario/archivo** (acciones siempre visibles):
-- `Download` — descargar el PDF.
-- `Pencil` — renombrar.
-- `Trash2` — eliminar (con confirmación).
-- Drop zone: soltar PDF → reemplaza el archivo (`upsert`).
-
-**Diálogos integrados en el árbol**:
-- Dialog renombrar (input + Guardar).
-- Dialog nueva carpeta (input + Crear).
-- AlertDialog eliminar (confirmación destructiva).
-- Card flotante abajo-derecha con progreso de uploads activos.
-
-### 2. `src/hooks/useStorageFormatos.ts` (nuevo)
-
-Hook que centraliza el CRUD del bucket `formatos`, extrayendo la lógica de `StorageManager.tsx`:
-- `uploadFiles(path, files)` con progreso.
-- `createFolder(parentPath, name)` (placeholder `.emptyFolderPlaceholder`).
-- `renameItem(oldPath, newPath, isFolder)`.
-- `deleteItem(path, isFolder)` con `listAllRecursive` para carpetas.
-- Invalida `useFormularios` / `useAseguradoras` tras cambios.
-
-### 3. `StorageManager.tsx`
-
-Se conserva el archivo (no se borra) por si se reutiliza, pero deja de estar enlazado en cualquier UI.
-
-## Archivos
-
-- `src/components/admin/InsurerTree.tsx` — toolbar + acciones por nodo + drop zones + diálogos.
-- `src/hooks/useStorageFormatos.ts` (nuevo) — CRUD del bucket.
-- `src/pages/admin/FormatManager.tsx` — sin cambios (la pestaña Archivos y el botón header ya estaban marcados para eliminar; se confirma su retiro si aún están).
-
-Sin migraciones de BD.
-
-## Resultado visual
-
-```text
-┌─────────────────────────────────────────┐
-│ [⬆ Subir PDF] [📁+ Carpeta]      [⟳]    │ ← toolbar sticky
-├─────────────────────────────────────────┤
-│ ▸ BANORTE                  (2)  ⬆ 📁+   │
-│ ▾ GNP                      (2)  ⬆ 📁+   │
-│   📄 Informe Médico              ⬇ ✎ 🗑 │
-│   📄 Solicitud de Reembolso      ⬇ ✎ 🗑 │ ← drop PDF = reemplazar
-│ ▸ MAPFRE                   (2)  ⬆ 📁+   │ ← drop PDF = subir aquí
-│ ▸ METLIFE                  (4)  ⬆ 📁+   │
-└─────────────────────────────────────────┘
-        [Subiendo: archivo.pdf 45%]  ← card flotante
+```ts
+r.w >= 0.3 && r.w <= 100 && r.h >= 0.3 && r.h <= 100
 ```
+
+El validador `validRect` exige que **ancho y alto sean mínimo 0.3%**. Pero Gemini muy a menudo devuelve casillas (checkbox, firma corta, números pequeños) con `h` o `w` redondeados a `0` o `0.1`. Cuando eso pasa:
+
+1. `validRect(p.campo)` → `false`
+2. Línea 206: `.filter((p) => p.campo)` → **elimina toda la propuesta** (no solo el rect, el campo entero).
+
+Resultado: propuestas con coords pequeñas **nunca llegan al cliente**, así que al "Aceptar" no hay nada que importar para esos campos. Y los que sí llegan, llegan correctos.
+
+### Segundo problema (silencioso)
+
+El validador rechaza también si `x + w > 101` o `y + h > 101`. Gemini frecuentemente devuelve `x=95, w=8` (suma 103) en campos del borde derecho — todos esos también se descartan en silencio.
+
+### Tercer problema (UX)
+
+Cuando el filtro descarta propuestas, el usuario solo ve el toast `"X campos detectados"` con un número menor del real, o `"No se detectaron campos nuevos"` sin saber que sí los hubo pero fueron filtrados. No hay log de cuántas se cayeron.
+
+## Solución propuesta
+
+### 1. `supabase/functions/detect-form-fields/index.ts`
+
+- **Bajar mínimos** a `w >= 0.1` y `h >= 0.1` (un checkbox mide ~0.4% en una hoja A4 a 1600px).
+- **Clamp en lugar de rechazar** cuando `x+w > 100`: ajustar `w = min(w, 100-x)`. Igual para `y+h`.
+- **Logear** cuántas propuestas se descartaron y por qué (visible en los logs del edge function).
+- Devolver además del `propuestas` un contador `descartadas: number` para que el cliente lo muestre.
+
+### 2. `src/components/admin/VisualEditor.tsx`
+
+- En `handleDetect` (línea 257): mostrar toast con el conteo de descartadas si lo hay (`"12 campos · 3 descartados por coords inválidas"`).
+- En `acceptAllProposals`: añadir un `console.warn` si alguna propuesta aceptada tiene `campo.w === 0` o `campo.h === 0` (defensa en profundidad).
+
+### 3. Verificación
+
+Después del fix, al detectar y aceptar una página, los campos insertados deben aparecer en el editor visual con sus rectángulos en la posición correcta. Si quieres, puedes confirmar con esta query (read-only):
+
+```sql
+SELECT clave, campo_pagina, campo_x, campo_y, campo_ancho, campo_alto
+FROM campos
+WHERE formulario_id = '<id>' AND origen = 'auto_ia'
+ORDER BY orden DESC LIMIT 20;
+```
+
+Hoy probablemente verás `campo_ancho` y `campo_alto` con valores razonables solo en algunos, o filas faltando completamente respecto a lo que la IA detectó visualmente.
+
+## Archivos a tocar
+
+- `supabase/functions/detect-form-fields/index.ts` — relajar `validRect`, clamp de bordes, log de descartes, devolver contador.
+- `src/components/admin/VisualEditor.tsx` — toast con descartes + warn defensivo.
+
+Sin migraciones de BD. Sin cambios en `acceptAllProposals` (su lógica de inserción es correcta).
 
