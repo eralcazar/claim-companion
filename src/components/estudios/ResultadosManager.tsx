@@ -86,8 +86,18 @@ function ResultadoItem({ resultado, canManage, onDownload, onDelete }: any) {
   const { data: indicadores = [] } = useIndicadores(resultado.id);
   const saveInd = useSaveIndicador();
   const delInd = useDeleteIndicador();
+  const extract = useExtractIndicators();
+  const delAllInd = useDeleteIndicadoresByResultado();
   const [showInd, setShowInd] = useState(false);
   const [draft, setDraft] = useState({ nombre_indicador: "", valor: "", unidad: "", valor_referencia_min: "", valor_referencia_max: "" });
+
+  const handleExtract = async () => {
+    if (indicadores.length > 0) {
+      if (!confirm(`Ya hay ${indicadores.length} indicadores. ¿Reemplazarlos con los extraídos por IA?`)) return;
+      await delAllInd.mutateAsync(resultado.id);
+    }
+    extract.mutate(resultado.id);
+  };
 
   const addIndicador = async () => {
     if (!draft.nombre_indicador) return;
@@ -123,9 +133,25 @@ function ResultadoItem({ resultado, canManage, onDownload, onDelete }: any) {
       </div>
       {resultado.notas && <p className="text-sm text-muted-foreground">{resultado.notas}</p>}
 
-      <Button size="sm" variant="link" className="px-0 h-auto" onClick={() => setShowInd((s) => !s)}>
-        {showInd ? "Ocultar" : "Ver"} indicadores ({indicadores.length})
-      </Button>
+      <div className="flex items-center gap-2 flex-wrap">
+        <Button size="sm" variant="link" className="px-0 h-auto" onClick={() => setShowInd((s) => !s)}>
+          {showInd ? "Ocultar" : "Ver"} indicadores ({indicadores.length})
+        </Button>
+        {canManage && (
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={handleExtract}
+            disabled={extract.isPending || delAllInd.isPending}
+          >
+            {extract.isPending ? (
+              <><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />Analizando PDF…</>
+            ) : (
+              <><Sparkles className="h-3.5 w-3.5 mr-1" />{indicadores.length > 0 ? "Re-extraer con IA" : "Extraer con IA"}</>
+            )}
+          </Button>
+        )}
+      </div>
 
       {showInd && (
         <div className="space-y-2">
