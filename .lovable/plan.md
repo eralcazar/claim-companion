@@ -2,85 +2,47 @@
 
 ## Objetivo
 
-Mejorar el flujo de agenda con: médico asignado (lista o manual), dirección con autocompletado, recordatorios configurables, y gestión de documentos por cita desde el panel del médico.
+Permitir editar una cita existente desde la agenda (fecha, tipo, médico, dirección, recordatorio y notas).
 
 ## Cambios
 
-### 1. Migración de base de datos
+### 1. `AppointmentDetailDialog.tsx` — agregar botón "Editar"
 
-**Tabla `appointments` — agregar columnas:**
-- `doctor_name_manual text` — nombre escrito a mano cuando el médico no está registrado
-- `address text` — dirección formateada de la consulta
-- `address_lat double precision`, `address_lng double precision` — coordenadas
-- `reminder_enabled boolean default false`
-- `reminder_minutes_before integer` — 15, 30, 60, 120, 1440 (1 día)
-- `reminder_sent_at timestamptz` — para no duplicar envíos
+- Añadir botón **Editar** en el header del diálogo (junto al título).
+- Al hacer click, cierra el detalle y abre el formulario de edición precargado con los datos de la cita.
+- Solo visible para el dueño de la cita (`appointment.user_id === user.id`) o admin. El médico no edita la cita en sí, solo gestiona documentos.
 
-**Nueva tabla `appointment_documents`:**
-- `id`, `appointment_id`, `uploaded_by`, `file_path`, `file_name`, `file_type` (mime), `document_category` (enum: receta, estudio, notas_medicas, cfdi, impresion_cfdi, otro), `created_at`
-- RLS: SELECT/INSERT/DELETE para el dueño de la cita (`user_id`), el médico asignado (`doctor_id`) y admins. Brokers asignados al paciente también acceden.
+### 2. `Appointments.tsx` — reutilizar el formulario para crear y editar
 
-**Nuevo bucket `appointment-docs`** (privado) con políticas storage por `appointment_id` en el path.
+- Refactorizar el `Dialog` actual de "Nueva Cita" para que sirva también como "Editar Cita":
+  - Estado nuevo: `editingId: string | null`. Si está set, el diálogo opera en modo edición.
+  - Título dinámico: "Nueva Cita" / "Editar Cita".
+  - Botón principal: "Guardar" / "Actualizar".
+- Nueva mutación `updateMutation`:
+  - `supabase.from("appointments").update(payload).eq("id", editingId)`.
+  - Mismo payload que `createMutation` (médico, dirección, lat/lng, recordatorio, notas, fecha, tipo).
+  - Si cambia `reminder_enabled` o `reminder_minutes_before` o `appointment_date`, resetear `reminder_sent_at = null` para que el cron lo vuelva a mandar.
+  - Invalida `["appointments"]` y cierra el diálogo.
+- Función `openEdit(apt)` que precarga el `form` desde la cita (incluye `doctor_id` o `MANUAL_DOCTOR` si tiene `doctor_name_manual`) y abre el diálogo.
+- Pasar `onEdit` callback a `AppointmentDetailDialog` para que pueda disparar la edición desde el detalle.
 
-**Nueva tabla `notifications`** (in-app):
-- `id`, `user_id`, `title`, `body`, `link`, `read_at`, `created_at`
-- RLS: usuario ve y marca como leídas las suyas.
+### 3. Acceso al editor
 
-### 2. Nueva cita (`Appointments.tsx`) — campos añadidos
+- Desde el `AppointmentDetailDialog`: botón "Editar" en el header.
+- Opcional: en cada card de la lista de "Próximas", agregar un icono `Pencil` junto al icono de borrar (sin propagar el click para que no abra el detalle).
 
-- **Médico asignado**: Select que lista usuarios con rol `medico` (consultando `user_roles` + `profiles`). Opción "Otro / no listado" → muestra Input para `doctor_name_manual`.
-- **Dirección de la consulta**: Input con autocompletado vía **Nominatim (OpenStreetMap, gratis, sin API key)**. Al elegir una sugerencia se guarda la dirección formateada + lat/lng. Botón "Abrir en Google Maps" usando `https://www.google.com/maps/search/?api=1&query=lat,lng`.
-- **Recordatorio**: Switch "Activar recordatorio" + Select de tiempo (15 min, 30 min, 1 h, 2 h, 1 día antes).
-- Mantener: fecha/hora, tipo, notas.
+### 4. Detalles técnicos
 
-### 3. Sistema de recordatorios
+- Las citas pasadas no se pueden editar (botón oculto si `appointment_date < now`).
+- Validación: si la nueva fecha está en el pasado, mostrar warning pero permitir guardar (admin puede registrar histórico).
+- Reset del formulario al cerrar el diálogo (limpiar `editingId`).
 
-- **Edge function `send-appointment-reminders`** corriendo cada 5 min vía pg_cron:
-  - Busca citas con `reminder_enabled=true`, `reminder_sent_at IS NULL`, donde `now() >= appointment_date - reminder_minutes_before`.
-  - Inserta una fila en `notifications` para el paciente.
-  - Marca `reminder_sent_at = now()`.
-- **Componente `NotificationBell`** en `AppLayout` (campanita en header):
-  - Badge con conteo de no leídas.
-  - Popover lista las últimas 10. Click marca como leída.
-  - Suscripción realtime a `notifications` para mostrar toast cuando llegue una nueva.
+### 5. Archivos a tocar
 
-(Email/SMS quedan para una iteración posterior — el sistema de notificaciones in-app ya cubre la alerta al usuario sin requerir API keys ni costos.)
-
-### 4. Panel del médico (`DoctorPanel.tsx`)
-
-- Reescribir query a dos pasos (sin FK hint roto): traer citas por `doctor_id`, luego perfiles con `.in('user_id', ids)`.
-- Cada card de cita ahora abre un **diálogo de detalle** con:
-  - Datos del paciente, fecha, dirección.
-  - Sección "Documentos": lista de archivos cargados con miniatura/icono por tipo, badge de categoría, botón descargar y borrar (con confirmación).
-  - Botón "Subir documento" → modal con: Select de categoría obligatorio (Receta, Estudio, Notas médicas, CFDI, Impresión CFDI, Otro) + input de archivo (`accept=".pdf,image/*,.xml"`). Sube de uno en uno.
-- El paciente también ve los documentos de su cita desde su agenda (solo lectura para los subidos por el médico; puede borrar los suyos).
-
-### 5. Archivos
-
-**Nuevos:**
-- `supabase/functions/send-appointment-reminders/index.ts`
-- `src/components/appointments/AddressAutocomplete.tsx` — input + lista de sugerencias Nominatim con debounce
-- `src/components/appointments/AppointmentDocuments.tsx` — lista + subir + borrar
-- `src/components/appointments/AppointmentDetailDialog.tsx` — vista de detalle compartida
-- `src/components/NotificationBell.tsx`
-- `src/hooks/useDoctors.ts` — lista usuarios con rol médico
-- `src/hooks/useNotifications.ts`
-
-**Modificados:**
-- `src/pages/Appointments.tsx` — formulario ampliado, vista detalle
-- `src/pages/DoctorPanel.tsx` — query corregida + abrir detalle con documentos
-- `src/components/AppLayout.tsx` — agregar `NotificationBell`
-
-### 6. Seguridad
-
-- RLS estricta en `appointment_documents`: solo paciente, médico asignado, broker asignado y admin.
-- Storage bucket privado, descargas vía signed URLs (1 h).
-- Validación de tipo de archivo en cliente y tamaño máximo 20 MB.
-- Edge function de recordatorios usa service role solo internamente.
+- `src/pages/Appointments.tsx` — modo dual crear/editar, `updateMutation`, `openEdit`, botón ✏️ en cards.
+- `src/components/appointments/AppointmentDetailDialog.tsx` — botón Editar en header + prop `onEdit`.
 
 ## Resultado esperado
 
-- Al crear una cita: eliges médico (de la lista o escribes el nombre), buscas la dirección con autocompletado, activas recordatorio y eliges cuánto antes.
-- A la hora indicada, el paciente recibe una notificación dentro de la app (campanita + toast).
-- En el Panel Médico, el médico ve sus citas, abre cada una y sube/borra documentos clasificados (PDF, imagen o XML) con la categoría correspondiente.
+Desde la agenda, el paciente puede tocar el icono de lápiz en una cita o abrir el detalle y pulsar "Editar". El mismo formulario aparece con los datos cargados; al guardar, la cita se actualiza y, si cambió algo del recordatorio, se reactivará el envío.
 
