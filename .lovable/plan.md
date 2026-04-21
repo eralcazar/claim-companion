@@ -2,111 +2,70 @@
 
 ## Objetivo
 
-Fase 1 de MediClaim v2.0: **Gestor de Recetas** y **Gestor de Estudios**, integrados con la Agenda. Crear/listar/editar desde panel médico y panel admin; el paciente ve en modo lectura. Sin lector IA en esta fase (queda para fase 2 con Lovable AI Gemini 2.5 Pro).
+Fase 2: lector IA de PDFs de resultados. Cuando el médico/admin sube un PDF (o imagen) de resultado de estudio, una edge function envía el archivo a Lovable AI (Gemini 2.5 Pro) y extrae automáticamente los indicadores (nombre, valor, unidad, rango de referencia) que se insertan en `indicadores_estudio` con flag `es_normal`/`flagged`.
 
-## 1. Migración de base de datos
+## 1. Edge function nueva: `extract-study-indicators`
 
-**Nuevas tablas (todas con RLS):**
+Archivo: `supabase/functions/extract-study-indicators/index.ts`
 
-- `recetas`
-  - `id`, `appointment_id` (nullable, FK lógica a `appointments`), `patient_id` (uuid, paciente), `doctor_id` (uuid, médico que prescribe), `created_by` (uuid).
-  - Medicamento: `medicamento_nombre` (text), `dosis` (numeric), `unidad_dosis` (text: mg/ml/UI/mcg/...), `cantidad` (int, dosis por toma), `via_administracion` (text: oral/inyectable/tópica/inhalatoria/oftálmica/ótica), `dias_a_tomar` (int).
-  - Frecuencia: `frecuencia` (enum: cada_4h, cada_6h, cada_8h, cada_12h, cada_24h, cada_48h, semanal, otro), `frecuencia_horas` (int, solo si "otro").
-  - Detalles: `indicacion`, `observaciones`, `marca_comercial`, `es_generico` (bool), `precio_aproximado` (numeric).
-  - Estado: `estado` (enum: activa/completada/cancelada), `created_at`, `updated_at`.
+- Input: `{ resultado_id: string }`.
+- Flujo:
+  1. Cliente Supabase con service role + JWT del caller para autorización.
+  2. Carga el `resultado_estudios` por id; obtiene `pdf_path`, `patient_id`, `estudio_id`.
+  3. Verifica permisos: el caller debe ser admin, médico asignado al estudio, broker asignado al paciente, o el propio paciente. (El paciente puede ver pero no extraer; restringimos a admin/medico/broker).
+  4. Descarga el archivo desde el bucket privado `estudios-resultados` (signed URL interno o `download()`).
+  5. Si es PDF → enviarlo como `image_url` data-URI con `data:application/pdf;base64,...` (Gemini 2.5 Pro acepta PDFs vía data URL). Si es imagen → enviarla directamente.
+  6. Llama a `https://ai.gateway.lovable.dev/v1/chat/completions` con `model: "google/gemini-2.5-pro"`, system prompt en español especializado en resultados de laboratorio/imágenes médicas, y **tool calling** con función `extraer_indicadores` (parámetros: `indicadores[] { nombre_indicador, codigo_indicador?, valor (number|null), unidad?, valor_referencia_min?, valor_referencia_max?, observacion? }`, más opcionales `fecha_resultado`, `laboratorio_nombre`).
+  7. Maneja 429 / 402 / 5xx con mensajes claros (igual que `detect-form-fields`).
+  8. Calcula `es_normal` y `flagged` server-side a partir de valor/min/max.
+  9. **Inserta** los indicadores en `indicadores_estudio` (lote `insert(...)`). Si `fecha_resultado` o `laboratorio_nombre` vinieron en la respuesta y el `resultados_estudios` no los tiene, los actualiza también.
+  10. Devuelve `{ inserted: number, indicadores: [...], meta: { fecha_resultado, laboratorio_nombre } }`.
 
-- `estudios_solicitados`
-  - `id`, `appointment_id` (nullable), `patient_id`, `doctor_id`, `created_by`.
-  - `tipo_estudio` (text con set predefinido: sangre/orina/heces/cultivo/citologia/radiografia/ecografia/tomografia/resonancia/mamografia/endoscopia/electrocardiograma/electroencefalograma/espirometria/audiometria/test_esfuerzo/biopsia/test_alergia/densitometria/otro), `descripcion`, `cantidad` (int default 1).
-  - `indicacion`, `observaciones`, `preparacion`, `laboratorio_sugerido`, `prioridad` (enum: baja/normal/urgente), `ayuno_obligatorio` (bool), `horas_ayuno` (int).
-  - `estado` (enum: solicitado/en_proceso/completado/cancelado), `created_at`, `updated_at`.
+Notas:
+- `verify_jwt = true` (default). Usa el header `Authorization` para validar quién llama y para reusar RLS.
+- CORS estándar Lovable.
+- Límite: si el PDF supera ~6 MB en base64 → devolver 413 con mensaje "Archivo demasiado grande, reduce o convierte a imagen".
 
-- `resultados_estudios`
-  - `id`, `estudio_id` (FK a estudios_solicitados), `patient_id`, `pdf_path` (storage), `pdf_name`, `fecha_resultado` (date), `laboratorio_nombre`, `notas`, `uploaded_by`, `created_at`.
+## 2. Hook nuevo: `useExtractIndicators`
 
-- `indicadores_estudio` (preparado para fase 2 IA, pero ya capturable manualmente)
-  - `id`, `resultado_id`, `patient_id`, `nombre_indicador`, `codigo_indicador`, `valor` (numeric), `unidad`, `valor_referencia_min`, `valor_referencia_max`, `es_normal` (bool), `flagged` (bool), `created_at`.
+Archivo: `src/hooks/useResultadosEstudio.ts` (agregar export).
 
-**Storage bucket nuevo:** `estudios-resultados` (privado), para PDFs/imágenes de resultados.
+- `useMutation` que llama `supabase.functions.invoke("extract-study-indicators", { body: { resultado_id } })`.
+- En `onSuccess`: invalida `["indicadores"]` y `["resultados"]`, muestra toast con `"${n} indicadores extraídos"`.
+- Maneja errores 402/429 con toast amigable.
 
-**RLS (resumen):**
-- `recetas`/`estudios_solicitados`: 
-  - SELECT: paciente (`patient_id = auth.uid()`), médico (`doctor_id = auth.uid()`), admin (`has_role admin`), broker asignado.
-  - INSERT/UPDATE: médico asignado, admin, broker asignado. Paciente NO crea ni edita.
-  - DELETE: admin y el médico que las creó.
-- `resultados_estudios` e `indicadores_estudio`: heredan visibilidad del estudio (EXISTS sobre `estudios_solicitados`).
-- Storage `estudios-resultados`: políticas equivalentes vía path `{patient_id}/{estudio_id}/...`.
+## 3. UI: `ResultadosManager.tsx`
 
-**Permisos rol_permissions:** agregar feature keys nuevos `recetas` y `estudios` para admin (true) y medico (true). Paciente con `recetas` y `estudios` true (solo lectura, controlado por UI).
+- En cada `ResultadoItem`, junto a "Ver indicadores", agregar botón **"✨ Extraer con IA"** (visible si `canManage`).
+  - Si `indicadores.length > 0`: el botón dice "Re-extraer" y al hacer click pide confirmación (`¿Reemplazar los indicadores existentes?`). Si confirma, primero borra los actuales (vía `deleteMany`) y luego dispara la extracción.
+  - Estado loading: el botón muestra spinner y texto "Analizando PDF…".
+- Tras subir un nuevo resultado (`useUploadResultado.onSuccess`), preguntar opcionalmente con un toast con acción "Extraer indicadores ahora" que dispare la extracción para el resultado recién creado. (Toast con `action`).
 
-## 2. Frontend — nuevos archivos
+## 4. Cambios menores
 
-**Hooks:**
-- `src/hooks/useRecetas.ts` — list/create/update/delete recetas con React Query, filtros por paciente/médico/appointment/estado.
-- `src/hooks/useEstudios.ts` — análogo para `estudios_solicitados`.
-- `src/hooks/useResultadosEstudio.ts` — list/upload/delete resultados de un estudio.
-
-**Componentes:**
-- `src/components/recetas/RecetaForm.tsx` — diálogo crear/editar. Campos: paciente (PatientSelect ya existente, reusar), cita opcional (AppointmentSelect nuevo), medicamento, dosis+unidad, cantidad, vía, días, frecuencia (radio + input "otro"), indicación, observaciones, estado.
-- `src/components/recetas/RecetaCard.tsx` — card con resumen + acciones (editar/duplicar/cancelar/descargar).
-- `src/components/recetas/recetaPdf.ts` — genera PDF con jsPDF (ya está instalado): logo opcional, datos médico, datos paciente, lista de medicamentos formateada, observaciones, firma.
-- `src/components/estudios/EstudioForm.tsx` — diálogo crear/editar. Tipo (Select con iconos), descripción, cantidad, prioridad, indicación, observaciones, preparación, ayuno+horas, laboratorio sugerido.
-- `src/components/estudios/EstudioCard.tsx` — card con tipo, prioridad, estado, acciones.
-- `src/components/estudios/ResultadosManager.tsx` — sub-panel dentro del detalle de estudio: subir PDF (drag & drop), listar resultados, captura manual de indicadores (tabla editable: nombre, valor, unidad, rango min/max → calcula `es_normal`).
-- `src/components/appointments/AppointmentSelect.tsx` — combobox de citas del paciente (cuando se crea receta/estudio independiente y se quiere ligar opcionalmente).
-
-**Páginas:**
-- `src/pages/Recetas.tsx` — ruta `/recetas`. Header con "+ Nueva receta", filtros (paciente, estado, fecha), tabla/grid de recetas. Para médico: ve las que él prescribió + filtro por paciente. Para admin: todas.
-- `src/pages/Estudios.tsx` — ruta `/estudios`. Análogo. Pestañas: "Solicitados" / "Con resultado" / "Completados".
-
-**Integración con detalle de cita:**
-- En `AppointmentDetailDialog.tsx`: agregar pestañas (Tabs) **Detalles / Recetas / Estudios / Documentos**. Las pestañas Recetas y Estudios listan las ligadas al `appointment.id` y muestran botón "+ Nueva" (solo si `canEditDoctorObservations` o admin/broker). Documentos = lo que ya existe hoy.
-
-**Sidebar y rutas:**
-- `src/lib/features.ts`: añadir `recetas` y `estudios` a `FeatureKey`.
-- `src/components/AppSidebar.tsx` y `BottomNav.tsx`: nuevos items "Recetas" (Pill icon) y "Estudios" (FlaskConical icon), gateados por permiso.
-- `src/App.tsx`: registrar rutas `/recetas` y `/estudios` dentro de `ProtectedRoute`.
-
-## 3. Reglas y comportamientos clave
-
-- **Paciente** ve sus recetas y estudios en `/recetas` y `/estudios` en modo solo lectura (sin botón "Nueva", sin editar). Puede descargar PDF de receta y descargar PDF de resultado.
-- **Médico** crea/edita/cancela recetas y estudios donde `doctor_id = auth.uid()` o desde dentro de una cita que él atiende. Puede subir resultados a estudios que solicitó.
-- **Admin** todo permitido.
-- Al crear desde el detalle de una cita: `appointment_id`, `patient_id` (= cita.user_id), `doctor_id` (= cita.doctor_id) se pre-llenan.
-- Al crear desde `/recetas` o `/estudios` (independiente): paciente seleccionable, cita opcional.
-- Estado por defecto: `activa` (recetas), `solicitado` (estudios).
-- **Notificaciones**: al crear receta/estudio, insertar `notifications` para el paciente con link al detalle.
-
-## 4. Detalles técnicos
-
-- Generación PDF de receta: jsPDF + autoTable (ya hay patrón en `generateClaimPDF.ts`). Estructura: encabezado, datos paciente, tabla de medicamentos con dosis/frecuencia/duración, observaciones, línea de firma con nombre+cédula del médico (de `medicos` table o `profiles`).
-- `medications` actual queda intacta. Más adelante podemos hacer un import de medications → recetas pero no en esta fase para no romper datos.
-- Triggers: reusar `update_updated_at_column()` para `updated_at`.
-- Validación en formularios con Zod (ya hay patrón).
-- Para `frecuencia = otro` se requiere `frecuencia_horas > 0`.
-- Resultados: storage path `{patient_id}/{estudio_id}/{timestamp}_{filename}`.
+- `src/hooks/useResultadosEstudio.ts`: pequeño helper `useDeleteIndicadoresByResultado(resultadoId)` para limpiar antes de re-extraer.
+- Actualizar `useUploadResultado` para devolver el id del resultado creado (ya lo hace) y exponerlo al consumidor.
 
 ## 5. Archivos a tocar
 
-**Migración SQL** (nueva): tablas recetas, estudios_solicitados, resultados_estudios, indicadores_estudio + bucket + RLS + insert role_permissions.
-
 **Creados:**
-- `src/hooks/useRecetas.ts`, `useEstudios.ts`, `useResultadosEstudio.ts`
-- `src/components/recetas/{RecetaForm,RecetaCard,recetaPdf}.tsx`
-- `src/components/estudios/{EstudioForm,EstudioCard,ResultadosManager}.tsx`
-- `src/components/appointments/AppointmentSelect.tsx`
-- `src/pages/Recetas.tsx`, `src/pages/Estudios.tsx`
+- `supabase/functions/extract-study-indicators/index.ts`
 
 **Modificados:**
-- `src/components/appointments/AppointmentDetailDialog.tsx` — Tabs internas (Detalles/Recetas/Estudios/Documentos).
-- `src/lib/features.ts` — nuevos FeatureKey.
-- `src/components/AppSidebar.tsx`, `src/components/BottomNav.tsx` — items nuevos.
-- `src/App.tsx` — rutas nuevas.
+- `src/hooks/useResultadosEstudio.ts` — nuevo hook `useExtractIndicators` + helper de borrado masivo.
+- `src/components/estudios/ResultadosManager.tsx` — botón "Extraer con IA", confirmación de re-extracción, toast post-upload con acción.
+
+**Sin cambios:** la tabla `indicadores_estudio` ya existe con todos los campos necesarios; el bucket `estudios-resultados` ya existe y es privado; `LOVABLE_API_KEY` ya está configurada.
+
+## 6. Detalles técnicos clave
+
+- **System prompt** (resumen): "Eres analista de resultados clínicos. Extrae cada indicador medido con su valor numérico, unidad y rango de referencia. Si el rango aparece como '70-110', devuelve min=70 y max=110. Ignora encabezados, firmas y comentarios. No inventes valores. Si el campo es cualitativo (ej: Negativo/Positivo) registra `valor=null` y pon el resultado en `observacion`."
+- **Tool schema** garantiza JSON estructurado válido.
+- **PDF a Gemini**: usar `data:application/pdf;base64,<...>` en `image_url.url` (Gemini 2.5 Pro lo soporta). Para imágenes JPG/PNG igual.
+- **Cálculo es_normal**: `valor != null && min != null && max != null ? valor >= min && valor <= max : null`. `flagged = es_normal === false`.
+- **Idempotencia**: la primera extracción inserta; las siguientes requieren confirmación + borrado previo, para evitar duplicados.
 
 ## Resultado esperado
 
-- Médico abre una cita → pestaña "Recetas" → "+ Nueva receta" → llena medicamento, dosis, frecuencia, días → guarda → aparece en la cita y en `/recetas` del paciente. Botón "Descargar PDF" genera la receta firmada.
-- Análogo para "Estudios": el médico solicita un hemograma con preparación "Ayuno 8h", el paciente lo ve en `/estudios`. Cuando regresa con el resultado, el médico (o admin) sube el PDF y captura manualmente los indicadores en una tabla; el paciente ve el resultado descargable.
-- Paciente solo lee y descarga; nunca crea ni edita.
-- Lector IA y gráficos de tendencias quedan listos para fase 2 (la tabla `indicadores_estudio` ya está, así que solo hace falta agregar la edge function con Lovable AI y un componente de gráfico).
+Médico abre un estudio → sube PDF de resultado → ve toast "Resultado subido. ¿Extraer indicadores con IA?" → click → spinner ~5-15s → tabla de indicadores se llena automáticamente con valores, unidades, rangos y flags de "Fuera de rango"/"Normal". Puede editarlos manualmente o re-extraer si algo salió mal. El paciente los ve en modo lectura.
 
