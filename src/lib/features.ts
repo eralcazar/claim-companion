@@ -1,6 +1,6 @@
 import {
   Home, FileText, Shield, Calendar, Pill, FolderOpen, User, Download,
-  Users, Stethoscope, FolderTree, UserCog, KeyRound, GraduationCap, BadgeCheck,
+  Users, Stethoscope, FolderTree, UserCog, KeyRound, GraduationCap, BadgeCheck, FlaskConical,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -9,7 +9,8 @@ export type FeatureKey =
   | "medicamentos" | "registros" | "perfil"
   | "broker_panel" | "doctor_panel" | "admin_panel"
   | "format_manager" | "user_manager" | "access_manager"
-  | "admin_especialidades" | "admin_medicos" | "doctor_profile";
+  | "admin_especialidades" | "admin_medicos" | "doctor_profile"
+  | "recetas" | "estudios";
 
 export interface FeatureDef {
   key: FeatureKey;
@@ -27,6 +28,8 @@ export const AVAILABLE_FEATURES: FeatureDef[] = [
   { key: "registros", label: "Registros Médicos", route: "/registros", icon: FolderOpen, group: "principal" },
   { key: "polizas", label: "Pólizas", route: "/polizas", icon: Shield, group: "principal" },
   { key: "formatos", label: "Formatos", route: "/formatos", icon: Download, group: "principal" },
+  { key: "recetas", label: "Recetas", route: "/recetas", icon: Pill, group: "principal" },
+  { key: "estudios", label: "Estudios", route: "/estudios", icon: FlaskConical, group: "principal" },
   { key: "perfil", label: "Perfil", route: "/perfil", icon: User, group: "principal" },
   { key: "broker_panel", label: "Panel Broker", route: "/broker", icon: Users, group: "broker" },
   { key: "doctor_panel", label: "Panel Médico", route: "/medico", icon: Stethoscope, group: "medico" },

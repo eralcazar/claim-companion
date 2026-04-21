@@ -1,4 +1,4 @@
-import { Home, FileText, Calendar, Pill, User } from "lucide-react";
+import { Home, FileText, Calendar, Pill, User, FlaskConical } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
@@ -6,7 +6,8 @@ const tabs = [
   { to: "/", icon: Home, label: "Inicio" },
   { to: "/reclamos", icon: FileText, label: "Reclamos" },
   { to: "/agenda", icon: Calendar, label: "Agenda" },
-  { to: "/medicamentos", icon: Pill, label: "Medicinas" },
+  { to: "/recetas", icon: Pill, label: "Recetas" },
+  { to: "/estudios", icon: FlaskConical, label: "Estudios" },
   { to: "/perfil", icon: User, label: "Perfil" },
 ];
 
