@@ -125,6 +125,36 @@ export function AppointmentDetailDialog({ appointment, patientName, open, onOpen
 
         <Separator />
 
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 text-sm font-medium">
+            <Stethoscope className="h-4 w-4 text-primary" />
+            Observaciones del médico
+          </div>
+          {canEditDoctorObservations ? (
+            <>
+              <Textarea
+                value={obs}
+                onChange={(e) => setObs(e.target.value)}
+                placeholder="Escribe observaciones sobre la cita..."
+                rows={4}
+              />
+              <Button
+                size="sm"
+                onClick={() => saveObs.mutate()}
+                disabled={saveObs.isPending || obs === (a.doctor_observations ?? "")}
+              >
+                {saveObs.isPending ? "Guardando..." : "Guardar observaciones"}
+              </Button>
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+              {a.doctor_observations || "Sin observaciones"}
+            </p>
+          )}
+        </div>
+
+        <Separator />
+
         <AppointmentDocuments appointmentId={a.id} />
       </DialogContent>
     </Dialog>
