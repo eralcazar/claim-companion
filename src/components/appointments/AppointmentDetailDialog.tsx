@@ -2,9 +2,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Separator } from "@/components/ui/separator";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { Calendar, MapPin, User, Bell, ExternalLink, Pencil } from "lucide-react";
+import { Calendar, MapPin, User, Bell, ExternalLink, Pencil, Stethoscope } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { AppointmentDocuments } from "./AppointmentDocuments";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 interface Props {
   appointment: any | null;
@@ -13,6 +18,7 @@ interface Props {
   onOpenChange: (o: boolean) => void;
   onEdit?: (appointment: any) => void;
   canEdit?: boolean;
+  canEditDoctorObservations?: boolean;
 }
 
 const typeLabels: Record<string, string> = {
@@ -28,11 +34,29 @@ const reminderLabel = (m?: number | null) => {
   return `${m / 1440} día${m / 1440 > 1 ? "s" : ""} antes`;
 };
 
-export function AppointmentDetailDialog({ appointment, patientName, open, onOpenChange, onEdit, canEdit }: Props) {
+export function AppointmentDetailDialog({ appointment, patientName, open, onOpenChange, onEdit, canEdit, canEditDoctorObservations }: Props) {
   if (!appointment) return null;
   const a = appointment;
   const isPast = new Date(a.appointment_date) < new Date();
   const showEdit = canEdit && !isPast && onEdit;
+  const qc = useQueryClient();
+  const [obs, setObs] = useState<string>(a.doctor_observations ?? "");
+  useEffect(() => { setObs(a.doctor_observations ?? ""); }, [a.id, a.doctor_observations]);
+  const saveObs = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase
+        .from("appointments")
+        .update({ doctor_observations: obs })
+        .eq("id", a.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Observaciones guardadas");
+      qc.invalidateQueries({ queryKey: ["doctor-appointments"] });
+      qc.invalidateQueries({ queryKey: ["appointments"] });
+    },
+    onError: (e: any) => toast.error(e.message ?? "Error al guardar"),
+  });
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[85vh] overflow-y-auto">
