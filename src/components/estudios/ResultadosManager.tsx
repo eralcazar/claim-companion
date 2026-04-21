@@ -3,10 +3,21 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Trash2, Upload, Download, Plus } from "lucide-react";
-import { useResultados, useUploadResultado, useDeleteResultado, useDownloadResultado, useIndicadores, useSaveIndicador, useDeleteIndicador } from "@/hooks/useResultadosEstudio";
+import { Trash2, Upload, Download, Plus, Sparkles, Loader2 } from "lucide-react";
+import {
+  useResultados,
+  useUploadResultado,
+  useDeleteResultado,
+  useDownloadResultado,
+  useIndicadores,
+  useSaveIndicador,
+  useDeleteIndicador,
+  useExtractIndicators,
+  useDeleteIndicadoresByResultado,
+} from "@/hooks/useResultadosEstudio";
 import { useAuth } from "@/contexts/AuthContext";
 import { format } from "date-fns";
+import { toast } from "sonner";
 
 interface Props {
   estudio: any;
@@ -25,13 +36,24 @@ export function ResultadosManager({ estudio, canManage }: Props) {
   const [lab, setLab] = useState("");
   const [notas, setNotas] = useState("");
 
+  const extractAfterUpload = useExtractIndicators();
+
   const submit = async () => {
     if (!file || !user) return;
-    await upload.mutateAsync({
+    const created = await upload.mutateAsync({
       estudioId: estudio.id, patientId: estudio.patient_id, file, uploadedBy: user.id,
       fechaResultado: fecha || undefined, laboratorio: lab || undefined, notas: notas || undefined,
     });
     setFile(null); setFecha(""); setLab(""); setNotas("");
+    if (created?.id && canManage) {
+      toast("Resultado subido", {
+        description: "¿Extraer indicadores con IA ahora?",
+        action: {
+          label: "Extraer",
+          onClick: () => extractAfterUpload.mutate(created.id),
+        },
+      });
+    }
   };
 
   return (
