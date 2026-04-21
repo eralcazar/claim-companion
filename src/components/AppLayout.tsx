@@ -4,6 +4,7 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { BottomNav } from "@/components/BottomNav";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ImpersonationBanner } from "@/components/ImpersonationBanner";
+import { NotificationBell } from "@/components/NotificationBell";
 
 export function AppLayout() {
   const isMobile = useIsMobile();
@@ -20,6 +21,9 @@ export function AppLayout() {
               <h1 className="font-heading text-lg font-semibold text-primary">
                 MediClaim
               </h1>
+              <div className="ml-auto">
+                <NotificationBell />
+              </div>
             </header>
           )}
 
@@ -28,6 +32,9 @@ export function AppLayout() {
               <h1 className="font-heading text-lg font-semibold text-primary">
                 MediClaim
               </h1>
+              <div className="ml-auto">
+                <NotificationBell />
+              </div>
             </header>
           )}
 
