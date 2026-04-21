@@ -35,19 +35,18 @@ const reminderLabel = (m?: number | null) => {
 };
 
 export function AppointmentDetailDialog({ appointment, patientName, open, onOpenChange, onEdit, canEdit, canEditDoctorObservations }: Props) {
-  if (!appointment) return null;
-  const a = appointment;
-  const isPast = new Date(a.appointment_date) < new Date();
-  const showEdit = canEdit && !isPast && onEdit;
   const qc = useQueryClient();
-  const [obs, setObs] = useState<string>(a.doctor_observations ?? "");
-  useEffect(() => { setObs(a.doctor_observations ?? ""); }, [a.id, a.doctor_observations]);
+  const [obs, setObs] = useState<string>(appointment?.doctor_observations ?? "");
+  useEffect(() => {
+    setObs(appointment?.doctor_observations ?? "");
+  }, [appointment?.id, appointment?.doctor_observations]);
   const saveObs = useMutation({
     mutationFn: async () => {
+      if (!appointment) return;
       const { error } = await supabase
         .from("appointments")
         .update({ doctor_observations: obs })
-        .eq("id", a.id);
+        .eq("id", appointment.id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -57,6 +56,10 @@ export function AppointmentDetailDialog({ appointment, patientName, open, onOpen
     },
     onError: (e: any) => toast.error(e.message ?? "Error al guardar"),
   });
+  if (!appointment) return null;
+  const a = appointment;
+  const isPast = new Date(a.appointment_date) < new Date();
+  const showEdit = canEdit && !isPast && onEdit;
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[85vh] overflow-y-auto">
