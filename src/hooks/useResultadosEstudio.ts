@@ -121,3 +121,50 @@ export function useDeleteIndicador() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["indicadores"] }),
   });
 }
+
+export function useDeleteIndicadoresByResultado() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (resultadoId: string) => {
+      const { error } = await supabase
+        .from("indicadores_estudio")
+        .delete()
+        .eq("resultado_id", resultadoId);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["indicadores"] }),
+  });
+}
+
+export function useExtractIndicators() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (resultadoId: string) => {
+      const { data, error } = await supabase.functions.invoke("extract-study-indicators", {
+        body: { resultado_id: resultadoId },
+      });
+      if (error) {
+        // Try to surface the function's JSON error message
+        const ctx: any = (error as any).context;
+        let msg = error.message;
+        try {
+          if (ctx && typeof ctx.json === "function") {
+            const j = await ctx.json();
+            if (j?.error) msg = j.error;
+          }
+        } catch {}
+        throw new Error(msg);
+      }
+      return data as { inserted: number; meta?: any };
+    },
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: ["indicadores"] });
+      qc.invalidateQueries({ queryKey: ["resultados"] });
+      toast.success(`${data.inserted ?? 0} indicadores extraídos con IA`);
+    },
+    onError: (e: any) => {
+      const msg = e?.message ?? "Error al extraer indicadores";
+      toast.error(msg);
+    },
+  });
+}
