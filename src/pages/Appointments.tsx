@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { useState } from "react";
-import { Plus, Calendar, Trash2, MapPin, Bell } from "lucide-react";
+import { Plus, Calendar, Trash2, MapPin, Bell, Pencil } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import type { Database } from "@/integrations/supabase/types";
@@ -38,8 +38,9 @@ export default function Appointments() {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [detail, setDetail] = useState<any | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const { data: doctors } = useDoctors();
-  const [form, setForm] = useState({
+  const initialForm = {
     appointment_date: "",
     appointment_type: "consulta" as AppointmentType,
     notes: "",
@@ -50,7 +51,59 @@ export default function Appointments() {
     address_lng: null as number | null,
     reminder_enabled: false,
     reminder_minutes_before: 60,
-  });
+  };
+  const [form, setForm] = useState(initialForm);
+
+  const resetForm = () => {
+    setForm(initialForm);
+    setEditingId(null);
+  };
+
+  const openEdit = (apt: any) => {
+    const dt = new Date(apt.appointment_date);
+    const tzOffset = dt.getTimezoneOffset() * 60000;
+    const localISO = new Date(dt.getTime() - tzOffset).toISOString().slice(0, 16);
+    setForm({
+      appointment_date: localISO,
+      appointment_type: apt.appointment_type,
+      notes: apt.notes ?? "",
+      doctor_id: apt.doctor_id ?? (apt.doctor_name_manual ? MANUAL_DOCTOR : NO_DOCTOR),
+      doctor_name_manual: apt.doctor_name_manual ?? "",
+      address: apt.address ?? "",
+      address_lat: apt.address_lat ?? null,
+      address_lng: apt.address_lng ?? null,
+      reminder_enabled: !!apt.reminder_enabled,
+      reminder_minutes_before: apt.reminder_minutes_before ?? 60,
+    });
+    setEditingId(apt.id);
+    setOpen(true);
+  };
+
+  const handleOpenChange = (o: boolean) => {
+    setOpen(o);
+    if (!o) resetForm();
+  };
+
+  const buildPayload = () => {
+    const payload: any = {
+      appointment_date: form.appointment_date,
+      appointment_type: form.appointment_type,
+      notes: form.notes,
+      address: form.address || null,
+      address_lat: form.address_lat,
+      address_lng: form.address_lng,
+      reminder_enabled: form.reminder_enabled,
+      reminder_minutes_before: form.reminder_enabled ? form.reminder_minutes_before : null,
+      doctor_id: null,
+      doctor_name_manual: null,
+    };
+    if (form.doctor_id === MANUAL_DOCTOR) {
+      payload.doctor_name_manual = form.doctor_name_manual || null;
+    } else if (form.doctor_id !== NO_DOCTOR) {
+      payload.doctor_id = form.doctor_id;
+    }
+    return payload;
+  };
 
   const { data: appointments, isLoading } = useQuery({
     queryKey: ["appointments", effectiveUserId],
@@ -67,22 +120,7 @@ export default function Appointments() {
 
   const createMutation = useMutation({
     mutationFn: async () => {
-      const payload: any = {
-        user_id: effectiveUserId!,
-        appointment_date: form.appointment_date,
-        appointment_type: form.appointment_type,
-        notes: form.notes,
-        address: form.address || null,
-        address_lat: form.address_lat,
-        address_lng: form.address_lng,
-        reminder_enabled: form.reminder_enabled,
-        reminder_minutes_before: form.reminder_enabled ? form.reminder_minutes_before : null,
-      };
-      if (form.doctor_id === MANUAL_DOCTOR) {
-        payload.doctor_name_manual = form.doctor_name_manual || null;
-      } else if (form.doctor_id !== NO_DOCTOR) {
-        payload.doctor_id = form.doctor_id;
-      }
+      const payload = { ...buildPayload(), user_id: effectiveUserId! };
       const { error } = await supabase.from("appointments").insert(payload);
       if (error) throw error;
     },
@@ -90,20 +128,25 @@ export default function Appointments() {
       queryClient.invalidateQueries({ queryKey: ["appointments"] });
       toast.success("Cita creada");
       setOpen(false);
-      setForm({
-        appointment_date: "",
-        appointment_type: "consulta",
-        notes: "",
-        doctor_id: NO_DOCTOR,
-        doctor_name_manual: "",
-        address: "",
-        address_lat: null,
-        address_lng: null,
-        reminder_enabled: false,
-        reminder_minutes_before: 60,
-      });
+      resetForm();
     },
     onError: () => toast.error("Error al crear cita"),
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async () => {
+      if (!editingId) throw new Error("No editing id");
+      const payload = { ...buildPayload(), reminder_sent_at: null };
+      const { error } = await supabase.from("appointments").update(payload).eq("id", editingId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["appointments"] });
+      toast.success("Cita actualizada");
+      setOpen(false);
+      resetForm();
+    },
+    onError: () => toast.error("Error al actualizar cita"),
   });
 
   const deleteMutation = useMutation({
