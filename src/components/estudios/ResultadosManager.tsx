@@ -18,6 +18,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import { IndicadorSparkline } from "@/components/tendencias/IndicadorSparkline";
 
 interface Props {
   estudio: any;
