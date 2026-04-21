@@ -1,5 +1,13 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Plus } from "lucide-react";
+import { useRecetas } from "@/hooks/useRecetas";
+import { useEstudios } from "@/hooks/useEstudios";
+import { RecetaCard } from "@/components/recetas/RecetaCard";
+import { RecetaForm } from "@/components/recetas/RecetaForm";
+import { EstudioCard } from "@/components/estudios/EstudioCard";
+import { EstudioForm } from "@/components/estudios/EstudioForm";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { Calendar, MapPin, User, Bell, ExternalLink, Pencil, Stethoscope } from "lucide-react";
@@ -60,6 +68,7 @@ export function AppointmentDetailDialog({ appointment, patientName, open, onOpen
   const a = appointment;
   const isPast = new Date(a.appointment_date) < new Date();
   const showEdit = canEdit && !isPast && onEdit;
+  const canManage = !!canEditDoctorObservations;
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[85vh] overflow-y-auto">
@@ -81,6 +90,14 @@ export function AppointmentDetailDialog({ appointment, patientName, open, onOpen
           </div>
         </DialogHeader>
 
+        <Tabs defaultValue="detalles">
+          <TabsList className="grid grid-cols-4 w-full">
+            <TabsTrigger value="detalles">Detalles</TabsTrigger>
+            <TabsTrigger value="recetas">Recetas</TabsTrigger>
+            <TabsTrigger value="estudios">Estudios</TabsTrigger>
+            <TabsTrigger value="documentos">Documentos</TabsTrigger>
+          </TabsList>
+          <TabsContent value="detalles" className="space-y-4">
         <div className="space-y-3 text-sm">
           {patientName && (
             <div className="flex items-center gap-2">
@@ -148,15 +165,90 @@ export function AppointmentDetailDialog({ appointment, patientName, open, onOpen
             </>
           ) : (
             <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-              {a.doctor_observations || "Sin observaciones"}
+              {a.doctor_observations || "El médico aún no ha registrado observaciones"}
             </p>
           )}
         </div>
-
-        <Separator />
-
-        <AppointmentDocuments appointmentId={a.id} />
+          </TabsContent>
+          <TabsContent value="recetas">
+            <ApptRecetasTab appointment={a} canManage={canManage} />
+          </TabsContent>
+          <TabsContent value="estudios">
+            <ApptEstudiosTab appointment={a} canManage={canManage} />
+          </TabsContent>
+          <TabsContent value="documentos">
+            <AppointmentDocuments appointmentId={a.id} />
+          </TabsContent>
+        </Tabs>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function ApptRecetasTab({ appointment, canManage }: { appointment: any; canManage: boolean }) {
+  const { data = [] } = useRecetas({ appointmentId: appointment.id });
+  const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<any>(null);
+  return (
+    <div className="space-y-3">
+      {canManage && (
+        <Button size="sm" onClick={() => { setEditing(null); setOpen(true); }}>
+          <Plus className="h-4 w-4 mr-1" />Nueva receta
+        </Button>
+      )}
+      {data.length === 0 ? (
+        <p className="text-sm text-muted-foreground">Sin recetas para esta cita.</p>
+      ) : (
+        <div className="space-y-2">
+          {data.map((r: any) => (
+            <RecetaCard key={r.id} receta={r} onEdit={canManage ? (rr) => { setEditing(rr); setOpen(true); } : undefined} />
+          ))}
+        </div>
+      )}
+      {canManage && (
+        <RecetaForm
+          open={open}
+          onOpenChange={setOpen}
+          initial={editing}
+          defaultPatientId={appointment.user_id}
+          defaultAppointmentId={appointment.id}
+          defaultDoctorId={appointment.doctor_id}
+        />
+      )}
+    </div>
+  );
+}
+
+function ApptEstudiosTab({ appointment, canManage }: { appointment: any; canManage: boolean }) {
+  const { data = [] } = useEstudios({ appointmentId: appointment.id });
+  const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<any>(null);
+  return (
+    <div className="space-y-3">
+      {canManage && (
+        <Button size="sm" onClick={() => { setEditing(null); setOpen(true); }}>
+          <Plus className="h-4 w-4 mr-1" />Nuevo estudio
+        </Button>
+      )}
+      {data.length === 0 ? (
+        <p className="text-sm text-muted-foreground">Sin estudios para esta cita.</p>
+      ) : (
+        <div className="space-y-2">
+          {data.map((e: any) => (
+            <EstudioCard key={e.id} estudio={e} onEdit={canManage ? (ee) => { setEditing(ee); setOpen(true); } : undefined} />
+          ))}
+        </div>
+      )}
+      {canManage && (
+        <EstudioForm
+          open={open}
+          onOpenChange={setOpen}
+          initial={editing}
+          defaultPatientId={appointment.user_id}
+          defaultAppointmentId={appointment.id}
+          defaultDoctorId={appointment.doctor_id}
+        />
+      )}
+    </div>
   );
 }
