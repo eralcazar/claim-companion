@@ -18,6 +18,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import { IndicadorSparkline } from "@/components/tendencias/IndicadorSparkline";
 
 interface Props {
   estudio: any;
@@ -156,16 +157,24 @@ function ResultadoItem({ resultado, canManage, onDownload, onDelete }: any) {
       {showInd && (
         <div className="space-y-2">
           {indicadores.map((i: any) => (
-            <div key={i.id} className="flex items-center justify-between text-sm border-b pb-1">
-              <div>
-                <span className="font-medium">{i.nombre_indicador}</span>: {i.valor} {i.unidad ?? ""}
-                {i.valor_referencia_min != null && (
-                  <span className="text-xs text-muted-foreground ml-2">
-                    ({i.valor_referencia_min}-{i.valor_referencia_max})
-                  </span>
+            <div key={i.id} className="flex items-center justify-between gap-2 text-sm border-b pb-1 flex-wrap">
+              <div className="flex items-center gap-2 flex-wrap min-w-0">
+                <span>
+                  <span className="font-medium">{i.nombre_indicador}</span>: {i.valor} {i.unidad ?? ""}
+                  {i.valor_referencia_min != null && (
+                    <span className="text-xs text-muted-foreground ml-1">
+                      ({i.valor_referencia_min}-{i.valor_referencia_max})
+                    </span>
+                  )}
+                </span>
+                {i.valor != null && (
+                  <IndicadorSparkline
+                    patientId={resultado.patient_id}
+                    nombreIndicador={i.nombre_indicador}
+                  />
                 )}
-                {i.es_normal === false && <span className="ml-2 text-destructive text-xs">⚠️ Fuera de rango</span>}
-                {i.es_normal === true && <span className="ml-2 text-green-600 text-xs">✓ Normal</span>}
+                {i.es_normal === false && <span className="text-destructive text-xs">⚠️ Fuera de rango</span>}
+                {i.es_normal === true && <span className="text-green-600 text-xs">✓ Normal</span>}
               </div>
               {canManage && (
                 <Button size="sm" variant="ghost" onClick={() => delInd.mutate(i.id)}>

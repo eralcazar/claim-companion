@@ -120,3 +120,64 @@ export function useTendenciasPaciente(patientId?: string) {
     },
   });
 }
+
+export type IndicadorHistoryPoint = {
+  fecha: string;
+  valor: number;
+  es_normal: boolean | null;
+  ref_min: number | null;
+  ref_max: number | null;
+};
+
+/**
+ * Historia de un indicador específico para un paciente, ordenada cronológicamente.
+ * Útil para sparklines en línea.
+ */
+export function useIndicadorHistory(patientId?: string, nombreIndicador?: string) {
+  return useQuery({
+    queryKey: ["indicador-history", patientId, nombreIndicador?.trim().toLowerCase()],
+    enabled: !!patientId && !!nombreIndicador,
+    staleTime: 60_000,
+    queryFn: async (): Promise<IndicadorHistoryPoint[]> => {
+      if (!patientId || !nombreIndicador) return [];
+      const { data: inds, error } = await supabase
+        .from("indicadores_estudio")
+        .select(
+          "valor, es_normal, valor_referencia_min, valor_referencia_max, resultado_id, nombre_indicador"
+        )
+        .eq("patient_id", patientId)
+        .ilike("nombre_indicador", nombreIndicador.trim())
+        .not("valor", "is", null);
+      if (error) throw error;
+      const list = inds ?? [];
+      if (list.length === 0) return [];
+
+      const resultadoIds = Array.from(new Set(list.map((i) => i.resultado_id)));
+      const { data: resultados } = await supabase
+        .from("resultados_estudios")
+        .select("id, fecha_resultado, created_at")
+        .in("id", resultadoIds);
+      const fechaMap = new Map<string, string>();
+      for (const r of resultados ?? []) {
+        fechaMap.set(r.id, r.fecha_resultado || r.created_at);
+      }
+
+      const points: IndicadorHistoryPoint[] = list
+        .map((i) => {
+          const fecha = fechaMap.get(i.resultado_id);
+          if (!fecha) return null;
+          return {
+            fecha,
+            valor: Number(i.valor),
+            es_normal: i.es_normal,
+            ref_min: i.valor_referencia_min != null ? Number(i.valor_referencia_min) : null,
+            ref_max: i.valor_referencia_max != null ? Number(i.valor_referencia_max) : null,
+          } as IndicadorHistoryPoint;
+        })
+        .filter((p): p is IndicadorHistoryPoint => p !== null)
+        .sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime());
+
+      return points;
+    },
+  });
+}
