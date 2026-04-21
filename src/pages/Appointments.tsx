@@ -174,12 +174,12 @@ export default function Appointments() {
     <div className="space-y-6 animate-fade-in max-w-lg mx-auto">
       <div className="flex items-center justify-between">
         <h1 className="font-heading text-2xl font-bold">Agenda</h1>
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={open} onOpenChange={handleOpenChange}>
           <DialogTrigger asChild>
             <Button size="sm"><Plus className="h-4 w-4 mr-1" /> Nueva</Button>
           </DialogTrigger>
           <DialogContent className="max-h-[85vh] overflow-y-auto">
-            <DialogHeader><DialogTitle>Nueva Cita</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>{editingId ? "Editar Cita" : "Nueva Cita"}</DialogTitle></DialogHeader>
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label>Fecha y hora</Label>
@@ -253,8 +253,14 @@ export default function Appointments() {
                 <Label>Notas</Label>
                 <Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Notas opcionales..." />
               </div>
-              <Button className="w-full" onClick={() => createMutation.mutate()} disabled={createMutation.isPending || !form.appointment_date}>
-                {createMutation.isPending ? "Guardando..." : "Guardar"}
+              <Button
+                className="w-full"
+                onClick={() => (editingId ? updateMutation.mutate() : createMutation.mutate())}
+                disabled={createMutation.isPending || updateMutation.isPending || !form.appointment_date}
+              >
+                {editingId
+                  ? updateMutation.isPending ? "Actualizando..." : "Actualizar"
+                  : createMutation.isPending ? "Guardando..." : "Guardar"}
               </Button>
             </div>
           </DialogContent>
