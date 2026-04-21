@@ -480,6 +480,69 @@ export type Database = {
         }
         Relationships: []
       }
+      estudios_solicitados: {
+        Row: {
+          appointment_id: string | null
+          ayuno_obligatorio: boolean
+          cantidad: number
+          created_at: string
+          created_by: string
+          descripcion: string | null
+          doctor_id: string
+          estado: Database["public"]["Enums"]["estudio_estado"]
+          horas_ayuno: number | null
+          id: string
+          indicacion: string | null
+          laboratorio_sugerido: string | null
+          observaciones: string | null
+          patient_id: string
+          preparacion: string | null
+          prioridad: Database["public"]["Enums"]["estudio_prioridad"]
+          tipo_estudio: string
+          updated_at: string
+        }
+        Insert: {
+          appointment_id?: string | null
+          ayuno_obligatorio?: boolean
+          cantidad?: number
+          created_at?: string
+          created_by: string
+          descripcion?: string | null
+          doctor_id: string
+          estado?: Database["public"]["Enums"]["estudio_estado"]
+          horas_ayuno?: number | null
+          id?: string
+          indicacion?: string | null
+          laboratorio_sugerido?: string | null
+          observaciones?: string | null
+          patient_id: string
+          preparacion?: string | null
+          prioridad?: Database["public"]["Enums"]["estudio_prioridad"]
+          tipo_estudio: string
+          updated_at?: string
+        }
+        Update: {
+          appointment_id?: string | null
+          ayuno_obligatorio?: boolean
+          cantidad?: number
+          created_at?: string
+          created_by?: string
+          descripcion?: string | null
+          doctor_id?: string
+          estado?: Database["public"]["Enums"]["estudio_estado"]
+          horas_ayuno?: number | null
+          id?: string
+          indicacion?: string | null
+          laboratorio_sugerido?: string | null
+          observaciones?: string | null
+          patient_id?: string
+          preparacion?: string | null
+          prioridad?: Database["public"]["Enums"]["estudio_prioridad"]
+          tipo_estudio?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       formularios: {
         Row: {
           activo: boolean
@@ -523,6 +586,59 @@ export type Database = {
             columns: ["aseguradora_id"]
             isOneToOne: false
             referencedRelation: "aseguradoras"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      indicadores_estudio: {
+        Row: {
+          codigo_indicador: string | null
+          created_at: string
+          es_normal: boolean | null
+          flagged: boolean
+          id: string
+          nombre_indicador: string
+          patient_id: string
+          resultado_id: string
+          unidad: string | null
+          valor: number | null
+          valor_referencia_max: number | null
+          valor_referencia_min: number | null
+        }
+        Insert: {
+          codigo_indicador?: string | null
+          created_at?: string
+          es_normal?: boolean | null
+          flagged?: boolean
+          id?: string
+          nombre_indicador: string
+          patient_id: string
+          resultado_id: string
+          unidad?: string | null
+          valor?: number | null
+          valor_referencia_max?: number | null
+          valor_referencia_min?: number | null
+        }
+        Update: {
+          codigo_indicador?: string | null
+          created_at?: string
+          es_normal?: boolean | null
+          flagged?: boolean
+          id?: string
+          nombre_indicador?: string
+          patient_id?: string
+          resultado_id?: string
+          unidad?: string | null
+          valor?: number | null
+          valor_referencia_max?: number | null
+          valor_referencia_min?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "indicadores_estudio_resultado_id_fkey"
+            columns: ["resultado_id"]
+            isOneToOne: false
+            referencedRelation: "resultados_estudios"
             referencedColumns: ["id"]
           },
         ]
@@ -1094,6 +1210,125 @@ export type Database = {
         }
         Relationships: []
       }
+      recetas: {
+        Row: {
+          appointment_id: string | null
+          cantidad: number | null
+          created_at: string
+          created_by: string
+          dias_a_tomar: number | null
+          doctor_id: string
+          dosis: number | null
+          es_generico: boolean
+          estado: Database["public"]["Enums"]["receta_estado"]
+          frecuencia: Database["public"]["Enums"]["receta_frecuencia"]
+          frecuencia_horas: number | null
+          id: string
+          indicacion: string | null
+          marca_comercial: string | null
+          medicamento_nombre: string
+          observaciones: string | null
+          patient_id: string
+          precio_aproximado: number | null
+          unidad_dosis: string | null
+          updated_at: string
+          via_administracion: string | null
+        }
+        Insert: {
+          appointment_id?: string | null
+          cantidad?: number | null
+          created_at?: string
+          created_by: string
+          dias_a_tomar?: number | null
+          doctor_id: string
+          dosis?: number | null
+          es_generico?: boolean
+          estado?: Database["public"]["Enums"]["receta_estado"]
+          frecuencia?: Database["public"]["Enums"]["receta_frecuencia"]
+          frecuencia_horas?: number | null
+          id?: string
+          indicacion?: string | null
+          marca_comercial?: string | null
+          medicamento_nombre: string
+          observaciones?: string | null
+          patient_id: string
+          precio_aproximado?: number | null
+          unidad_dosis?: string | null
+          updated_at?: string
+          via_administracion?: string | null
+        }
+        Update: {
+          appointment_id?: string | null
+          cantidad?: number | null
+          created_at?: string
+          created_by?: string
+          dias_a_tomar?: number | null
+          doctor_id?: string
+          dosis?: number | null
+          es_generico?: boolean
+          estado?: Database["public"]["Enums"]["receta_estado"]
+          frecuencia?: Database["public"]["Enums"]["receta_frecuencia"]
+          frecuencia_horas?: number | null
+          id?: string
+          indicacion?: string | null
+          marca_comercial?: string | null
+          medicamento_nombre?: string
+          observaciones?: string | null
+          patient_id?: string
+          precio_aproximado?: number | null
+          unidad_dosis?: string | null
+          updated_at?: string
+          via_administracion?: string | null
+        }
+        Relationships: []
+      }
+      resultados_estudios: {
+        Row: {
+          created_at: string
+          estudio_id: string
+          fecha_resultado: string | null
+          id: string
+          laboratorio_nombre: string | null
+          notas: string | null
+          patient_id: string
+          pdf_name: string
+          pdf_path: string
+          uploaded_by: string
+        }
+        Insert: {
+          created_at?: string
+          estudio_id: string
+          fecha_resultado?: string | null
+          id?: string
+          laboratorio_nombre?: string | null
+          notas?: string | null
+          patient_id: string
+          pdf_name?: string
+          pdf_path: string
+          uploaded_by: string
+        }
+        Update: {
+          created_at?: string
+          estudio_id?: string
+          fecha_resultado?: string | null
+          id?: string
+          laboratorio_nombre?: string | null
+          notas?: string | null
+          patient_id?: string
+          pdf_name?: string
+          pdf_path?: string
+          uploaded_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resultados_estudios_estudio_id_fkey"
+            columns: ["estudio_id"]
+            isOneToOne: false
+            referencedRelation: "estudios_solicitados"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       role_permissions: {
         Row: {
           allowed: boolean
@@ -1197,6 +1432,8 @@ export type Database = {
       appointment_type: "consulta" | "estudio" | "procedimiento"
       claim_status: "pendiente" | "aprobado" | "rechazado" | "en_revision"
       claim_type: "reembolso" | "procedimiento_programado"
+      estudio_estado: "solicitado" | "en_proceso" | "completado" | "cancelado"
+      estudio_prioridad: "baja" | "normal" | "urgente"
       medical_record_type: "receta" | "laboratorio" | "documento"
       medication_frequency:
         | "diario"
@@ -1205,6 +1442,16 @@ export type Database = {
         | "cada_24_horas"
         | "semanal"
       policy_status: "activa" | "inactiva"
+      receta_estado: "activa" | "completada" | "cancelada"
+      receta_frecuencia:
+        | "cada_4h"
+        | "cada_6h"
+        | "cada_8h"
+        | "cada_12h"
+        | "cada_24h"
+        | "cada_48h"
+        | "semanal"
+        | "otro"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1344,6 +1591,8 @@ export const Constants = {
       appointment_type: ["consulta", "estudio", "procedimiento"],
       claim_status: ["pendiente", "aprobado", "rechazado", "en_revision"],
       claim_type: ["reembolso", "procedimiento_programado"],
+      estudio_estado: ["solicitado", "en_proceso", "completado", "cancelado"],
+      estudio_prioridad: ["baja", "normal", "urgente"],
       medical_record_type: ["receta", "laboratorio", "documento"],
       medication_frequency: [
         "diario",
@@ -1353,6 +1602,17 @@ export const Constants = {
         "semanal",
       ],
       policy_status: ["activa", "inactiva"],
+      receta_estado: ["activa", "completada", "cancelada"],
+      receta_frecuencia: [
+        "cada_4h",
+        "cada_6h",
+        "cada_8h",
+        "cada_12h",
+        "cada_24h",
+        "cada_48h",
+        "semanal",
+        "otro",
+      ],
     },
   },
 } as const
