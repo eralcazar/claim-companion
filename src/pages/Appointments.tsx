@@ -295,9 +295,14 @@ export default function Appointments() {
                           {apt.notes && <p className="text-xs text-muted-foreground mt-1">{apt.notes}</p>}
                         </div>
                       </div>
-                      <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); deleteMutation.mutate(apt.id); }}>
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); openEdit(apt); }}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); deleteMutation.mutate(apt.id); }}>
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
                     </CardContent>
                   </Card>
                 ))}
@@ -329,6 +334,8 @@ export default function Appointments() {
         appointment={detail}
         open={!!detail}
         onOpenChange={(o) => !o && setDetail(null)}
+        canEdit={detail?.user_id === effectiveUserId}
+        onEdit={openEdit}
       />
     </div>
   );
