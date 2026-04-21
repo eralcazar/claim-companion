@@ -29,6 +29,7 @@ import DoctorProfile from "@/pages/DoctorProfile";
 import Formats from "@/pages/Formats";
 import Recetas from "@/pages/Recetas";
 import Estudios from "@/pages/Estudios";
+import Tendencias from "@/pages/Tendencias";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -50,6 +51,7 @@ const App = () => (
               <Route path="/formatos" element={<Formats />} />
               <Route path="/recetas" element={<Recetas />} />
               <Route path="/estudios" element={<Estudios />} />
+              <Route path="/tendencias" element={<Tendencias />} />
               <Route path="/reclamos/nuevo" element={<NewClaim />} />
               <Route path="/reclamos/editar/:id" element={<EditClaim />} />
               <Route path="/agenda" element={<Appointments />} />
