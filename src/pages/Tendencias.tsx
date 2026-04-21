@@ -1,6 +1,10 @@
 import { useMemo, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useTendenciasPaciente } from "@/hooks/useTendencias";
+import {
+  useTendenciasPaciente,
+  filterTendenciasByRango,
+  type RangoFechas,
+} from "@/hooks/useTendencias";
 import { usePatients } from "@/hooks/usePatients";
 import { IndicadorTrendChart } from "@/components/tendencias/IndicadorTrendChart";
 import { Input } from "@/components/ui/input";
@@ -25,13 +29,19 @@ export default function Tendencias() {
 
   const { data: indicadores = [], isLoading } = useTendenciasPaciente(targetId);
   const [q, setQ] = useState("");
+  const [rangoFechas, setRangoFechas] = useState<RangoFechas>("todo");
+
+  const filteredByRango = useMemo(
+    () => filterTendenciasByRango(indicadores, rangoFechas),
+    [indicadores, rangoFechas],
+  );
 
   const filtered = useMemo(
     () =>
-      indicadores.filter((i) =>
+      filteredByRango.filter((i) =>
         q ? i.nombre.toLowerCase().includes(q.toLowerCase()) : true,
       ),
-    [indicadores, q],
+    [filteredByRango, q],
   );
 
   return (
@@ -48,16 +58,30 @@ export default function Tendencias() {
         </div>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-center">
+      <div className="flex flex-wrap gap-3 items-center">
         <div className="relative">
           <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Buscar indicador (ej. glucosa, hemoglobina)..."
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            className="pl-8"
+            className="pl-8 w-full sm:w-[280px]"
           />
         </div>
+        <Select
+          value={rangoFechas}
+          onValueChange={(v) => setRangoFechas(v as RangoFechas)}
+        >
+          <SelectTrigger className="w-full sm:w-[200px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todo">Todo el historial</SelectItem>
+            <SelectItem value="3m">Últimos 3 meses</SelectItem>
+            <SelectItem value="6m">Últimos 6 meses</SelectItem>
+            <SelectItem value="12m">Últimos 12 meses</SelectItem>
+          </SelectContent>
+        </Select>
         {canPickPatient && (
           <Select
             value={selectedPatient ?? ""}
@@ -94,7 +118,9 @@ export default function Tendencias() {
           <CardContent className="py-10 text-center text-muted-foreground">
             {indicadores.length === 0
               ? "Aún no hay indicadores capturados. Sube resultados de estudios y extrae los indicadores con IA para ver gráficos."
-              : "Ningún indicador coincide con tu búsqueda."}
+              : filteredByRango.length === 0
+                ? "No hay datos en el periodo seleccionado. Prueba con un rango mayor."
+                : "Ningún indicador coincide con tu búsqueda."}
           </CardContent>
         </Card>
       ) : (
