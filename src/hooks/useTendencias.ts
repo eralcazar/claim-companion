@@ -129,6 +129,32 @@ export type IndicadorHistoryPoint = {
   ref_max: number | null;
 };
 
+export type RangoFechas = "3m" | "6m" | "12m" | "todo";
+
+/**
+ * Filtra los puntos de cada indicador según un rango de fechas relativo al ahora.
+ * Mantiene la estructura `TendenciaIndicador[]` para no romper consumidores.
+ */
+export function filterTendenciasByRango(
+  indicadores: TendenciaIndicador[],
+  rango: RangoFechas,
+): TendenciaIndicador[] {
+  if (rango === "todo") {
+    return indicadores.filter((ind) => ind.puntos.length > 0);
+  }
+  const meses = rango === "3m" ? 3 : rango === "6m" ? 6 : 12;
+  const limite = new Date();
+  limite.setMonth(limite.getMonth() - meses);
+  const limiteMs = limite.getTime();
+
+  return indicadores
+    .map((ind) => ({
+      ...ind,
+      puntos: ind.puntos.filter((p) => new Date(p.fecha).getTime() >= limiteMs),
+    }))
+    .filter((ind) => ind.puntos.length > 0);
+}
+
 /**
  * Historia de un indicador específico para un paciente, ordenada cronológicamente.
  * Útil para sparklines en línea.
