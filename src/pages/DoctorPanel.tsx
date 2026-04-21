@@ -5,23 +5,44 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Stethoscope, Calendar } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { useState } from "react";
+import { AppointmentDetailDialog } from "@/components/appointments/AppointmentDetailDialog";
 
 export default function DoctorPanel() {
   const { user } = useAuth();
+  const [detail, setDetail] = useState<{ apt: any; name: string } | null>(null);
 
-  const { data: appointments, isLoading } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ["doctor-appointments", user?.id],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data: appts } = await supabase
         .from("appointments")
-        .select("*, profiles!appointments_user_id_fkey(full_name)")
+        .select("*")
         .eq("doctor_id", user!.id)
         .gte("appointment_date", new Date().toISOString())
         .order("appointment_date", { ascending: true });
-      return data ?? [];
+      const list = appts ?? [];
+      const ids = Array.from(new Set(list.map((a: any) => a.user_id)));
+      let nameMap: Record<string, string> = {};
+      if (ids.length > 0) {
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("user_id, full_name, first_name, paternal_surname, email")
+          .in("user_id", ids);
+        for (const p of profiles ?? []) {
+          nameMap[p.user_id] =
+            (p.full_name || "").trim() ||
+            [p.first_name, p.paternal_surname].filter(Boolean).join(" ") ||
+            p.email ||
+            "Paciente";
+        }
+      }
+      return list.map((a: any) => ({ ...a, _patientName: nameMap[a.user_id] ?? "Paciente" }));
     },
     enabled: !!user,
   });
+
+  const appointments = data;
 
   return (
     <div className="space-y-6 animate-fade-in max-w-lg mx-auto">
@@ -37,21 +58,31 @@ export default function DoctorPanel() {
       ) : (
         <div className="space-y-3">
           {appointments?.map((apt: any) => (
-            <Card key={apt.id}>
+            <Card key={apt.id} className="cursor-pointer hover:bg-accent/30 transition-colors" onClick={() => setDetail({ apt, name: apt._patientName })}>
               <CardContent className="p-4 flex items-center gap-3">
                 <Calendar className="h-5 w-5 text-primary" />
                 <div>
-                  <p className="text-sm font-medium">{apt.profiles?.full_name || "Paciente"}</p>
+                  <p className="text-sm font-medium">{apt._patientName}</p>
                   <p className="text-xs text-muted-foreground capitalize">{apt.appointment_type}</p>
                   <p className="text-xs text-muted-foreground">
                     {format(new Date(apt.appointment_date), "PPP 'a las' p", { locale: es })}
                   </p>
+                  {apt.address && (
+                    <p className="text-xs text-muted-foreground truncate max-w-[220px]">{apt.address}</p>
+                  )}
                 </div>
               </CardContent>
             </Card>
           ))}
         </div>
       )}
+
+      <AppointmentDetailDialog
+        appointment={detail?.apt ?? null}
+        patientName={detail?.name}
+        open={!!detail}
+        onOpenChange={(o) => !o && setDetail(null)}
+      />
     </div>
   );
 }
