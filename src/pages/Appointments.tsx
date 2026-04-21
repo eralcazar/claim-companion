@@ -8,25 +8,48 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { useState } from "react";
-import { Plus, Calendar, Trash2 } from "lucide-react";
+import { Plus, Calendar, Trash2, MapPin, Bell } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import type { Database } from "@/integrations/supabase/types";
 import { useEffectiveUserId } from "@/contexts/ImpersonationContext";
+import { useDoctors } from "@/hooks/useDoctors";
+import { AddressAutocomplete } from "@/components/appointments/AddressAutocomplete";
+import { AppointmentDetailDialog } from "@/components/appointments/AppointmentDetailDialog";
 
 type AppointmentType = Database["public"]["Enums"]["appointment_type"];
+
+const MANUAL_DOCTOR = "__manual__";
+const NO_DOCTOR = "__none__";
+const REMINDER_OPTIONS = [
+  { v: 15, label: "15 minutos antes" },
+  { v: 30, label: "30 minutos antes" },
+  { v: 60, label: "1 hora antes" },
+  { v: 120, label: "2 horas antes" },
+  { v: 1440, label: "1 día antes" },
+];
 
 export default function Appointments() {
   const { user } = useAuth();
   const effectiveUserId = useEffectiveUserId(user?.id);
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [detail, setDetail] = useState<any | null>(null);
+  const { data: doctors } = useDoctors();
   const [form, setForm] = useState({
     appointment_date: "",
     appointment_type: "consulta" as AppointmentType,
     notes: "",
+    doctor_id: NO_DOCTOR as string,
+    doctor_name_manual: "",
+    address: "",
+    address_lat: null as number | null,
+    address_lng: null as number | null,
+    reminder_enabled: false,
+    reminder_minutes_before: 60,
   });
 
   const { data: appointments, isLoading } = useQuery({
@@ -44,19 +67,41 @@ export default function Appointments() {
 
   const createMutation = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from("appointments").insert({
+      const payload: any = {
         user_id: effectiveUserId!,
         appointment_date: form.appointment_date,
         appointment_type: form.appointment_type,
         notes: form.notes,
-      });
+        address: form.address || null,
+        address_lat: form.address_lat,
+        address_lng: form.address_lng,
+        reminder_enabled: form.reminder_enabled,
+        reminder_minutes_before: form.reminder_enabled ? form.reminder_minutes_before : null,
+      };
+      if (form.doctor_id === MANUAL_DOCTOR) {
+        payload.doctor_name_manual = form.doctor_name_manual || null;
+      } else if (form.doctor_id !== NO_DOCTOR) {
+        payload.doctor_id = form.doctor_id;
+      }
+      const { error } = await supabase.from("appointments").insert(payload);
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["appointments"] });
       toast.success("Cita creada");
       setOpen(false);
-      setForm({ appointment_date: "", appointment_type: "consulta", notes: "" });
+      setForm({
+        appointment_date: "",
+        appointment_type: "consulta",
+        notes: "",
+        doctor_id: NO_DOCTOR,
+        doctor_name_manual: "",
+        address: "",
+        address_lat: null,
+        address_lng: null,
+        reminder_enabled: false,
+        reminder_minutes_before: 60,
+      });
     },
     onError: () => toast.error("Error al crear cita"),
   });
@@ -90,7 +135,7 @@ export default function Appointments() {
           <DialogTrigger asChild>
             <Button size="sm"><Plus className="h-4 w-4 mr-1" /> Nueva</Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-h-[85vh] overflow-y-auto">
             <DialogHeader><DialogTitle>Nueva Cita</DialogTitle></DialogHeader>
             <div className="space-y-4">
               <div className="space-y-2">
@@ -107,6 +152,59 @@ export default function Appointments() {
                     <SelectItem value="procedimiento">Procedimiento</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Médico</Label>
+                <Select value={form.doctor_id} onValueChange={(v) => setForm({ ...form, doctor_id: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NO_DOCTOR}>Sin asignar</SelectItem>
+                    {(doctors ?? []).map((d) => (
+                      <SelectItem key={d.user_id} value={d.user_id}>{d.full_name}</SelectItem>
+                    ))}
+                    <SelectItem value={MANUAL_DOCTOR}>Otro / no listado</SelectItem>
+                  </SelectContent>
+                </Select>
+                {form.doctor_id === MANUAL_DOCTOR && (
+                  <Input
+                    placeholder="Nombre del médico"
+                    value={form.doctor_name_manual}
+                    onChange={(e) => setForm({ ...form, doctor_name_manual: e.target.value })}
+                  />
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label>Dirección de la consulta</Label>
+                <AddressAutocomplete
+                  value={form.address}
+                  lat={form.address_lat}
+                  lng={form.address_lng}
+                  onChange={(v) => setForm({ ...form, address: v.address, address_lat: v.lat, address_lng: v.lng })}
+                />
+              </div>
+              <div className="space-y-2 rounded-md border p-3">
+                <div className="flex items-center justify-between">
+                  <Label className="flex items-center gap-2">
+                    <Bell className="h-4 w-4" /> Activar recordatorio
+                  </Label>
+                  <Switch
+                    checked={form.reminder_enabled}
+                    onCheckedChange={(v) => setForm({ ...form, reminder_enabled: v })}
+                  />
+                </div>
+                {form.reminder_enabled && (
+                  <Select
+                    value={String(form.reminder_minutes_before)}
+                    onValueChange={(v) => setForm({ ...form, reminder_minutes_before: parseInt(v) })}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {REMINDER_OPTIONS.map((o) => (
+                        <SelectItem key={o.v} value={String(o.v)}>{o.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
               <div className="space-y-2">
                 <Label>Notas</Label>
@@ -131,7 +229,7 @@ export default function Appointments() {
             ) : (
               <div className="space-y-3">
                 {upcoming.map((apt) => (
-                  <Card key={apt.id}>
+                  <Card key={apt.id} className="cursor-pointer hover:bg-accent/30 transition-colors" onClick={() => setDetail(apt)}>
                     <CardContent className="p-4 flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <Calendar className="h-5 w-5 text-primary" />
@@ -140,10 +238,15 @@ export default function Appointments() {
                           <p className="text-xs text-muted-foreground">
                             {format(new Date(apt.appointment_date), "PPP 'a las' p", { locale: es })}
                           </p>
+                          {apt.address && (
+                            <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                              <MapPin className="h-3 w-3" /> <span className="truncate max-w-[180px]">{apt.address}</span>
+                            </p>
+                          )}
                           {apt.notes && <p className="text-xs text-muted-foreground mt-1">{apt.notes}</p>}
                         </div>
                       </div>
-                      <Button variant="ghost" size="icon" onClick={() => deleteMutation.mutate(apt.id)}>
+                      <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); deleteMutation.mutate(apt.id); }}>
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
                     </CardContent>
@@ -158,7 +261,7 @@ export default function Appointments() {
               <h2 className="font-heading text-lg font-semibold mb-3 text-muted-foreground">Pasadas</h2>
               <div className="space-y-3 opacity-60">
                 {past.map((apt) => (
-                  <Card key={apt.id}>
+                  <Card key={apt.id} className="cursor-pointer hover:bg-accent/30 transition-colors" onClick={() => setDetail(apt)}>
                     <CardContent className="p-4">
                       <p className="text-sm font-medium">{typeLabels[apt.appointment_type]}</p>
                       <p className="text-xs text-muted-foreground">
@@ -172,6 +275,12 @@ export default function Appointments() {
           )}
         </>
       )}
+
+      <AppointmentDetailDialog
+        appointment={detail}
+        open={!!detail}
+        onOpenChange={(o) => !o && setDetail(null)}
+      />
     </div>
   );
 }

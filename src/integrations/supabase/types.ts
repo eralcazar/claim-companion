@@ -14,34 +14,96 @@ export type Database = {
   }
   public: {
     Tables: {
+      appointment_documents: {
+        Row: {
+          appointment_id: string
+          created_at: string
+          document_category: Database["public"]["Enums"]["appointment_document_category"]
+          file_name: string
+          file_path: string
+          file_type: string
+          id: string
+          uploaded_by: string
+        }
+        Insert: {
+          appointment_id: string
+          created_at?: string
+          document_category?: Database["public"]["Enums"]["appointment_document_category"]
+          file_name?: string
+          file_path: string
+          file_type?: string
+          id?: string
+          uploaded_by: string
+        }
+        Update: {
+          appointment_id?: string
+          created_at?: string
+          document_category?: Database["public"]["Enums"]["appointment_document_category"]
+          file_name?: string
+          file_path?: string
+          file_type?: string
+          id?: string
+          uploaded_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointment_documents_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       appointments: {
         Row: {
+          address: string | null
+          address_lat: number | null
+          address_lng: number | null
           appointment_date: string
           appointment_type: Database["public"]["Enums"]["appointment_type"]
           created_at: string
           doctor_id: string | null
+          doctor_name_manual: string | null
           id: string
           notes: string | null
+          reminder_enabled: boolean
+          reminder_minutes_before: number | null
+          reminder_sent_at: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          address?: string | null
+          address_lat?: number | null
+          address_lng?: number | null
           appointment_date: string
           appointment_type?: Database["public"]["Enums"]["appointment_type"]
           created_at?: string
           doctor_id?: string | null
+          doctor_name_manual?: string | null
           id?: string
           notes?: string | null
+          reminder_enabled?: boolean
+          reminder_minutes_before?: number | null
+          reminder_sent_at?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          address?: string | null
+          address_lat?: number | null
+          address_lng?: number | null
           appointment_date?: string
           appointment_type?: Database["public"]["Enums"]["appointment_type"]
           created_at?: string
           doctor_id?: string | null
+          doctor_name_manual?: string | null
           id?: string
           notes?: string | null
+          reminder_enabled?: boolean
+          reminder_minutes_before?: number | null
+          reminder_sent_at?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -873,6 +935,36 @@ export type Database = {
         }
         Relationships: []
       }
+      notifications: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          link: string | null
+          read_at: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          body?: string
+          created_at?: string
+          id?: string
+          link?: string | null
+          read_at?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          link?: string | null
+          read_at?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           address: string | null
@@ -1092,6 +1184,13 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "broker" | "paciente" | "medico"
+      appointment_document_category:
+        | "receta"
+        | "estudio"
+        | "notas_medicas"
+        | "cfdi"
+        | "impresion_cfdi"
+        | "otro"
       appointment_type: "consulta" | "estudio" | "procedimiento"
       claim_status: "pendiente" | "aprobado" | "rechazado" | "en_revision"
       claim_type: "reembolso" | "procedimiento_programado"
@@ -1231,6 +1330,14 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "broker", "paciente", "medico"],
+      appointment_document_category: [
+        "receta",
+        "estudio",
+        "notas_medicas",
+        "cfdi",
+        "impresion_cfdi",
+        "otro",
+      ],
       appointment_type: ["consulta", "estudio", "procedimiento"],
       claim_status: ["pendiente", "aprobado", "rechazado", "en_revision"],
       claim_type: ["reembolso", "procedimiento_programado"],
