@@ -2,9 +2,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Separator } from "@/components/ui/separator";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { Calendar, MapPin, User, Bell, ExternalLink, Pencil } from "lucide-react";
+import { Calendar, MapPin, User, Bell, ExternalLink, Pencil, Stethoscope } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { AppointmentDocuments } from "./AppointmentDocuments";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 interface Props {
   appointment: any | null;
@@ -13,6 +18,7 @@ interface Props {
   onOpenChange: (o: boolean) => void;
   onEdit?: (appointment: any) => void;
   canEdit?: boolean;
+  canEditDoctorObservations?: boolean;
 }
 
 const typeLabels: Record<string, string> = {
@@ -28,7 +34,28 @@ const reminderLabel = (m?: number | null) => {
   return `${m / 1440} día${m / 1440 > 1 ? "s" : ""} antes`;
 };
 
-export function AppointmentDetailDialog({ appointment, patientName, open, onOpenChange, onEdit, canEdit }: Props) {
+export function AppointmentDetailDialog({ appointment, patientName, open, onOpenChange, onEdit, canEdit, canEditDoctorObservations }: Props) {
+  const qc = useQueryClient();
+  const [obs, setObs] = useState<string>(appointment?.doctor_observations ?? "");
+  useEffect(() => {
+    setObs(appointment?.doctor_observations ?? "");
+  }, [appointment?.id, appointment?.doctor_observations]);
+  const saveObs = useMutation({
+    mutationFn: async () => {
+      if (!appointment) return;
+      const { error } = await supabase
+        .from("appointments")
+        .update({ doctor_observations: obs })
+        .eq("id", appointment.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Observaciones guardadas");
+      qc.invalidateQueries({ queryKey: ["doctor-appointments"] });
+      qc.invalidateQueries({ queryKey: ["appointments"] });
+    },
+    onError: (e: any) => toast.error(e.message ?? "Error al guardar"),
+  });
   if (!appointment) return null;
   const a = appointment;
   const isPast = new Date(a.appointment_date) < new Date();
@@ -94,6 +121,36 @@ export function AppointmentDetailDialog({ appointment, patientName, open, onOpen
             </div>
           )}
           {a.notes && <p className="text-muted-foreground">{a.notes}</p>}
+        </div>
+
+        <Separator />
+
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 text-sm font-medium">
+            <Stethoscope className="h-4 w-4 text-primary" />
+            Observaciones del médico
+          </div>
+          {canEditDoctorObservations ? (
+            <>
+              <Textarea
+                value={obs}
+                onChange={(e) => setObs(e.target.value)}
+                placeholder="Escribe observaciones sobre la cita..."
+                rows={4}
+              />
+              <Button
+                size="sm"
+                onClick={() => saveObs.mutate()}
+                disabled={saveObs.isPending || obs === (a.doctor_observations ?? "")}
+              >
+                {saveObs.isPending ? "Guardando..." : "Guardar observaciones"}
+              </Button>
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+              {a.doctor_observations || "Sin observaciones"}
+            </p>
+          )}
         </div>
 
         <Separator />

@@ -65,6 +65,7 @@ export type Database = {
           created_at: string
           doctor_id: string | null
           doctor_name_manual: string | null
+          doctor_observations: string | null
           id: string
           notes: string | null
           reminder_enabled: boolean
@@ -82,6 +83,7 @@ export type Database = {
           created_at?: string
           doctor_id?: string | null
           doctor_name_manual?: string | null
+          doctor_observations?: string | null
           id?: string
           notes?: string | null
           reminder_enabled?: boolean
@@ -99,6 +101,7 @@ export type Database = {
           created_at?: string
           doctor_id?: string | null
           doctor_name_manual?: string | null
+          doctor_observations?: string | null
           id?: string
           notes?: string | null
           reminder_enabled?: boolean

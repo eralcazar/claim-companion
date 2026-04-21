@@ -2,25 +2,57 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
-import { Stethoscope, Calendar } from "lucide-react";
-import { format } from "date-fns";
+import { Stethoscope, Calendar, CalendarIcon } from "lucide-react";
+import { format, startOfDay, endOfDay, subDays, subMonths } from "date-fns";
 import { es } from "date-fns/locale";
 import { useState } from "react";
 import { AppointmentDetailDialog } from "@/components/appointments/AppointmentDetailDialog";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar as CalendarPicker } from "@/components/ui/calendar";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+
+type FilterMode = "upcoming" | "today" | "week" | "month" | "range";
 
 export default function DoctorPanel() {
   const { user } = useAuth();
   const [detail, setDetail] = useState<{ apt: any; name: string } | null>(null);
+  const [filterMode, setFilterMode] = useState<FilterMode>("upcoming");
+  const [fromDate, setFromDate] = useState<Date | undefined>();
+  const [toDate, setToDate] = useState<Date | undefined>();
+
+  const computeRange = (): { from?: Date; to?: Date; futureOnly?: boolean } => {
+    const now = new Date();
+    switch (filterMode) {
+      case "today": return { from: startOfDay(now), to: endOfDay(now) };
+      case "week": return { from: startOfDay(subDays(now, 7)), to: endOfDay(now) };
+      case "month": return { from: startOfDay(subMonths(now, 1)), to: endOfDay(now) };
+      case "range": return {
+        from: fromDate ? startOfDay(fromDate) : undefined,
+        to: toDate ? endOfDay(toDate) : undefined,
+      };
+      case "upcoming":
+      default: return { futureOnly: true };
+    }
+  };
 
   const { data, isLoading } = useQuery({
-    queryKey: ["doctor-appointments", user?.id],
+    queryKey: ["doctor-appointments", user?.id, filterMode, fromDate?.toISOString(), toDate?.toISOString()],
     queryFn: async () => {
-      const { data: appts } = await supabase
+      const { from, to, futureOnly } = computeRange();
+      let q = supabase
         .from("appointments")
         .select("*")
-        .eq("doctor_id", user!.id)
-        .gte("appointment_date", new Date().toISOString())
-        .order("appointment_date", { ascending: true });
+        .eq("doctor_id", user!.id);
+      if (futureOnly) {
+        q = q.gte("appointment_date", new Date().toISOString()).order("appointment_date", { ascending: true });
+      } else {
+        if (from) q = q.gte("appointment_date", from.toISOString());
+        if (to) q = q.lte("appointment_date", to.toISOString());
+        q = q.order("appointment_date", { ascending: false });
+      }
+      const { data: appts } = await q;
       const list = appts ?? [];
       const ids = Array.from(new Set(list.map((a: any) => a.user_id)));
       let nameMap: Record<string, string> = {};
@@ -50,6 +82,54 @@ export default function DoctorPanel() {
         <Stethoscope className="h-6 w-6 text-primary" />
         Panel Médico
       </h1>
+
+      <div className="space-y-3">
+        <ToggleGroup
+          type="single"
+          value={filterMode}
+          onValueChange={(v) => v && setFilterMode(v as FilterMode)}
+          className="flex flex-wrap justify-start gap-1"
+        >
+          <ToggleGroupItem value="upcoming" size="sm">Próximas</ToggleGroupItem>
+          <ToggleGroupItem value="today" size="sm">Hoy</ToggleGroupItem>
+          <ToggleGroupItem value="week" size="sm">7 días</ToggleGroupItem>
+          <ToggleGroupItem value="month" size="sm">1 mes</ToggleGroupItem>
+          <ToggleGroupItem value="range" size="sm">Rango</ToggleGroupItem>
+        </ToggleGroup>
+
+        {filterMode === "range" && (
+          <div className="flex flex-wrap gap-2">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className={cn("justify-start", !fromDate && "text-muted-foreground")}>
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {fromDate ? format(fromDate, "PPP", { locale: es }) : "Desde"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <CalendarPicker mode="single" selected={fromDate} onSelect={setFromDate} initialFocus className={cn("p-3 pointer-events-auto")} />
+              </PopoverContent>
+            </Popover>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className={cn("justify-start", !toDate && "text-muted-foreground")}>
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {toDate ? format(toDate, "PPP", { locale: es }) : "Hasta"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <CalendarPicker mode="single" selected={toDate} onSelect={setToDate} initialFocus className={cn("p-3 pointer-events-auto")} />
+              </PopoverContent>
+            </Popover>
+          </div>
+        )}
+
+        {!isLoading && (
+          <p className="text-xs text-muted-foreground">
+            {appointments?.length ?? 0} {(appointments?.length ?? 0) === 1 ? "cita" : "citas"}
+          </p>
+        )}
+      </div>
 
       {isLoading ? (
         <div className="flex justify-center p-8"><div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" /></div>
@@ -82,6 +162,7 @@ export default function DoctorPanel() {
         patientName={detail?.name}
         open={!!detail}
         onOpenChange={(o) => !o && setDetail(null)}
+        canEditDoctorObservations={!!user && detail?.apt?.doctor_id === user.id}
       />
     </div>
   );
