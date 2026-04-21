@@ -27,6 +27,8 @@ import EspecialidadesCatalog from "@/pages/admin/EspecialidadesCatalog";
 import MedicosManager from "@/pages/admin/MedicosManager";
 import DoctorProfile from "@/pages/DoctorProfile";
 import Formats from "@/pages/Formats";
+import Recetas from "@/pages/Recetas";
+import Estudios from "@/pages/Estudios";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -46,6 +48,8 @@ const App = () => (
               <Route path="/polizas" element={<Policies />} />
               <Route path="/reclamos" element={<Claims />} />
               <Route path="/formatos" element={<Formats />} />
+              <Route path="/recetas" element={<Recetas />} />
+              <Route path="/estudios" element={<Estudios />} />
               <Route path="/reclamos/nuevo" element={<NewClaim />} />
               <Route path="/reclamos/editar/:id" element={<EditClaim />} />
               <Route path="/agenda" element={<Appointments />} />

@@ -1,5 +1,5 @@
 import {
-  Home, FileText, Calendar, Pill, User, Shield, Users, Stethoscope, FolderOpen, Download, LogOut, FolderTree, UserCog, KeyRound, GraduationCap, BadgeCheck
+  Home, FileText, Calendar, Pill, User, Shield, Users, Stethoscope, FolderOpen, Download, LogOut, FolderTree, UserCog, KeyRound, GraduationCap, BadgeCheck, FlaskConical
 } from "lucide-react";
 import { NavLink as RouterNavLink, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -18,6 +18,8 @@ const mainItems: Item[] = [
   { title: "Reclamos", url: "/reclamos", icon: FileText, feature: "reclamos" },
   { title: "Agenda", url: "/agenda", icon: Calendar, feature: "agenda" },
   { title: "Medicamentos", url: "/medicamentos", icon: Pill, feature: "medicamentos" },
+  { title: "Recetas", url: "/recetas", icon: Pill, feature: "recetas" },
+  { title: "Estudios", url: "/estudios", icon: FlaskConical, feature: "estudios" },
   { title: "Registros Médicos", url: "/registros", icon: FolderOpen, feature: "registros" },
   { title: "Pólizas", url: "/polizas", icon: Shield, feature: "polizas" },
   { title: "Formatos", url: "/formatos", icon: Download, feature: "formatos" },
