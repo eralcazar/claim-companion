@@ -2,7 +2,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Separator } from "@/components/ui/separator";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { Calendar, MapPin, User, Bell, ExternalLink } from "lucide-react";
+import { Calendar, MapPin, User, Bell, ExternalLink, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AppointmentDocuments } from "./AppointmentDocuments";
 
@@ -11,6 +11,8 @@ interface Props {
   patientName?: string;
   open: boolean;
   onOpenChange: (o: boolean) => void;
+  onEdit?: (appointment: any) => void;
+  canEdit?: boolean;
 }
 
 const typeLabels: Record<string, string> = {
@@ -26,14 +28,30 @@ const reminderLabel = (m?: number | null) => {
   return `${m / 1440} día${m / 1440 > 1 ? "s" : ""} antes`;
 };
 
-export function AppointmentDetailDialog({ appointment, patientName, open, onOpenChange }: Props) {
+export function AppointmentDetailDialog({ appointment, patientName, open, onOpenChange, onEdit, canEdit }: Props) {
   if (!appointment) return null;
   const a = appointment;
+  const isPast = new Date(a.appointment_date) < new Date();
+  const showEdit = canEdit && !isPast && onEdit;
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{typeLabels[a.appointment_type] ?? a.appointment_type}</DialogTitle>
+          <div className="flex items-center justify-between gap-2 pr-6">
+            <DialogTitle>{typeLabels[a.appointment_type] ?? a.appointment_type}</DialogTitle>
+            {showEdit && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  onEdit!(a);
+                  onOpenChange(false);
+                }}
+              >
+                <Pencil className="h-4 w-4 mr-1" /> Editar
+              </Button>
+            )}
+          </div>
         </DialogHeader>
 
         <div className="space-y-3 text-sm">
