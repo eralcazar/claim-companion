@@ -1,7 +1,6 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { useRecetas } from "@/hooks/useRecetas";
 import { useEstudios } from "@/hooks/useEstudios";
@@ -9,7 +8,6 @@ import { RecetaCard } from "@/components/recetas/RecetaCard";
 import { RecetaForm } from "@/components/recetas/RecetaForm";
 import { EstudioCard } from "@/components/estudios/EstudioCard";
 import { EstudioForm } from "@/components/estudios/EstudioForm";
-import { useAuth } from "@/contexts/AuthContext";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { Calendar, MapPin, User, Bell, ExternalLink, Pencil, Stethoscope } from "lucide-react";
