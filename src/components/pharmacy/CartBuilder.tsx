@@ -1,9 +1,12 @@
 import { useState } from "react";
 import { useCatalog } from "@/hooks/usePharmacy";
+import { useInventory } from "@/hooks/useInventory";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Minus, X, ShoppingCart, Search } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
 import { PharmacyCheckoutDialog } from "./PharmacyCheckoutDialog";
 
 interface Props {
@@ -18,8 +21,18 @@ export function CartBuilder({ patientId, recetaId, triggerLabel = "Pagar farmaci
   const [q, setQ] = useState("");
   const [cart, setCart] = useState<Record<string, { cantidad: number; nombre: string; precio: number }>>({});
   const { data: items = [] } = useCatalog({ onlyActive: true, q });
+  const { data: inventory = [] } = useInventory();
+  const stockMap = new Map(inventory.map((i) => [i.catalog_id, i.stock_actual]));
+
+  const stockOf = (id: string) => stockMap.get(id) ?? 0;
 
   const add = (it: any) => {
+    const current = cart[it.id]?.cantidad || 0;
+    const stock = stockOf(it.id);
+    if (stock <= current) {
+      toast.error(`Sin stock disponible de ${it.nombre}`);
+      return;
+    }
     setCart((c) => ({
       ...c,
       [it.id]: { cantidad: (c[it.id]?.cantidad || 0) + 1, nombre: it.nombre, precio: it.precio_centavos },
@@ -66,8 +79,13 @@ export function CartBuilder({ patientId, recetaId, triggerLabel = "Pagar farmaci
                       <p className="text-sm font-medium truncate">{it.nombre}</p>
                       {it.presentacion && <p className="text-xs text-muted-foreground truncate">{it.presentacion}</p>}
                     </div>
+                    {stockOf(it.id) === 0 ? (
+                      <Badge variant="destructive" className="text-[10px]">Sin stock</Badge>
+                    ) : (
+                      <span className="text-[10px] text-muted-foreground">Stock: {stockOf(it.id)}</span>
+                    )}
                     <span className="text-sm tabular-nums">${(it.precio_centavos / 100).toFixed(2)}</span>
-                    <Button size="icon" variant="outline" onClick={() => add(it)}><Plus className="h-3 w-3" /></Button>
+                    <Button size="icon" variant="outline" disabled={stockOf(it.id) === 0} onClick={() => add(it)}><Plus className="h-3 w-3" /></Button>
                   </div>
                 ))}
                 {items.length === 0 && <p className="text-center text-sm text-muted-foreground py-4">Sin resultados.</p>}
