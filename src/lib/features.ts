@@ -1,6 +1,7 @@
 import {
   Home, FileText, Shield, Calendar, Pill, FolderOpen, User, Download,
   Users, Stethoscope, FolderTree, UserCog, KeyRound, GraduationCap, BadgeCheck, FlaskConical, TrendingUp,
+  HeartPulse, FlaskRound, Store, UserCheck, FileWarning,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -10,14 +11,17 @@ export type FeatureKey =
   | "broker_panel" | "doctor_panel" | "admin_panel"
   | "format_manager" | "user_manager" | "access_manager"
   | "admin_especialidades" | "admin_medicos" | "doctor_profile"
-  | "recetas" | "estudios" | "tendencias";
+  | "recetas" | "estudios" | "tendencias"
+  | "nurse_panel" | "lab_panel" | "pharmacy_panel"
+  | "patient_personnel_manager" | "patient_view"
+  | "claims_without_report";
 
 export interface FeatureDef {
   key: FeatureKey;
   label: string;
   route: string;
   icon: LucideIcon;
-  group: "principal" | "broker" | "medico" | "admin";
+  group: "principal" | "broker" | "medico" | "admin" | "enfermero" | "laboratorio" | "farmacia";
 }
 
 export const AVAILABLE_FEATURES: FeatureDef[] = [
@@ -32,8 +36,14 @@ export const AVAILABLE_FEATURES: FeatureDef[] = [
   { key: "estudios", label: "Estudios", route: "/estudios", icon: FlaskConical, group: "principal" },
   { key: "tendencias", label: "Tendencias", route: "/tendencias", icon: TrendingUp, group: "principal" },
   { key: "perfil", label: "Perfil", route: "/perfil", icon: User, group: "principal" },
+  { key: "patient_personnel_manager", label: "Mis accesos", route: "/perfil/accesos", icon: UserCheck, group: "principal" },
   { key: "broker_panel", label: "Panel Broker", route: "/broker", icon: Users, group: "broker" },
   { key: "doctor_panel", label: "Panel Médico", route: "/medico", icon: Stethoscope, group: "medico" },
+  { key: "claims_without_report", label: "Reclamos sin informe", route: "/medico/reclamos-sin-informe", icon: FileWarning, group: "medico" },
+  { key: "nurse_panel", label: "Panel Enfermería", route: "/enfermeria", icon: HeartPulse, group: "enfermero" },
+  { key: "lab_panel", label: "Panel Laboratorio", route: "/laboratorio", icon: FlaskRound, group: "laboratorio" },
+  { key: "pharmacy_panel", label: "Panel Farmacia", route: "/farmacia", icon: Store, group: "farmacia" },
+  { key: "patient_view", label: "Vista de paciente", route: "/personal/paciente", icon: User, group: "principal" },
   { key: "admin_panel", label: "Panel Admin", route: "/admin", icon: Shield, group: "admin" },
   { key: "format_manager", label: "Gestor de Formatos", route: "/admin/gestor-archivos", icon: FolderTree, group: "admin" },
   { key: "user_manager", label: "Gestor de Usuarios", route: "/admin/usuarios", icon: UserCog, group: "admin" },
@@ -43,5 +53,5 @@ export const AVAILABLE_FEATURES: FeatureDef[] = [
   { key: "doctor_profile", label: "Mi Perfil Médico", route: "/medico/perfil", icon: BadgeCheck, group: "medico" },
 ];
 
-export const ALL_ROLES = ["admin", "broker", "paciente", "medico"] as const;
+export const ALL_ROLES = ["admin", "broker", "paciente", "medico", "enfermero", "laboratorio", "farmacia"] as const;
 export type AppRoleLite = (typeof ALL_ROLES)[number];

@@ -313,6 +313,7 @@ export type Database = {
           file_path: string
           file_type: string
           id: string
+          tipo_documento: string
         }
         Insert: {
           claim_id: string
@@ -321,6 +322,7 @@ export type Database = {
           file_path: string
           file_type?: string
           id?: string
+          tipo_documento?: string
         }
         Update: {
           claim_id?: string
@@ -329,6 +331,7 @@ export type Database = {
           file_path?: string
           file_type?: string
           id?: string
+          tipo_documento?: string
         }
         Relationships: [
           {
@@ -622,6 +625,7 @@ export type Database = {
           activo: boolean
           aseguradora_id: string
           created_at: string
+          es_informe_medico: boolean
           id: string
           nombre: string
           nombre_display: string
@@ -634,6 +638,7 @@ export type Database = {
           activo?: boolean
           aseguradora_id: string
           created_at?: string
+          es_informe_medico?: boolean
           id?: string
           nombre: string
           nombre_display: string
@@ -646,6 +651,7 @@ export type Database = {
           activo?: boolean
           aseguradora_id?: string
           created_at?: string
+          es_informe_medico?: boolean
           id?: string
           nombre?: string
           nombre_display?: string
@@ -1160,27 +1166,57 @@ export type Database = {
       medicos: {
         Row: {
           cedula_general: string | null
+          consultorio_calle: string | null
+          consultorio_colonia: string | null
+          consultorio_cp: string | null
+          consultorio_estado: string | null
+          consultorio_municipio: string | null
+          consultorio_numero: string | null
           created_at: string
           direccion_consultorio: string | null
+          email_consultorio: string | null
+          foto_path: string | null
+          horario_atencion: string | null
           id: string
+          nombre_consultorio: string | null
           telefono_consultorio: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
           cedula_general?: string | null
+          consultorio_calle?: string | null
+          consultorio_colonia?: string | null
+          consultorio_cp?: string | null
+          consultorio_estado?: string | null
+          consultorio_municipio?: string | null
+          consultorio_numero?: string | null
           created_at?: string
           direccion_consultorio?: string | null
+          email_consultorio?: string | null
+          foto_path?: string | null
+          horario_atencion?: string | null
           id?: string
+          nombre_consultorio?: string | null
           telefono_consultorio?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
           cedula_general?: string | null
+          consultorio_calle?: string | null
+          consultorio_colonia?: string | null
+          consultorio_cp?: string | null
+          consultorio_estado?: string | null
+          consultorio_municipio?: string | null
+          consultorio_numero?: string | null
           created_at?: string
           direccion_consultorio?: string | null
+          email_consultorio?: string | null
+          foto_path?: string | null
+          horario_atencion?: string | null
           id?: string
+          nombre_consultorio?: string | null
           telefono_consultorio?: string | null
           updated_at?: string
           user_id?: string
@@ -1214,6 +1250,36 @@ export type Database = {
           read_at?: string | null
           title?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      patient_personnel: {
+        Row: {
+          created_at: string
+          granted_by: string
+          id: string
+          notes: string | null
+          patient_id: string
+          personnel_id: string
+          personnel_role: Database["public"]["Enums"]["app_role"]
+        }
+        Insert: {
+          created_at?: string
+          granted_by: string
+          id?: string
+          notes?: string | null
+          patient_id: string
+          personnel_id: string
+          personnel_role: Database["public"]["Enums"]["app_role"]
+        }
+        Update: {
+          created_at?: string
+          granted_by?: string
+          id?: string
+          notes?: string | null
+          patient_id?: string
+          personnel_id?: string
+          personnel_role?: Database["public"]["Enums"]["app_role"]
         }
         Relationships: []
       }
@@ -1610,6 +1676,10 @@ export type Database = {
     }
     Functions: {
       gen_folio: { Args: { _code: string; _insurer: string }; Returns: string }
+      has_patient_access: {
+        Args: { _patient: string; _personnel: string }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1619,7 +1689,14 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "broker" | "paciente" | "medico"
+      app_role:
+        | "admin"
+        | "broker"
+        | "paciente"
+        | "medico"
+        | "enfermero"
+        | "laboratorio"
+        | "farmacia"
       appointment_document_category:
         | "receta"
         | "estudio"
@@ -1781,7 +1858,15 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "broker", "paciente", "medico"],
+      app_role: [
+        "admin",
+        "broker",
+        "paciente",
+        "medico",
+        "enfermero",
+        "laboratorio",
+        "farmacia",
+      ],
       appointment_document_category: [
         "receta",
         "estudio",
