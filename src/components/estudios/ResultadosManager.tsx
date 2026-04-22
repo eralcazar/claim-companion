@@ -156,6 +156,11 @@ function ResultadoItem({ resultado, canManage, onDownload, onDelete }: any) {
         </div>
         <div className="flex gap-1">
           <Button size="sm" variant="outline" onClick={onDownload}><Download className="h-3.5 w-3.5" /></Button>
+          {canManage && (
+            <Button size="sm" variant="ghost" onClick={() => setEditOpen(true)} title="Editar datos del resultado">
+              <Pencil className="h-3.5 w-3.5" />
+            </Button>
+          )}
           {canManage && <Button size="sm" variant="ghost" className="text-destructive" onClick={onDelete}><Trash2 className="h-3.5 w-3.5" /></Button>}
         </div>
       </div>
