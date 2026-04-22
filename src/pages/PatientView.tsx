@@ -5,13 +5,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, User } from "lucide-react";
+import { ArrowLeft, User, Stethoscope } from "lucide-react";
 import { BodyMapEditor } from "@/components/consultorio/BodyMapEditor";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function PatientView() {
   const { id } = useParams<{ id: string }>();
+  const { roles } = useAuth();
+  const canEditBody = roles.includes("medico") || roles.includes("admin");
 
   const { data: patient } = useQuery({
     queryKey: ["patient-profile", id],
@@ -109,10 +112,20 @@ export default function PatientView() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <User className="h-5 w-5 text-primary" />
-            {patientName}
-          </CardTitle>
+          <div className="flex items-start justify-between gap-2 flex-wrap">
+            <CardTitle className="flex items-center gap-2">
+              <User className="h-5 w-5 text-primary" />
+              {patientName}
+            </CardTitle>
+            {canEditBody && id && (
+              <Button asChild size="sm" variant="outline">
+                <Link to={`/consultorio?paciente=${id}`}>
+                  <Stethoscope className="h-4 w-4 mr-1" />
+                  Consultorio digital
+                </Link>
+              </Button>
+            )}
+          </div>
           {(patient as any)?.email && (
             <p className="text-sm text-muted-foreground">{(patient as any).email}</p>
           )}
@@ -209,7 +222,14 @@ export default function PatientView() {
         </TabsContent>
 
         <TabsContent value="cuerpo" className="mt-3">
-          {id && <BodyMapEditor patientId={id} canEdit={false} title="Hallazgos históricos" />}
+          {id && (
+            <BodyMapEditor
+              patientId={id}
+              canEdit={canEditBody}
+              showQuickRegionAccess={true}
+              title="Mapa corporal del paciente"
+            />
+          )}
         </TabsContent>
       </Tabs>
     </div>
