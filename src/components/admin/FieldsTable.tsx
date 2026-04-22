@@ -356,14 +356,14 @@ export function FieldsTable({ formularioId, secciones }: Props) {
           <TableBody>
             {isLoading && (
               <TableRow>
-                <TableCell colSpan={17} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={18} className="text-center text-muted-foreground py-8">
                   Cargando…
                 </TableCell>
               </TableRow>
             )}
             {!isLoading && filtered.length === 0 && (
               <TableRow>
-                <TableCell colSpan={17} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={18} className="text-center text-muted-foreground py-8">
                   Sin campos. Agrega el primero con "Nuevo campo".
                 </TableCell>
               </TableRow>
@@ -371,12 +371,15 @@ export function FieldsTable({ formularioId, secciones }: Props) {
             {filtered.map((c, idx) => {
               const isDirty = dirty.has(c.id);
               const isSelected = selected.has(c.id);
+              const isExpanded = expanded.has(c.id);
+              const supportsOptions = c.tipo === "radio" || c.tipo === "checkbox" || c.tipo === "select";
               const preview = getMapeoPreview(c);
               const seccionesPagina = secciones.filter(
                 (s) => s.pagina === (c.campo_pagina ?? 1),
               );
               const seccionesOpts = seccionesPagina.length > 0 ? seccionesPagina : secciones;
               return (
+                <>
                 <TableRow
                   key={c.id}
                   className={cn(isDirty && "bg-warning/5", isSelected && "bg-primary/5")}
@@ -387,6 +390,23 @@ export function FieldsTable({ formularioId, secciones }: Props) {
                       onCheckedChange={(v) => toggleOne(c.id, !!v)}
                       aria-label={`Seleccionar ${c.clave}`}
                     />
+                  </TableCell>
+                  <TableCell>
+                    {supportsOptions && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        onClick={() => toggleExpand(c.id)}
+                        title={isExpanded ? "Ocultar opciones" : "Editar opciones"}
+                      >
+                        {isExpanded ? (
+                          <ChevronDown className="h-3.5 w-3.5" />
+                        ) : (
+                          <ChevronRight className="h-3.5 w-3.5" />
+                        )}
+                      </Button>
+                    )}
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground">
                     <div className="flex items-center gap-1">
