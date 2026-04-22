@@ -2,10 +2,13 @@ import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { FlaskConical, Pencil, Trash2, FileText, Ban, ChevronDown, ChevronUp } from "lucide-react";
+import { FlaskConical, Pencil, Trash2, FileText, Ban, ChevronDown, ChevronUp, Download, Loader2 } from "lucide-react";
 import { useDeleteEstudio, useUpdateEstudio } from "@/hooks/useEstudios";
 import { useAuth } from "@/contexts/AuthContext";
 import { ResultadosManager } from "./ResultadosManager";
+import { supabase } from "@/integrations/supabase/client";
+import { generateEstudioPDF } from "./estudioPdf";
+import { toast } from "sonner";
 
 const ESTADO_VARIANT: Record<string, any> = { solicitado: "default", en_proceso: "secondary", completado: "outline", cancelado: "destructive" };
 const PRIO_VARIANT: Record<string, any> = { baja: "secondary", normal: "outline", urgente: "destructive" };
@@ -22,10 +25,47 @@ export function EstudioCard({ estudio, onEdit }: Props) {
   const isAdmin = roles.includes("admin");
   const canEdit = isAdmin || estudio.doctor_id === user?.id || estudio.created_by === user?.id;
   const [open, setOpen] = useState(false);
+  const [loadingPdf, setLoadingPdf] = useState(false);
 
   const cancelar = async () => {
     if (!confirm("¿Cancelar este estudio?")) return;
     await upd.mutateAsync({ id: estudio.id, estado: "cancelado" });
+  };
+
+  const downloadPdf = async () => {
+    setLoadingPdf(true);
+    try {
+      const [{ data: pProfile }, { data: dProfile }, { data: medico }] = await Promise.all([
+        supabase.from("profiles").select("first_name, paternal_surname, maternal_surname, full_name, email, phone, telefono_celular, date_of_birth").eq("user_id", estudio.patient_id).maybeSingle(),
+        supabase.from("profiles").select("first_name, paternal_surname, maternal_surname, full_name").eq("user_id", estudio.doctor_id).maybeSingle(),
+        supabase.from("medicos").select("cedula_general, telefono_consultorio, direccion_consultorio").eq("user_id", estudio.doctor_id).maybeSingle(),
+      ]);
+
+      const nameOf = (p: any) =>
+        p?.full_name?.trim() ||
+        [p?.first_name, p?.paternal_surname, p?.maternal_surname].filter(Boolean).join(" ").trim() ||
+        "—";
+
+      generateEstudioPDF({
+        estudio,
+        patient: {
+          nombre: nameOf(pProfile),
+          email: pProfile?.email ?? undefined,
+          telefono: pProfile?.telefono_celular ?? pProfile?.phone ?? undefined,
+          date_of_birth: pProfile?.date_of_birth ?? null,
+        },
+        doctor: {
+          nombre: nameOf(dProfile),
+          cedula: medico?.cedula_general ?? undefined,
+          telefono: medico?.telefono_consultorio ?? undefined,
+          direccion: medico?.direccion_consultorio ?? undefined,
+        },
+      });
+    } catch (e: any) {
+      toast.error("No se pudo generar el PDF: " + (e?.message ?? "error"));
+    } finally {
+      setLoadingPdf(false);
+    }
   };
 
   return (
@@ -51,6 +91,10 @@ export function EstudioCard({ estudio, onEdit }: Props) {
           {estudio.indicacion && <div className="line-clamp-2">{estudio.indicacion}</div>}
         </div>
         <div className="flex flex-wrap gap-2 pt-2">
+          <Button size="sm" variant="outline" onClick={downloadPdf} disabled={loadingPdf}>
+            {loadingPdf ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Download className="h-3.5 w-3.5 mr-1" />}
+            PDF
+          </Button>
           <Button size="sm" variant="outline" onClick={() => setOpen((o) => !o)}>
             <FileText className="h-3.5 w-3.5 mr-1" />Resultados
             {open ? <ChevronUp className="h-3.5 w-3.5 ml-1" /> : <ChevronDown className="h-3.5 w-3.5 ml-1" />}
