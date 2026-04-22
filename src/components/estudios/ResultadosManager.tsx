@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Trash2, Upload, Download, Plus, Sparkles, Loader2 } from "lucide-react";
+import { Trash2, Upload, Download, Plus, Sparkles, Loader2, Pencil } from "lucide-react";
 import {
   useResultados,
   useUploadResultado,
@@ -19,6 +19,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { IndicadorSparkline } from "@/components/tendencias/IndicadorSparkline";
+import { IndicadorEditRow } from "./IndicadorEditRow";
 
 interface Props {
   estudio: any;
