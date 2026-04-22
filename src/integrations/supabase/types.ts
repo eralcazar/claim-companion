@@ -480,6 +480,50 @@ export type Database = {
         }
         Relationships: []
       }
+      estudio_items: {
+        Row: {
+          cantidad: number
+          created_at: string
+          descripcion: string | null
+          estudio_id: string
+          id: string
+          indicacion: string | null
+          orden: number
+          prioridad: Database["public"]["Enums"]["estudio_prioridad"]
+          tipo_estudio: string
+        }
+        Insert: {
+          cantidad?: number
+          created_at?: string
+          descripcion?: string | null
+          estudio_id: string
+          id?: string
+          indicacion?: string | null
+          orden?: number
+          prioridad?: Database["public"]["Enums"]["estudio_prioridad"]
+          tipo_estudio: string
+        }
+        Update: {
+          cantidad?: number
+          created_at?: string
+          descripcion?: string | null
+          estudio_id?: string
+          id?: string
+          indicacion?: string | null
+          orden?: number
+          prioridad?: Database["public"]["Enums"]["estudio_prioridad"]
+          tipo_estudio?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "estudio_items_estudio_id_fkey"
+            columns: ["estudio_id"]
+            isOneToOne: false
+            referencedRelation: "estudios_solicitados"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       estudios_solicitados: {
         Row: {
           appointment_id: string | null
@@ -498,7 +542,7 @@ export type Database = {
           patient_id: string
           preparacion: string | null
           prioridad: Database["public"]["Enums"]["estudio_prioridad"]
-          tipo_estudio: string
+          tipo_estudio: string | null
           updated_at: string
         }
         Insert: {
@@ -518,7 +562,7 @@ export type Database = {
           patient_id: string
           preparacion?: string | null
           prioridad?: Database["public"]["Enums"]["estudio_prioridad"]
-          tipo_estudio: string
+          tipo_estudio?: string | null
           updated_at?: string
         }
         Update: {
@@ -538,7 +582,7 @@ export type Database = {
           patient_id?: string
           preparacion?: string | null
           prioridad?: Database["public"]["Enums"]["estudio_prioridad"]
-          tipo_estudio?: string
+          tipo_estudio?: string | null
           updated_at?: string
         }
         Relationships: []
