@@ -1286,44 +1286,139 @@ export type Database = {
       pharmacy_catalog: {
         Row: {
           activo: boolean
+          categoria: string | null
           created_at: string
           descripcion: string | null
+          descripcion_larga: string | null
           id: string
+          imagen_url: string | null
           moneda: string
           nombre: string
           precio_centavos: number
           presentacion: string | null
+          sku: string | null
           stripe_price_id: string | null
           stripe_product_id: string | null
           updated_at: string
         }
         Insert: {
           activo?: boolean
+          categoria?: string | null
           created_at?: string
           descripcion?: string | null
+          descripcion_larga?: string | null
           id?: string
+          imagen_url?: string | null
           moneda?: string
           nombre: string
           precio_centavos: number
           presentacion?: string | null
+          sku?: string | null
           stripe_price_id?: string | null
           stripe_product_id?: string | null
           updated_at?: string
         }
         Update: {
           activo?: boolean
+          categoria?: string | null
           created_at?: string
           descripcion?: string | null
+          descripcion_larga?: string | null
           id?: string
+          imagen_url?: string | null
           moneda?: string
           nombre?: string
           precio_centavos?: number
           presentacion?: string | null
+          sku?: string | null
           stripe_price_id?: string | null
           stripe_product_id?: string | null
           updated_at?: string
         }
         Relationships: []
+      }
+      pharmacy_inventory: {
+        Row: {
+          catalog_id: string
+          costo_unitario_centavos: number
+          stock_actual: number
+          stock_minimo: number
+          ubicacion: string | null
+          updated_at: string
+        }
+        Insert: {
+          catalog_id: string
+          costo_unitario_centavos?: number
+          stock_actual?: number
+          stock_minimo?: number
+          ubicacion?: string | null
+          updated_at?: string
+        }
+        Update: {
+          catalog_id?: string
+          costo_unitario_centavos?: number
+          stock_actual?: number
+          stock_minimo?: number
+          ubicacion?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pharmacy_inventory_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: true
+            referencedRelation: "pharmacy_catalog"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pharmacy_inventory_movements: {
+        Row: {
+          cantidad: number
+          catalog_id: string
+          created_at: string
+          created_by: string
+          id: string
+          motivo: string | null
+          order_id: string | null
+          tipo: Database["public"]["Enums"]["inventory_movement_type"]
+        }
+        Insert: {
+          cantidad: number
+          catalog_id: string
+          created_at?: string
+          created_by: string
+          id?: string
+          motivo?: string | null
+          order_id?: string | null
+          tipo: Database["public"]["Enums"]["inventory_movement_type"]
+        }
+        Update: {
+          cantidad?: number
+          catalog_id?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          motivo?: string | null
+          order_id?: string | null
+          tipo?: Database["public"]["Enums"]["inventory_movement_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pharmacy_inventory_movements_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacy_catalog"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pharmacy_inventory_movements_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacy_orders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       pharmacy_order_items: {
         Row: {
@@ -1440,6 +1535,38 @@ export type Database = {
             columns: ["receta_id"]
             isOneToOne: false
             referencedRelation: "recetas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      plan_features: {
+        Row: {
+          created_at: string
+          feature_key: string
+          id: string
+          limite_mensual: number | null
+          plan_id: string
+        }
+        Insert: {
+          created_at?: string
+          feature_key: string
+          id?: string
+          limite_mensual?: number | null
+          plan_id: string
+        }
+        Update: {
+          created_at?: string
+          feature_key?: string
+          id?: string
+          limite_mensual?: number | null
+          plan_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_features_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
             referencedColumns: ["id"]
           },
         ]
@@ -1810,6 +1937,113 @@ export type Database = {
           },
         ]
       }
+      subscription_plans: {
+        Row: {
+          activo: boolean
+          created_at: string
+          descripcion: string | null
+          id: string
+          moneda: string
+          nombre: string
+          orden: number
+          precio_anual_centavos: number
+          precio_mensual_centavos: number
+          stripe_price_id_anual: string | null
+          stripe_price_id_mensual: string | null
+          stripe_product_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          activo?: boolean
+          created_at?: string
+          descripcion?: string | null
+          id?: string
+          moneda?: string
+          nombre: string
+          orden?: number
+          precio_anual_centavos?: number
+          precio_mensual_centavos?: number
+          stripe_price_id_anual?: string | null
+          stripe_price_id_mensual?: string | null
+          stripe_product_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          activo?: boolean
+          created_at?: string
+          descripcion?: string | null
+          id?: string
+          moneda?: string
+          nombre?: string
+          orden?: number
+          precio_anual_centavos?: number
+          precio_mensual_centavos?: number
+          stripe_price_id_anual?: string | null
+          stripe_price_id_mensual?: string | null
+          stripe_product_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      subscriptions: {
+        Row: {
+          cancel_at_period_end: boolean
+          created_at: string
+          current_period_end: string | null
+          current_period_start: string | null
+          environment: string
+          id: string
+          plan_id: string | null
+          price_id: string | null
+          product_id: string | null
+          status: string
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cancel_at_period_end?: boolean
+          created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
+          environment?: string
+          id?: string
+          plan_id?: string | null
+          price_id?: string | null
+          product_id?: string | null
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          cancel_at_period_end?: boolean
+          created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
+          environment?: string
+          id?: string
+          plan_id?: string | null
+          price_id?: string | null
+          product_id?: string | null
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscriptions_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -1848,6 +2082,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      user_has_plan_feature: {
+        Args: { _feature: string; _user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role:
@@ -1870,6 +2108,7 @@ export type Database = {
       claim_type: "reembolso" | "procedimiento_programado"
       estudio_estado: "solicitado" | "en_proceso" | "completado" | "cancelado"
       estudio_prioridad: "baja" | "normal" | "urgente"
+      inventory_movement_type: "entrada" | "salida" | "surtido" | "ajuste"
       medical_record_type: "receta" | "laboratorio" | "documento"
       medication_frequency:
         | "diario"
@@ -2046,6 +2285,7 @@ export const Constants = {
       claim_type: ["reembolso", "procedimiento_programado"],
       estudio_estado: ["solicitado", "en_proceso", "completado", "cancelado"],
       estudio_prioridad: ["baja", "normal", "urgente"],
+      inventory_movement_type: ["entrada", "salida", "surtido", "ajuste"],
       medical_record_type: ["receta", "laboratorio", "documento"],
       medication_frequency: [
         "diario",
