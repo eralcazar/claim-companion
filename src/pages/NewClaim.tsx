@@ -6,16 +6,20 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, ArrowRight, Check, Download, Save } from "lucide-react";
 import { getFormDefinition, getAvailableFormats, checkFormatExists } from "@/components/claims/forms/registry";
 import FormRenderer from "@/components/claims/forms/FormRenderer";
+import DynamicFormRenderer, { useDynamicSections } from "@/components/claims/forms/DynamicFormRenderer";
 import AutofillBanner from "@/components/claims/forms/shared/AutofillBanner";
 import { downloadPDF } from "@/lib/generateFilledPDF";
 import { runClaimPipeline } from "@/lib/claimPipeline";
 import { isValidCLABE, isValidCURP, isValidRFC } from "@/components/claims/forms/shared/validators";
 import { useEffectiveUserId } from "@/contexts/ImpersonationContext";
+import { useFirmas } from "@/hooks/useFirmas";
+import { findFormularioByInsurerAndTramite } from "@/lib/generateFilledPDFDynamic";
 
 function fmtValue(v: any): string {
   if (v == null || v === "") return "—";
