@@ -2,56 +2,57 @@
 
 ## Objetivo
 
-Permitir comparar hasta 3 indicadores en un mismo gráfico en `/tendencias`, con doble eje Y (izquierdo y derecho) y un tercero compartiendo eje. Modo de comparación opcional que coexiste con la vista actual de tarjetas individuales.
+Agregar edición manual inline de indicadores dentro de `ResultadosManager`: cada fila podrá cambiar a modo edición para modificar **nombre**, **valor**, **unidad**, **rango de referencia (min/max)**, recalculando automáticamente el flag de "normal/fuera de rango" al guardar.
 
 ## Cambios
 
-### 1. Nuevo componente: `IndicadorCompareChart`
+### 1. Componente nuevo: `IndicadorEditRow`
 
-Archivo: `src/components/tendencias/IndicadorCompareChart.tsx`.
+Archivo: `src/components/estudios/IndicadorEditRow.tsx`.
 
-- Props: `indicadores: TendenciaIndicador[]` (1 a 3).
-- Renderiza un `LineChart` grande (~h-96) de recharts con:
-  - Eje X compartido: fechas combinadas y ordenadas de todos los indicadores.
-  - **Eje Y izquierdo**: primer indicador (color primario azul).
-  - **Eje Y derecho**: segundo indicador (color naranja/secundario).
-  - **Tercer indicador**: comparte eje Y derecho con el segundo (color violeta) — se indica en la leyenda.
-  - Cada línea con su propio `dataKey` (`valor_0`, `valor_1`, `valor_2`).
-  - Tooltip combinado mostrando fecha + valor de cada indicador con su unidad.
-  - Leyenda clickeable para ocultar/mostrar líneas.
-- Construcción del dataset: hace merge por fecha — cada punto del array final tiene `{ fechaLabel, fechaIso, valor_0?, valor_1?, valor_2? }`. Si un indicador no tiene medición en esa fecha, queda `undefined` y recharts lo conecta con `connectNulls`.
+- Props: `indicador`, `onSave(patch)`, `onCancel()`, `isSaving`.
+- Renderiza un grid responsive con inputs:
+  - Nombre del indicador (text)
+  - Valor (number, step 0.01)
+  - Unidad (text)
+  - Min de referencia (number, opcional)
+  - Max de referencia (number, opcional)
+- Botones: ✓ Guardar / ✕ Cancelar.
+- Validación local: `nombre_indicador` no vacío; si `valor`, `min` y `max` son numéricos, `min <= max`. Toast de error si inválido.
+- Al guardar, calcula `es_normal` y `flagged`:
+  - Si `valor != null && min != null && max != null`: `es_normal = valor >= min && valor <= max`, `flagged = !es_normal`.
+  - Si falta alguno: `es_normal = null`, `flagged = false`.
 
-### 2. Actualizar `src/pages/Tendencias.tsx`
+### 2. Modificar `ResultadosManager.tsx` → `ResultadoItem`
 
-- Añadir state `modo: 'individual' | 'comparar'` (default `'individual'`).
-- Añadir state `seleccionados: string[]` (claves normalizadas de indicadores, máx 3).
-- Añadir botones de tabs/toggle al inicio: "Vista individual" / "Comparar indicadores".
-- En modo `'comparar'`:
-  - Renderizar un panel de selección con multi-select (checkboxes o chips) listando todos los indicadores disponibles (`filteredByRango`).
-  - Limitar selección a 3; al intentar seleccionar un cuarto, mostrar toast "Máximo 3 indicadores".
-  - Si `seleccionados.length === 0`, mostrar mensaje "Selecciona 1 a 3 indicadores para comparar".
-  - Si hay seleccionados, renderizar `<IndicadorCompareChart indicadores={...} />`.
-  - Mantener el filtro de búsqueda y rango de fechas activos sobre la lista de selección.
-- En modo `'individual'`: comportamiento actual (grid de `IndicadorTrendChart`).
-- El selector de paciente, búsqueda y rango siguen funcionando en ambos modos.
+- Añadir state local `editingId: string | null`.
+- En el `map` de indicadores, si `i.id === editingId` renderiza `<IndicadorEditRow>`; si no, renderiza la fila actual de visualización.
+- Añadir botón **lápiz (Pencil)** junto al botón de basura cuando `canManage`, que setea `editingId = i.id`.
+- `onSave` llama a `useSaveIndicador()` con `{ id: i.id, ...patch, es_normal, flagged }`. Al éxito, `setEditingId(null)`.
+- `onCancel` solo cierra el modo edición.
+- Mientras `editingId !== null`, el sparkline y los badges de normal/fuera de rango quedan ocultos (la fila se reemplaza por el editor).
 
 ### 3. Detalles UX
 
-- Chips seleccionados se muestran arriba del gráfico con su color asignado y botón ✕ para quitar.
-- Color por posición: 0 = `hsl(var(--primary))` (azul), 1 = naranja `hsl(25 95% 55%)`, 2 = violeta `hsl(265 80% 60%)`.
-- Etiquetas de eje Y muestran el nombre del indicador y su unidad (ej. "Glucosa (mg/dL)").
-- Leyenda y tooltip mantienen consistencia de colores con los chips.
-- Si un indicador seleccionado se queda sin puntos tras filtrar por rango, se ignora silenciosamente (no rompe el gráfico).
+- Solo visible si `canManage` (médico/admin/broker) — pacientes siguen viendo modo lectura.
+- Edición inline (no modal) para mantener contexto del resultado.
+- Al guardar exitosamente, React Query refresca `["indicadores", resultado_id]` y la sparkline se actualiza automáticamente (porque `useIndicadorHistory` también se re-fetcha al invalidar).
+- Atajo de teclado: Enter en cualquier input dispara guardar; Escape cancela.
+- Tooltip en el botón lápiz: "Editar indicador".
+
+### 4. Hook `useSaveIndicador` (sin cambios)
+
+Ya soporta update via `if (input.id) { update }` — se reutiliza tal cual.
 
 ## Archivos a tocar
 
 **Creados:**
-- `src/components/tendencias/IndicadorCompareChart.tsx`
+- `src/components/estudios/IndicadorEditRow.tsx`
 
 **Modificados:**
-- `src/pages/Tendencias.tsx` — agregar toggle de modo, panel de selección, render del comparador.
+- `src/components/estudios/ResultadosManager.tsx` — añadir botón Pencil, state `editingId`, render condicional de edit row.
 
 ## Resultado esperado
 
-En `/tendencias`, usuario hace click en "Comparar indicadores" → ve checkboxes con todos los indicadores disponibles → selecciona "Glucosa" y "Hemoglobina glicosilada" → aparece gráfico grande con dos líneas, eje Y izquierdo en mg/dL para glucosa, eje Y derecho en % para HbA1c, ambas con sus referencias visibles. Puede agregar un tercer indicador (ej. "Triglicéridos") que comparte el eje derecho. El filtro de fechas (3/6/12m) se aplica al gráfico combinado.
+Médico abre "Ver indicadores" en un resultado → cada fila muestra un ícono de lápiz junto a la basura → click en lápiz convierte la fila en formulario inline con 5 inputs (nombre, valor, unidad, min, max) y botones Guardar/Cancelar → al guardar, el flag "Normal/Fuera de rango" se recalcula automáticamente, la fila vuelve a modo lectura y el sparkline refleja el nuevo valor histórico. Funciona tanto para indicadores extraídos por IA como para los agregados manualmente.
 
