@@ -122,6 +122,8 @@ export default function Appointments() {
       reminder_minutes_before: apt.reminder_minutes_before ?? 60,
       patient_id: apt.user_id ?? null,
       patient_name: apt._patientName ?? "",
+      is_telemedicine: !!apt.is_telemedicine,
+      meeting_url: apt.meeting_url ?? "",
     });
     setEditingId(apt.id);
     setOpen(true);
@@ -137,9 +139,13 @@ export default function Appointments() {
       appointment_date: form.appointment_date,
       appointment_type: form.appointment_type,
       notes: form.notes,
-      address: form.address || null,
-      address_lat: form.address_lat,
-      address_lng: form.address_lng,
+      address: form.is_telemedicine ? null : (form.address || null),
+      address_lat: form.is_telemedicine ? null : form.address_lat,
+      address_lng: form.is_telemedicine ? null : form.address_lng,
+      is_telemedicine: form.is_telemedicine,
+      meeting_url: form.is_telemedicine
+        ? (form.meeting_url || `https://meet.jit.si/mediclaim-${crypto.randomUUID()}`)
+        : null,
       reminder_enabled: form.reminder_enabled,
       reminder_minutes_before: form.reminder_enabled ? form.reminder_minutes_before : null,
       doctor_id: null,
