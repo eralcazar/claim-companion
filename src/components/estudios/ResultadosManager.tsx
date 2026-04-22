@@ -95,6 +95,8 @@ function ResultadoItem({ resultado, canManage, onDownload, onDelete }: any) {
   const [showInd, setShowInd] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [bulkOpen, setBulkOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [addingIndicador, setAddingIndicador] = useState(false);
   const [draft, setDraft] = useState({ nombre_indicador: "", valor: "", unidad: "", valor_referencia_min: "", valor_referencia_max: "" });
 
   const handleExtract = async () => {
@@ -106,7 +108,10 @@ function ResultadoItem({ resultado, canManage, onDownload, onDelete }: any) {
   };
 
   const addIndicador = async () => {
-    if (!draft.nombre_indicador) return;
+    if (!draft.nombre_indicador.trim()) {
+      toast.error("El nombre del indicador es requerido");
+      return;
+    }
     const valor = draft.valor === "" ? null : Number(draft.valor);
     const min = draft.valor_referencia_min === "" ? null : Number(draft.valor_referencia_min);
     const max = draft.valor_referencia_max === "" ? null : Number(draft.valor_referencia_max);
@@ -114,12 +119,29 @@ function ResultadoItem({ resultado, canManage, onDownload, onDelete }: any) {
     await saveInd.mutateAsync({
       resultado_id: resultado.id,
       patient_id: resultado.patient_id,
-      nombre_indicador: draft.nombre_indicador,
+      nombre_indicador: draft.nombre_indicador.trim(),
       valor, unidad: draft.unidad || null,
       valor_referencia_min: min, valor_referencia_max: max,
       es_normal, flagged: es_normal === false,
     });
     setDraft({ nombre_indicador: "", valor: "", unidad: "", valor_referencia_min: "", valor_referencia_max: "" });
+    setAddingIndicador(false);
+    toast.success("Indicador agregado");
+  };
+
+  const cancelAdd = () => {
+    setDraft({ nombre_indicador: "", valor: "", unidad: "", valor_referencia_min: "", valor_referencia_max: "" });
+    setAddingIndicador(false);
+  };
+
+  const handleAddKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      addIndicador();
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      cancelAdd();
+    }
   };
 
   return (
