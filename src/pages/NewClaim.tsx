@@ -203,6 +203,17 @@ export default function NewClaim() {
 
   // Validación de la sección actual: requeridos + tipos especiales
   const validateCurrent = (): boolean => {
+    // Modo dinámico: validar requeridos contra `dynSections`
+    if (useDynamic) {
+      const sec = dynSections[step];
+      if (!sec) return true;
+      for (const c of sec.campos) {
+        if (!c.requerido) continue;
+        const v = data[c.clave];
+        if (v == null || v === "" || (Array.isArray(v) && v.length === 0)) return false;
+      }
+      return true;
+    }
     if (!definition) return false;
     const sec = definition.sections[step];
     if (!sec || sec.kind !== "fields") return true;
