@@ -217,6 +217,82 @@ export function MedicoEditor({ userId, displayName }: Props) {
         </Button>
       </Card>
 
+      {/* Consultorio */}
+      <Card className="p-4 space-y-4">
+        <h3 className="font-semibold">Consultorio</h3>
+        <div className="flex items-start gap-4 flex-wrap">
+          <div className="flex flex-col items-center gap-2">
+            <div className="h-24 w-24 rounded-full bg-muted overflow-hidden flex items-center justify-center">
+              {fotoUrl ? (
+                <img src={fotoUrl} alt="Foto del médico" className="h-full w-full object-cover" />
+              ) : (
+                <span className="text-xs text-muted-foreground">Sin foto</span>
+              )}
+            </div>
+            <label>
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) handleFotoUpload(f);
+                  e.currentTarget.value = "";
+                }}
+              />
+              <Button variant="outline" size="sm" asChild type="button">
+                <span>
+                  <Upload className="h-3.5 w-3.5" />
+                  Subir foto
+                </span>
+              </Button>
+            </label>
+          </div>
+          <div className="grid gap-3 md:grid-cols-2 flex-1 min-w-[280px]">
+            <div className="space-y-1.5">
+              <Label>Nombre del consultorio</Label>
+              <Input value={form.nombre_consultorio} onChange={(e) => setForm({ ...form, nombre_consultorio: e.target.value })} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Email del consultorio</Label>
+              <Input type="email" value={form.email_consultorio} onChange={(e) => setForm({ ...form, email_consultorio: e.target.value })} />
+            </div>
+            <div className="space-y-1.5 md:col-span-2">
+              <Label>Horario de atención</Label>
+              <Input placeholder="Ej: Lun-Vie 9:00-18:00" value={form.horario_atencion} onChange={(e) => setForm({ ...form, horario_atencion: e.target.value })} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Calle</Label>
+              <Input value={form.consultorio_calle} onChange={(e) => setForm({ ...form, consultorio_calle: e.target.value })} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Número</Label>
+              <Input value={form.consultorio_numero} onChange={(e) => setForm({ ...form, consultorio_numero: e.target.value })} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Colonia</Label>
+              <Input value={form.consultorio_colonia} onChange={(e) => setForm({ ...form, consultorio_colonia: e.target.value })} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>CP</Label>
+              <Input value={form.consultorio_cp} onChange={(e) => setForm({ ...form, consultorio_cp: e.target.value })} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Municipio</Label>
+              <Input value={form.consultorio_municipio} onChange={(e) => setForm({ ...form, consultorio_municipio: e.target.value })} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Estado</Label>
+              <Input value={form.consultorio_estado} onChange={(e) => setForm({ ...form, consultorio_estado: e.target.value })} />
+            </div>
+          </div>
+        </div>
+        <Button onClick={handleSave} disabled={upsert.isPending}>
+          <Save className="h-4 w-4" />
+          Guardar consultorio
+        </Button>
+      </Card>
+
       {/* Especialidades */}
       <Card className="p-4 space-y-3">
         <h3 className="font-semibold">Especialidades</h3>

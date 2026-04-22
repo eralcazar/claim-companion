@@ -2,7 +2,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
-import { Stethoscope, Calendar, CalendarIcon } from "lucide-react";
+import { Stethoscope, Calendar, CalendarIcon, Users, ChevronRight } from "lucide-react";
 import { format, startOfDay, endOfDay, subDays, subMonths } from "date-fns";
 import { es } from "date-fns/locale";
 import { useState } from "react";
@@ -12,6 +12,12 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar as CalendarPicker } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Link } from "react-router-dom";
+import { useAssignedPatients } from "@/hooks/usePatientPersonnel";
 
 type FilterMode = "upcoming" | "today" | "week" | "month" | "range";
 
@@ -21,6 +27,8 @@ export default function DoctorPanel() {
   const [filterMode, setFilterMode] = useState<FilterMode>("upcoming");
   const [fromDate, setFromDate] = useState<Date | undefined>();
   const [toDate, setToDate] = useState<Date | undefined>();
+  const [sinReceta, setSinReceta] = useState(false);
+  const [searchPatient, setSearchPatient] = useState("");
 
   const computeRange = (): { from?: Date; to?: Date; futureOnly?: boolean } => {
     const now = new Date();
