@@ -174,14 +174,16 @@ export default function NewClaim() {
 
   // Autosave borrador (debounced 1.5s)
   useEffect(() => {
-    if (!effectiveUserId || !definition || !policy) return;
+    if (!effectiveUserId || !policy) return;
+    if (!useDynamic && !definition) return;
     if (saveTimer.current) window.clearTimeout(saveTimer.current);
     saveTimer.current = window.setTimeout(async () => {
+      const formCode = definition?.code || tramite.slice(0, 3).toUpperCase();
       const payload = {
         user_id: effectiveUserId,
         policy_id: policy.id,
         insurer,
-        form_code: definition.code,
+        form_code: formCode,
         tramite_type: tramite,
         data: data as any,
         status: "draft" as const,
@@ -195,7 +197,7 @@ export default function NewClaim() {
     }, 1500);
     return () => { if (saveTimer.current) window.clearTimeout(saveTimer.current); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data, definition, policy]);
+  }, [data, definition, policy, useDynamic]);
 
   const onChange = (patch: Record<string, any>) => setData((d) => ({ ...d, ...patch }));
 
