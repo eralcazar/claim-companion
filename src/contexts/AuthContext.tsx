@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, ReactNode } from "react
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
+import { requestNotificationPermission } from "@/lib/sound";
 
 type AppRole = Database["public"]["Enums"]["app_role"];
 
@@ -44,6 +45,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(session?.user ?? null);
         if (session?.user) {
           setTimeout(() => fetchRoles(session.user.id), 0);
+          setTimeout(() => requestNotificationPermission(), 500);
         } else {
           setRoles([]);
         }
