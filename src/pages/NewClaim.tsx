@@ -6,16 +6,20 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, ArrowRight, Check, Download, Save } from "lucide-react";
 import { getFormDefinition, getAvailableFormats, checkFormatExists } from "@/components/claims/forms/registry";
 import FormRenderer from "@/components/claims/forms/FormRenderer";
+import DynamicFormRenderer, { useDynamicSections } from "@/components/claims/forms/DynamicFormRenderer";
 import AutofillBanner from "@/components/claims/forms/shared/AutofillBanner";
 import { downloadPDF } from "@/lib/generateFilledPDF";
 import { runClaimPipeline } from "@/lib/claimPipeline";
 import { isValidCLABE, isValidCURP, isValidRFC } from "@/components/claims/forms/shared/validators";
 import { useEffectiveUserId } from "@/contexts/ImpersonationContext";
+import { useFirmas } from "@/hooks/useFirmas";
+import { findFormularioByInsurerAndTramite } from "@/lib/generateFilledPDFDynamic";
 
 function fmtValue(v: any): string {
   if (v == null || v === "") return "—";
@@ -45,6 +49,19 @@ export default function NewClaim() {
   const [formatAvailable, setFormatAvailable] = useState<boolean | null>(null);
   const [generating, setGenerating] = useState(false);
   const saveTimer = useRef<number | null>(null);
+
+  // Resolución de formulario dinámico desde BD (campos + secciones)
+  const [dynFormularioId, setDynFormularioId] = useState<string | null>(null);
+  const [resolvingDyn, setResolvingDyn] = useState(false);
+
+  // Firma electrónica (paso de revisión)
+  const { data: firmas = [] } = useFirmas(effectiveUserId);
+  const firmaPredeterminada = useMemo(() => firmas.find((f) => f.es_predeterminada) || firmas[0] || null, [firmas]);
+  const [firmarElectronicamente, setFirmarElectronicamente] = useState(true);
+  const [firmaIdSel, setFirmaIdSel] = useState<string | null>(null);
+  useEffect(() => {
+    if (!firmaIdSel && firmaPredeterminada) setFirmaIdSel(firmaPredeterminada.id);
+  }, [firmaPredeterminada, firmaIdSel]);
 
   // Cargar borrador desde query param
   useEffect(() => {
@@ -101,6 +118,24 @@ export default function NewClaim() {
   );
   const currentFormatLabel = availableFormats.find((f) => f.id === tramite)?.label;
 
+  // Resolver formulario en BD (dinámico) cuando cambian insurer/tramite
+  useEffect(() => {
+    if (!insurer || !tramite) { setDynFormularioId(null); return; }
+    let cancelled = false;
+    setResolvingDyn(true);
+    findFormularioByInsurerAndTramite(insurer, tramite)
+      .then((res) => {
+        if (cancelled) return;
+        setDynFormularioId(res.formulario && res.campos.length > 0 ? res.formulario.id : null);
+      })
+      .finally(() => { if (!cancelled) setResolvingDyn(false); });
+    return () => { cancelled = true; };
+  }, [insurer, tramite]);
+
+  // Secciones dinámicas (sólo si dynFormularioId está set)
+  const { sections: dynSections, isLoading: dynLoading, hasFirma } = useDynamicSections(dynFormularioId);
+  const useDynamic = !!dynFormularioId && dynSections.length > 0;
+
   // Pre-check: verificar que el PDF original exista en Storage al elegir formato
   useEffect(() => {
     if (!insurer || !tramite) { setFormatAvailable(null); return; }
@@ -139,14 +174,16 @@ export default function NewClaim() {
 
   // Autosave borrador (debounced 1.5s)
   useEffect(() => {
-    if (!effectiveUserId || !definition || !policy) return;
+    if (!effectiveUserId || !policy) return;
+    if (!useDynamic && !definition) return;
     if (saveTimer.current) window.clearTimeout(saveTimer.current);
     saveTimer.current = window.setTimeout(async () => {
+      const formCode = definition?.code || tramite.slice(0, 3).toUpperCase();
       const payload = {
         user_id: effectiveUserId,
         policy_id: policy.id,
         insurer,
-        form_code: definition.code,
+        form_code: formCode,
         tramite_type: tramite,
         data: data as any,
         status: "draft" as const,
@@ -160,12 +197,23 @@ export default function NewClaim() {
     }, 1500);
     return () => { if (saveTimer.current) window.clearTimeout(saveTimer.current); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data, definition, policy]);
+  }, [data, definition, policy, useDynamic]);
 
   const onChange = (patch: Record<string, any>) => setData((d) => ({ ...d, ...patch }));
 
   // Validación de la sección actual: requeridos + tipos especiales
   const validateCurrent = (): boolean => {
+    // Modo dinámico: validar requeridos contra `dynSections`
+    if (useDynamic) {
+      const sec = dynSections[step];
+      if (!sec) return true;
+      for (const c of sec.campos) {
+        if (!c.requerido) continue;
+        const v = data[c.clave];
+        if (v == null || v === "" || (Array.isArray(v) && v.length === 0)) return false;
+      }
+      return true;
+    }
     if (!definition) return false;
     const sec = definition.sections[step];
     if (!sec || sec.kind !== "fields") return true;
@@ -183,19 +231,22 @@ export default function NewClaim() {
   };
 
   const handleGenerate = async () => {
-    if (!definition || !policy || !effectiveUserId) return;
+    if (!policy || !effectiveUserId) return;
+    if (!useDynamic && !definition) return;
     setGenerating(true);
     try {
+      const formCode = definition?.code || tramite.slice(0, 3).toUpperCase();
       const result = await runClaimPipeline({
         userId: effectiveUserId,
         insurer,
         formatId: tramite,
         policyId: policy.id,
-        formCode: definition.code,
+        formCode,
         data,
         profile,
         policy,
         existingDraftId: draftId,
+        firmaId: firmarElectronicamente && (useDynamic ? hasFirma : true) ? firmaIdSel : null,
       });
       downloadPDF(result.pdfBytes, `${result.folio}.pdf`);
       toast.success(`Formato oficial llenado · Folio ${result.folio}`);
@@ -209,15 +260,16 @@ export default function NewClaim() {
   };
 
   const handleSaveDraft = async () => {
-    if (!effectiveUserId || !definition || !policy) {
+    if (!effectiveUserId || !policy || (!useDynamic && !definition)) {
       toast.error("Selecciona aseguradora y trámite");
       return;
     }
+    const formCode = definition?.code || tramite.slice(0, 3).toUpperCase();
     const payload = {
       user_id: effectiveUserId,
       policy_id: policy.id,
       insurer,
-      form_code: definition.code,
+      form_code: formCode,
       tramite_type: tramite,
       data: data as any,
       status: "draft" as const,
@@ -231,8 +283,10 @@ export default function NewClaim() {
     }
   };
 
-  // Paso 0: selección póliza + formato (no es del FormDefinition)
-  if (!definition) {
+  // Paso 0: selección póliza + formato. Mostrar selector si todavía no hay
+  // definición legacy ni dinámica resuelta.
+  const hasAnyForm = useDynamic || !!definition;
+  if (!hasAnyForm) {
     return (
       <div className="space-y-6 animate-fade-in max-w-lg mx-auto pb-24">
         <h1 className="font-heading text-2xl font-bold">Nuevo Reclamo</h1>
@@ -286,8 +340,13 @@ export default function NewClaim() {
                 </p>
               )}
             </div>
-            {tramite && policyId && !getFormDefinition(insurer, tramite) && (
-              <p className="text-xs text-destructive">No hay formulario disponible para esta combinación.</p>
+            {tramite && policyId && resolvingDyn && (
+              <p className="text-xs text-muted-foreground">Resolviendo formulario…</p>
+            )}
+            {tramite && policyId && !resolvingDyn && !useDynamic && !getFormDefinition(insurer, tramite) && (
+              <p className="text-xs text-destructive">
+                No hay formulario configurado para esta combinación. Pídele al admin que mapee los campos en Gestor de Formatos.
+              </p>
             )}
             {tramite && formatAvailable === false && (
               <p className="text-xs text-destructive">
@@ -303,17 +362,20 @@ export default function NewClaim() {
     );
   }
 
-  const sections = definition.sections;
-  const currentSection = sections[step];
-  const isLast = step === sections.length - 1;
-  const isReview = step === sections.length; // paso extra de revisión
-
-  // El último "paso" es la revisión; paso permitido [0..sections.length]
-  const totalSteps = sections.length + 1;
+  // ── Modo dinámico (DB) o legacy (definitions) ────────────────────────
+  const legacySections = definition?.sections ?? [];
+  const totalSections = useDynamic ? dynSections.length : legacySections.length;
+  const totalSteps = totalSections + 1; // +1 paso de revisión
+  const currentLegacy = !useDynamic ? legacySections[step] : null;
+  const currentDyn = useDynamic ? dynSections[step] : null;
+  const stepTitle = step < totalSections
+    ? (useDynamic ? (currentDyn?.nombre || `Sección ${step + 1}`) : (currentLegacy?.title || ""))
+    : "Revisión y generación";
+  const formTitle = useDynamic ? `Reclamo ${insurer}` : (definition?.name || "Reclamo");
 
   return (
     <div className="space-y-4 animate-fade-in max-w-lg mx-auto pb-24">
-      <h1 className="font-heading text-2xl font-bold">{definition.name}</h1>
+      <h1 className="font-heading text-2xl font-bold">{formTitle}</h1>
       <p className="text-xs text-muted-foreground">{insurer} · {currentFormatLabel || tramite}</p>
 
       <AutofillBanner />
@@ -332,16 +394,71 @@ export default function NewClaim() {
       </div>
 
       <Card>
-        <CardHeader><CardTitle className="text-base">{step < sections.length ? currentSection.title : "Revisión y generación"}</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-base">{stepTitle}</CardTitle></CardHeader>
         <CardContent>
-          {step < sections.length ? (
-            <FormRenderer definition={definition} section={currentSection} data={data} onChange={onChange} />
+          {step < totalSections ? (
+            useDynamic && currentDyn ? (
+              <DynamicFormRenderer section={currentDyn} data={data} onChange={onChange} />
+            ) : currentLegacy && definition ? (
+              <FormRenderer definition={definition} section={currentLegacy} data={data} onChange={onChange} />
+            ) : null
           ) : (
             <div className="space-y-3 text-sm">
               <p className="text-muted-foreground text-xs">
                 Revisa todos los datos antes de generar el PDF oficial. El folio se asigna automáticamente.
               </p>
-              {sections.map((s) => {
+
+              {/* Toggle de firma electrónica (sólo si el formulario tiene un campo tipo='firma') */}
+              {useDynamic && hasFirma && (
+                <div className="rounded-md border p-3 space-y-2 bg-muted/30">
+                  <div className="flex items-center justify-between gap-2">
+                    <Label className="text-xs font-medium">Firmar electrónicamente</Label>
+                    <Switch
+                      checked={firmarElectronicamente}
+                      onCheckedChange={setFirmarElectronicamente}
+                      disabled={firmas.length === 0}
+                    />
+                  </div>
+                  {firmarElectronicamente && firmas.length > 0 && (
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Firma a usar</Label>
+                      <Select value={firmaIdSel || ""} onValueChange={setFirmaIdSel}>
+                        <SelectTrigger><SelectValue placeholder="Seleccionar firma" /></SelectTrigger>
+                        <SelectContent>
+                          {firmas.map((f) => (
+                            <SelectItem key={f.id} value={f.id}>
+                              {f.nombre} {f.es_predeterminada ? "★" : ""}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                  {firmas.length === 0 && (
+                    <p className="text-xs text-destructive">
+                      No tienes firmas guardadas.{" "}
+                      <Link to="/perfil/firmas" className="underline">Crear una firma</Link>.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {useDynamic ? (
+                dynSections.map((s) => (
+                  <div key={s.id} className="rounded-md border p-3 space-y-1.5">
+                    <p className="font-semibold text-xs text-primary mb-1">{s.nombre}</p>
+                    <div className="grid grid-cols-1 gap-1 text-xs">
+                      {s.campos.map((c) => (
+                        <div key={c.id} className="flex justify-between gap-2 border-b border-border/40 py-0.5 last:border-0">
+                          <span className="text-muted-foreground shrink-0 max-w-[55%] truncate">{c.etiqueta || c.clave}</span>
+                          <span className="font-medium text-right truncate">{fmtValue(data[c.clave])}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                legacySections.map((s) => {
                 if (s.showWhen && !s.showWhen(data)) return null;
                 return (
                   <div key={s.id} className="rounded-md border p-3 space-y-1.5">
@@ -375,7 +492,8 @@ export default function NewClaim() {
                     )}
                   </div>
                 );
-              })}
+              })
+              )}
             </div>
           )}
         </CardContent>
@@ -390,7 +508,7 @@ export default function NewClaim() {
         <Button variant="outline" className="flex-1 min-w-[120px]" onClick={handleSaveDraft}>
           <Save className="h-4 w-4 mr-1" /> Guardar borrador
         </Button>
-        {step < sections.length ? (
+        {step < totalSections ? (
           <Button className="flex-1 min-w-[120px]" disabled={!validateCurrent()} onClick={() => setStep(step + 1)}>
             Siguiente <ArrowRight className="h-4 w-4 ml-1" />
           </Button>
