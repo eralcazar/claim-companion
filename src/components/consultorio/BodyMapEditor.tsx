@@ -35,6 +35,9 @@ export function BodyMapEditor({ appointmentId, patientId, canEdit = false, title
   const [pick, setPick] = useState<{ body_part: string; marker_x: number; marker_y: number } | null>(null);
   const [editing, setEditing] = useState<BodyAnnotation | null>(null);
   const [open, setOpen] = useState(false);
+  const [regionPart, setRegionPart] = useState<string | null>(null);
+  const { user, roles } = useAuth();
+  const canModerate = canEdit && (roles.includes("medico") || roles.includes("admin"));
 
   const { data: annotations = [], isLoading } = useBodyAnnotations({
     appointmentId,
@@ -42,6 +45,12 @@ export function BodyMapEditor({ appointmentId, patientId, canEdit = false, title
   });
 
   const visible = annotations.filter((a) => a.body_view === view);
+
+  // Group by body_part
+  const grouped = visible.reduce<Record<string, BodyAnnotation[]>>((acc, a) => {
+    (acc[a.body_part] ||= []).push(a);
+    return acc;
+  }, {});
 
   const handlePick = (info: { body_part: string; marker_x: number; marker_y: number }) => {
     if (!canEdit) return;
