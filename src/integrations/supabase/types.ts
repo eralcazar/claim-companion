@@ -67,6 +67,8 @@ export type Database = {
           doctor_name_manual: string | null
           doctor_observations: string | null
           id: string
+          is_telemedicine: boolean
+          meeting_url: string | null
           notes: string | null
           reminder_enabled: boolean
           reminder_minutes_before: number | null
@@ -85,6 +87,8 @@ export type Database = {
           doctor_name_manual?: string | null
           doctor_observations?: string | null
           id?: string
+          is_telemedicine?: boolean
+          meeting_url?: string | null
           notes?: string | null
           reminder_enabled?: boolean
           reminder_minutes_before?: number | null
@@ -103,6 +107,8 @@ export type Database = {
           doctor_name_manual?: string | null
           doctor_observations?: string | null
           id?: string
+          is_telemedicine?: boolean
+          meeting_url?: string | null
           notes?: string | null
           reminder_enabled?: boolean
           reminder_minutes_before?: number | null
@@ -141,6 +147,97 @@ export type Database = {
           slug?: string
         }
         Relationships: []
+      }
+      body_annotation_files: {
+        Row: {
+          annotation_id: string
+          created_at: string
+          file_name: string
+          file_path: string
+          file_type: string
+          id: string
+          uploaded_by: string
+        }
+        Insert: {
+          annotation_id: string
+          created_at?: string
+          file_name?: string
+          file_path: string
+          file_type?: string
+          id?: string
+          uploaded_by: string
+        }
+        Update: {
+          annotation_id?: string
+          created_at?: string
+          file_name?: string
+          file_path?: string
+          file_type?: string
+          id?: string
+          uploaded_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "body_annotation_files_annotation_id_fkey"
+            columns: ["annotation_id"]
+            isOneToOne: false
+            referencedRelation: "body_annotations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      body_annotations: {
+        Row: {
+          appointment_id: string | null
+          body_part: string
+          body_view: string
+          created_at: string
+          created_by: string
+          id: string
+          marker_x: number
+          marker_y: number
+          note: string | null
+          patient_id: string
+          severity: string
+          updated_at: string
+        }
+        Insert: {
+          appointment_id?: string | null
+          body_part: string
+          body_view?: string
+          created_at?: string
+          created_by: string
+          id?: string
+          marker_x?: number
+          marker_y?: number
+          note?: string | null
+          patient_id: string
+          severity?: string
+          updated_at?: string
+        }
+        Update: {
+          appointment_id?: string | null
+          body_part?: string
+          body_view?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          marker_x?: number
+          marker_y?: number
+          note?: string | null
+          patient_id?: string
+          severity?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "body_annotations_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       broker_patients: {
         Row: {
