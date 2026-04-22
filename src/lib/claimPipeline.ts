@@ -8,6 +8,10 @@ import {
   getFormKey,
 } from "@/components/claims/forms/registry";
 import type { FormCoordinatesKey } from "@/lib/formCoordinates";
+import {
+  findFormularioByInsurerAndTramite,
+  generateFilledPDFDynamic,
+} from "@/lib/generateFilledPDFDynamic";
 
 export interface PipelineInput {
   userId: string;
@@ -19,6 +23,8 @@ export interface PipelineInput {
   profile: any;
   policy: any;
   existingDraftId?: string | null;
+  /** ID de la firma elegida en `firmas_usuario` (opcional) */
+  firmaId?: string | null;
 }
 
 export interface PipelineResult {
@@ -41,7 +47,7 @@ export interface PipelineResult {
 export async function runClaimPipeline(input: PipelineInput): Promise<PipelineResult> {
   const {
     userId, insurer, formatId, policyId, formCode,
-    data, profile, policy, existingDraftId,
+    data, profile, policy, existingDraftId, firmaId,
   } = input;
 
   const insurerNorm = (insurer || "").toUpperCase();
@@ -65,18 +71,40 @@ export async function runClaimPipeline(input: PipelineInput): Promise<PipelineRe
       throw new Error(msg);
     }
 
-    const formKey = getFormKey(insurerNorm, formatId) as FormCoordinatesKey | null;
-    if (!formKey) {
-      const msg = `No hay coordenadas configuradas para ${insurerNorm} / ${formatId}.`;
-      await markError(msg);
-      throw new Error(msg);
-    }
+    // 2) Generar PDF: si hay un `formulario` en BD configurado, usar el path
+    //    dinámico (campos + opciones + firma). Si no, fallback al legacy.
+    let pdfBytes: Uint8Array;
 
-    // 2) Build overlay + fill PDF
-    const overlay = buildOverlayData({
-      data, profile, policy, insurer: insurerNorm, tramite: formatId,
-    });
-    const pdfBytes = await generateFilledPDF(formKey, overlay);
+    const dyn = await findFormularioByInsurerAndTramite(insurerNorm, formatId);
+    if (dyn.formulario && dyn.campos.length > 0) {
+      // Resolver firma seleccionada (si hay)
+      let firmaDataUrl: string | null = null;
+      if (firmaId) {
+        const { data: f } = await supabase
+          .from("firmas_usuario" as any)
+          .select("imagen_base64")
+          .eq("id", firmaId)
+          .maybeSingle();
+        firmaDataUrl = (f as any)?.imagen_base64 || null;
+      }
+      pdfBytes = await generateFilledPDFDynamic({
+        formularioStoragePath: dyn.formulario.storage_path,
+        campos: dyn.campos,
+        data,
+        firmaDataUrl,
+      });
+    } else {
+      const formKey = getFormKey(insurerNorm, formatId) as FormCoordinatesKey | null;
+      if (!formKey) {
+        const msg = `No hay coordenadas configuradas para ${insurerNorm} / ${formatId}.`;
+        await markError(msg);
+        throw new Error(msg);
+      }
+      const overlay = buildOverlayData({
+        data, profile, policy, insurer: insurerNorm, tramite: formatId,
+      });
+      pdfBytes = await generateFilledPDF(formKey, overlay);
+    }
 
     // 3) Folio
     const { data: folioRes, error: folioErr } = await supabase.rpc("gen_folio", {
