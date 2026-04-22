@@ -344,13 +344,31 @@ export default function Appointments() {
               </div>
 
               <div className="space-y-2">
-                <Label>Dirección de la consulta</Label>
-                <AddressAutocomplete
-                  value={form.address}
-                  lat={form.address_lat}
-                  lng={form.address_lng}
-                  onChange={(v) => setForm({ ...form, address: v.address, address_lat: v.lat, address_lng: v.lng })}
-                />
+                <div className="flex items-center justify-between rounded-md border p-3">
+                  <Label className="flex items-center gap-2 cursor-pointer">
+                    <Video className="h-4 w-4" /> Consulta a distancia (videoconferencia)
+                  </Label>
+                  <Switch
+                    checked={form.is_telemedicine}
+                    onCheckedChange={(v) => setForm({ ...form, is_telemedicine: v })}
+                  />
+                </div>
+                {!form.is_telemedicine && (
+                  <>
+                    <Label>Dirección de la consulta</Label>
+                    <AddressAutocomplete
+                      value={form.address}
+                      lat={form.address_lat}
+                      lng={form.address_lng}
+                      onChange={(v) => setForm({ ...form, address: v.address, address_lat: v.lat, address_lng: v.lng })}
+                    />
+                  </>
+                )}
+                {form.is_telemedicine && (
+                  <p className="text-xs text-muted-foreground">
+                    Se generará un link de videoconferencia automáticamente al guardar.
+                  </p>
+                )}
               </div>
               <div className="space-y-2 rounded-md border p-3">
                 <div className="flex items-center justify-between">

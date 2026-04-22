@@ -2,7 +2,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
-import { Stethoscope, Calendar, CalendarIcon, Users, ChevronRight } from "lucide-react";
+import { Stethoscope, Calendar, CalendarIcon, Users, ChevronRight, Video, ArrowUpRight } from "lucide-react";
 import { format, startOfDay, endOfDay, subDays, subMonths } from "date-fns";
 import { es } from "date-fns/locale";
 import { useState } from "react";
@@ -28,6 +28,7 @@ export default function DoctorPanel() {
   const [fromDate, setFromDate] = useState<Date | undefined>();
   const [toDate, setToDate] = useState<Date | undefined>();
   const [sinReceta, setSinReceta] = useState(false);
+  const [soloVideo, setSoloVideo] = useState(false);
   const [searchPatient, setSearchPatient] = useState("");
 
   const computeRange = (): { from?: Date; to?: Date; futureOnly?: boolean } => {
@@ -99,6 +100,7 @@ export default function DoctorPanel() {
 
   const appointments = (data ?? []).filter((apt: any) => {
     if (sinReceta && aptIdsWithReceta?.has(apt.id)) return false;
+    if (soloVideo && !apt.is_telemedicine) return false;
     return true;
   });
 
@@ -167,6 +169,8 @@ export default function DoctorPanel() {
         <div className="flex items-center gap-2">
           <Switch id="sin-receta" checked={sinReceta} onCheckedChange={setSinReceta} />
           <Label htmlFor="sin-receta" className="text-sm cursor-pointer">Solo sin receta</Label>
+          <Switch id="solo-video" checked={soloVideo} onCheckedChange={setSoloVideo} className="ml-3" />
+          <Label htmlFor="solo-video" className="text-sm cursor-pointer">Solo videoconsultas</Label>
         </div>
 
         {!isLoading && (

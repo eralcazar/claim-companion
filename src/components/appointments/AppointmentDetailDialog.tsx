@@ -10,7 +10,10 @@ import { EstudioCard } from "@/components/estudios/EstudioCard";
 import { EstudioForm } from "@/components/estudios/EstudioForm";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { Calendar, MapPin, User, Bell, ExternalLink, Pencil, Stethoscope } from "lucide-react";
+import { Calendar, MapPin, User, Bell, ExternalLink, Pencil, Stethoscope, Video, ArrowUpRight } from "lucide-react";
+import { VideoMeetingBlock } from "@/components/appointments/VideoMeetingBlock";
+import { BodyMapEditor } from "@/components/consultorio/BodyMapEditor";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { AppointmentDocuments } from "./AppointmentDocuments";
@@ -91,13 +94,24 @@ export function AppointmentDetailDialog({ appointment, patientName, open, onOpen
         </DialogHeader>
 
         <Tabs defaultValue="detalles">
-          <TabsList className="grid grid-cols-4 w-full">
+          <TabsList className="grid grid-cols-5 w-full">
             <TabsTrigger value="detalles">Detalles</TabsTrigger>
             <TabsTrigger value="recetas">Recetas</TabsTrigger>
             <TabsTrigger value="estudios">Estudios</TabsTrigger>
             <TabsTrigger value="documentos">Documentos</TabsTrigger>
+            <TabsTrigger value="cuerpo">Cuerpo</TabsTrigger>
           </TabsList>
           <TabsContent value="detalles" className="space-y-4">
+        {a.is_telemedicine && a.meeting_url && (
+          <VideoMeetingBlock meetingUrl={a.meeting_url} appointmentDate={a.appointment_date} compact />
+        )}
+        {canManage && (
+          <Button asChild size="sm" variant="outline" className="w-full">
+            <Link to={`/consultorio/${a.id}`}>
+              <ArrowUpRight className="h-4 w-4 mr-1" /> Abrir consultorio
+            </Link>
+          </Button>
+        )}
         <div className="space-y-3 text-sm">
           {patientName && (
             <div className="flex items-center gap-2">
@@ -115,7 +129,12 @@ export function AppointmentDetailDialog({ appointment, patientName, open, onOpen
               <span>Dr. {a.doctor_name_manual}</span>
             </div>
           )}
-          {a.address && (
+          {a.is_telemedicine ? (
+            <div className="flex items-center gap-2 text-primary">
+              <Video className="h-4 w-4" />
+              <span>Videoconsulta</span>
+            </div>
+          ) : a.address && (
             <div className="flex items-start gap-2">
               <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
               <span className="flex-1">{a.address}</span>
