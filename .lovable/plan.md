@@ -2,57 +2,100 @@
 
 ## Objetivo
 
-Agregar edición manual inline de indicadores dentro de `ResultadosManager`: cada fila podrá cambiar a modo edición para modificar **nombre**, **valor**, **unidad**, **rango de referencia (min/max)**, recalculando automáticamente el flag de "normal/fuera de rango" al guardar.
+Dos funcionalidades nuevas para el manejo de resultados de estudios médicos:
+
+1. **Exportar tendencias**: botón en `/tendencias` para descargar un CSV con los indicadores filtrados (rango de fechas + búsqueda + selección en modo comparar) y opción de compartir vía Web Share API en móvil.
+2. **Carga masiva de indicadores**: botón en `ResultadosManager` para descargar un layout CSV plantilla y subir múltiples indicadores de un resultado de una sola vez.
+
+Usamos **CSV** (no .xlsx) para mantener la app liviana, sin dependencias nuevas, y porque ya existe `CSVImportDialog` reutilizable con `Papaparse`.
 
 ## Cambios
 
-### 1. Componente nuevo: `IndicadorEditRow`
+### Parte 1 — Exportar tendencias
 
-Archivo: `src/components/estudios/IndicadorEditRow.tsx`.
+#### 1.1 Helper: `src/lib/exportTendenciasCSV.ts`
 
-- Props: `indicador`, `onSave(patch)`, `onCancel()`, `isSaving`.
-- Renderiza un grid responsive con inputs:
-  - Nombre del indicador (text)
-  - Valor (number, step 0.01)
-  - Unidad (text)
-  - Min de referencia (number, opcional)
-  - Max de referencia (number, opcional)
-- Botones: ✓ Guardar / ✕ Cancelar.
-- Validación local: `nombre_indicador` no vacío; si `valor`, `min` y `max` son numéricos, `min <= max`. Toast de error si inválido.
-- Al guardar, calcula `es_normal` y `flagged`:
-  - Si `valor != null && min != null && max != null`: `es_normal = valor >= min && valor <= max`, `flagged = !es_normal`.
-  - Si falta alguno: `es_normal = null`, `flagged = false`.
+- Función `exportTendenciasToCSV(indicadores, opciones)`:
+  - Inputs: `TendenciaIndicador[]` filtrado, `{ pacienteNombre, rangoLabel, modo }`.
+  - Genera dos secciones en un mismo CSV (separadas por línea en blanco):
+    - **Cabecera meta**: 3 filas con paciente, rango y fecha de generación.
+    - **Resumen**: una fila por indicador → Nombre, Unidad, Ref. mín, Ref. máx, # mediciones, Primera fecha, Última fecha, Último valor, Estado (Normal/Fuera de rango/N/A).
+    - **Detalle**: una fila por punto → Indicador, Fecha, Valor, Unidad, Ref. mín, Ref. máx, ¿Normal?, Tipo de estudio.
+  - Escapa comillas y comas correctamente. Devuelve `{ blob, filename }` con nombre `tendencias_{paciente}_{YYYYMMDD}.csv`.
 
-### 2. Modificar `ResultadosManager.tsx` → `ResultadoItem`
+#### 1.2 Componente: `src/components/tendencias/ExportTendenciasButton.tsx`
 
-- Añadir state local `editingId: string | null`.
-- En el `map` de indicadores, si `i.id === editingId` renderiza `<IndicadorEditRow>`; si no, renderiza la fila actual de visualización.
-- Añadir botón **lápiz (Pencil)** junto al botón de basura cuando `canManage`, que setea `editingId = i.id`.
-- `onSave` llama a `useSaveIndicador()` con `{ id: i.id, ...patch, es_normal, flagged }`. Al éxito, `setEditingId(null)`.
-- `onCancel` solo cierra el modo edición.
-- Mientras `editingId !== null`, el sparkline y los badges de normal/fuera de rango quedan ocultos (la fila se reemplaza por el editor).
+- Props: `indicadores`, `pacienteNombre`, `rangoLabel`, `modo`.
+- Botón principal con ícono `Download` + texto "Exportar". En mobile (`<sm`) sólo el ícono.
+- `DropdownMenu` con dos acciones:
+  - **Descargar CSV** → genera blob y descarga vía `<a download>`.
+  - **Compartir** → si `navigator.canShare({ files: [file] })`, usa `navigator.share`; si no, fallback a descarga + toast.
+- Deshabilitado si `indicadores.length === 0`.
 
-### 3. Detalles UX
+#### 1.3 Integrar en `Tendencias.tsx`
 
-- Solo visible si `canManage` (médico/admin/broker) — pacientes siguen viendo modo lectura.
-- Edición inline (no modal) para mantener contexto del resultado.
-- Al guardar exitosamente, React Query refresca `["indicadores", resultado_id]` y la sparkline se actualiza automáticamente (porque `useIndicadorHistory` también se re-fetcha al invalidar).
-- Atajo de teclado: Enter en cualquier input dispara guardar; Escape cancela.
-- Tooltip en el botón lápiz: "Editar indicador".
+- Importar `ExportTendenciasButton`.
+- Calcular `pacienteNombre` (lookup en `patients` o `user.user_metadata.full_name`).
+- Calcular `rangoLabel` legible desde `rangoFechas`.
+- Determinar dataset según modo: `filtered` (individual) o `indicadoresComparar` (comparar).
+- Colocar el botón en la barra de filtros con `ml-auto` para alineación a la derecha.
 
-### 4. Hook `useSaveIndicador` (sin cambios)
+### Parte 2 — Carga masiva de indicadores
 
-Ya soporta update via `if (input.id) { update }` — se reutiliza tal cual.
+#### 2.1 Componente: `src/components/estudios/IndicadoresBulkImportDialog.tsx`
 
-## Archivos a tocar
+- Reutiliza `CSVImportDialog` ya existente.
+- Plantilla con columnas: `nombre_indicador, valor, unidad, valor_referencia_min, valor_referencia_max`.
+- Fila de ejemplo: `Glucosa,95,mg/dL,70,100`.
+- Filename: `layout_indicadores.csv`.
+- `parseRow`:
+  - `nombre_indicador` obligatorio (no vacío).
+  - `valor`, `min`, `max` opcionales pero deben ser numéricos si vienen.
+  - Valida `min <= max` cuando ambos existen.
+  - Calcula `es_normal` y `flagged` igual que `IndicadorEditRow`.
+- `onImport` recibe array, hace `bulkInsert` vía nuevo hook `useBulkInsertIndicadores` (un solo `.insert([...])` a `indicadores_estudio`).
+- Toast de éxito con conteo.
+
+#### 2.2 Hook nuevo en `useResultadosEstudio.ts`
+
+```ts
+export function useBulkInsertIndicadores() { ... }
+```
+- Recibe `{ resultado_id, patient_id, rows: [...] }`.
+- Mapea cada `row` agregando `resultado_id` y `patient_id`.
+- Inserta en bloque con `supabase.from("indicadores_estudio").insert(rows)`.
+- Invalida `["indicadores", resultado_id]` al éxito.
+
+#### 2.3 Integrar en `ResultadoItem` (ResultadosManager.tsx)
+
+- Añadir estado `bulkOpen: boolean`.
+- Junto a "Extraer con IA" agregar botón **"Importar CSV"** (ícono `FileUp`).
+- Al abrir, monta `<IndicadoresBulkImportDialog resultadoId={...} patientId={...} open={bulkOpen} onOpenChange={setBulkOpen} />`.
+- Sólo visible si `canManage`.
+
+### Detalles UX
+
+- Layout CSV usa los **mismos nombres de columna** que la base, así un usuario técnico puede editarlo en Excel/Google Sheets sin confusión.
+- Mensaje en el diálogo: "Las filas con errores se omitirán. Los campos numéricos usan punto como separador decimal."
+- Botón de exportar tendencias y dropdown de compartir consistentes con el resto de UI (variant outline, size sm).
+- En móvil, el botón Importar CSV se acomoda en el `flex-wrap` existente de la barra de acciones del resultado.
+- El export y el bulk import son 100% client-side (excepto el insert final a Supabase).
+
+## Archivos
 
 **Creados:**
-- `src/components/estudios/IndicadorEditRow.tsx`
+- `src/lib/exportTendenciasCSV.ts`
+- `src/components/tendencias/ExportTendenciasButton.tsx`
+- `src/components/estudios/IndicadoresBulkImportDialog.tsx`
 
 **Modificados:**
-- `src/components/estudios/ResultadosManager.tsx` — añadir botón Pencil, state `editingId`, render condicional de edit row.
+- `src/pages/Tendencias.tsx` — agregar botón Exportar a la barra de filtros.
+- `src/components/estudios/ResultadosManager.tsx` — agregar botón "Importar CSV" en `ResultadoItem`.
+- `src/hooks/useResultadosEstudio.ts` — nuevo `useBulkInsertIndicadores`.
 
 ## Resultado esperado
 
-Médico abre "Ver indicadores" en un resultado → cada fila muestra un ícono de lápiz junto a la basura → click en lápiz convierte la fila en formulario inline con 5 inputs (nombre, valor, unidad, min, max) y botones Guardar/Cancelar → al guardar, el flag "Normal/Fuera de rango" se recalcula automáticamente, la fila vuelve a modo lectura y el sparkline refleja el nuevo valor histórico. Funciona tanto para indicadores extraídos por IA como para los agregados manualmente.
+**Tendencias**: usuario filtra por "Últimos 6 meses" + busca "glucosa" → click en "Exportar" → opciones "Descargar CSV" o "Compartir" → recibe `tendencias_juan_perez_20260422.csv` con resumen y detalle. En modo comparar, sólo se exportan los 2-3 indicadores seleccionados.
+
+**Carga masiva**: médico abre un resultado → click "Importar CSV" → descarga `layout_indicadores.csv` → completa filas en Excel → sube → ve preview con válidas/erróneas → confirma → todos los indicadores aparecen en la lista del resultado y alimentan automáticamente la página de tendencias.
 
