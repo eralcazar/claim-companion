@@ -117,6 +117,46 @@ export function BodyMapEditor({ appointmentId, patientId, canEdit = false, title
           </TabsContent>
         </Tabs>
 
+        {showQuickRegionAccess && (
+          <div className="rounded-md border border-dashed p-3 space-y-2 bg-muted/30">
+            <p className="text-xs font-semibold flex items-center gap-1.5">
+              <History className="h-3.5 w-3.5 text-primary" />
+              Ir al historial de una zona
+            </p>
+            <Select
+              value=""
+              onValueChange={(part) => {
+                if (part) setRegionPart(part);
+              }}
+            >
+              <SelectTrigger className="h-9">
+                <SelectValue placeholder="Selecciona una zona del cuerpo..." />
+              </SelectTrigger>
+              <SelectContent>
+                {sortedParts.map(([key, label]) => {
+                  const count = countsByPart[key] ?? 0;
+                  return (
+                    <SelectItem key={key} value={key}>
+                      <span className="flex items-center justify-between gap-3 w-full">
+                        <span>{label}</span>
+                        <Badge
+                          variant={count > 0 ? "secondary" : "outline"}
+                          className="text-[10px] h-4 px-1.5"
+                        >
+                          {count}
+                        </Badge>
+                      </span>
+                    </SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
+            <p className="text-[10px] text-muted-foreground">
+              Abre el historial completo y la moderación de la zona seleccionada.
+            </p>
+          </div>
+        )}
+
         <div className="space-y-2">
           <p className="text-xs font-medium text-muted-foreground">
             {isLoading ? "Cargando..." : `${visible.length} anotación(es) en vista ${view}`}
