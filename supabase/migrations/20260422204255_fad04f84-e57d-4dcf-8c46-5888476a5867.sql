@@ -1,0 +1,20 @@
+INSERT INTO public.role_permissions (role, feature_key, allowed) VALUES
+  ('admin', 'product_manager', true),
+  ('admin', 'inventory_manager', true),
+  ('admin', 'plan_manager', true),
+  ('admin', 'planes', true),
+  ('admin', 'suscripcion', true),
+  ('farmacia', 'inventory_manager', true),
+  ('farmacia', 'planes', true),
+  ('farmacia', 'suscripcion', true),
+  ('paciente', 'planes', true),
+  ('paciente', 'suscripcion', true),
+  ('broker', 'planes', true),
+  ('broker', 'suscripcion', true),
+  ('medico', 'planes', true),
+  ('medico', 'suscripcion', true),
+  ('enfermero', 'planes', true),
+  ('enfermero', 'suscripcion', true),
+  ('laboratorio', 'planes', true),
+  ('laboratorio', 'suscripcion', true)
+ON CONFLICT (role, feature_key) DO UPDATE SET allowed = EXCLUDED.allowed;

@@ -7,8 +7,38 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CatalogManager } from "@/components/pharmacy/CatalogManager";
 import { usePharmacyOrders, useMarkFulfilled } from "@/hooks/usePharmacy";
+import { useLowStock } from "@/hooks/useInventory";
 import { PaymentTestModeBanner } from "@/components/PaymentTestModeBanner";
 import { useAuth } from "@/contexts/AuthContext";
+import { AlertTriangle, Boxes } from "lucide-react";
+
+function LowStockWidget() {
+  const lowStock = useLowStock();
+  if (lowStock.length === 0) return null;
+  return (
+    <Card className="border-destructive/50 bg-destructive/5">
+      <CardContent className="p-4 space-y-2">
+        <div className="flex items-center gap-2">
+          <AlertTriangle className="h-4 w-4 text-destructive" />
+          <p className="font-medium text-sm">Stock bajo ({lowStock.length})</p>
+          <Link to="/farmacia/inventario" className="ml-auto">
+            <Button size="sm" variant="outline">
+              <Boxes className="h-3 w-3 mr-1" />Ver inventario
+            </Button>
+          </Link>
+        </div>
+        <ul className="text-xs space-y-0.5">
+          {lowStock.slice(0, 5).map((r) => (
+            <li key={r.catalog_id} className="flex justify-between">
+              <span className="truncate">{r.catalog?.nombre || r.catalog_id}</span>
+              <span className="tabular-nums text-destructive">{r.stock_actual} / mín {r.stock_minimo}</span>
+            </li>
+          ))}
+        </ul>
+      </CardContent>
+    </Card>
+  );
+}
 
 function OrderList({ status }: { status: "pagada" | "surtida" | "pendiente_pago" }) {
   const { data: orders = [], isLoading } = usePharmacyOrders({ status });
@@ -81,6 +111,8 @@ export default function PharmacyPanel() {
       <h1 className="font-heading text-2xl font-bold flex items-center gap-2">
         <Store className="h-6 w-6 text-primary" />Panel Farmacia
       </h1>
+
+      <LowStockWidget />
 
       <Tabs defaultValue="ordenes">
         <TabsList>
