@@ -21,6 +21,7 @@ import { toast } from "sonner";
 import { IndicadorSparkline } from "@/components/tendencias/IndicadorSparkline";
 import { IndicadorEditRow } from "./IndicadorEditRow";
 import { IndicadoresBulkImportDialog } from "./IndicadoresBulkImportDialog";
+import { ResultadoEditDialog } from "./ResultadoEditDialog";
 
 interface Props {
   estudio: any;
@@ -94,6 +95,8 @@ function ResultadoItem({ resultado, canManage, onDownload, onDelete }: any) {
   const [showInd, setShowInd] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [bulkOpen, setBulkOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [addingIndicador, setAddingIndicador] = useState(false);
   const [draft, setDraft] = useState({ nombre_indicador: "", valor: "", unidad: "", valor_referencia_min: "", valor_referencia_max: "" });
 
   const handleExtract = async () => {
@@ -105,7 +108,10 @@ function ResultadoItem({ resultado, canManage, onDownload, onDelete }: any) {
   };
 
   const addIndicador = async () => {
-    if (!draft.nombre_indicador) return;
+    if (!draft.nombre_indicador.trim()) {
+      toast.error("El nombre del indicador es requerido");
+      return;
+    }
     const valor = draft.valor === "" ? null : Number(draft.valor);
     const min = draft.valor_referencia_min === "" ? null : Number(draft.valor_referencia_min);
     const max = draft.valor_referencia_max === "" ? null : Number(draft.valor_referencia_max);
@@ -113,12 +119,29 @@ function ResultadoItem({ resultado, canManage, onDownload, onDelete }: any) {
     await saveInd.mutateAsync({
       resultado_id: resultado.id,
       patient_id: resultado.patient_id,
-      nombre_indicador: draft.nombre_indicador,
+      nombre_indicador: draft.nombre_indicador.trim(),
       valor, unidad: draft.unidad || null,
       valor_referencia_min: min, valor_referencia_max: max,
       es_normal, flagged: es_normal === false,
     });
     setDraft({ nombre_indicador: "", valor: "", unidad: "", valor_referencia_min: "", valor_referencia_max: "" });
+    setAddingIndicador(false);
+    toast.success("Indicador agregado");
+  };
+
+  const cancelAdd = () => {
+    setDraft({ nombre_indicador: "", valor: "", unidad: "", valor_referencia_min: "", valor_referencia_max: "" });
+    setAddingIndicador(false);
+  };
+
+  const handleAddKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      addIndicador();
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      cancelAdd();
+    }
   };
 
   return (
@@ -133,6 +156,11 @@ function ResultadoItem({ resultado, canManage, onDownload, onDelete }: any) {
         </div>
         <div className="flex gap-1">
           <Button size="sm" variant="outline" onClick={onDownload}><Download className="h-3.5 w-3.5" /></Button>
+          {canManage && (
+            <Button size="sm" variant="ghost" onClick={() => setEditOpen(true)} title="Editar datos del resultado">
+              <Pencil className="h-3.5 w-3.5" />
+            </Button>
+          )}
           {canManage && <Button size="sm" variant="ghost" className="text-destructive" onClick={onDelete}><Trash2 className="h-3.5 w-3.5" /></Button>}
         </div>
       </div>
@@ -211,15 +239,29 @@ function ResultadoItem({ resultado, canManage, onDownload, onDelete }: any) {
             )
           ))}
           {canManage && (
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-1 items-end pt-2">
-              <div><Label className="text-xs">Indicador</Label><Input value={draft.nombre_indicador} onChange={(e) => setDraft({ ...draft, nombre_indicador: e.target.value })} /></div>
-              <div><Label className="text-xs">Valor</Label><Input type="number" step="0.01" value={draft.valor} onChange={(e) => setDraft({ ...draft, valor: e.target.value })} /></div>
-              <div><Label className="text-xs">Unidad</Label><Input value={draft.unidad} onChange={(e) => setDraft({ ...draft, unidad: e.target.value })} /></div>
-              <div><Label className="text-xs">Min</Label><Input type="number" step="0.01" value={draft.valor_referencia_min} onChange={(e) => setDraft({ ...draft, valor_referencia_min: e.target.value })} /></div>
-              <div className="flex gap-1">
-                <Input type="number" step="0.01" placeholder="Max" value={draft.valor_referencia_max} onChange={(e) => setDraft({ ...draft, valor_referencia_max: e.target.value })} />
-                <Button size="sm" onClick={addIndicador}><Plus className="h-3.5 w-3.5" /></Button>
-              </div>
+            <div className="pt-2">
+              {!addingIndicador ? (
+                <Button size="sm" variant="outline" onClick={() => setAddingIndicador(true)}>
+                  <Plus className="h-3.5 w-3.5 mr-1" />Agregar indicador manual
+                </Button>
+              ) : (
+                <div className="space-y-2 p-2 border rounded-md bg-muted/30">
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-2 items-end">
+                    <div><Label className="text-xs">Indicador</Label><Input autoFocus value={draft.nombre_indicador} onChange={(e) => setDraft({ ...draft, nombre_indicador: e.target.value })} onKeyDown={handleAddKey} /></div>
+                    <div><Label className="text-xs">Valor</Label><Input type="number" step="0.01" value={draft.valor} onChange={(e) => setDraft({ ...draft, valor: e.target.value })} onKeyDown={handleAddKey} /></div>
+                    <div><Label className="text-xs">Unidad</Label><Input value={draft.unidad} onChange={(e) => setDraft({ ...draft, unidad: e.target.value })} onKeyDown={handleAddKey} /></div>
+                    <div><Label className="text-xs">Min</Label><Input type="number" step="0.01" value={draft.valor_referencia_min} onChange={(e) => setDraft({ ...draft, valor_referencia_min: e.target.value })} onKeyDown={handleAddKey} /></div>
+                    <div><Label className="text-xs">Max</Label><Input type="number" step="0.01" value={draft.valor_referencia_max} onChange={(e) => setDraft({ ...draft, valor_referencia_max: e.target.value })} onKeyDown={handleAddKey} /></div>
+                  </div>
+                  <div className="flex gap-2 justify-end">
+                    <Button size="sm" variant="outline" onClick={cancelAdd} disabled={saveInd.isPending}>Cancelar</Button>
+                    <Button size="sm" onClick={addIndicador} disabled={saveInd.isPending}>
+                      {saveInd.isPending && <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />}
+                      Guardar
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -230,6 +272,13 @@ function ResultadoItem({ resultado, canManage, onDownload, onDelete }: any) {
           onOpenChange={setBulkOpen}
           resultadoId={resultado.id}
           patientId={resultado.patient_id}
+        />
+      )}
+      {canManage && (
+        <ResultadoEditDialog
+          open={editOpen}
+          onOpenChange={setEditOpen}
+          resultado={resultado}
         />
       )}
     </div>

@@ -65,6 +65,32 @@ export function useDeleteResultado() {
   });
 }
 
+export function useUpdateResultado() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      id,
+      patch,
+    }: {
+      id: string;
+      patch: {
+        pdf_name?: string;
+        fecha_resultado?: string | null;
+        laboratorio_nombre?: string | null;
+        notas?: string | null;
+      };
+    }) => {
+      const { error } = await supabase.from("resultados_estudios").update(patch).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["resultados"] });
+      toast.success("Resultado actualizado");
+    },
+    onError: (e: any) => toast.error(e.message ?? "Error al actualizar resultado"),
+  });
+}
+
 export function useDownloadResultado() {
   return useMutation({
     mutationFn: async (path: string) => {
