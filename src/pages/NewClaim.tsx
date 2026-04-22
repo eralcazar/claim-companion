@@ -351,17 +351,20 @@ export default function NewClaim() {
     );
   }
 
-  const sections = definition.sections;
-  const currentSection = sections[step];
-  const isLast = step === sections.length - 1;
-  const isReview = step === sections.length; // paso extra de revisión
-
-  // El último "paso" es la revisión; paso permitido [0..sections.length]
-  const totalSteps = sections.length + 1;
+  // ── Modo dinámico (DB) o legacy (definitions) ────────────────────────
+  const legacySections = definition?.sections ?? [];
+  const totalSections = useDynamic ? dynSections.length : legacySections.length;
+  const totalSteps = totalSections + 1; // +1 paso de revisión
+  const currentLegacy = !useDynamic ? legacySections[step] : null;
+  const currentDyn = useDynamic ? dynSections[step] : null;
+  const stepTitle = step < totalSections
+    ? (useDynamic ? (currentDyn?.nombre || `Sección ${step + 1}`) : (currentLegacy?.title || ""))
+    : "Revisión y generación";
+  const formTitle = useDynamic ? `Reclamo ${insurer}` : (definition?.name || "Reclamo");
 
   return (
     <div className="space-y-4 animate-fade-in max-w-lg mx-auto pb-24">
-      <h1 className="font-heading text-2xl font-bold">{definition.name}</h1>
+      <h1 className="font-heading text-2xl font-bold">{formTitle}</h1>
       <p className="text-xs text-muted-foreground">{insurer} · {currentFormatLabel || tramite}</p>
 
       <AutofillBanner />
@@ -380,16 +383,71 @@ export default function NewClaim() {
       </div>
 
       <Card>
-        <CardHeader><CardTitle className="text-base">{step < sections.length ? currentSection.title : "Revisión y generación"}</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-base">{stepTitle}</CardTitle></CardHeader>
         <CardContent>
-          {step < sections.length ? (
-            <FormRenderer definition={definition} section={currentSection} data={data} onChange={onChange} />
+          {step < totalSections ? (
+            useDynamic && currentDyn ? (
+              <DynamicFormRenderer section={currentDyn} data={data} onChange={onChange} />
+            ) : currentLegacy && definition ? (
+              <FormRenderer definition={definition} section={currentLegacy} data={data} onChange={onChange} />
+            ) : null
           ) : (
             <div className="space-y-3 text-sm">
               <p className="text-muted-foreground text-xs">
                 Revisa todos los datos antes de generar el PDF oficial. El folio se asigna automáticamente.
               </p>
-              {sections.map((s) => {
+
+              {/* Toggle de firma electrónica (sólo si el formulario tiene un campo tipo='firma') */}
+              {useDynamic && hasFirma && (
+                <div className="rounded-md border p-3 space-y-2 bg-muted/30">
+                  <div className="flex items-center justify-between gap-2">
+                    <Label className="text-xs font-medium">Firmar electrónicamente</Label>
+                    <Switch
+                      checked={firmarElectronicamente}
+                      onCheckedChange={setFirmarElectronicamente}
+                      disabled={firmas.length === 0}
+                    />
+                  </div>
+                  {firmarElectronicamente && firmas.length > 0 && (
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Firma a usar</Label>
+                      <Select value={firmaIdSel || ""} onValueChange={setFirmaIdSel}>
+                        <SelectTrigger><SelectValue placeholder="Seleccionar firma" /></SelectTrigger>
+                        <SelectContent>
+                          {firmas.map((f) => (
+                            <SelectItem key={f.id} value={f.id}>
+                              {f.nombre} {f.es_predeterminada ? "★" : ""}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                  {firmas.length === 0 && (
+                    <p className="text-xs text-destructive">
+                      No tienes firmas guardadas.{" "}
+                      <Link to="/perfil/firmas" className="underline">Crear una firma</Link>.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {useDynamic ? (
+                dynSections.map((s) => (
+                  <div key={s.id} className="rounded-md border p-3 space-y-1.5">
+                    <p className="font-semibold text-xs text-primary mb-1">{s.nombre}</p>
+                    <div className="grid grid-cols-1 gap-1 text-xs">
+                      {s.campos.map((c) => (
+                        <div key={c.id} className="flex justify-between gap-2 border-b border-border/40 py-0.5 last:border-0">
+                          <span className="text-muted-foreground shrink-0 max-w-[55%] truncate">{c.etiqueta || c.clave}</span>
+                          <span className="font-medium text-right truncate">{fmtValue(data[c.clave])}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                legacySections.map((s) => {
                 if (s.showWhen && !s.showWhen(data)) return null;
                 return (
                   <div key={s.id} className="rounded-md border p-3 space-y-1.5">
@@ -423,7 +481,8 @@ export default function NewClaim() {
                     )}
                   </div>
                 );
-              })}
+              })
+              )}
             </div>
           )}
         </CardContent>
@@ -438,7 +497,7 @@ export default function NewClaim() {
         <Button variant="outline" className="flex-1 min-w-[120px]" onClick={handleSaveDraft}>
           <Save className="h-4 w-4 mr-1" /> Guardar borrador
         </Button>
-        {step < sections.length ? (
+        {step < totalSections ? (
           <Button className="flex-1 min-w-[120px]" disabled={!validateCurrent()} onClick={() => setStep(step + 1)}>
             Siguiente <ArrowRight className="h-4 w-4 ml-1" />
           </Button>
