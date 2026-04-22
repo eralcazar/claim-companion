@@ -12,6 +12,21 @@ import { toast } from "sonner";
 
 const ESTADO_VARIANT: Record<string, any> = { solicitado: "default", en_proceso: "secondary", completado: "outline", cancelado: "destructive" };
 const PRIO_VARIANT: Record<string, any> = { baja: "secondary", normal: "outline", urgente: "destructive" };
+const PRIO_RANK: Record<string, number> = { baja: 1, normal: 2, urgente: 3 };
+
+function getItems(estudio: any): any[] {
+  if (Array.isArray(estudio.items) && estudio.items.length > 0) return estudio.items;
+  if (estudio.tipo_estudio) {
+    return [{
+      tipo_estudio: estudio.tipo_estudio,
+      descripcion: estudio.descripcion,
+      cantidad: estudio.cantidad ?? 1,
+      prioridad: estudio.prioridad ?? "normal",
+      indicacion: estudio.indicacion,
+    }];
+  }
+  return [];
+}
 
 interface Props {
   estudio: any;
@@ -26,6 +41,11 @@ export function EstudioCard({ estudio, onEdit }: Props) {
   const canEdit = isAdmin || estudio.doctor_id === user?.id || estudio.created_by === user?.id;
   const [open, setOpen] = useState(false);
   const [loadingPdf, setLoadingPdf] = useState(false);
+  const items = getItems(estudio);
+  const visible = items.slice(0, 3);
+  const more = items.length - visible.length;
+  const maxPrio = items.reduce((acc, it) => (PRIO_RANK[it.prioridad] ?? 0) > (PRIO_RANK[acc] ?? 0) ? it.prioridad : acc, "baja");
+  const fechaStr = new Date(estudio.created_at || Date.now()).toLocaleDateString("es-MX");
 
   const cancelar = async () => {
     if (!confirm("¿Cancelar este estudio?")) return;
@@ -75,15 +95,29 @@ export function EstudioCard({ estudio, onEdit }: Props) {
           <div className="flex items-center gap-2">
             <FlaskConical className="h-5 w-5 text-primary" />
             <div>
-              <div className="font-semibold capitalize">{estudio.tipo_estudio.replace(/_/g, " ")}</div>
-              {estudio.descripcion && <div className="text-xs text-muted-foreground">{estudio.descripcion}</div>}
+              <div className="font-semibold">Solicitud · {fechaStr}</div>
+              <div className="text-xs text-muted-foreground">{items.length} estudio{items.length !== 1 ? "s" : ""}</div>
             </div>
           </div>
           <div className="flex flex-col items-end gap-1">
             <Badge variant={ESTADO_VARIANT[estudio.estado] ?? "secondary"}>{estudio.estado}</Badge>
-            <Badge variant={PRIO_VARIANT[estudio.prioridad] ?? "outline"} className="text-xs">{estudio.prioridad}</Badge>
+            <Badge variant={PRIO_VARIANT[maxPrio] ?? "outline"} className="text-xs">{maxPrio}</Badge>
           </div>
         </div>
+        <ul className="text-sm space-y-0.5 pl-1">
+          {visible.map((it, i) => (
+            <li key={i} className="flex items-start gap-1">
+              <span className="text-primary">•</span>
+              <span className="capitalize">
+                {(it.tipo_estudio ?? "").replace(/_/g, " ")}
+                {it.descripcion ? ` — ${it.descripcion}` : ""}
+                {it.cantidad && it.cantidad > 1 ? ` ×${it.cantidad}` : ""}
+                <span className="text-xs text-muted-foreground"> · {it.prioridad}</span>
+              </span>
+            </li>
+          ))}
+          {more > 0 && <li className="text-xs text-muted-foreground pl-3">y {more} más…</li>}
+        </ul>
         <div className="text-sm text-muted-foreground space-y-0.5">
           {estudio.ayuno_obligatorio && <div>⚠️ Ayuno {estudio.horas_ayuno ? `${estudio.horas_ayuno}h` : "obligatorio"}</div>}
           {estudio.preparacion && <div>Preparación: {estudio.preparacion}</div>}

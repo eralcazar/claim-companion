@@ -27,7 +27,13 @@ export default function Estudios() {
 
   const groups: Record<string, any[]> = { solicitado: [], en_proceso: [], completado: [], cancelado: [] };
   for (const e of estudios) {
-    if (q && !`${e.tipo_estudio} ${e.descripcion ?? ""}`.toLowerCase().includes(q.toLowerCase())) continue;
+    if (q) {
+      const items = Array.isArray(e.items) && e.items.length > 0
+        ? e.items
+        : [{ tipo_estudio: e.tipo_estudio, descripcion: e.descripcion }];
+      const haystack = items.map((it: any) => `${it.tipo_estudio ?? ""} ${it.descripcion ?? ""}`).join(" ").toLowerCase();
+      if (!haystack.includes(q.toLowerCase())) continue;
+    }
     (groups[e.estado] ??= []).push(e);
   }
 
