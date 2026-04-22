@@ -114,6 +114,16 @@ export function FieldsTable({ formularioId, secciones }: Props) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkConfirm, setBulkConfirm] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+  const toggleExpand = (id: string) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   useEffect(() => {
     setDraft(campos);
@@ -197,6 +207,7 @@ export function FieldsTable({ formularioId, secciones }: Props) {
   };
 
   const getCatalogo = (c: Campo): CatalogoTipo | null => {
+    if (c.mapeo_perfil === FIRMA_MAPPING_ID) return "firma";
     if (c.mapeo_perfil !== null && c.mapeo_perfil !== undefined) return "perfil";
     if (c.mapeo_poliza !== null && c.mapeo_poliza !== undefined) return "poliza";
     if (c.mapeo_siniestro !== null && c.mapeo_siniestro !== undefined) return "siniestro";
@@ -206,7 +217,7 @@ export function FieldsTable({ formularioId, secciones }: Props) {
 
   const setCatalogo = (id: string, t: CatalogoTipo | null) => {
     update(id, {
-      mapeo_perfil: t === "perfil" ? "" : null,
+      mapeo_perfil: t === "perfil" ? "" : t === "firma" ? FIRMA_MAPPING_ID : null,
       mapeo_poliza: t === "poliza" ? "" : null,
       mapeo_siniestro: t === "siniestro" ? "" : null,
       mapeo_medico: t === "medico" ? "" : null,
@@ -215,7 +226,7 @@ export function FieldsTable({ formularioId, secciones }: Props) {
 
   const setCampoMapeo = (id: string, t: CatalogoTipo, mapeoId: string | null) => {
     update(id, {
-      mapeo_perfil: t === "perfil" ? mapeoId : null,
+      mapeo_perfil: t === "perfil" ? mapeoId : t === "firma" ? FIRMA_MAPPING_ID : null,
       mapeo_poliza: t === "poliza" ? mapeoId : null,
       mapeo_siniestro: t === "siniestro" ? mapeoId : null,
       mapeo_medico: t === "medico" ? mapeoId : null,
@@ -227,7 +238,8 @@ export function FieldsTable({ formularioId, secciones }: Props) {
     if (t === "perfil") return mapeos.perfiles;
     if (t === "poliza") return mapeos.polizas;
     if (t === "siniestro") return mapeos.siniestros;
-    return mapeos.medicos;
+    if (t === "medico") return mapeos.medicos;
+    return [];
   };
 
   const addNew = () => {
