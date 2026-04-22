@@ -7,13 +7,20 @@ import {
 } from "@/hooks/useTendencias";
 import { usePatients } from "@/hooks/usePatients";
 import { IndicadorTrendChart } from "@/components/tendencias/IndicadorTrendChart";
+import {
+  IndicadorCompareChart,
+  COMPARE_COLORS,
+} from "@/components/tendencias/IndicadorCompareChart";
 import { Input } from "@/components/ui/input";
-import { Search, TrendingUp } from "lucide-react";
+import { Search, TrendingUp, X } from "lucide-react";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Checkbox } from "@/components/ui/checkbox";
+import { toast } from "sonner";
 
 export default function Tendencias() {
   const { user, roles } = useAuth();
@@ -44,6 +51,28 @@ export default function Tendencias() {
     [filteredByRango, q],
   );
 
+  const [modo, setModo] = useState<"individual" | "comparar">("individual");
+  const [seleccionados, setSeleccionados] = useState<string[]>([]);
+
+  const toggleSeleccion = (nombre: string) => {
+    setSeleccionados((prev) => {
+      if (prev.includes(nombre)) return prev.filter((n) => n !== nombre);
+      if (prev.length >= 3) {
+        toast.error("Máximo 3 indicadores");
+        return prev;
+      }
+      return [...prev, nombre];
+    });
+  };
+
+  const indicadoresComparar = useMemo(
+    () =>
+      seleccionados
+        .map((nombre) => filteredByRango.find((i) => i.nombre === nombre))
+        .filter((i): i is NonNullable<typeof i> => !!i && i.puntos.length > 0),
+    [seleccionados, filteredByRango],
+  );
+
   return (
     <div className="container py-6 space-y-4 max-w-6xl">
       <div className="flex items-center gap-3">
@@ -57,6 +86,13 @@ export default function Tendencias() {
           </p>
         </div>
       </div>
+
+      <Tabs value={modo} onValueChange={(v) => setModo(v as "individual" | "comparar")}>
+        <TabsList>
+          <TabsTrigger value="individual">Vista individual</TabsTrigger>
+          <TabsTrigger value="comparar">Comparar indicadores</TabsTrigger>
+        </TabsList>
+      </Tabs>
 
       <div className="flex flex-wrap gap-3 items-center">
         <div className="relative">
