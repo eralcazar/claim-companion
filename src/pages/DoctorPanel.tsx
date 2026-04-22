@@ -82,7 +82,33 @@ export default function DoctorPanel() {
     enabled: !!user,
   });
 
-  const appointments = data;
+  // Set of appointment IDs that have a receta
+  const { data: aptIdsWithReceta } = useQuery({
+    queryKey: ["doctor-appts-with-receta", user?.id, (data ?? []).map((a: any) => a.id).join(",")],
+    enabled: !!user && (data?.length ?? 0) > 0,
+    queryFn: async () => {
+      const ids = (data ?? []).map((a: any) => a.id);
+      if (ids.length === 0) return new Set<string>();
+      const { data: rows } = await supabase
+        .from("recetas")
+        .select("appointment_id")
+        .in("appointment_id", ids);
+      return new Set((rows ?? []).map((r: any) => r.appointment_id).filter(Boolean));
+    },
+  });
+
+  const appointments = (data ?? []).filter((apt: any) => {
+    if (sinReceta && aptIdsWithReceta?.has(apt.id)) return false;
+    return true;
+  });
+
+  // Assigned patients tab
+  const { data: assigned = [], isLoading: loadingPatients } = useAssignedPatients("medico");
+  const filteredPatients = assigned.filter((p) =>
+    !searchPatient ||
+    p.patient_name?.toLowerCase().includes(searchPatient.toLowerCase()) ||
+    p.patient_email?.toLowerCase().includes(searchPatient.toLowerCase())
+  );
 
   return (
     <div className="space-y-6 animate-fade-in max-w-lg mx-auto">
@@ -91,7 +117,13 @@ export default function DoctorPanel() {
         Panel Médico
       </h1>
 
-      <div className="space-y-3">
+      <Tabs defaultValue="agenda">
+        <TabsList>
+          <TabsTrigger value="agenda"><Calendar className="h-4 w-4 mr-1" />Agenda</TabsTrigger>
+          <TabsTrigger value="pacientes"><Users className="h-4 w-4 mr-1" />Mis pacientes</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="agenda" className="space-y-3 mt-4">
         <ToggleGroup
           type="single"
           value={filterMode}
@@ -132,12 +164,16 @@ export default function DoctorPanel() {
           </div>
         )}
 
+        <div className="flex items-center gap-2">
+          <Switch id="sin-receta" checked={sinReceta} onCheckedChange={setSinReceta} />
+          <Label htmlFor="sin-receta" className="text-sm cursor-pointer">Solo sin receta</Label>
+        </div>
+
         {!isLoading && (
           <p className="text-xs text-muted-foreground">
             {appointments?.length ?? 0} {(appointments?.length ?? 0) === 1 ? "cita" : "citas"}
           </p>
         )}
-      </div>
 
       {isLoading ? (
         <div className="flex justify-center p-8"><div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" /></div>
@@ -164,6 +200,37 @@ export default function DoctorPanel() {
           ))}
         </div>
       )}
+        </TabsContent>
+
+        <TabsContent value="pacientes" className="space-y-3 mt-4">
+          <Input
+            placeholder="Buscar paciente..."
+            value={searchPatient}
+            onChange={(e) => setSearchPatient(e.target.value)}
+          />
+          {loadingPatients ? (
+            <div className="flex justify-center p-8"><div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" /></div>
+          ) : filteredPatients.length === 0 ? (
+            <Card><CardContent className="p-8 text-center text-muted-foreground">Sin pacientes asignados.</CardContent></Card>
+          ) : (
+            <div className="space-y-2">
+              {filteredPatients.map((p) => (
+                <Link key={p.id} to={`/personal/paciente/${p.patient_id}`}>
+                  <Card className="hover:bg-accent/30 transition-colors">
+                    <CardContent className="p-4 flex items-center justify-between">
+                      <div>
+                        <p className="font-medium">{p.patient_name}</p>
+                        <p className="text-xs text-muted-foreground">{p.patient_email}</p>
+                      </div>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                    </CardContent>
+                  </Card>
+                </Link>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
 
       <AppointmentDetailDialog
         appointment={detail?.apt ?? null}
