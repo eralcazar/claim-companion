@@ -71,3 +71,46 @@ export async function drawCheckmark(
 
   return pdfDoc.save();
 }
+
+export interface ImageOverlay {
+  page: number;       // 0-indexed
+  x: number;          // PDF points (bottom-left origin)
+  y: number;
+  width: number;      // PDF points
+  height: number;
+  dataUrl: string;    // PNG base64 dataURL
+}
+
+/**
+ * Estampa una o más imágenes (firmas) dentro del PDF.
+ * Acepta dataURL PNG (las firmas del canvas siempre son PNG).
+ */
+export async function drawImages(
+  pdfBytes: ArrayBuffer | Uint8Array,
+  images: ImageOverlay[]
+): Promise<Uint8Array> {
+  const pdfDoc = await PDFDocument.load(pdfBytes);
+  const pages = pdfDoc.getPages();
+
+  for (const img of images) {
+    if (!img.dataUrl) continue;
+    const page = pages[img.page];
+    if (!page) continue;
+    try {
+      // Extraer base64 del dataURL
+      const b64 = img.dataUrl.split(",")[1] || img.dataUrl;
+      const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+      const png = await pdfDoc.embedPng(bytes);
+      page.drawImage(png, {
+        x: img.x,
+        y: img.y,
+        width: img.width,
+        height: img.height,
+      });
+    } catch (err) {
+      console.warn("[drawImages] no se pudo dibujar imagen", err);
+    }
+  }
+
+  return pdfDoc.save();
+}
