@@ -38,6 +38,7 @@ import PharmacyPanel from "@/pages/PharmacyPanel";
 import PatientView from "@/pages/PatientView";
 import ClaimsWithoutReport from "@/pages/medico/ClaimsWithoutReport";
 import PatientPersonnelPage, { AdminPatientPersonnelPage } from "@/pages/PatientPersonnelPage";
+import CheckoutReturn from "@/pages/CheckoutReturn";
 
 const queryClient = new QueryClient();
 
@@ -82,6 +83,7 @@ const App = () => (
               <Route path="/admin/especialidades" element={<EspecialidadesCatalog />} />
               <Route path="/admin/medicos" element={<MedicosManager />} />
               <Route path="/medico/perfil" element={<DoctorProfile />} />
+              <Route path="/checkout/return" element={<CheckoutReturn />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>

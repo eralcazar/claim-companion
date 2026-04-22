@@ -2,6 +2,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Pill, Download, Pencil, Trash2, Ban, BellRing, Square } from "lucide-react";
+import { CartBuilder } from "@/components/pharmacy/CartBuilder";
 import { useDeleteReceta, useUpdateReceta } from "@/hooks/useRecetas";
 import { generateRecetaPDF } from "./recetaPdf";
 import { useAuth } from "@/contexts/AuthContext";
@@ -171,6 +172,9 @@ export function RecetaCard({ receta, onEdit }: Props) {
             <Button size="sm" variant="ghost" className="text-destructive" onClick={() => { if (confirm("¿Eliminar?")) del.mutate(receta.id); }}>
               <Trash2 className="h-3.5 w-3.5" />
             </Button>
+          )}
+          {isPatient && receta.estado === "activa" && (
+            <CartBuilder patientId={receta.patient_id} recetaId={receta.id} triggerLabel="Comprar en farmacia" />
           )}
         </div>
       </CardContent>
