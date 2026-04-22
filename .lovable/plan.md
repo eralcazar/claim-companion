@@ -2,100 +2,76 @@
 
 ## Objetivo
 
-Dos funcionalidades nuevas para el manejo de resultados de estudios médicos:
+Dos mejoras en `ResultadosManager`:
 
-1. **Exportar tendencias**: botón en `/tendencias` para descargar un CSV con los indicadores filtrados (rango de fechas + búsqueda + selección en modo comparar) y opción de compartir vía Web Share API en móvil.
-2. **Carga masiva de indicadores**: botón en `ResultadosManager` para descargar un layout CSV plantilla y subir múltiples indicadores de un resultado de una sola vez.
-
-Usamos **CSV** (no .xlsx) para mantener la app liviana, sin dependencias nuevas, y porque ya existe `CSVImportDialog` reutilizable con `Papaparse`.
+1. **Editar metadata del resultado**: permitir cambiar el nombre del estudio (`pdf_name`), fecha del resultado (`fecha_resultado`), laboratorio (`laboratorio_nombre`) y notas, vía un dialog de edición.
+2. **Botón explícito "Agregar indicador"**: convertir el formulario inline (que hoy aparece siempre al pie de la lista) en un formulario que sólo se muestra al pulsar un botón **"+ Agregar indicador"**, con botones Guardar/Cancelar.
 
 ## Cambios
 
-### Parte 1 — Exportar tendencias
+### 1. Hook nuevo: `useUpdateResultado`
 
-#### 1.1 Helper: `src/lib/exportTendenciasCSV.ts`
-
-- Función `exportTendenciasToCSV(indicadores, opciones)`:
-  - Inputs: `TendenciaIndicador[]` filtrado, `{ pacienteNombre, rangoLabel, modo }`.
-  - Genera dos secciones en un mismo CSV (separadas por línea en blanco):
-    - **Cabecera meta**: 3 filas con paciente, rango y fecha de generación.
-    - **Resumen**: una fila por indicador → Nombre, Unidad, Ref. mín, Ref. máx, # mediciones, Primera fecha, Última fecha, Último valor, Estado (Normal/Fuera de rango/N/A).
-    - **Detalle**: una fila por punto → Indicador, Fecha, Valor, Unidad, Ref. mín, Ref. máx, ¿Normal?, Tipo de estudio.
-  - Escapa comillas y comas correctamente. Devuelve `{ blob, filename }` con nombre `tendencias_{paciente}_{YYYYMMDD}.csv`.
-
-#### 1.2 Componente: `src/components/tendencias/ExportTendenciasButton.tsx`
-
-- Props: `indicadores`, `pacienteNombre`, `rangoLabel`, `modo`.
-- Botón principal con ícono `Download` + texto "Exportar". En mobile (`<sm`) sólo el ícono.
-- `DropdownMenu` con dos acciones:
-  - **Descargar CSV** → genera blob y descarga vía `<a download>`.
-  - **Compartir** → si `navigator.canShare({ files: [file] })`, usa `navigator.share`; si no, fallback a descarga + toast.
-- Deshabilitado si `indicadores.length === 0`.
-
-#### 1.3 Integrar en `Tendencias.tsx`
-
-- Importar `ExportTendenciasButton`.
-- Calcular `pacienteNombre` (lookup en `patients` o `user.user_metadata.full_name`).
-- Calcular `rangoLabel` legible desde `rangoFechas`.
-- Determinar dataset según modo: `filtered` (individual) o `indicadoresComparar` (comparar).
-- Colocar el botón en la barra de filtros con `ml-auto` para alineación a la derecha.
-
-### Parte 2 — Carga masiva de indicadores
-
-#### 2.1 Componente: `src/components/estudios/IndicadoresBulkImportDialog.tsx`
-
-- Reutiliza `CSVImportDialog` ya existente.
-- Plantilla con columnas: `nombre_indicador, valor, unidad, valor_referencia_min, valor_referencia_max`.
-- Fila de ejemplo: `Glucosa,95,mg/dL,70,100`.
-- Filename: `layout_indicadores.csv`.
-- `parseRow`:
-  - `nombre_indicador` obligatorio (no vacío).
-  - `valor`, `min`, `max` opcionales pero deben ser numéricos si vienen.
-  - Valida `min <= max` cuando ambos existen.
-  - Calcula `es_normal` y `flagged` igual que `IndicadorEditRow`.
-- `onImport` recibe array, hace `bulkInsert` vía nuevo hook `useBulkInsertIndicadores` (un solo `.insert([...])` a `indicadores_estudio`).
-- Toast de éxito con conteo.
-
-#### 2.2 Hook nuevo en `useResultadosEstudio.ts`
+En `src/hooks/useResultadosEstudio.ts`:
 
 ```ts
-export function useBulkInsertIndicadores() { ... }
+export function useUpdateResultado() { ... }
 ```
-- Recibe `{ resultado_id, patient_id, rows: [...] }`.
-- Mapea cada `row` agregando `resultado_id` y `patient_id`.
-- Inserta en bloque con `supabase.from("indicadores_estudio").insert(rows)`.
-- Invalida `["indicadores", resultado_id]` al éxito.
+- Recibe `{ id, patch: { pdf_name?, fecha_resultado?, laboratorio_nombre?, notas? } }`.
+- Hace `supabase.from("resultados_estudios").update(patch).eq("id", id)`.
+- Invalida `["resultados"]` y muestra toast.
 
-#### 2.3 Integrar en `ResultadoItem` (ResultadosManager.tsx)
+Nota: el `pdf_name` es sólo el nombre mostrado/etiqueta del estudio. **No** se renombra el archivo en Storage (eso requeriría copy+delete y romperia el `pdf_path`). Se cambia únicamente la etiqueta visible.
 
-- Añadir estado `bulkOpen: boolean`.
-- Junto a "Extraer con IA" agregar botón **"Importar CSV"** (ícono `FileUp`).
-- Al abrir, monta `<IndicadoresBulkImportDialog resultadoId={...} patientId={...} open={bulkOpen} onOpenChange={setBulkOpen} />`.
-- Sólo visible si `canManage`.
+### 2. Componente nuevo: `ResultadoEditDialog`
 
-### Detalles UX
+Archivo: `src/components/estudios/ResultadoEditDialog.tsx`.
 
-- Layout CSV usa los **mismos nombres de columna** que la base, así un usuario técnico puede editarlo en Excel/Google Sheets sin confusión.
-- Mensaje en el diálogo: "Las filas con errores se omitirán. Los campos numéricos usan punto como separador decimal."
-- Botón de exportar tendencias y dropdown de compartir consistentes con el resto de UI (variant outline, size sm).
-- En móvil, el botón Importar CSV se acomoda en el `flex-wrap` existente de la barra de acciones del resultado.
-- El export y el bulk import son 100% client-side (excepto el insert final a Supabase).
+- Props: `open`, `onOpenChange`, `resultado`.
+- Dialog con campos:
+  - **Nombre del estudio** (`pdf_name`, text, requerido).
+  - **Fecha del resultado** (`fecha_resultado`, date).
+  - **Laboratorio** (`laboratorio_nombre`, text).
+  - **Notas** (`notas`, textarea).
+- Hidrata estado desde `resultado` cuando `open` cambia.
+- Botones Cancelar / Guardar; al guardar llama `useUpdateResultado.mutateAsync` y cierra.
+
+### 3. Modificar `ResultadoItem` en `ResultadosManager.tsx`
+
+#### 3a. Header del resultado: botón Editar
+
+- Añadir botón con ícono `Pencil` en el grupo de acciones del header (entre Download y Trash) cuando `canManage`.
+- Estado local `editOpen: boolean`; click abre el `ResultadoEditDialog`.
+- El nombre del estudio (`resultado.pdf_name`) sigue mostrándose como título.
+
+#### 3b. Botón "Agregar indicador"
+
+- Reemplazar el grid inline siempre-visible por:
+  - Estado `addingIndicador: boolean` (default `false`).
+  - Cuando `addingIndicador === false`: mostrar botón **`+ Agregar indicador manual`** (variant `outline`, size `sm`, ícono `Plus`).
+  - Cuando `addingIndicador === true`: mostrar el grid actual de 5 inputs (`nombre`, `valor`, `unidad`, `min`, `max`) + dos botones: **Guardar** (verde, llama `addIndicador` y al terminar setea `addingIndicador=false`) y **Cancelar** (limpia draft y cierra).
+- Validación mínima: `nombre_indicador` requerido (toast de error si vacío). Toast de éxito tras guardar.
+- El cálculo de `es_normal`/`flagged` se mantiene exactamente como hoy.
+
+### 4. Detalles UX
+
+- El botón "Agregar indicador" sólo se muestra si `canManage` y `showInd === true` (ya estaban abiertos los indicadores).
+- El dialog de edición de resultado reutiliza componentes `Dialog`, `Input`, `Label`, `Textarea` existentes.
+- Atajo de teclado en el form de agregar indicador: `Enter` en cualquier input dispara Guardar; `Escape` cancela.
+- Tooltip en el botón Pencil del header: "Editar datos del resultado".
+- En móvil (viewport actual ~984px), los botones se acomodan con el `flex-wrap` ya existente.
 
 ## Archivos
 
 **Creados:**
-- `src/lib/exportTendenciasCSV.ts`
-- `src/components/tendencias/ExportTendenciasButton.tsx`
-- `src/components/estudios/IndicadoresBulkImportDialog.tsx`
+- `src/components/estudios/ResultadoEditDialog.tsx`
 
 **Modificados:**
-- `src/pages/Tendencias.tsx` — agregar botón Exportar a la barra de filtros.
-- `src/components/estudios/ResultadosManager.tsx` — agregar botón "Importar CSV" en `ResultadoItem`.
-- `src/hooks/useResultadosEstudio.ts` — nuevo `useBulkInsertIndicadores`.
+- `src/hooks/useResultadosEstudio.ts` — nuevo `useUpdateResultado`.
+- `src/components/estudios/ResultadosManager.tsx` — botón Pencil + dialog en header del resultado; reemplazar grid inline por botón "Agregar indicador" con form colapsable.
 
 ## Resultado esperado
 
-**Tendencias**: usuario filtra por "Últimos 6 meses" + busca "glucosa" → click en "Exportar" → opciones "Descargar CSV" o "Compartir" → recibe `tendencias_juan_perez_20260422.csv` con resumen y detalle. En modo comparar, sólo se exportan los 2-3 indicadores seleccionados.
+**Editar resultado**: usuario hace click en el ícono de lápiz junto al nombre del PDF → abre dialog con 4 campos pre-llenados → modifica nombre del estudio (ej. "Hemograma completo") + fecha + lab + notas → Guardar → la tarjeta del resultado se actualiza inmediatamente.
 
-**Carga masiva**: médico abre un resultado → click "Importar CSV" → descarga `layout_indicadores.csv` → completa filas en Excel → sube → ve preview con válidas/erróneas → confirma → todos los indicadores aparecen en la lista del resultado y alimentan automáticamente la página de tendencias.
+**Agregar indicador**: usuario abre "Ver indicadores" → debajo de la lista aparece botón **"+ Agregar indicador manual"** → click muestra el formulario de 5 campos con Guardar/Cancelar → al guardar el indicador aparece en la lista, el form se cierra y queda listo para agregar otro pulsando el botón nuevamente.
 
