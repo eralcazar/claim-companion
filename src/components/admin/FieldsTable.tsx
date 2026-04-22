@@ -379,8 +379,8 @@ export function FieldsTable({ formularioId, secciones }: Props) {
               );
               const seccionesOpts = seccionesPagina.length > 0 ? seccionesPagina : secciones;
               return (
+                <FragmentWithKey key={c.id}>
                 <TableRow
-                  key={c.id}
                   className={cn(isDirty && "bg-warning/5", isSelected && "bg-primary/5")}
                 >
                   <TableCell>
@@ -615,7 +615,7 @@ export function FieldsTable({ formularioId, secciones }: Props) {
                   </TableCell>
                 </TableRow>
                 {isExpanded && supportsOptions && (
-                  <TableRow key={`${c.id}-opts`} className="bg-muted/10">
+                  <TableRow className="bg-muted/10">
                     <TableCell colSpan={18} className="p-3">
                       <CampoOpcionesEditor
                         opciones={(Array.isArray(c.opciones) ? (c.opciones as CampoOpcion[]) : []) as CampoOpcion[]}
@@ -625,7 +625,7 @@ export function FieldsTable({ formularioId, secciones }: Props) {
                     </TableCell>
                   </TableRow>
                 )}
-                </>
+                </FragmentWithKey>
               );
             })}
           </TableBody>
