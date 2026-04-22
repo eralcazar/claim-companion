@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Trash2, Save, Search, Upload } from "lucide-react";
+import { Plus, Trash2, Save, Search, Upload, ChevronDown, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -42,6 +42,7 @@ import {
 } from "@/hooks/useFormatos";
 import { cn } from "@/lib/utils";
 import { CSVImportDialog, type CSVValidationResult } from "./CSVImportDialog";
+import { CampoOpcionesEditor, type CampoOpcion } from "./CampoOpcionesEditor";
 
 const TIPOS = [
   "texto", "numero", "fecha", "checkbox", "radio", "select",
@@ -55,7 +56,8 @@ const NO_SECTION_VALUE = "__none_section__";
 const NO_CATALOG = "__no_catalog__";
 const NO_MAPPING = "__no_mapping__";
 
-type CatalogoTipo = "perfil" | "poliza" | "siniestro" | "medico";
+type CatalogoTipo = "perfil" | "poliza" | "siniestro" | "medico" | "firma";
+const FIRMA_MAPPING_ID = "firma_usuario";
 
 function blankCampo(formularioId: string, orden: number): Campo {
   return {
