@@ -11,7 +11,6 @@ import { useLowStock } from "@/hooks/useInventory";
 import { PaymentTestModeBanner } from "@/components/PaymentTestModeBanner";
 import { useAuth } from "@/contexts/AuthContext";
 import { AlertTriangle, Boxes } from "lucide-react";
-import { Link } from "react-router-dom";
 
 function LowStockWidget() {
   const lowStock = useLowStock();
