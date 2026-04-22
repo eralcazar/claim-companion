@@ -3,6 +3,7 @@ import {
 } from "lucide-react";
 import { NavLink as RouterNavLink, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useImpersonation } from "@/contexts/ImpersonationContext";
 import { usePermissions } from "@/hooks/usePermissions";
 import type { FeatureKey } from "@/lib/features";
 import {
@@ -71,6 +72,7 @@ export function AppSidebar() {
   const collapsed = state === "collapsed";
   const location = useLocation();
   const { roles, signOut, user } = useAuth();
+  const { actingAsPatientId } = useImpersonation();
   const { can } = usePermissions();
 
   const isActive = (path: string) => location.pathname === path;
@@ -84,8 +86,8 @@ export function AppSidebar() {
   const visibleAdmin = adminItems.filter((i) => can(i.feature));
 
   // Acceso del paciente a su propio consultorio digital (solo lectura del mapa corporal).
-  const showPatientConsultorio =
-    !!user && roles.includes("paciente") && !roles.includes("medico");
+  const patientConsultorioId = actingAsPatientId ?? user?.id;
+  const showPatientConsultorio = !!patientConsultorioId && (roles.includes("paciente") || !!actingAsPatientId);
 
   return (
     <Sidebar collapsible="icon">
@@ -108,7 +110,7 @@ export function AppSidebar() {
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild isActive={location.pathname === "/consultorio"}>
                     <RouterNavLink
-                      to={`/consultorio?paciente=${user!.id}`}
+                      to={`/consultorio?paciente=${patientConsultorioId}`}
                       className={cn("flex items-center gap-2")}
                     >
                       <Stethoscope className="h-4 w-4" />
