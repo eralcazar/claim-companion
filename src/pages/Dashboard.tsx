@@ -2,7 +2,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Calendar, Pill, FileText, Clock } from "lucide-react";
+import { Calendar, Pill, FileText, Clock, Stethoscope } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
@@ -87,6 +87,15 @@ export default function Dashboard() {
       >
         <FileText className="mr-2 h-5 w-5" />
         Nuevo Reclamo
+      </Button>
+
+      <Button
+        variant="outline"
+        className="w-full h-12 text-base font-semibold"
+        onClick={() => navigate(`/consultorio?paciente=${user?.id}`)}
+      >
+        <Stethoscope className="mr-2 h-5 w-5" />
+        Mi Consultorio digital
       </Button>
 
       {/* Upcoming appointments */}

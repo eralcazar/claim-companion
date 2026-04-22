@@ -52,6 +52,19 @@ export default function Consultorio() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [freeMode, searchParams]);
 
+  // Si no llega ?paciente y el usuario no tiene pacientes asignados (ej. es paciente),
+  // autoseleccionar su propio user_id para que vea su propio mapa corporal.
+  useEffect(() => {
+    if (!freeMode || freePatientId || !user) return;
+    const pid = searchParams.get("paciente");
+    if (!pid && assignedPatients.length === 0) {
+      setFreePatientId(user.id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [freeMode, user, assignedPatients.length]);
+
+  const isSelfView = freeMode && !!user && freePatientId === user.id;
+
   const { data: appointment, isLoading } = useQuery({
     queryKey: ["consultorio-appointment", appointmentId],
     enabled: !!appointmentId,
@@ -172,27 +185,33 @@ export default function Consultorio() {
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
               <User className="h-4 w-4 text-primary" />
-              Selecciona un paciente
+              {isSelfView ? "Mi mapa corporal" : "Selecciona un paciente"}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            <Select value={freePatientId} onValueChange={setFreePatientId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Elige un paciente asignado..." />
-              </SelectTrigger>
-              <SelectContent>
-                {assignedPatients.length === 0 ? (
-                  <div className="p-3 text-sm text-muted-foreground">Sin pacientes asignados.</div>
-                ) : (
-                  assignedPatients.map((p) => (
-                    <SelectItem key={p.patient_id} value={p.patient_id}>
-                      {p.patient_name}{p.patient_email ? ` · ${p.patient_email}` : ""}
-                    </SelectItem>
-                  ))
-                )}
-              </SelectContent>
-            </Select>
-            {selected && (
+            {isSelfView ? (
+              <p className="text-sm text-muted-foreground">
+                Aquí puedes consultar las anotaciones que tu médico ha registrado sobre tu cuerpo.
+              </p>
+            ) : (
+              <Select value={freePatientId} onValueChange={setFreePatientId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Elige un paciente asignado..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {assignedPatients.length === 0 ? (
+                    <div className="p-3 text-sm text-muted-foreground">Sin pacientes asignados.</div>
+                  ) : (
+                    assignedPatients.map((p) => (
+                      <SelectItem key={p.patient_id} value={p.patient_id}>
+                        {p.patient_name}{p.patient_email ? ` · ${p.patient_email}` : ""}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            )}
+            {selected && !isSelfView && (
               <Button asChild variant="outline" size="sm">
                 <Link to={`/personal/paciente/${selected.patient_id}`}>Ver expediente completo</Link>
               </Button>
@@ -203,8 +222,8 @@ export default function Consultorio() {
         {freePatientId ? (
           <BodyMapEditor
             patientId={freePatientId}
-            canEdit={true}
-            title="Mapa corporal · Exploración libre"
+            canEdit={!isSelfView}
+            title={isSelfView ? "Mi mapa corporal" : "Mapa corporal · Exploración libre"}
             showQuickRegionAccess={true}
           />
         ) : (
