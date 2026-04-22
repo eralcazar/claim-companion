@@ -1283,6 +1283,167 @@ export type Database = {
         }
         Relationships: []
       }
+      pharmacy_catalog: {
+        Row: {
+          activo: boolean
+          created_at: string
+          descripcion: string | null
+          id: string
+          moneda: string
+          nombre: string
+          precio_centavos: number
+          presentacion: string | null
+          stripe_price_id: string | null
+          stripe_product_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          activo?: boolean
+          created_at?: string
+          descripcion?: string | null
+          id?: string
+          moneda?: string
+          nombre: string
+          precio_centavos: number
+          presentacion?: string | null
+          stripe_price_id?: string | null
+          stripe_product_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          activo?: boolean
+          created_at?: string
+          descripcion?: string | null
+          id?: string
+          moneda?: string
+          nombre?: string
+          precio_centavos?: number
+          presentacion?: string | null
+          stripe_price_id?: string | null
+          stripe_product_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      pharmacy_order_items: {
+        Row: {
+          cantidad: number
+          catalog_id: string | null
+          created_at: string
+          id: string
+          nombre_snapshot: string
+          order_id: string
+          precio_unitario_centavos: number
+          presentacion_snapshot: string | null
+          subtotal_centavos: number
+        }
+        Insert: {
+          cantidad?: number
+          catalog_id?: string | null
+          created_at?: string
+          id?: string
+          nombre_snapshot: string
+          order_id: string
+          precio_unitario_centavos: number
+          presentacion_snapshot?: string | null
+          subtotal_centavos: number
+        }
+        Update: {
+          cantidad?: number
+          catalog_id?: string | null
+          created_at?: string
+          id?: string
+          nombre_snapshot?: string
+          order_id?: string
+          precio_unitario_centavos?: number
+          presentacion_snapshot?: string | null
+          subtotal_centavos?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pharmacy_order_items_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacy_catalog"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pharmacy_order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacy_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pharmacy_orders: {
+        Row: {
+          created_at: string
+          created_by: string
+          environment: string
+          fulfilled_at: string | null
+          fulfilled_by: string | null
+          id: string
+          moneda: string
+          notas: string | null
+          paid_at: string | null
+          patient_id: string
+          receta_id: string | null
+          status: Database["public"]["Enums"]["pharmacy_order_status"]
+          stripe_payment_intent_id: string | null
+          stripe_session_id: string | null
+          subtotal_centavos: number
+          total_centavos: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          environment?: string
+          fulfilled_at?: string | null
+          fulfilled_by?: string | null
+          id?: string
+          moneda?: string
+          notas?: string | null
+          paid_at?: string | null
+          patient_id: string
+          receta_id?: string | null
+          status?: Database["public"]["Enums"]["pharmacy_order_status"]
+          stripe_payment_intent_id?: string | null
+          stripe_session_id?: string | null
+          subtotal_centavos?: number
+          total_centavos?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          environment?: string
+          fulfilled_at?: string | null
+          fulfilled_by?: string | null
+          id?: string
+          moneda?: string
+          notas?: string | null
+          paid_at?: string | null
+          patient_id?: string
+          receta_id?: string | null
+          status?: Database["public"]["Enums"]["pharmacy_order_status"]
+          stripe_payment_intent_id?: string | null
+          stripe_session_id?: string | null
+          subtotal_centavos?: number
+          total_centavos?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pharmacy_orders_receta_id_fkey"
+            columns: ["receta_id"]
+            isOneToOne: false
+            referencedRelation: "recetas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           address: string | null
@@ -1720,6 +1881,11 @@ export type Database = {
         | "cada_6_horas"
         | "cada_48_horas"
         | "personalizado"
+      pharmacy_order_status:
+        | "pendiente_pago"
+        | "pagada"
+        | "surtida"
+        | "cancelada"
       policy_status: "activa" | "inactiva"
       receta_estado: "activa" | "completada" | "cancelada"
       receta_frecuencia:
@@ -1891,6 +2057,12 @@ export const Constants = {
         "cada_6_horas",
         "cada_48_horas",
         "personalizado",
+      ],
+      pharmacy_order_status: [
+        "pendiente_pago",
+        "pagada",
+        "surtida",
+        "cancelada",
       ],
       policy_status: ["activa", "inactiva"],
       receta_estado: ["activa", "completada", "cancelada"],
