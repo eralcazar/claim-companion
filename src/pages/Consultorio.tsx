@@ -1,4 +1,4 @@
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -41,6 +41,16 @@ export default function Consultorio() {
 
   const freeMode = !appointmentId;
   const { data: assignedPatients = [] } = useAssignedPatients("medico");
+  const [searchParams] = useSearchParams();
+
+  useEffect(() => {
+    if (!freeMode) return;
+    const pid = searchParams.get("paciente");
+    if (pid && pid !== freePatientId) {
+      setFreePatientId(pid);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [freeMode, searchParams]);
 
   const { data: appointment, isLoading } = useQuery({
     queryKey: ["consultorio-appointment", appointmentId],
