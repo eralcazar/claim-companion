@@ -36,6 +36,7 @@ const brokerItems: Item[] = [
 
 const doctorItems: Item[] = [
   { title: "Panel Médico", url: "/medico", icon: Stethoscope, feature: "doctor_panel" },
+  { title: "Consultorio digital", url: "/consultorio", icon: Stethoscope, feature: "consultorio" },
   { title: "Reclamos sin informe", url: "/medico/reclamos-sin-informe", icon: FileWarning, feature: "claims_without_report" },
   { title: "Mi Perfil Médico", url: "/medico/perfil", icon: BadgeCheck, feature: "doctor_profile" },
 ];
@@ -69,7 +70,7 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const location = useLocation();
-  const { roles, signOut } = useAuth();
+  const { roles, signOut, user } = useAuth();
   const { can } = usePermissions();
 
   const isActive = (path: string) => location.pathname === path;
@@ -81,6 +82,10 @@ export function AppSidebar() {
   const visibleLab = labItems.filter((i) => can(i.feature));
   const visiblePharmacy = pharmacyItems.filter((i) => can(i.feature));
   const visibleAdmin = adminItems.filter((i) => can(i.feature));
+
+  // Acceso del paciente a su propio consultorio digital (solo lectura del mapa corporal).
+  const showPatientConsultorio =
+    !!user && roles.includes("paciente") && !roles.includes("medico");
 
   return (
     <Sidebar collapsible="icon">
@@ -99,6 +104,19 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+              {showPatientConsultorio && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={location.pathname === "/consultorio"}>
+                    <RouterNavLink
+                      to={`/consultorio?paciente=${user!.id}`}
+                      className={cn("flex items-center gap-2")}
+                    >
+                      <Stethoscope className="h-4 w-4" />
+                      {!collapsed && <span>Mi Consultorio digital</span>}
+                    </RouterNavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
