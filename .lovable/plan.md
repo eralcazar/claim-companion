@@ -2,135 +2,140 @@
 
 ## Objetivo
 
-Agregar a cada ítem de receta un botón **"Tomando"** que:
+Tres mejoras integradas al sistema de formularios de reclamos, todas centradas en hacer que el wizard se construya **dinámicamente desde lo configurado en Gestor de Formatos** (campos `etiqueta`, opciones de radio/checkbox con coordenadas individuales por opción) y permitir **firma electrónica reutilizable** desde un gestor de firmas del usuario.
 
-1. Registra automáticamente el medicamento en la sección **Medicamentos** del paciente (con fecha/hora de inicio, dosis, duración).
-2. Genera **recordatorios programados** (notificaciones tipo pop-up + sonido) según la periodicidad indicada en la receta (cada 4h, 6h, 8h, 12h, etc.).
-3. Permite "Detener toma" para dar de baja el seguimiento.
+1. **Wizard dinámico desde DB**: el formulario de reclamo se renderiza usando `etiqueta`, `secciones` y `opciones` reales de la tabla `campos`, no más definiciones hardcoded `formA…formH`.
+2. **Opciones múltiples en radio/checkbox**: en `FieldsTable`, cuando el tipo es `radio` o `checkbox`, mostrar un sub-editor para agregar/quitar opciones, **cada una con sus propias coordenadas** (página, x, y, w, h) en el PDF.
+3. **Gestor de Firmas + tipo de campo `firma` mapeable**: agregar tabla `firmas_usuario`, una página `/perfil/firmas` para crear/eliminar firmas, opción "Firma" en el catálogo de mapeos, y al generar el reclamo un toggle "¿Firmar electrónicamente?" que estampa la firma elegida en cada campo `tipo='firma'`.
 
-## Arquitectura
+## Cambios
 
-### 1. Migración SQL
+### 1. Esquema de BD (migración)
 
-**Tabla nueva `public.medication_schedule`** (registro maestro de tomas activas):
+**`campos.opciones` (jsonb)** — ya existe, ahora se usará con esta forma para radio/checkbox:
+```json
+[
+  { "valor": "accidente", "etiqueta": "Accidente",
+    "campo_pagina": 1, "campo_x": 12.5, "campo_y": 34.2, "campo_ancho": 1.5, "campo_alto": 1.5 },
+  { "valor": "enfermedad", "etiqueta": "Enfermedad",
+    "campo_pagina": 1, "campo_x": 12.5, "campo_y": 36.8, "campo_ancho": 1.5, "campo_alto": 1.5 }
+]
+```
+No requiere cambio de schema; sólo de convención.
+
+**Nueva tabla `firmas_usuario`**:
 - `id uuid pk`
-- `user_id uuid not null` (paciente)
-- `medication_id uuid not null` → FK a `medications.id` (cascade)
-- `receta_item_id uuid` (opcional, link a `receta_items.id` para evitar duplicados)
-- `started_at timestamptz not null default now()`
-- `next_dose_at timestamptz not null` (próxima dosis programada)
-- `interval_hours numeric not null` (intervalo entre dosis)
-- `ends_at timestamptz` (calculado: `started_at + dias_a_tomar * 24h`)
-- `active boolean not null default true`
-- `last_dose_at timestamptz`
-- `created_at`, `updated_at`
+- `user_id uuid not null`
+- `nombre text not null` (etiqueta visible: "Firma personal", "Firma con título", etc.)
+- `imagen_base64 text not null` (PNG dataURL)
+- `es_predeterminada boolean default false`
+- `created_at timestamptz default now()`
+- RLS: dueño ve/crea/edita/borra los suyos; admin todo.
+- Índice único parcial: `(user_id) WHERE es_predeterminada = true` (sólo una predeterminada por usuario).
 
-RLS: paciente gestiona los suyos, médico ve los de sus pacientes, admin todo. Índice en `(active, next_dose_at)`.
+**Nuevo mapeo "Firma"** — insert tool:
+- En `mapeo_perfiles` agregar fila `id='firma_usuario'`, `nombre_display='Firma del usuario'`, `columna_origen='__firma__'`, `tipo='firma'` (token especial reconocido por el pipeline).
 
-**Extender enum `medication_frequency`** con: `cada_4_horas`, `cada_6_horas`, `cada_48_horas`, `personalizado`. Agregar columna `frequency_hours numeric` a `medications` para personalizado.
+### 2. Gestor de Firmas (Perfil)
 
-**Agregar columna `medications.receta_item_id uuid` nullable** para trazabilidad y evitar duplicados al pulsar "Tomando" dos veces.
+**Nuevo componente `src/pages/FirmasManager.tsx`** (ruta `/perfil/firmas`, link desde `Profile.tsx`):
+- Lista las firmas del usuario en cards (preview + nombre + badge "Predeterminada").
+- Botón **"+ Nueva firma"** abre dialog con `SignatureCanvas` + input nombre + checkbox "Marcar como predeterminada".
+- Acciones por firma: marcar predeterminada, renombrar, eliminar.
+- Hook `src/hooks/useFirmas.ts`: `useFirmas()`, `useCreateFirma()`, `useUpdateFirma()`, `useDeleteFirma()`, `useSetFirmaPredeterminada()` (esta última desmarca las demás en una transacción RPC o dos updates).
 
-**Habilitar extensiones** `pg_cron` y `pg_net` (si no están).
+### 3. FieldsTable — sub-editor de opciones
 
-### 2. Edge Function `send-medication-reminders`
+En `src/components/admin/FieldsTable.tsx`, cuando `c.tipo === "radio" || c.tipo === "checkbox"`, agregar una **fila expandible** debajo del row principal (toggle con chevron) que muestra:
+- Tabla compacta de opciones (`c.opciones || []`):
+  - Columnas: `Valor` (input, slug), `Etiqueta` (input), `Pág`, `X%`, `Y%`, `W%`, `H%`, `🗑`
+  - Botón **"+ Agregar opción"** al pie (default w/h = 1.5%, página = `c.campo_pagina`).
+- Validación: `radio` permite múltiples opciones pero al renderizar el wizard sólo una seleccionable; `checkbox_group` (cuando tipo='checkbox' con >1 opción) permite múltiples seleccionables.
+- Las opciones se persisten en la columna `opciones` (jsonb) usando `useUpsertCampos` ya existente.
 
-Nueva function en `supabase/functions/send-medication-reminders/index.ts`:
-- Service role client.
-- `select * from medication_schedule where active = true and next_dose_at <= now() and (ends_at is null or ends_at > now())`.
-- Por cada fila:
-  - `insert into notifications`: `title = "💊 Hora de tomar {nombre}"`, `body = "Dosis: {dosage}. Próxima toma en {interval_hours}h"`, `link = "/medicamentos"`.
-  - `update medication_schedule set last_dose_at = now(), next_dose_at = now() + interval_hours * interval '1 hour'`.
-  - Si `next_dose_at > ends_at`: marcar `active = false` y desactivar `medications.active = false`.
-- Para programaciones expiradas (`ends_at <= now()`): desactivar.
-- Devuelve `{ checked, sent, completed }`.
+Helper `update(id, { opciones: [...] })` ya funciona; sólo agregar UI.
 
-### 3. Cron job
+Para campos tipo `checkbox` con UNA sola opción → renderizar como checkbox simple booleano. Con >1 → `checkbox_group`.
 
-Insertar via insert tool (no migración, lleva URL+anon key específicos del proyecto):
-```sql
-select cron.schedule(
-  'medication-reminders-every-5min',
-  '*/5 * * * *',
-  $$ select net.http_post(
-    url := 'https://zspetfkvdnhdbtcdwgry.supabase.co/functions/v1/send-medication-reminders',
-    headers := '{"Content-Type":"application/json","Authorization":"Bearer <anon>"}'::jsonb,
-    body := '{}'::jsonb
-  ); $$
-);
-```
+### 4. Tipo `firma` en FieldsTable + sub-editor
 
-Granularidad: cada 5 min (suficiente para tomas ≥ 4h; las notificaciones llegan con tolerancia de 5 min).
+Para `c.tipo === "firma"`:
+- En la columna **"Catálogo"**, agregar opción nueva **"firma"** además de perfil/poliza/siniestro/medico.
+- Al elegir catálogo "firma", el campo de mapeo se preselecciona con el id `firma_usuario` (único valor disponible).
+- En el render del PDF, este campo no escribe texto: estampa la imagen de la firma elegida por el usuario en las coordenadas `campo_x/y/w/h`.
 
-### 4. UI – Botón "Tomando" en `RecetaCard.tsx`
+### 5. Renderer dinámico desde DB (`DynamicFormRenderer`)
 
-Por cada `item`:
-- Si **no** está siendo tomado → botón **"Tomando"** (variante `outline`, ícono `Pill` + "Comenzar"). Solo visible si `receta.patient_id === user.id` (el paciente es quien marca su toma) **o** si el médico/admin lo activan en nombre del paciente.
-- Si ya está activo → botón **"Detener"** (variante `secondary`, ícono `Square`) + texto pequeño "Próxima: {hh:mm}".
+Crear `src/components/claims/forms/DynamicFormRenderer.tsx` que reemplace gradualmente `FormRenderer.tsx`:
+- Recibe `formularioId`, carga `useCampos(formularioId)` + `useSecciones(formularioId)`.
+- Agrupa campos por `seccion_id` (o "sin sección"); cada sección = un paso del wizard.
+- Renderiza por `tipo`:
+  - `texto`/`textarea`/`numero`/`fecha`/`telefono`/`rfc`/`curp` → inputs (etiqueta = `c.etiqueta`).
+  - `radio` → `RadioGroup` con `c.opciones[]` (label = `opcion.etiqueta`, value = `opcion.valor`).
+  - `checkbox` con 1 opción → boolean; con N opciones → `checkbox_group` (multi-select).
+  - `select` → `Select` con `c.opciones[]`.
+  - `firma` → `SignatureCanvasReadOnly` que muestra preview de la firma predeterminada + botón "Cambiar" abre modal con la lista de firmas del usuario; el valor guardado en `data` es el `firma_id`.
+  - `diagnostico_cie` → autocomplete (placeholder por ahora = input texto con badge).
+- Validación: `c.requerido` + `c.patron_validacion` (regex) + `c.longitud_max`.
+- Autofill: al cargar la póliza, mirar `c.mapeo_perfil/poliza/siniestro/medico` para pre-llenar.
 
-**Click en "Tomando"** ejecuta `useStartTakingMedication(item, receta)`:
-1. Mapea `item.frecuencia` → `medication_frequency` enum + `frequency_hours`:
-   - `cada_4h` → `cada_4_horas`, hours=4
-   - `cada_6h` → `cada_6_horas`, hours=6
-   - `cada_8h` → `cada_8_horas`, hours=8
-   - `cada_12h` → `cada_12_horas`, hours=12
-   - `cada_24h` → `cada_24_horas`, hours=24
-   - `cada_48h` → `cada_48_horas`, hours=48
-   - `semanal` → `semanal`, hours=168
-   - `otro` → `personalizado`, hours=`item.frecuencia_horas`
-2. `upsert` en `medications` (por `receta_item_id`) con `name=medicamento_nombre`, `dosage="{dosis}{unidad_dosis}"`, `frequency`, `frequency_hours`, `start_date=today`, `end_date=today + dias_a_tomar`.
-3. `insert` en `medication_schedule`: `started_at=now()`, `next_dose_at=now()+interval_hours h`, `ends_at=now()+dias_a_tomar*24h` (o null si sin duración), `interval_hours`.
-4. Toast "Recordatorios activados — primera notificación en {N}h".
+`NewClaim.tsx`:
+- Refactor: en lugar de `getFormDefinition(insurer, tramite)`, hacer `useFormulario(insurer, tramite)` que resuelve el `formularios.id` correspondiente y le pasa al `DynamicFormRenderer`.
+- Se conserva la lógica de wizard (steps por sección), autosave, draft, y pipeline final.
+- **Compatibilidad**: si no existe `formulario` configurado en BD para esa combinación, fallback al `getFormDefinition` legacy.
 
-### 5. Hook `useMedicationSchedule(items)`
+### 6. Toggle "¿Firmar electrónicamente?" en review
 
-Hook que consulta `medication_schedule` para los `receta_item_id` recibidos, devuelve `Map<receta_item_id, scheduleRow>` para que la UI sepa qué ítem ya está activo.
+En el paso de revisión de `NewClaim.tsx`:
+- Si la definición/campos contienen al menos uno de `tipo='firma'`, mostrar:
+  - Switch **"Firmar electrónicamente"** (default: on si el usuario tiene firma predeterminada).
+  - Select **"Firma a usar"** con las firmas del usuario (default: predeterminada).
+  - Si el usuario no tiene firmas → link "Crear firma en mi perfil" (abre `/perfil/firmas`).
+- El `firma_id` elegida se inyecta en `data.__firma_id` antes de llamar `runClaimPipeline`.
 
-### 6. UI – Sonido y pop-up de notificación
+### 7. Pipeline + PDF: estampar firma e imagen
 
-`src/hooks/useNotifications.ts` ya hace toast en realtime. Añadimos:
-- Detección de notificaciones cuyo `title` empieza con "💊" → tocar `Audio` corto (un beep wav embebido en `public/notification.mp3` o usar Web Audio API con un oscilador para evitar asset).
-- `toast.warning(...)` con `duration: 30000` y action button "Marcar tomada" que llama `markRead`.
-- Solicitar permiso de `Notification` API en login y disparar `new Notification(title, {body, icon, requireInteraction: true})` cuando la pestaña no está activa, además del toast.
+**`src/lib/pdfFiller.ts`**: nueva función `drawImage(pdfBytes, images: Array<{page, x, y, w, h, dataUrl}>)` que decodifica PNG base64 y usa `pdf-lib` `embedPng` + `page.drawImage` con coordenadas en %.
 
-Implementación: extender `useNotifications` para que en el handler de realtime:
-```ts
-const isMedReminder = n.title.startsWith("💊");
-if (isMedReminder) {
-  playBeep();                                  // Web Audio oscillator
-  if (document.hidden && Notification.permission === "granted") {
-    new Notification(n.title, { body: n.body, requireInteraction: true });
-  }
-  toast(n.title, { description: n.body, duration: 30000, important: true });
-} else {
-  toast(n.title, { description: n.body });
-}
-```
+**`src/lib/generateFilledPDF.ts`** (o un nuevo `generateFilledPDFDynamic.ts`):
+- Cuando se generen PDFs desde la definición dinámica de DB, recorrer `campos`:
+  - Para `tipo` normal: convertir `(x%,y%)` → puntos PDF (multiplicar por dimensiones de página) y llamar `fillPDF` con valor de `data[c.clave]`.
+  - Para `tipo='radio'`: estampar `"X"` SOLO en la opción cuyo `valor === data[c.clave]`.
+  - Para `tipo='checkbox'` (multi): estampar `"X"` en cada opción incluida en `data[c.clave]` (array).
+  - Para `tipo='firma'`: si `data.__firma_id` está set, cargar la firma desde `firmas_usuario`, embed PNG y dibujar en las coordenadas del campo.
 
-`playBeep()`: helper en `src/lib/sound.ts` que crea un `AudioContext` + oscillator (440Hz × 200ms × 2 pulsos) — no requiere asset.
+`runClaimPipeline` se extiende para aceptar el `__firma_id` y, en lugar de usar `formCoordinates` estático cuando hay un `formulario` real en DB, usar el nuevo path dinámico que lee de `campos`.
 
-Solicitud de permiso: en `AuthContext` o `App.tsx`, después del login, si `Notification.permission === "default"` llamar `Notification.requestPermission()`.
+### 8. Migración legacy
 
-### 7. Página `Medicamentos`
-
-Mostrar también `medication_schedule` activos: agregar badge "🔔 Recordatorio activo · próxima {hh:mm}" en cada `medications` que tenga schedule activo. Botón "Detener recordatorios" desactiva el schedule (sin borrar el medicamento).
+- Las definiciones `formA…formH` siguen funcionando como fallback hasta que un `formulario` esté completamente configurado en BD para esa (insurer, tramite).
+- Una vez admin termina de mapear campos+opciones+coordenadas en `/admin/gestor-archivos`, el sistema usa la versión DB automáticamente.
 
 ## Archivos
 
 **Creados:**
-- Migración SQL: `medication_schedule` table + RLS + enum extension + `frequency_hours` + `receta_item_id` + extensiones `pg_cron`/`pg_net`.
-- `supabase/functions/send-medication-reminders/index.ts`
-- `src/hooks/useMedicationSchedule.ts`
-- `src/lib/sound.ts` (beep via Web Audio API)
-- Cron job vía insert tool (URL+anon hardcoded por seguridad).
+- Migración SQL: tabla `firmas_usuario` + RLS + índice único de predeterminada.
+- Insert tool: fila en `mapeo_perfiles` con id `firma_usuario`.
+- `src/hooks/useFirmas.ts` — CRUD de firmas.
+- `src/pages/FirmasManager.tsx` — UI del gestor de firmas.
+- `src/components/claims/forms/DynamicFormRenderer.tsx` — renderer basado en DB.
+- `src/components/claims/forms/shared/SignaturePicker.tsx` — selector de firma del usuario para campos `tipo=firma`.
+- `src/components/admin/CampoOpcionesEditor.tsx` — sub-editor inline de opciones con coordenadas (usado por `FieldsTable`).
 
 **Modificados:**
-- `src/components/recetas/RecetaCard.tsx` — botón "Tomando"/"Detener" por ítem + estado de schedule.
-- `src/hooks/useNotifications.ts` — sonido + Notification API para reminders 💊.
-- `src/contexts/AuthContext.tsx` — pedir permiso de Notification al login.
-- `src/pages/Medications.tsx` — mostrar badge de recordatorio activo + botón detener.
+- `src/components/admin/FieldsTable.tsx` — fila expandible de opciones cuando tipo es radio/checkbox; opción "firma" en columna catálogo.
+- `src/lib/pdfFiller.ts` — `drawImage()` para estampar firma.
+- `src/lib/generateFilledPDF.ts` — soporte dinámico desde campos DB (radio individual, checkbox multi, firma).
+- `src/lib/claimPipeline.ts` — branch dinámico cuando hay `formulario` configurado, inyección de `firma_id`.
+- `src/pages/NewClaim.tsx` — usar DynamicFormRenderer con fallback, toggle "Firmar electrónicamente" en review.
+- `src/pages/Profile.tsx` — link "Mis firmas" → `/perfil/firmas`.
+- `src/App.tsx` — ruta `/perfil/firmas`.
 
 ## Resultado esperado
 
-Paciente abre `/recetas` → ve receta con 3 medicamentos → click **"Tomando"** en "Paracetamol 500mg c/8h × 5 días" → toast "Recordatorios activados, próxima toma en 8h" → el medicamento aparece automáticamente en `/medicamentos` como activo con badge "🔔 Próxima 18:30" → cada 8h durante 5 días el paciente recibe pop-up + sonido + notificación del navegador "💊 Hora de tomar Paracetamol — Dosis: 500mg" → al cumplirse los 5 días, el schedule se desactiva solo. Botón "Detener" cancela los recordatorios sin borrar el historial del medicamento.
+**Admin** abre `/admin/gestor-archivos` → selecciona formulario MetLife Reembolso → en `Campos` ve un campo tipo `radio` "Causa de atención" → expande la fila → ve 3 opciones (`accidente`, `enfermedad`, `embarazo`) cada una con sus coordenadas (X%, Y%, W%, H%) → click **"+ Agregar opción"** "maternidad" → ajusta coordenadas → Guardar.
+
+**Usuario paciente** abre `/perfil` → entra a **"Mis firmas"** → captura su firma con el canvas → la marca como predeterminada.
+
+**Usuario paciente** abre `/reclamos/nuevo` → elige póliza MetLife + Reembolso → el wizard se construye dinámicamente desde `campos` y `secciones` de DB, mostrando las etiquetas configuradas → la sección "Causa" muestra los 4 radio options (uno seleccionable) → la sección "Firma" muestra preview de su firma predeterminada → en revisión aparece switch **"Firmar electrónicamente"** con select de firma → genera PDF: el radio "enfermedad" estampa "X" sólo en sus coordenadas, los checkbox de facturas estampan "X" en cada opción seleccionada, y la firma PNG se estampa en el rectángulo del campo `tipo='firma'`. Folio asignado, archivo en Storage.
 
