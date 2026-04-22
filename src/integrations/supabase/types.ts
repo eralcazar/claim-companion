@@ -587,6 +587,36 @@ export type Database = {
         }
         Relationships: []
       }
+      firmas_usuario: {
+        Row: {
+          created_at: string
+          es_predeterminada: boolean
+          id: string
+          imagen_base64: string
+          nombre: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          es_predeterminada?: boolean
+          id?: string
+          imagen_base64: string
+          nombre: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          es_predeterminada?: boolean
+          id?: string
+          imagen_base64?: string
+          nombre?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       formularios: {
         Row: {
           activo: boolean
