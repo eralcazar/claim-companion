@@ -225,3 +225,10 @@ export const SEVERITY_LABEL: Record<Severity, string> = {
   moderada: "Moderada",
   grave: "Grave",
 };
+
+export const MODERATION_LABEL: Record<ModerationStatus, string> = {
+  pendiente: "Pendiente",
+  validada: "Validada",
+  observada: "En observación",
+  rechazada: "Rechazada",
+};
