@@ -96,9 +96,30 @@ export function useMarkFulfilled() {
         })
         .eq("id", orderId);
       if (error) throw error;
+      // Descontar inventario por cada item de la orden
+      const { data: items } = await supabase
+        .from("pharmacy_order_items")
+        .select("catalog_id, cantidad")
+        .eq("order_id", orderId);
+      if (items?.length && u.user?.id) {
+        const movs = items
+          .filter((it: any) => it.catalog_id)
+          .map((it: any) => ({
+            catalog_id: it.catalog_id,
+            tipo: "surtido" as const,
+            cantidad: it.cantidad,
+            order_id: orderId,
+            motivo: "Surtido de orden",
+            created_by: u.user!.id,
+          }));
+        if (movs.length) {
+          await supabase.from("pharmacy_inventory_movements").insert(movs);
+        }
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["pharmacy_orders"] });
+      qc.invalidateQueries({ queryKey: ["pharmacy_inventory"] });
       toast.success("Marcada como surtida");
     },
     onError: (e: any) => toast.error(e.message),
