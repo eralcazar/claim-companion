@@ -1,5 +1,5 @@
 import {
-  Home, FileText, Calendar, Pill, User, Shield, Users, Stethoscope, FolderOpen, Download, LogOut, FolderTree, UserCog, KeyRound, GraduationCap, BadgeCheck, FlaskConical, TrendingUp, HeartPulse, FlaskRound, Store, UserCheck, FileWarning
+  Home, FileText, Calendar, Pill, User, Shield, Users, Stethoscope, FolderOpen, Download, LogOut, FolderTree, UserCog, KeyRound, GraduationCap, BadgeCheck, FlaskConical, TrendingUp, HeartPulse, FlaskRound, Store, UserCheck, FileWarning, Package, Boxes, Layers, CreditCard
 } from "lucide-react";
 import { NavLink as RouterNavLink, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -26,6 +26,8 @@ const mainItems: Item[] = [
   { title: "Formatos", url: "/formatos", icon: Download, feature: "formatos" },
   { title: "Perfil", url: "/perfil", icon: User, feature: "perfil" },
   { title: "Mis accesos", url: "/perfil/accesos", icon: UserCheck, feature: "patient_personnel_manager" },
+  { title: "Planes", url: "/planes", icon: CreditCard, feature: "planes" },
+  { title: "Mi suscripción", url: "/suscripcion", icon: CreditCard, feature: "suscripcion" },
 ];
 
 const brokerItems: Item[] = [
@@ -48,6 +50,7 @@ const labItems: Item[] = [
 
 const pharmacyItems: Item[] = [
   { title: "Panel Farmacia", url: "/farmacia", icon: Store, feature: "pharmacy_panel" },
+  { title: "Inventario", url: "/farmacia/inventario", icon: Boxes, feature: "inventory_manager" },
 ];
 
 const adminItems: Item[] = [
@@ -58,6 +61,8 @@ const adminItems: Item[] = [
   { title: "Gestor de Usuarios", url: "/admin/usuarios", icon: UserCog, feature: "user_manager" },
   { title: "Perfiles de Acceso", url: "/admin/perfiles-acceso", icon: KeyRound, feature: "access_manager" },
   { title: "Accesos Paciente↔Personal", url: "/admin/accesos-pacientes", icon: UserCheck, feature: "patient_personnel_manager" },
+  { title: "Productos tienda", url: "/admin/productos", icon: Package, feature: "product_manager" },
+  { title: "Paquetes / Planes", url: "/admin/planes", icon: Layers, feature: "plan_manager" },
 ];
 
 export function AppSidebar() {

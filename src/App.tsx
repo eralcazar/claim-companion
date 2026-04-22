@@ -39,6 +39,11 @@ import PatientView from "@/pages/PatientView";
 import ClaimsWithoutReport from "@/pages/medico/ClaimsWithoutReport";
 import PatientPersonnelPage, { AdminPatientPersonnelPage } from "@/pages/PatientPersonnelPage";
 import CheckoutReturn from "@/pages/CheckoutReturn";
+import ProductManager from "@/pages/admin/ProductManager";
+import InventoryManager from "@/pages/admin/InventoryManager";
+import PlanManager from "@/pages/admin/PlanManager";
+import Plans from "@/pages/Plans";
+import Subscription from "@/pages/Subscription";
 
 const queryClient = new QueryClient();
 
@@ -84,6 +89,11 @@ const App = () => (
               <Route path="/admin/medicos" element={<MedicosManager />} />
               <Route path="/medico/perfil" element={<DoctorProfile />} />
               <Route path="/checkout/return" element={<CheckoutReturn />} />
+              <Route path="/admin/productos" element={<ProductManager />} />
+              <Route path="/admin/planes" element={<PlanManager />} />
+              <Route path="/farmacia/inventario" element={<InventoryManager />} />
+              <Route path="/planes" element={<Plans />} />
+              <Route path="/suscripcion" element={<Subscription />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
