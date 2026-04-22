@@ -118,6 +118,24 @@ export default function NewClaim() {
   );
   const currentFormatLabel = availableFormats.find((f) => f.id === tramite)?.label;
 
+  // Resolver formulario en BD (dinámico) cuando cambian insurer/tramite
+  useEffect(() => {
+    if (!insurer || !tramite) { setDynFormularioId(null); return; }
+    let cancelled = false;
+    setResolvingDyn(true);
+    findFormularioByInsurerAndTramite(insurer, tramite)
+      .then((res) => {
+        if (cancelled) return;
+        setDynFormularioId(res.formulario && res.campos.length > 0 ? res.formulario.id : null);
+      })
+      .finally(() => { if (!cancelled) setResolvingDyn(false); });
+    return () => { cancelled = true; };
+  }, [insurer, tramite]);
+
+  // Secciones dinámicas (sólo si dynFormularioId está set)
+  const { sections: dynSections, isLoading: dynLoading, hasFirma } = useDynamicSections(dynFormularioId);
+  const useDynamic = !!dynFormularioId && dynSections.length > 0;
+
   // Pre-check: verificar que el PDF original exista en Storage al elegir formato
   useEffect(() => {
     if (!insurer || !tramite) { setFormatAvailable(null); return; }
