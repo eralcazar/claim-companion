@@ -17,7 +17,7 @@ export type FeatureKey =
   | "patient_personnel_manager" | "patient_view"
   | "claims_without_report"
   | "product_manager" | "inventory_manager" | "plan_manager"
-  | "planes" | "suscripcion";
+  | "planes" | "suscripcion" | "consultorio";
 
 export interface FeatureDef {
   key: FeatureKey;
@@ -59,6 +59,7 @@ export const AVAILABLE_FEATURES: FeatureDef[] = [
   { key: "product_manager", label: "Productos tienda", route: "/admin/productos", icon: Package, group: "admin" },
   { key: "plan_manager", label: "Paquetes / Planes", route: "/admin/planes", icon: Layers, group: "admin" },
   { key: "doctor_profile", label: "Mi Perfil Médico", route: "/medico/perfil", icon: BadgeCheck, group: "medico" },
+  { key: "consultorio", label: "Consultorio", route: "/consultorio", icon: Stethoscope, group: "medico" },
 ];
 
 export const ALL_ROLES = ["admin", "broker", "paciente", "medico", "enfermero", "laboratorio", "farmacia"] as const;

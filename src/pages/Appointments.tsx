@@ -12,6 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { useEffect, useMemo, useState } from "react";
 import { Plus, Calendar, Trash2, MapPin, Bell, Pencil } from "lucide-react";
+import { Video } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import type { Database } from "@/integrations/supabase/types";
@@ -77,6 +78,8 @@ export default function Appointments() {
     reminder_minutes_before: 60,
     patient_id: null as string | null,
     patient_name: "",
+    is_telemedicine: false,
+    meeting_url: "" as string,
   };
   const [form, setForm] = useState(initialForm);
 
