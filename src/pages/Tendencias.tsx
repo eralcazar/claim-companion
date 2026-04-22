@@ -21,6 +21,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
+import { ExportTendenciasButton } from "@/components/tendencias/ExportTendenciasButton";
 
 export default function Tendencias() {
   const { user, roles } = useAuth();
@@ -72,6 +73,30 @@ export default function Tendencias() {
         .filter((i): i is NonNullable<typeof i> => !!i && i.puntos.length > 0),
     [seleccionados, filteredByRango],
   );
+
+  const pacienteNombre = useMemo(() => {
+    if (isPaciente) {
+      return (
+        (user?.user_metadata as any)?.full_name ||
+        (user?.user_metadata as any)?.name ||
+        user?.email ||
+        "paciente"
+      );
+    }
+    const p = patients.find((x) => x.user_id === targetId);
+    return p?.full_name || "paciente";
+  }, [isPaciente, user, patients, targetId]);
+
+  const rangoLabel = useMemo(() => {
+    switch (rangoFechas) {
+      case "3m": return "Últimos 3 meses";
+      case "6m": return "Últimos 6 meses";
+      case "12m": return "Últimos 12 meses";
+      default: return "Todo el historial";
+    }
+  }, [rangoFechas]);
+
+  const exportData = modo === "comparar" ? indicadoresComparar : filtered;
 
   return (
     <div className="container py-6 space-y-4 max-w-6xl">
@@ -135,6 +160,14 @@ export default function Tendencias() {
             </SelectContent>
           </Select>
         )}
+        <div className="ml-auto">
+          <ExportTendenciasButton
+            indicadores={exportData}
+            pacienteNombre={pacienteNombre}
+            rangoLabel={rangoLabel}
+            modo={modo}
+          />
+        </div>
       </div>
 
       {!targetId ? (

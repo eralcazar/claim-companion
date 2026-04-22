@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Trash2, Upload, Download, Plus, Sparkles, Loader2, Pencil } from "lucide-react";
+import { Trash2, Upload, Download, Plus, Sparkles, Loader2, Pencil, FileUp } from "lucide-react";
 import {
   useResultados,
   useUploadResultado,
@@ -20,6 +20,7 @@ import { format } from "date-fns";
 import { toast } from "sonner";
 import { IndicadorSparkline } from "@/components/tendencias/IndicadorSparkline";
 import { IndicadorEditRow } from "./IndicadorEditRow";
+import { IndicadoresBulkImportDialog } from "./IndicadoresBulkImportDialog";
 
 interface Props {
   estudio: any;
@@ -92,6 +93,7 @@ function ResultadoItem({ resultado, canManage, onDownload, onDelete }: any) {
   const delAllInd = useDeleteIndicadoresByResultado();
   const [showInd, setShowInd] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [bulkOpen, setBulkOpen] = useState(false);
   const [draft, setDraft] = useState({ nombre_indicador: "", valor: "", unidad: "", valor_referencia_min: "", valor_referencia_max: "" });
 
   const handleExtract = async () => {
@@ -152,6 +154,11 @@ function ResultadoItem({ resultado, canManage, onDownload, onDelete }: any) {
             ) : (
               <><Sparkles className="h-3.5 w-3.5 mr-1" />{indicadores.length > 0 ? "Re-extraer con IA" : "Extraer con IA"}</>
             )}
+          </Button>
+        )}
+        {canManage && (
+          <Button size="sm" variant="outline" onClick={() => setBulkOpen(true)}>
+            <FileUp className="h-3.5 w-3.5 mr-1" />Importar CSV
           </Button>
         )}
       </div>
@@ -216,6 +223,14 @@ function ResultadoItem({ resultado, canManage, onDownload, onDelete }: any) {
             </div>
           )}
         </div>
+      )}
+      {canManage && (
+        <IndicadoresBulkImportDialog
+          open={bulkOpen}
+          onOpenChange={setBulkOpen}
+          resultadoId={resultado.id}
+          patientId={resultado.patient_id}
+        />
       )}
     </div>
   );
