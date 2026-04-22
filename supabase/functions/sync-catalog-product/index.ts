@@ -58,35 +58,72 @@ serve(async (req) => {
       .maybeSingle();
     if (rowErr || !row) throw new Error("Producto no encontrado");
 
+    if (!row.precio_centavos || row.precio_centavos <= 0) {
+      return new Response(
+        JSON.stringify({ error: "El producto debe tener un precio mayor a 0 antes de sincronizar." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+    if (!row.activo) {
+      return new Response(
+        JSON.stringify({ error: "Activá el producto antes de sincronizar." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     const env = (environment || "sandbox") as StripeEnv;
     const stripe = createStripeClient(env);
 
     let productId = row.stripe_product_id;
-    if (!productId) {
+    const productPayload = {
+      name: row.nombre + (row.presentacion ? ` (${row.presentacion})` : ""),
+      description: row.descripcion || row.descripcion_larga || undefined,
+    };
+    let needCreateProduct = !productId;
+    if (productId) {
+      try {
+        await stripe.products.update(productId, productPayload);
+      } catch (err: any) {
+        // Stale / fake / archived id from seed → recreate
+        if (err?.statusCode === 404 || err?.code === "resource_missing") {
+          console.log("Stripe product not found, creating new:", productId);
+          productId = null;
+          needCreateProduct = true;
+        } else {
+          throw err;
+        }
+      }
+    }
+    if (needCreateProduct) {
       const created = await stripe.products.create({
-        name: row.nombre + (row.presentacion ? ` (${row.presentacion})` : ""),
-        description: row.descripcion || row.descripcion_larga || undefined,
+        ...productPayload,
         metadata: { catalog_id: row.id, lovable_external_id: row.id },
       });
       productId = created.id;
-    } else {
-      await stripe.products.update(productId, {
-        name: row.nombre + (row.presentacion ? ` (${row.presentacion})` : ""),
-        description: row.descripcion || row.descripcion_larga || undefined,
-      });
     }
 
     // Compare current price; if mismatch, archive old and create new
     let priceId = row.stripe_price_id;
-    let needNew = !priceId;
-    if (priceId) {
-      const existingPrice = await stripe.prices.retrieve(priceId);
-      if (
-        existingPrice.unit_amount !== row.precio_centavos ||
-        existingPrice.currency !== (row.moneda || "mxn").toLowerCase()
-      ) {
-        await stripe.prices.update(priceId, { active: false });
-        needNew = true;
+    let needNew = !priceId || needCreateProduct;
+    if (priceId && !needCreateProduct) {
+      try {
+        const existingPrice = await stripe.prices.retrieve(priceId);
+        if (
+          existingPrice.unit_amount !== row.precio_centavos ||
+          existingPrice.currency !== (row.moneda || "mxn").toLowerCase() ||
+          existingPrice.product !== productId
+        ) {
+          try {
+            await stripe.prices.update(priceId, { active: false });
+          } catch (_) { /* ignore */ }
+          needNew = true;
+        }
+      } catch (err: any) {
+        if (err?.statusCode === 404 || err?.code === "resource_missing") {
+          needNew = true;
+        } else {
+          throw err;
+        }
       }
     }
     if (needNew) {
@@ -109,7 +146,8 @@ serve(async (req) => {
     );
   } catch (e: any) {
     console.error("sync-catalog-product error", e);
-    return new Response(JSON.stringify({ error: e.message }), {
+    const detail = e?.raw?.message || e?.message || "Error desconocido";
+    return new Response(JSON.stringify({ error: detail }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
