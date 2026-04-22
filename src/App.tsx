@@ -32,6 +32,12 @@ import Recetas from "@/pages/Recetas";
 import Estudios from "@/pages/Estudios";
 import Tendencias from "@/pages/Tendencias";
 import NotFound from "@/pages/NotFound";
+import NursePanel from "@/pages/NursePanel";
+import LabPanel from "@/pages/LabPanel";
+import PharmacyPanel from "@/pages/PharmacyPanel";
+import PatientView from "@/pages/PatientView";
+import ClaimsWithoutReport from "@/pages/medico/ClaimsWithoutReport";
+import PatientPersonnelPage, { AdminPatientPersonnelPage } from "@/pages/PatientPersonnelPage";
 
 const queryClient = new QueryClient();
 
@@ -61,7 +67,14 @@ const App = () => (
               <Route path="/registros" element={<MedicalRecords />} />
               <Route path="/broker" element={<BrokerPanel />} />
               <Route path="/medico" element={<DoctorPanel />} />
+              <Route path="/medico/reclamos-sin-informe" element={<ClaimsWithoutReport />} />
+              <Route path="/enfermeria" element={<NursePanel />} />
+              <Route path="/laboratorio" element={<LabPanel />} />
+              <Route path="/farmacia" element={<PharmacyPanel />} />
+              <Route path="/personal/paciente/:id" element={<PatientView />} />
+              <Route path="/perfil/accesos" element={<PatientPersonnelPage />} />
               <Route path="/admin" element={<AdminPanel />} />
+              <Route path="/admin/accesos-pacientes" element={<AdminPatientPersonnelPage />} />
               <Route path="/admin/pipeline-status" element={<PipelineStatus />} />
               <Route path="/admin/gestor-archivos" element={<FormatManager />} />
               <Route path="/admin/usuarios" element={<UserManager />} />

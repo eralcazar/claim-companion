@@ -1,5 +1,5 @@
 import {
-  Home, FileText, Calendar, Pill, User, Shield, Users, Stethoscope, FolderOpen, Download, LogOut, FolderTree, UserCog, KeyRound, GraduationCap, BadgeCheck, FlaskConical, TrendingUp
+  Home, FileText, Calendar, Pill, User, Shield, Users, Stethoscope, FolderOpen, Download, LogOut, FolderTree, UserCog, KeyRound, GraduationCap, BadgeCheck, FlaskConical, TrendingUp, HeartPulse, FlaskRound, Store, UserCheck, FileWarning
 } from "lucide-react";
 import { NavLink as RouterNavLink, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -25,6 +25,7 @@ const mainItems: Item[] = [
   { title: "Pólizas", url: "/polizas", icon: Shield, feature: "polizas" },
   { title: "Formatos", url: "/formatos", icon: Download, feature: "formatos" },
   { title: "Perfil", url: "/perfil", icon: User, feature: "perfil" },
+  { title: "Mis accesos", url: "/perfil/accesos", icon: UserCheck, feature: "patient_personnel_manager" },
 ];
 
 const brokerItems: Item[] = [
@@ -33,7 +34,20 @@ const brokerItems: Item[] = [
 
 const doctorItems: Item[] = [
   { title: "Panel Médico", url: "/medico", icon: Stethoscope, feature: "doctor_panel" },
+  { title: "Reclamos sin informe", url: "/medico/reclamos-sin-informe", icon: FileWarning, feature: "claims_without_report" },
   { title: "Mi Perfil Médico", url: "/medico/perfil", icon: BadgeCheck, feature: "doctor_profile" },
+];
+
+const nurseItems: Item[] = [
+  { title: "Panel Enfermería", url: "/enfermeria", icon: HeartPulse, feature: "nurse_panel" },
+];
+
+const labItems: Item[] = [
+  { title: "Panel Laboratorio", url: "/laboratorio", icon: FlaskRound, feature: "lab_panel" },
+];
+
+const pharmacyItems: Item[] = [
+  { title: "Panel Farmacia", url: "/farmacia", icon: Store, feature: "pharmacy_panel" },
 ];
 
 const adminItems: Item[] = [
@@ -43,6 +57,7 @@ const adminItems: Item[] = [
   { title: "Especialidades", url: "/admin/especialidades", icon: GraduationCap, feature: "admin_especialidades" },
   { title: "Gestor de Usuarios", url: "/admin/usuarios", icon: UserCog, feature: "user_manager" },
   { title: "Perfiles de Acceso", url: "/admin/perfiles-acceso", icon: KeyRound, feature: "access_manager" },
+  { title: "Accesos Paciente↔Personal", url: "/admin/accesos-pacientes", icon: UserCheck, feature: "patient_personnel_manager" },
 ];
 
 export function AppSidebar() {
