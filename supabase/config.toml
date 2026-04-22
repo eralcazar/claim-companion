@@ -1,1 +1,10 @@
 project_id = "zspetfkvdnhdbtcdwgry"
+
+[functions.get-stripe-price]
+verify_jwt = false
+
+[functions.pharmacy-create-checkout]
+verify_jwt = false
+
+[functions.payments-webhook]
+verify_jwt = false
