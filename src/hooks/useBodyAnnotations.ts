@@ -159,6 +159,38 @@ export function useDeleteAnnotationFile() {
   });
 }
 
+export function useModerateBodyAnnotation() {
+  const qc = useQueryClient();
+  const { user } = useAuth();
+  return useMutation({
+    mutationFn: async (input: {
+      id: string;
+      moderation_status: ModerationStatus;
+      moderation_note?: string | null;
+    }) => {
+      if (!user) throw new Error("No autenticado");
+      const { data, error } = await supabase
+        .from("body_annotations" as any)
+        .update({
+          moderation_status: input.moderation_status,
+          moderation_note: input.moderation_note ?? null,
+          moderated_by: user.id,
+          moderated_at: new Date().toISOString(),
+        })
+        .eq("id", input.id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data as any;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["body-annotations"] });
+      toast.success("Moderación actualizada");
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Error al moderar"),
+  });
+}
+
 export async function getSignedUrl(path: string) {
   const { data } = await supabase.storage.from("body-annotations").createSignedUrl(path, 3600);
   return data?.signedUrl ?? "";
