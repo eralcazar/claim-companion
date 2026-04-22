@@ -274,6 +274,13 @@ function ResultadoItem({ resultado, canManage, onDownload, onDelete }: any) {
           patientId={resultado.patient_id}
         />
       )}
+      {canManage && (
+        <ResultadoEditDialog
+          open={editOpen}
+          onOpenChange={setEditOpen}
+          resultado={resultado}
+        />
+      )}
     </div>
   );
 }
