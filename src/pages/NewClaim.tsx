@@ -218,19 +218,22 @@ export default function NewClaim() {
   };
 
   const handleGenerate = async () => {
-    if (!definition || !policy || !effectiveUserId) return;
+    if (!policy || !effectiveUserId) return;
+    if (!useDynamic && !definition) return;
     setGenerating(true);
     try {
+      const formCode = definition?.code || tramite.slice(0, 3).toUpperCase();
       const result = await runClaimPipeline({
         userId: effectiveUserId,
         insurer,
         formatId: tramite,
         policyId: policy.id,
-        formCode: definition.code,
+        formCode,
         data,
         profile,
         policy,
         existingDraftId: draftId,
+        firmaId: firmarElectronicamente && (useDynamic ? hasFirma : true) ? firmaIdSel : null,
       });
       downloadPDF(result.pdfBytes, `${result.folio}.pdf`);
       toast.success(`Formato oficial llenado · Folio ${result.folio}`);
