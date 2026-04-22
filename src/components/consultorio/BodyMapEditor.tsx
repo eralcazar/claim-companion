@@ -1,15 +1,19 @@
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Maximize2 } from "lucide-react";
 import { useState } from "react";
 import { BodyMapSVG } from "./BodyMapSVG";
 import { BodyAnnotationDialog } from "./BodyAnnotationDialog";
+import { RegionDetailDialog } from "./RegionDetailDialog";
 import {
   useBodyAnnotations,
   BODY_PARTS_LABEL,
   SEVERITY_LABEL,
   BodyAnnotation,
 } from "@/hooks/useBodyAnnotations";
+import { useAuth } from "@/contexts/AuthContext";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
@@ -31,6 +35,9 @@ export function BodyMapEditor({ appointmentId, patientId, canEdit = false, title
   const [pick, setPick] = useState<{ body_part: string; marker_x: number; marker_y: number } | null>(null);
   const [editing, setEditing] = useState<BodyAnnotation | null>(null);
   const [open, setOpen] = useState(false);
+  const [regionPart, setRegionPart] = useState<string | null>(null);
+  const { user, roles } = useAuth();
+  const canModerate = canEdit && (roles.includes("medico") || roles.includes("admin"));
 
   const { data: annotations = [], isLoading } = useBodyAnnotations({
     appointmentId,
@@ -38,6 +45,12 @@ export function BodyMapEditor({ appointmentId, patientId, canEdit = false, title
   });
 
   const visible = annotations.filter((a) => a.body_view === view);
+
+  // Group by body_part
+  const grouped = visible.reduce<Record<string, BodyAnnotation[]>>((acc, a) => {
+    (acc[a.body_part] ||= []).push(a);
+    return acc;
+  }, {});
 
   const handlePick = (info: { body_part: string; marker_x: number; marker_y: number }) => {
     if (!canEdit) return;
@@ -90,28 +103,54 @@ export function BodyMapEditor({ appointmentId, patientId, canEdit = false, title
           <p className="text-xs font-medium text-muted-foreground">
             {isLoading ? "Cargando..." : `${visible.length} anotación(es) en vista ${view}`}
           </p>
-          {visible.map((a) => (
-            <button
-              key={a.id}
-              onClick={() => handleMarkerClick(a.id)}
-              className="w-full text-left rounded border p-2 hover:bg-accent/30 transition-colors"
-            >
+          {Object.entries(grouped).map(([part, items]) => (
+            <div key={part} className="rounded border p-2 space-y-1.5 bg-card">
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0">
-                  <Badge variant={severityVariant[a.severity]}>{SEVERITY_LABEL[a.severity]}</Badge>
-                  <span className="text-sm truncate">{BODY_PARTS_LABEL[a.body_part] ?? a.body_part}</span>
+                  <span className="text-sm font-semibold truncate">
+                    {BODY_PARTS_LABEL[part] ?? part}
+                  </span>
+                  <Badge variant="secondary">{items.length}</Badge>
                 </div>
-                <span className="text-[10px] text-muted-foreground">
-                  {format(new Date(a.created_at), "dd MMM", { locale: es })}
-                </span>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 px-2"
+                  onClick={() => setRegionPart(part)}
+                >
+                  <Maximize2 className="h-3 w-3 mr-1" />
+                  Ver zona
+                </Button>
               </div>
-              {a.note && <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{a.note}</p>}
-              {a.files && a.files.length > 0 && (
-                <p className="text-[10px] text-muted-foreground mt-1">
-                  📎 {a.files.length} archivo(s)
-                </p>
+              {items.slice(0, 2).map((a) => (
+                <button
+                  key={a.id}
+                  onClick={() => handleMarkerClick(a.id)}
+                  className="w-full text-left rounded border p-2 hover:bg-accent/30 transition-colors"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <Badge variant={severityVariant[a.severity]}>{SEVERITY_LABEL[a.severity]}</Badge>
+                    <span className="text-[10px] text-muted-foreground">
+                      {format(new Date(a.created_at), "dd MMM", { locale: es })}
+                    </span>
+                  </div>
+                  {a.note && <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{a.note}</p>}
+                  {a.files && a.files.length > 0 && (
+                    <p className="text-[10px] text-muted-foreground mt-1">
+                      📎 {a.files.length} archivo(s)
+                    </p>
+                  )}
+                </button>
+              ))}
+              {items.length > 2 && (
+                <button
+                  onClick={() => setRegionPart(part)}
+                  className="text-xs text-primary hover:underline w-full text-left"
+                >
+                  + {items.length - 2} más en esta zona
+                </button>
               )}
-            </button>
+            </div>
           ))}
         </div>
 
@@ -131,6 +170,27 @@ export function BodyMapEditor({ appointmentId, patientId, canEdit = false, title
           existing={editing}
           canEdit={canEdit}
         />
+
+        {regionPart && (
+          <RegionDetailDialog
+            open={!!regionPart}
+            onOpenChange={(o) => { if (!o) setRegionPart(null); }}
+            bodyPart={regionPart}
+            bodyView={view}
+            annotations={grouped[regionPart] ?? []}
+            canModerate={canModerate}
+            isCreator={(id) => {
+              const a = annotations.find((x) => x.id === id);
+              return !!a && !!user && a.created_by === user.id;
+            }}
+            onEdit={(a) => {
+              setRegionPart(null);
+              setEditing(a);
+              setPick(null);
+              setOpen(true);
+            }}
+          />
+        )}
       </CardContent>
     </Card>
   );

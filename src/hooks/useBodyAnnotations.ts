@@ -5,6 +5,7 @@ import { toast } from "sonner";
 
 export type BodyView = "frontal" | "posterior";
 export type Severity = "leve" | "moderada" | "grave";
+export type ModerationStatus = "pendiente" | "validada" | "observada" | "rechazada";
 
 export interface BodyAnnotationFile {
   id: string;
@@ -29,6 +30,10 @@ export interface BodyAnnotation {
   severity: Severity;
   created_at: string;
   updated_at: string;
+  moderation_status: ModerationStatus;
+  moderation_note: string | null;
+  moderated_by: string | null;
+  moderated_at: string | null;
   files?: BodyAnnotationFile[];
 }
 
@@ -154,6 +159,38 @@ export function useDeleteAnnotationFile() {
   });
 }
 
+export function useModerateBodyAnnotation() {
+  const qc = useQueryClient();
+  const { user } = useAuth();
+  return useMutation({
+    mutationFn: async (input: {
+      id: string;
+      moderation_status: ModerationStatus;
+      moderation_note?: string | null;
+    }) => {
+      if (!user) throw new Error("No autenticado");
+      const { data, error } = await supabase
+        .from("body_annotations" as any)
+        .update({
+          moderation_status: input.moderation_status,
+          moderation_note: input.moderation_note ?? null,
+          moderated_by: user.id,
+          moderated_at: new Date().toISOString(),
+        })
+        .eq("id", input.id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data as any;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["body-annotations"] });
+      toast.success("Moderación actualizada");
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Error al moderar"),
+  });
+}
+
 export async function getSignedUrl(path: string) {
   const { data } = await supabase.storage.from("body-annotations").createSignedUrl(path, 3600);
   return data?.signedUrl ?? "";
@@ -187,4 +224,11 @@ export const SEVERITY_LABEL: Record<Severity, string> = {
   leve: "Leve",
   moderada: "Moderada",
   grave: "Grave",
+};
+
+export const MODERATION_LABEL: Record<ModerationStatus, string> = {
+  pendiente: "Pendiente",
+  validada: "Validada",
+  observada: "En observación",
+  rechazada: "Rechazada",
 };
