@@ -159,6 +159,18 @@ function ResultadoItem({ resultado, canManage, onDownload, onDelete }: any) {
       {showInd && (
         <div className="space-y-2">
           {indicadores.map((i: any) => (
+            editingId === i.id ? (
+              <IndicadorEditRow
+                key={i.id}
+                indicador={i}
+                isSaving={saveInd.isPending}
+                onCancel={() => setEditingId(null)}
+                onSave={async (patch) => {
+                  await saveInd.mutateAsync({ id: i.id, ...patch });
+                  setEditingId(null);
+                }}
+              />
+            ) : (
             <div key={i.id} className="flex items-center justify-between gap-2 text-sm border-b pb-1 flex-wrap">
               <div className="flex items-center gap-2 flex-wrap min-w-0">
                 <span>
@@ -179,11 +191,17 @@ function ResultadoItem({ resultado, canManage, onDownload, onDelete }: any) {
                 {i.es_normal === true && <span className="text-green-600 text-xs">✓ Normal</span>}
               </div>
               {canManage && (
-                <Button size="sm" variant="ghost" onClick={() => delInd.mutate(i.id)}>
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
+                <div className="flex gap-0.5">
+                  <Button size="sm" variant="ghost" onClick={() => setEditingId(i.id)} title="Editar indicador">
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => delInd.mutate(i.id)} title="Eliminar indicador">
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
               )}
             </div>
+            )
           ))}
           {canManage && (
             <div className="grid grid-cols-2 md:grid-cols-5 gap-1 items-end pt-2">
