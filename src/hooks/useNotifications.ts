@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { playReminderSound } from "@/lib/sound";
 
 export type Notification = {
   id: string;
@@ -41,7 +42,18 @@ export function useNotifications() {
         { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` },
         (payload) => {
           const n = payload.new as Notification;
-          toast(n.title, { description: n.body });
+          const isMedReminder = n.title.startsWith("💊");
+          if (isMedReminder) {
+            playReminderSound();
+            if (typeof window !== "undefined" && "Notification" in window && document.hidden && Notification.permission === "granted") {
+              try {
+                new window.Notification(n.title, { body: n.body, requireInteraction: true });
+              } catch {}
+            }
+            toast.warning(n.title, { description: n.body, duration: 30000 });
+          } else {
+            toast(n.title, { description: n.body });
+          }
           qc.invalidateQueries({ queryKey: ["notifications"] });
         }
       )

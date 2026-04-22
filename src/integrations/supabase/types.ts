@@ -945,6 +945,59 @@ export type Database = {
         }
         Relationships: []
       }
+      medication_schedule: {
+        Row: {
+          active: boolean
+          created_at: string
+          ends_at: string | null
+          id: string
+          interval_hours: number
+          last_dose_at: string | null
+          medication_id: string
+          next_dose_at: string
+          receta_item_id: string | null
+          started_at: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          ends_at?: string | null
+          id?: string
+          interval_hours: number
+          last_dose_at?: string | null
+          medication_id: string
+          next_dose_at: string
+          receta_item_id?: string | null
+          started_at?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          ends_at?: string | null
+          id?: string
+          interval_hours?: number
+          last_dose_at?: string | null
+          medication_id?: string
+          next_dose_at?: string
+          receta_item_id?: string | null
+          started_at?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "medication_schedule_medication_id_fkey"
+            columns: ["medication_id"]
+            isOneToOne: false
+            referencedRelation: "medications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       medications: {
         Row: {
           active: boolean
@@ -952,8 +1005,10 @@ export type Database = {
           dosage: string
           end_date: string | null
           frequency: Database["public"]["Enums"]["medication_frequency"]
+          frequency_hours: number | null
           id: string
           name: string
+          receta_item_id: string | null
           start_date: string
           updated_at: string
           user_id: string
@@ -964,8 +1019,10 @@ export type Database = {
           dosage: string
           end_date?: string | null
           frequency?: Database["public"]["Enums"]["medication_frequency"]
+          frequency_hours?: number | null
           id?: string
           name: string
+          receta_item_id?: string | null
           start_date: string
           updated_at?: string
           user_id: string
@@ -976,8 +1033,10 @@ export type Database = {
           dosage?: string
           end_date?: string | null
           frequency?: Database["public"]["Enums"]["medication_frequency"]
+          frequency_hours?: number | null
           id?: string
           name?: string
+          receta_item_id?: string | null
           start_date?: string
           updated_at?: string
           user_id?: string
@@ -1550,6 +1609,10 @@ export type Database = {
         | "cada_12_horas"
         | "cada_24_horas"
         | "semanal"
+        | "cada_4_horas"
+        | "cada_6_horas"
+        | "cada_48_horas"
+        | "personalizado"
       policy_status: "activa" | "inactiva"
       receta_estado: "activa" | "completada" | "cancelada"
       receta_frecuencia:
@@ -1709,6 +1772,10 @@ export const Constants = {
         "cada_12_horas",
         "cada_24_horas",
         "semanal",
+        "cada_4_horas",
+        "cada_6_horas",
+        "cada_48_horas",
+        "personalizado",
       ],
       policy_status: ["activa", "inactiva"],
       receta_estado: ["activa", "completada", "cancelada"],

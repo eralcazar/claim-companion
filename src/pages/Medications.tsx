@@ -13,21 +13,30 @@ import { useState } from "react";
 import { Plus, Pill } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
 import { useEffectiveUserId } from "@/contexts/ImpersonationContext";
+import { useActiveSchedules, useStopTakingMedication } from "@/hooks/useMedicationSchedule";
+import { BellRing, Square } from "lucide-react";
 
 type MedFrequency = Database["public"]["Enums"]["medication_frequency"];
 
 const freqLabels: Record<string, string> = {
   diario: "Diario",
+  cada_4_horas: "Cada 4 horas",
+  cada_6_horas: "Cada 6 horas",
   cada_8_horas: "Cada 8 horas",
   cada_12_horas: "Cada 12 horas",
   cada_24_horas: "Cada 24 horas",
+  cada_48_horas: "Cada 48 horas",
   semanal: "Semanal",
+  personalizado: "Personalizado",
 };
 
 export default function Medications() {
   const { user } = useAuth();
   const effectiveUserId = useEffectiveUserId(user?.id);
   const queryClient = useQueryClient();
+  const stopTaking = useStopTakingMedication();
+  const { data: schedules = [] } = useActiveSchedules(effectiveUserId);
+  const scheduleByMed = new Map(schedules.map((s) => [s.medication_id, s]));
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({
     name: "",
@@ -133,23 +142,42 @@ export default function Medications() {
         <div className="space-y-3">
           {medications?.map((med) => (
             <Card key={med.id} className={!med.active ? "opacity-50" : ""}>
-              <CardContent className="p-4 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Pill className="h-5 w-5 text-primary" />
-                  <div>
-                    <p className="text-sm font-medium">{med.name}</p>
-                    <p className="text-xs text-muted-foreground">{med.dosage} — {freqLabels[med.frequency]}</p>
+              <CardContent className="p-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Pill className="h-5 w-5 text-primary" />
+                    <div>
+                      <p className="text-sm font-medium">{med.name}</p>
+                      <p className="text-xs text-muted-foreground">{med.dosage} — {freqLabels[med.frequency] ?? med.frequency}</p>
+                    </div>
                   </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => toggleMutation.mutate({ id: med.id, active: med.active })}
+                  >
+                    <Badge variant={med.active ? "default" : "secondary"}>
+                      {med.active ? "Activo" : "Inactivo"}
+                    </Badge>
+                  </Button>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => toggleMutation.mutate({ id: med.id, active: med.active })}
-                >
-                  <Badge variant={med.active ? "default" : "secondary"}>
-                    {med.active ? "Activo" : "Inactivo"}
-                  </Badge>
-                </Button>
+                {(() => {
+                  const sched = scheduleByMed.get(med.id);
+                  if (!sched) return null;
+                  const nextStr = new Date(sched.next_dose_at).toLocaleString("es-MX", {
+                    hour: "2-digit", minute: "2-digit", day: "2-digit", month: "short",
+                  });
+                  return (
+                    <div className="flex items-center justify-between gap-2 pt-2 border-t">
+                      <span className="text-xs text-primary flex items-center gap-1">
+                        <BellRing className="h-3.5 w-3.5" /> Próxima toma: {nextStr}
+                      </span>
+                      <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => stopTaking.mutate(sched.id)}>
+                        <Square className="h-3 w-3 mr-1" /> Detener recordatorios
+                      </Button>
+                    </div>
+                  );
+                })()}
               </CardContent>
             </Card>
           ))}

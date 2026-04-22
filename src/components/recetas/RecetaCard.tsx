@@ -1,12 +1,13 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Pill, Download, Pencil, Trash2, Ban } from "lucide-react";
+import { Pill, Download, Pencil, Trash2, Ban, BellRing, Square } from "lucide-react";
 import { useDeleteReceta, useUpdateReceta } from "@/hooks/useRecetas";
 import { generateRecetaPDF } from "./recetaPdf";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useActiveSchedules, useStartTakingMedication, useStopTakingMedication } from "@/hooks/useMedicationSchedule";
 
 const FREQ_LABEL: Record<string, string> = {
   cada_4h: "c/4h", cada_6h: "c/6h", cada_8h: "c/8h", cada_12h: "c/12h",
@@ -48,11 +49,17 @@ export function RecetaCard({ receta, onEdit }: Props) {
   const { user, roles } = useAuth();
   const del = useDeleteReceta();
   const upd = useUpdateReceta();
+  const startTaking = useStartTakingMedication();
+  const stopTaking = useStopTakingMedication();
   const isAdmin = roles.includes("admin");
   const canEdit = isAdmin || receta.doctor_id === user?.id || receta.created_by === user?.id;
   const items = getItems(receta);
   const visible = items.slice(0, 3);
   const extra = items.length - visible.length;
+  const isPatient = user?.id === receta.patient_id;
+  const canToggleTaking = isPatient || canEdit;
+  const { data: schedules = [] } = useActiveSchedules(receta.patient_id);
+  const scheduleByItem = new Map(schedules.filter((s) => s.receta_item_id).map((s) => [s.receta_item_id!, s]));
 
   const downloadPdf = async () => {
     try {
@@ -107,10 +114,44 @@ export function RecetaCard({ receta, onEdit }: Props) {
               `· ${itemFrequency(it)}`,
               it.dias_a_tomar ? `· ${it.dias_a_tomar} días` : null,
             ].filter(Boolean).join(" ");
+            const sched = it.id ? scheduleByItem.get(it.id) : undefined;
+            const nextStr = sched
+              ? new Date(sched.next_dose_at).toLocaleString("es-MX", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "short" })
+              : null;
             return (
-              <li key={i} className="flex gap-2">
-                <Pill className="h-3.5 w-3.5 text-primary mt-0.5 flex-shrink-0" />
-                <span className="flex-1">{parts}</span>
+              <li key={i} className="flex flex-col gap-1">
+                <div className="flex gap-2">
+                  <Pill className="h-3.5 w-3.5 text-primary mt-0.5 flex-shrink-0" />
+                  <span className="flex-1">{parts}</span>
+                </div>
+                {canToggleTaking && it.id && receta.estado === "activa" && (
+                  <div className="pl-5 flex items-center gap-2">
+                    {sched ? (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          className="h-7 text-xs"
+                          disabled={stopTaking.isPending}
+                          onClick={() => stopTaking.mutate(sched.id)}
+                        >
+                          <Square className="h-3 w-3 mr-1" /> Detener
+                        </Button>
+                        <span className="text-[11px] text-muted-foreground">🔔 Próxima: {nextStr}</span>
+                      </>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-xs"
+                        disabled={startTaking.isPending}
+                        onClick={() => startTaking.mutate({ item: it, receta })}
+                      >
+                        <BellRing className="h-3 w-3 mr-1" /> Tomando
+                      </Button>
+                    )}
+                  </div>
+                )}
               </li>
             );
           })}
