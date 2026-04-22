@@ -144,6 +144,7 @@ function InfoTab({ formulario }: { formulario: Formulario }) {
     total_paginas: formulario.total_paginas,
     total_campos_estimado: formulario.total_campos_estimado,
     activo: formulario.activo,
+    es_informe_medico: formulario.es_informe_medico ?? false,
   });
 
   return (
@@ -181,6 +182,19 @@ function InfoTab({ formulario }: { formulario: Formulario }) {
           id="activo"
           checked={form.activo}
           onCheckedChange={(v) => setForm({ ...form, activo: v })}
+        />
+      </div>
+      <div className="flex items-center justify-between">
+        <div>
+          <Label htmlFor="informe">Es formato de Informe Médico</Label>
+          <p className="text-xs text-muted-foreground">
+            Se mostrará al médico para reclamos sin informe de esta aseguradora.
+          </p>
+        </div>
+        <Switch
+          id="informe"
+          checked={form.es_informe_medico}
+          onCheckedChange={(v) => setForm({ ...form, es_informe_medico: v })}
         />
       </div>
       <Button

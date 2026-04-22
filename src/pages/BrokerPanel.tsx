@@ -3,10 +3,10 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Users, UserCog } from "lucide-react";
+import { Users, UserCog, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useImpersonation } from "@/contexts/ImpersonationContext";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 
 export default function BrokerPanel() {
   const { user } = useAuth();
@@ -84,6 +84,12 @@ export default function BrokerPanel() {
                   >
                     <UserCog className="h-4 w-4 mr-2" />
                     Ver / actuar como
+                  </Button>
+                  <Button asChild size="sm" variant="ghost" className="w-full">
+                    <Link to={`/personal/paciente/${p.patient_id}`}>
+                      <Eye className="h-4 w-4 mr-2" />
+                      Ver detalle
+                    </Link>
                   </Button>
                 </CardContent>
               </Card>

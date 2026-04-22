@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Save, Plus, Trash2, Upload, Download, FileText } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Props {
   userId: string;
@@ -59,8 +60,19 @@ export function MedicoEditor({ userId, displayName }: Props) {
     cedula_general: "",
     telefono_consultorio: "",
     direccion_consultorio: "",
+    nombre_consultorio: "",
+    email_consultorio: "",
+    horario_atencion: "",
+    consultorio_calle: "",
+    consultorio_numero: "",
+    consultorio_colonia: "",
+    consultorio_cp: "",
+    consultorio_municipio: "",
+    consultorio_estado: "",
+    foto_path: "",
   });
   const [newEspId, setNewEspId] = useState("");
+  const [fotoUrl, setFotoUrl] = useState<string | null>(null);
   const [docToDelete, setDocToDelete] = useState<typeof documentos[number] | null>(
     null
   );
@@ -71,12 +83,45 @@ export function MedicoEditor({ userId, displayName }: Props) {
         cedula_general: medico.cedula_general ?? "",
         telefono_consultorio: medico.telefono_consultorio ?? "",
         direccion_consultorio: medico.direccion_consultorio ?? "",
+        nombre_consultorio: medico.nombre_consultorio ?? "",
+        email_consultorio: medico.email_consultorio ?? "",
+        horario_atencion: medico.horario_atencion ?? "",
+        consultorio_calle: medico.consultorio_calle ?? "",
+        consultorio_numero: medico.consultorio_numero ?? "",
+        consultorio_colonia: medico.consultorio_colonia ?? "",
+        consultorio_cp: medico.consultorio_cp ?? "",
+        consultorio_municipio: medico.consultorio_municipio ?? "",
+        consultorio_estado: medico.consultorio_estado ?? "",
+        foto_path: medico.foto_path ?? "",
       });
+      if (medico.foto_path) {
+        supabase.storage.from("medicos").createSignedUrl(medico.foto_path, 3600)
+          .then(({ data }) => setFotoUrl(data?.signedUrl ?? null));
+      } else {
+        setFotoUrl(null);
+      }
     }
   }, [medico?.id]);
 
   const handleSave = async () => {
     await upsert.mutateAsync({ user_id: userId, ...form });
+  };
+
+  const handleFotoUpload = async (file: File) => {
+    const ext = file.name.split(".").pop() ?? "jpg";
+    const path = `${userId}/foto-${Date.now()}.${ext}`;
+    const { error: upErr } = await supabase.storage
+      .from("medicos")
+      .upload(path, file, { upsert: true });
+    if (upErr) {
+      toast.error(upErr.message);
+      return;
+    }
+    setForm((prev) => ({ ...prev, foto_path: path }));
+    await upsert.mutateAsync({ user_id: userId, ...form, foto_path: path });
+    const { data } = await supabase.storage.from("medicos").createSignedUrl(path, 3600);
+    setFotoUrl(data?.signedUrl ?? null);
+    toast.success("Foto actualizada");
   };
 
   const handleAddEsp = async () => {
@@ -169,6 +214,82 @@ export function MedicoEditor({ userId, displayName }: Props) {
         <Button onClick={handleSave} disabled={upsert.isPending}>
           <Save className="h-4 w-4" />
           Guardar datos
+        </Button>
+      </Card>
+
+      {/* Consultorio */}
+      <Card className="p-4 space-y-4">
+        <h3 className="font-semibold">Consultorio</h3>
+        <div className="flex items-start gap-4 flex-wrap">
+          <div className="flex flex-col items-center gap-2">
+            <div className="h-24 w-24 rounded-full bg-muted overflow-hidden flex items-center justify-center">
+              {fotoUrl ? (
+                <img src={fotoUrl} alt="Foto del médico" className="h-full w-full object-cover" />
+              ) : (
+                <span className="text-xs text-muted-foreground">Sin foto</span>
+              )}
+            </div>
+            <label>
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) handleFotoUpload(f);
+                  e.currentTarget.value = "";
+                }}
+              />
+              <Button variant="outline" size="sm" asChild type="button">
+                <span>
+                  <Upload className="h-3.5 w-3.5" />
+                  Subir foto
+                </span>
+              </Button>
+            </label>
+          </div>
+          <div className="grid gap-3 md:grid-cols-2 flex-1 min-w-[280px]">
+            <div className="space-y-1.5">
+              <Label>Nombre del consultorio</Label>
+              <Input value={form.nombre_consultorio} onChange={(e) => setForm({ ...form, nombre_consultorio: e.target.value })} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Email del consultorio</Label>
+              <Input type="email" value={form.email_consultorio} onChange={(e) => setForm({ ...form, email_consultorio: e.target.value })} />
+            </div>
+            <div className="space-y-1.5 md:col-span-2">
+              <Label>Horario de atención</Label>
+              <Input placeholder="Ej: Lun-Vie 9:00-18:00" value={form.horario_atencion} onChange={(e) => setForm({ ...form, horario_atencion: e.target.value })} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Calle</Label>
+              <Input value={form.consultorio_calle} onChange={(e) => setForm({ ...form, consultorio_calle: e.target.value })} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Número</Label>
+              <Input value={form.consultorio_numero} onChange={(e) => setForm({ ...form, consultorio_numero: e.target.value })} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Colonia</Label>
+              <Input value={form.consultorio_colonia} onChange={(e) => setForm({ ...form, consultorio_colonia: e.target.value })} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>CP</Label>
+              <Input value={form.consultorio_cp} onChange={(e) => setForm({ ...form, consultorio_cp: e.target.value })} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Municipio</Label>
+              <Input value={form.consultorio_municipio} onChange={(e) => setForm({ ...form, consultorio_municipio: e.target.value })} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Estado</Label>
+              <Input value={form.consultorio_estado} onChange={(e) => setForm({ ...form, consultorio_estado: e.target.value })} />
+            </div>
+          </div>
+        </div>
+        <Button onClick={handleSave} disabled={upsert.isPending}>
+          <Save className="h-4 w-4" />
+          Guardar consultorio
         </Button>
       </Card>
 

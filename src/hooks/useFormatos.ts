@@ -20,6 +20,7 @@ export type Formulario = {
   total_paginas: number;
   total_campos_estimado: number;
   activo: boolean;
+  es_informe_medico?: boolean;
 };
 
 export type Campo = {

@@ -1,5 +1,5 @@
 import {
-  Home, FileText, Calendar, Pill, User, Shield, Users, Stethoscope, FolderOpen, Download, LogOut, FolderTree, UserCog, KeyRound, GraduationCap, BadgeCheck, FlaskConical, TrendingUp
+  Home, FileText, Calendar, Pill, User, Shield, Users, Stethoscope, FolderOpen, Download, LogOut, FolderTree, UserCog, KeyRound, GraduationCap, BadgeCheck, FlaskConical, TrendingUp, HeartPulse, FlaskRound, Store, UserCheck, FileWarning
 } from "lucide-react";
 import { NavLink as RouterNavLink, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -25,6 +25,7 @@ const mainItems: Item[] = [
   { title: "Pólizas", url: "/polizas", icon: Shield, feature: "polizas" },
   { title: "Formatos", url: "/formatos", icon: Download, feature: "formatos" },
   { title: "Perfil", url: "/perfil", icon: User, feature: "perfil" },
+  { title: "Mis accesos", url: "/perfil/accesos", icon: UserCheck, feature: "patient_personnel_manager" },
 ];
 
 const brokerItems: Item[] = [
@@ -33,7 +34,20 @@ const brokerItems: Item[] = [
 
 const doctorItems: Item[] = [
   { title: "Panel Médico", url: "/medico", icon: Stethoscope, feature: "doctor_panel" },
+  { title: "Reclamos sin informe", url: "/medico/reclamos-sin-informe", icon: FileWarning, feature: "claims_without_report" },
   { title: "Mi Perfil Médico", url: "/medico/perfil", icon: BadgeCheck, feature: "doctor_profile" },
+];
+
+const nurseItems: Item[] = [
+  { title: "Panel Enfermería", url: "/enfermeria", icon: HeartPulse, feature: "nurse_panel" },
+];
+
+const labItems: Item[] = [
+  { title: "Panel Laboratorio", url: "/laboratorio", icon: FlaskRound, feature: "lab_panel" },
+];
+
+const pharmacyItems: Item[] = [
+  { title: "Panel Farmacia", url: "/farmacia", icon: Store, feature: "pharmacy_panel" },
 ];
 
 const adminItems: Item[] = [
@@ -43,6 +57,7 @@ const adminItems: Item[] = [
   { title: "Especialidades", url: "/admin/especialidades", icon: GraduationCap, feature: "admin_especialidades" },
   { title: "Gestor de Usuarios", url: "/admin/usuarios", icon: UserCog, feature: "user_manager" },
   { title: "Perfiles de Acceso", url: "/admin/perfiles-acceso", icon: KeyRound, feature: "access_manager" },
+  { title: "Accesos Paciente↔Personal", url: "/admin/accesos-pacientes", icon: UserCheck, feature: "patient_personnel_manager" },
 ];
 
 export function AppSidebar() {
@@ -57,6 +72,9 @@ export function AppSidebar() {
   const visibleMain = mainItems.filter((i) => can(i.feature));
   const visibleBroker = brokerItems.filter((i) => can(i.feature));
   const visibleDoctor = doctorItems.filter((i) => can(i.feature));
+  const visibleNurse = nurseItems.filter((i) => can(i.feature));
+  const visibleLab = labItems.filter((i) => can(i.feature));
+  const visiblePharmacy = pharmacyItems.filter((i) => can(i.feature));
   const visibleAdmin = adminItems.filter((i) => can(i.feature));
 
   return (
@@ -106,6 +124,66 @@ export function AppSidebar() {
             <SidebarGroupContent>
               <SidebarMenu>
                 {visibleDoctor.map((item) => (
+                  <SidebarMenuItem key={item.url}>
+                    <SidebarMenuButton asChild isActive={isActive(item.url)}>
+                      <RouterNavLink to={item.url} className="flex items-center gap-2">
+                        <item.icon className="h-4 w-4" />
+                        {!collapsed && <span>{item.title}</span>}
+                      </RouterNavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        {visibleNurse.length > 0 && (
+          <SidebarGroup>
+            <SidebarGroupLabel>{!collapsed && "Enfermería"}</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {visibleNurse.map((item) => (
+                  <SidebarMenuItem key={item.url}>
+                    <SidebarMenuButton asChild isActive={isActive(item.url)}>
+                      <RouterNavLink to={item.url} className="flex items-center gap-2">
+                        <item.icon className="h-4 w-4" />
+                        {!collapsed && <span>{item.title}</span>}
+                      </RouterNavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        {visibleLab.length > 0 && (
+          <SidebarGroup>
+            <SidebarGroupLabel>{!collapsed && "Laboratorio"}</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {visibleLab.map((item) => (
+                  <SidebarMenuItem key={item.url}>
+                    <SidebarMenuButton asChild isActive={isActive(item.url)}>
+                      <RouterNavLink to={item.url} className="flex items-center gap-2">
+                        <item.icon className="h-4 w-4" />
+                        {!collapsed && <span>{item.title}</span>}
+                      </RouterNavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        {visiblePharmacy.length > 0 && (
+          <SidebarGroup>
+            <SidebarGroupLabel>{!collapsed && "Farmacia"}</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {visiblePharmacy.map((item) => (
                   <SidebarMenuItem key={item.url}>
                     <SidebarMenuButton asChild isActive={isActive(item.url)}>
                       <RouterNavLink to={item.url} className="flex items-center gap-2">
