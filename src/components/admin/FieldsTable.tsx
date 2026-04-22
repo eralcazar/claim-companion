@@ -526,6 +526,7 @@ export function FieldsTable({ formularioId, secciones }: Props) {
                         <SelectItem value="poliza">Póliza</SelectItem>
                         <SelectItem value="siniestro">Siniestro</SelectItem>
                         <SelectItem value="medico">Médico</SelectItem>
+                        <SelectItem value="firma">Firma</SelectItem>
                       </SelectContent>
                     </Select>
                   </TableCell>
@@ -614,6 +615,18 @@ export function FieldsTable({ formularioId, secciones }: Props) {
                     </Button>
                   </TableCell>
                 </TableRow>
+                {isExpanded && supportsOptions && (
+                  <TableRow key={`${c.id}-opts`} className="bg-muted/10">
+                    <TableCell colSpan={18} className="p-3">
+                      <CampoOpcionesEditor
+                        opciones={(Array.isArray(c.opciones) ? (c.opciones as CampoOpcion[]) : []) as CampoOpcion[]}
+                        defaultPagina={c.campo_pagina}
+                        onChange={(next) => update(c.id, { opciones: next as any })}
+                      />
+                    </TableCell>
+                  </TableRow>
+                )}
+                </>
               );
             })}
           </TableBody>
