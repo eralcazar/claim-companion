@@ -9,6 +9,8 @@ import { Switch } from "@/components/ui/switch";
 import { PatientSelect } from "@/components/appointments/PatientSelect";
 import { useCreateEstudio, useUpdateEstudio } from "@/hooks/useEstudios";
 import { useAuth } from "@/contexts/AuthContext";
+import { Plus, Trash2 } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
 
 const TIPOS = [
   "sangre","orina","heces","cultivo","citologia","radiografia","ecografia","tomografia",
@@ -30,12 +32,10 @@ export function EstudioForm({ open, onOpenChange, initial, defaultPatientId, def
   const isMedico = roles.includes("medico");
   const create = useCreateEstudio();
   const update = useUpdateEstudio();
+  const blankItem = () => ({ tipo_estudio: "sangre", descripcion: "", cantidad: 1, prioridad: "normal", indicacion: "" });
   const [form, setForm] = useState<any>({
     patient_id: defaultPatientId ?? "",
     appointment_id: defaultAppointmentId ?? null,
-    tipo_estudio: "sangre",
-    descripcion: "",
-    cantidad: 1,
     indicacion: "",
     observaciones: "",
     preparacion: "",
@@ -44,25 +44,48 @@ export function EstudioForm({ open, onOpenChange, initial, defaultPatientId, def
     ayuno_obligatorio: false,
     horas_ayuno: "",
     estado: "solicitado",
+    items: [blankItem()],
   });
 
   useEffect(() => {
-    if (initial) setForm({ ...initial, horas_ayuno: initial.horas_ayuno ?? "" });
-    else setForm((f: any) => ({ ...f, patient_id: defaultPatientId ?? f.patient_id, appointment_id: defaultAppointmentId ?? f.appointment_id }));
+    if (initial) {
+      const initialItems = Array.isArray(initial.items) && initial.items.length > 0
+        ? initial.items.map((it: any) => ({
+            tipo_estudio: it.tipo_estudio ?? "sangre",
+            descripcion: it.descripcion ?? "",
+            cantidad: it.cantidad ?? 1,
+            prioridad: it.prioridad ?? "normal",
+            indicacion: it.indicacion ?? "",
+          }))
+        : [{
+            tipo_estudio: initial.tipo_estudio ?? "sangre",
+            descripcion: initial.descripcion ?? "",
+            cantidad: initial.cantidad ?? 1,
+            prioridad: initial.prioridad ?? "normal",
+            indicacion: "",
+          }];
+      setForm({ ...initial, horas_ayuno: initial.horas_ayuno ?? "", items: initialItems });
+    } else {
+      setForm((f: any) => ({ ...f, patient_id: defaultPatientId ?? f.patient_id, appointment_id: defaultAppointmentId ?? f.appointment_id }));
+    }
   }, [initial, defaultPatientId, defaultAppointmentId, open]);
 
   const set = (k: string, v: any) => setForm((f: any) => ({ ...f, [k]: v }));
+  const setItem = (idx: number, k: string, v: any) =>
+    setForm((f: any) => ({ ...f, items: f.items.map((it: any, i: number) => i === idx ? { ...it, [k]: v } : it) }));
+  const addItem = () => setForm((f: any) => ({ ...f, items: [...f.items, blankItem()] }));
+  const removeItem = (idx: number) =>
+    setForm((f: any) => ({ ...f, items: f.items.length > 1 ? f.items.filter((_: any, i: number) => i !== idx) : f.items }));
 
   const submit = async () => {
-    if (!form.patient_id || !form.tipo_estudio) return;
+    if (!form.patient_id) return;
+    const items = (form.items || []).filter((it: any) => it.tipo_estudio);
+    if (items.length === 0) return;
     const doctorId = isMedico ? user!.id : (defaultDoctorId || form.doctor_id || user!.id);
     const payload: any = {
       patient_id: form.patient_id,
       appointment_id: form.appointment_id || null,
       doctor_id: doctorId,
-      tipo_estudio: form.tipo_estudio,
-      descripcion: form.descripcion || null,
-      cantidad: Number(form.cantidad) || 1,
       indicacion: form.indicacion || null,
       observaciones: form.observaciones || null,
       preparacion: form.preparacion || null,
@@ -71,6 +94,7 @@ export function EstudioForm({ open, onOpenChange, initial, defaultPatientId, def
       ayuno_obligatorio: form.ayuno_obligatorio,
       horas_ayuno: form.ayuno_obligatorio && form.horas_ayuno !== "" ? Number(form.horas_ayuno) : null,
       estado: form.estado,
+      items,
     };
     if (initial?.id) {
       await update.mutateAsync({ id: initial.id, ...payload });
@@ -83,9 +107,9 @@ export function EstudioForm({ open, onOpenChange, initial, defaultPatientId, def
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{initial ? "Editar estudio" : "Nuevo estudio"}</DialogTitle>
+          <DialogTitle>{initial ? "Editar solicitud de estudios" : "Nueva solicitud de estudios"}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           {!defaultPatientId && (
@@ -95,32 +119,6 @@ export function EstudioForm({ open, onOpenChange, initial, defaultPatientId, def
             </div>
           )}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div>
-              <Label>Tipo de estudio *</Label>
-              <Select value={form.tipo_estudio} onValueChange={(v) => set("tipo_estudio", v)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent className="max-h-72">{TIPOS.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>Cantidad</Label>
-              <Input type="number" min="1" value={form.cantidad} onChange={(e) => set("cantidad", e.target.value)} />
-            </div>
-            <div className="md:col-span-2">
-              <Label>Descripción</Label>
-              <Input value={form.descripcion} onChange={(e) => set("descripcion", e.target.value)} placeholder="Ej: Hemograma completo" />
-            </div>
-            <div>
-              <Label>Prioridad</Label>
-              <Select value={form.prioridad} onValueChange={(v) => set("prioridad", v)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="baja">Baja</SelectItem>
-                  <SelectItem value="normal">Normal</SelectItem>
-                  <SelectItem value="urgente">Urgente</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
             <div>
               <Label>Estado</Label>
               <Select value={form.estado} onValueChange={(v) => set("estado", v)}>
@@ -148,8 +146,66 @@ export function EstudioForm({ open, onOpenChange, initial, defaultPatientId, def
               </div>
             )}
           </div>
+
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <Label className="text-base">Estudios solicitados *</Label>
+              <Button type="button" variant="outline" size="sm" onClick={addItem}>
+                <Plus className="h-4 w-4 mr-1" />Agregar estudio
+              </Button>
+            </div>
+            {form.items.map((it: any, idx: number) => (
+              <Card key={idx}>
+                <CardContent className="p-3 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm font-semibold">
+                      Estudio #{idx + 1}{it.tipo_estudio ? ` — ${it.tipo_estudio.replace(/_/g, " ")}` : ""}
+                    </div>
+                    {form.items.length > 1 && (
+                      <Button type="button" variant="ghost" size="sm" className="text-destructive" onClick={() => removeItem(idx)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <Label>Tipo *</Label>
+                      <Select value={it.tipo_estudio} onValueChange={(v) => setItem(idx, "tipo_estudio", v)}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent className="max-h-72">{TIPOS.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>Cantidad</Label>
+                      <Input type="number" min="1" value={it.cantidad} onChange={(e) => setItem(idx, "cantidad", e.target.value)} />
+                    </div>
+                    <div className="md:col-span-2">
+                      <Label>Descripción</Label>
+                      <Input value={it.descripcion} onChange={(e) => setItem(idx, "descripcion", e.target.value)} placeholder="Ej: Hemograma completo" />
+                    </div>
+                    <div>
+                      <Label>Prioridad</Label>
+                      <Select value={it.prioridad} onValueChange={(v) => setItem(idx, "prioridad", v)}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="baja">Baja</SelectItem>
+                          <SelectItem value="normal">Normal</SelectItem>
+                          <SelectItem value="urgente">Urgente</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="md:col-span-2">
+                      <Label>Indicación específica</Label>
+                      <Textarea value={it.indicacion} onChange={(e) => setItem(idx, "indicacion", e.target.value)} rows={2} />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
           <div>
-            <Label>Indicación</Label>
+            <Label>Indicación general</Label>
             <Textarea value={form.indicacion} onChange={(e) => set("indicacion", e.target.value)} rows={2} />
           </div>
           <div>
@@ -164,7 +220,7 @@ export function EstudioForm({ open, onOpenChange, initial, defaultPatientId, def
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
           <Button onClick={submit} disabled={create.isPending || update.isPending || !form.patient_id}>
-            {initial ? "Guardar cambios" : "Crear estudio"}
+            {initial ? "Guardar cambios" : "Crear solicitud"}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -32,6 +32,17 @@ export function generateEstudioPDF({ estudio, patient, doctor }: Args) {
   const pageH = doc.internal.pageSize.getHeight();
   let y = 18;
 
+  // Normalize items
+  const items: any[] = Array.isArray(estudio.items) && estudio.items.length > 0
+    ? estudio.items
+    : (estudio.tipo_estudio ? [{
+        tipo_estudio: estudio.tipo_estudio,
+        descripcion: estudio.descripcion,
+        cantidad: estudio.cantidad ?? 1,
+        prioridad: estudio.prioridad ?? "normal",
+        indicacion: null,
+      }] : []);
+
   // Title
   doc.setFontSize(18);
   doc.setFont("helvetica", "bold");
@@ -78,13 +89,14 @@ export function generateEstudioPDF({ estudio, patient, doctor }: Args) {
   // Table of requested studies
   autoTable(doc, {
     startY: y,
-    head: [["#", "Tipo de estudio", "Cantidad", "Prioridad"]],
-    body: [[
-      "1",
-      cap(estudio.tipo_estudio || "") + (estudio.descripcion ? ` — ${estudio.descripcion}` : ""),
-      String(estudio.cantidad ?? 1),
-      PRIO_LABEL[estudio.prioridad] ?? estudio.prioridad ?? "-",
-    ]],
+    head: [["#", "Tipo de estudio", "Descripción", "Cantidad", "Prioridad"]],
+    body: items.map((it, i) => [
+      String(i + 1),
+      cap(it.tipo_estudio || ""),
+      it.descripcion || "-",
+      String(it.cantidad ?? 1),
+      PRIO_LABEL[it.prioridad] ?? it.prioridad ?? "-",
+    ]),
     theme: "striped",
     headStyles: { fillColor: [59, 130, 246] },
   });
@@ -99,7 +111,13 @@ export function generateEstudioPDF({ estudio, patient, doctor }: Args) {
     y += lines.length * 5 + 4;
   };
 
-  if (estudio.indicacion) writeBlock("Indicaciones del médico:", estudio.indicacion);
+  const itemIndic = items
+    .filter((it) => it.indicacion)
+    .map((it, i) => `${i + 1}. ${cap(it.tipo_estudio || "")}: ${it.indicacion}`);
+  if (estudio.indicacion || itemIndic.length > 0) {
+    const text = [estudio.indicacion, ...itemIndic].filter(Boolean).join("\n");
+    writeBlock("Indicaciones del médico:", text);
+  }
 
   if (estudio.ayuno_obligatorio || estudio.preparacion) {
     doc.setFont("helvetica", "bold");
@@ -169,7 +187,6 @@ export function generateEstudioPDF({ estudio, patient, doctor }: Args) {
     doc.setTextColor(0, 0, 0);
   }
 
-  const tipoSlug = (estudio.tipo_estudio || "estudio").toLowerCase().replace(/\s+/g, "_");
   const dateSlug = new Date(estudio.created_at || Date.now()).toISOString().slice(0, 10);
-  doc.save(`solicitud_estudio_${tipoSlug}_${dateSlug}.pdf`);
+  doc.save(`solicitud_estudios_${dateSlug}_${items.length}items.pdf`);
 }
