@@ -2,94 +2,135 @@
 
 ## Objetivo
 
-Permitir que una **solicitud de estudios** contenga **varios tipos de estudio** (uno o más). Hoy cada fila en `estudios_solicitados` representa un solo estudio; vamos a separar la cabecera de solicitud de sus ítems de estudio, replicando el patrón ya aplicado a `recetas` / `receta_items`.
+Agregar a cada ítem de receta un botón **"Tomando"** que:
 
-## Enfoque
+1. Registra automáticamente el medicamento en la sección **Medicamentos** del paciente (con fecha/hora de inicio, dosis, duración).
+2. Genera **recordatorios programados** (notificaciones tipo pop-up + sonido) según la periodicidad indicada en la receta (cada 4h, 6h, 8h, 12h, etc.).
+3. Permite "Detener toma" para dar de baja el seguimiento.
 
-Crear tabla hija `estudio_items` con los campos por estudio individual. La tabla `estudios_solicitados` queda como cabecera (paciente, médico, fecha, estado, indicación general, preparación general, laboratorio sugerido, observaciones, ayuno). Los campos de estudio existentes en la cabecera se mantienen por compatibilidad/migración pero la UI ya no los usa para detalle.
+## Arquitectura
 
-## Cambios
+### 1. Migración SQL
 
-### 1. Migración SQL (schema)
+**Tabla nueva `public.medication_schedule`** (registro maestro de tomas activas):
+- `id uuid pk`
+- `user_id uuid not null` (paciente)
+- `medication_id uuid not null` → FK a `medications.id` (cascade)
+- `receta_item_id uuid` (opcional, link a `receta_items.id` para evitar duplicados)
+- `started_at timestamptz not null default now()`
+- `next_dose_at timestamptz not null` (próxima dosis programada)
+- `interval_hours numeric not null` (intervalo entre dosis)
+- `ends_at timestamptz` (calculado: `started_at + dias_a_tomar * 24h`)
+- `active boolean not null default true`
+- `last_dose_at timestamptz`
+- `created_at`, `updated_at`
 
-Nueva tabla `public.estudio_items`:
-- `id uuid pk default gen_random_uuid()`
-- `estudio_id uuid not null references estudios_solicitados(id) on delete cascade`
-- `orden int not null default 0`
-- `tipo_estudio text not null`
-- `descripcion text`
-- `cantidad int not null default 1`
-- `prioridad estudio_prioridad not null default 'normal'`
-- `indicacion text` (opcional, por estudio)
-- `created_at timestamptz default now()`
-- Índice en `estudio_id`.
+RLS: paciente gestiona los suyos, médico ve los de sus pacientes, admin todo. Índice en `(active, next_dose_at)`.
 
-RLS en `estudio_items`: políticas espejo de `estudios_solicitados` (select/insert/update/delete) validando vía `EXISTS (select 1 from estudios_solicitados e where e.id = estudio_items.estudio_id and …)`. Mismas reglas: paciente ve los suyos, médico ve los que atiende, broker los asignados, admin todos.
+**Extender enum `medication_frequency`** con: `cada_4_horas`, `cada_6_horas`, `cada_48_horas`, `personalizado`. Agregar columna `frequency_hours numeric` a `medications` para personalizado.
 
-Backfill: por cada solicitud existente copiar `(tipo_estudio, descripcion, cantidad, prioridad, indicacion)` como un `estudio_items` con `orden=0`.
+**Agregar columna `medications.receta_item_id uuid` nullable** para trazabilidad y evitar duplicados al pulsar "Tomando" dos veces.
 
-`tipo_estudio` en `estudios_solicitados` se vuelve nullable para no romper compatibilidad (pero la UI ya no lo escribe en la cabecera).
+**Habilitar extensiones** `pg_cron` y `pg_net` (si no están).
 
-### 2. Hooks (`src/hooks/useEstudios.ts`)
+### 2. Edge Function `send-medication-reminders`
 
-- `useEstudios(filters)`: cambiar `select` para traer `*, items:estudio_items(*)` y ordenar items por `orden`.
-- `useCreateEstudio`: ahora recibe `{ ...header, items: [...] }`. Inserta cabecera, obtiene `id`, hace `insert` masivo en `estudio_items`. La notificación al paciente lista el primer estudio + "y N más" cuando aplica.
-- `useUpdateEstudio`: si viene `items`, hace `delete from estudio_items where estudio_id = id` + `insert` masivo (estrategia replace). Si no, sólo actualiza cabecera.
-- `useDeleteEstudio`: con `ON DELETE CASCADE` no requiere borrado previo.
+Nueva function en `supabase/functions/send-medication-reminders/index.ts`:
+- Service role client.
+- `select * from medication_schedule where active = true and next_dose_at <= now() and (ends_at is null or ends_at > now())`.
+- Por cada fila:
+  - `insert into notifications`: `title = "💊 Hora de tomar {nombre}"`, `body = "Dosis: {dosage}. Próxima toma en {interval_hours}h"`, `link = "/medicamentos"`.
+  - `update medication_schedule set last_dose_at = now(), next_dose_at = now() + interval_hours * interval '1 hour'`.
+  - Si `next_dose_at > ends_at`: marcar `active = false` y desactivar `medications.active = false`.
+- Para programaciones expiradas (`ends_at <= now()`): desactivar.
+- Devuelve `{ checked, sent, completed }`.
 
-### 3. Formulario `EstudioForm.tsx`
+### 3. Cron job
 
-Reestructurar:
-- Sección **Datos generales**: paciente, fecha (implícita), prioridad por defecto, ayuno + horas, laboratorio sugerido, preparación general, indicación general, observaciones, estado.
-- Sección **Estudios solicitados** con array `items[]`:
-  - Cada ítem: tarjeta colapsable "Estudio #N — {tipo}" con botón "Eliminar" (sólo si hay > 1).
-  - Campos por ítem: `tipo_estudio` (Select con la lista `TIPOS`), `descripcion`, `cantidad` (default 1), `prioridad` (default 'normal'), `indicacion` específica.
-  - Botón **"+ Agregar estudio"** al pie de la lista.
-- Validación: al menos 1 ítem con `tipo_estudio` obligatorio.
-- Al editar, hidratar `items` desde `initial.items` (o construir uno desde campos legacy si `items` está vacío).
-- Submit envía `{ header, items }` a los hooks.
-- Dialog crece a `max-w-3xl` con `overflow-y-auto`.
+Insertar via insert tool (no migración, lleva URL+anon key específicos del proyecto):
+```sql
+select cron.schedule(
+  'medication-reminders-every-5min',
+  '*/5 * * * *',
+  $$ select net.http_post(
+    url := 'https://zspetfkvdnhdbtcdwgry.supabase.co/functions/v1/send-medication-reminders',
+    headers := '{"Content-Type":"application/json","Authorization":"Bearer <anon>"}'::jsonb,
+    body := '{}'::jsonb
+  ); $$
+);
+```
 
-### 4. Tarjeta `EstudioCard.tsx`
+Granularidad: cada 5 min (suficiente para tomas ≥ 4h; las notificaciones llegan con tolerancia de 5 min).
 
-- Título: "Solicitud de estudios · {fecha}" + badge de estado + badge de prioridad máxima.
-- Mostrar lista compacta de estudios: por cada ítem `tipo (cantidad) · prioridad` (max 3 visibles + "y N más").
-- Acciones (PDF, Resultados, Editar, Cancelar, Eliminar) sin cambios funcionales.
-- Quitar dependencia directa de `estudio.tipo_estudio`; usar `estudio.items[]` con fallback a campos legacy si `items` viene vacío.
+### 4. UI – Botón "Tomando" en `RecetaCard.tsx`
 
-### 5. PDF `estudioPdf.ts`
+Por cada `item`:
+- Si **no** está siendo tomado → botón **"Tomando"** (variante `outline`, ícono `Pill` + "Comenzar"). Solo visible si `receta.patient_id === user.id` (el paciente es quien marca su toma) **o** si el médico/admin lo activan en nombre del paciente.
+- Si ya está activo → botón **"Detener"** (variante `secondary`, ícono `Square`) + texto pequeño "Próxima: {hh:mm}".
 
-- Cambiar firma para aceptar `estudio.items[]`.
-- En `autoTable` generar **una fila por estudio** con columnas: `#`, `Tipo de estudio`, `Descripción`, `Cantidad`, `Prioridad`.
-- Sección "Indicaciones" muestra la indicación general + listado por estudio si existen.
-- Filename: `solicitud_estudios_{fecha}_{N}items.pdf`.
+**Click en "Tomando"** ejecuta `useStartTakingMedication(item, receta)`:
+1. Mapea `item.frecuencia` → `medication_frequency` enum + `frequency_hours`:
+   - `cada_4h` → `cada_4_horas`, hours=4
+   - `cada_6h` → `cada_6_horas`, hours=6
+   - `cada_8h` → `cada_8_horas`, hours=8
+   - `cada_12h` → `cada_12_horas`, hours=12
+   - `cada_24h` → `cada_24_horas`, hours=24
+   - `cada_48h` → `cada_48_horas`, hours=48
+   - `semanal` → `semanal`, hours=168
+   - `otro` → `personalizado`, hours=`item.frecuencia_horas`
+2. `upsert` en `medications` (por `receta_item_id`) con `name=medicamento_nombre`, `dosage="{dosis}{unidad_dosis}"`, `frequency`, `frequency_hours`, `start_date=today`, `end_date=today + dias_a_tomar`.
+3. `insert` en `medication_schedule`: `started_at=now()`, `next_dose_at=now()+interval_hours h`, `ends_at=now()+dias_a_tomar*24h` (o null si sin duración), `interval_hours`.
+4. Toast "Recordatorios activados — primera notificación en {N}h".
 
-### 6. Página `Estudios.tsx`
+### 5. Hook `useMedicationSchedule(items)`
 
-- Búsqueda `q` ahora matchea contra cualquier `item.tipo_estudio` o `item.descripcion`.
-- Resto sin cambios.
+Hook que consulta `medication_schedule` para los `receta_item_id` recibidos, devuelve `Map<receta_item_id, scheduleRow>` para que la UI sepa qué ítem ya está activo.
 
-### 7. Integración con resultados
+### 6. UI – Sonido y pop-up de notificación
 
-`ResultadosManager` y `resultados_estudios` siguen ligados a la cabecera `estudio_id` (no al ítem). Un resultado puede contener indicadores de cualquiera de los estudios de la solicitud, lo cual es coherente con el flujo real (laboratorio entrega un PDF por solicitud).
+`src/hooks/useNotifications.ts` ya hace toast en realtime. Añadimos:
+- Detección de notificaciones cuyo `title` empieza con "💊" → tocar `Audio` corto (un beep wav embebido en `public/notification.mp3` o usar Web Audio API con un oscilador para evitar asset).
+- `toast.warning(...)` con `duration: 30000` y action button "Marcar tomada" que llama `markRead`.
+- Solicitar permiso de `Notification` API en login y disparar `new Notification(title, {body, icon, requireInteraction: true})` cuando la pestaña no está activa, además del toast.
 
-### 8. Integraciones existentes
+Implementación: extender `useNotifications` para que en el handler de realtime:
+```ts
+const isMedReminder = n.title.startsWith("💊");
+if (isMedReminder) {
+  playBeep();                                  // Web Audio oscillator
+  if (document.hidden && Notification.permission === "granted") {
+    new Notification(n.title, { body: n.body, requireInteraction: true });
+  }
+  toast(n.title, { description: n.body, duration: 30000, important: true });
+} else {
+  toast(n.title, { description: n.body });
+}
+```
 
-`AppointmentDetailDialog.tsx` (tab Estudios) usa `useEstudios({ appointmentId })` y `EstudioForm`/`EstudioCard` → funciona automáticamente.
+`playBeep()`: helper en `src/lib/sound.ts` que crea un `AudioContext` + oscillator (440Hz × 200ms × 2 pulsos) — no requiere asset.
+
+Solicitud de permiso: en `AuthContext` o `App.tsx`, después del login, si `Notification.permission === "default"` llamar `Notification.requestPermission()`.
+
+### 7. Página `Medicamentos`
+
+Mostrar también `medication_schedule` activos: agregar badge "🔔 Recordatorio activo · próxima {hh:mm}" en cada `medications` que tenga schedule activo. Botón "Detener recordatorios" desactiva el schedule (sin borrar el medicamento).
 
 ## Archivos
 
 **Creados:**
-- Migración SQL nueva en `supabase/migrations/` para `estudio_items` + RLS + backfill.
+- Migración SQL: `medication_schedule` table + RLS + enum extension + `frequency_hours` + `receta_item_id` + extensiones `pg_cron`/`pg_net`.
+- `supabase/functions/send-medication-reminders/index.ts`
+- `src/hooks/useMedicationSchedule.ts`
+- `src/lib/sound.ts` (beep via Web Audio API)
+- Cron job vía insert tool (URL+anon hardcoded por seguridad).
 
 **Modificados:**
-- `src/hooks/useEstudios.ts` — soportar items en CRUD.
-- `src/components/estudios/EstudioForm.tsx` — UI de array de estudios.
-- `src/components/estudios/EstudioCard.tsx` — render de múltiples ítems.
-- `src/components/estudios/estudioPdf.ts` — tabla con N filas.
-- `src/pages/Estudios.tsx` — búsqueda contra items.
+- `src/components/recetas/RecetaCard.tsx` — botón "Tomando"/"Detener" por ítem + estado de schedule.
+- `src/hooks/useNotifications.ts` — sonido + Notification API para reminders 💊.
+- `src/contexts/AuthContext.tsx` — pedir permiso de Notification al login.
+- `src/pages/Medications.tsx` — mostrar badge de recordatorio activo + botón detener.
 
 ## Resultado esperado
 
-Médico abre "Nuevo estudio" → llena datos del paciente + ayuno/preparación generales → agrega "Química sanguínea" → click **"+ Agregar estudio"** → "Biometría hemática" → click otra vez para "Examen general de orina" → Guardar. La tarjeta muestra los 3 estudios; el PDF imprime una orden con tabla de 3 filas y la firma del médico al pie. Solicitudes existentes (un solo estudio) siguen mostrándose correctamente porque la migración las convierte en items.
+Paciente abre `/recetas` → ve receta con 3 medicamentos → click **"Tomando"** en "Paracetamol 500mg c/8h × 5 días" → toast "Recordatorios activados, próxima toma en 8h" → el medicamento aparece automáticamente en `/medicamentos` como activo con badge "🔔 Próxima 18:30" → cada 8h durante 5 días el paciente recibe pop-up + sonido + notificación del navegador "💊 Hora de tomar Paracetamol — Dosis: 500mg" → al cumplirse los 5 días, el schedule se desactiva solo. Botón "Detener" cancela los recordatorios sin borrar el historial del medicamento.
 
