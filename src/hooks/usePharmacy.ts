@@ -41,14 +41,9 @@ export function useUpsertCatalog() {
   return useMutation({
     mutationFn: async (input: Partial<CatalogItem> & { id?: string }) => {
       // Strip read-only / managed fields
-      const {
-        id,
-        // @ts-expect-error - may be present from row spread
-        created_at,
-        // @ts-expect-error
-        updated_at,
-        ...rest
-      } = input as any;
+      const { id, created_at, updated_at, ...rest } = input as any;
+      void created_at;
+      void updated_at;
       // Normalize empty strings on optional unique fields → null
       const payload: any = { ...rest };
       if (payload.sku === "") payload.sku = null;
