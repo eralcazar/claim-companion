@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Trash2, Upload, Download, Plus, Sparkles, Loader2 } from "lucide-react";
+import { Trash2, Upload, Download, Plus, Sparkles, Loader2, Pencil } from "lucide-react";
 import {
   useResultados,
   useUploadResultado,
@@ -19,6 +19,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { IndicadorSparkline } from "@/components/tendencias/IndicadorSparkline";
+import { IndicadorEditRow } from "./IndicadorEditRow";
 
 interface Props {
   estudio: any;
@@ -90,6 +91,7 @@ function ResultadoItem({ resultado, canManage, onDownload, onDelete }: any) {
   const extract = useExtractIndicators();
   const delAllInd = useDeleteIndicadoresByResultado();
   const [showInd, setShowInd] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState({ nombre_indicador: "", valor: "", unidad: "", valor_referencia_min: "", valor_referencia_max: "" });
 
   const handleExtract = async () => {
@@ -157,6 +159,18 @@ function ResultadoItem({ resultado, canManage, onDownload, onDelete }: any) {
       {showInd && (
         <div className="space-y-2">
           {indicadores.map((i: any) => (
+            editingId === i.id ? (
+              <IndicadorEditRow
+                key={i.id}
+                indicador={i}
+                isSaving={saveInd.isPending}
+                onCancel={() => setEditingId(null)}
+                onSave={async (patch) => {
+                  await saveInd.mutateAsync({ id: i.id, ...patch });
+                  setEditingId(null);
+                }}
+              />
+            ) : (
             <div key={i.id} className="flex items-center justify-between gap-2 text-sm border-b pb-1 flex-wrap">
               <div className="flex items-center gap-2 flex-wrap min-w-0">
                 <span>
@@ -177,11 +191,17 @@ function ResultadoItem({ resultado, canManage, onDownload, onDelete }: any) {
                 {i.es_normal === true && <span className="text-green-600 text-xs">✓ Normal</span>}
               </div>
               {canManage && (
-                <Button size="sm" variant="ghost" onClick={() => delInd.mutate(i.id)}>
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
+                <div className="flex gap-0.5">
+                  <Button size="sm" variant="ghost" onClick={() => setEditingId(i.id)} title="Editar indicador">
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => delInd.mutate(i.id)} title="Eliminar indicador">
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
               )}
             </div>
+            )
           ))}
           {canManage && (
             <div className="grid grid-cols-2 md:grid-cols-5 gap-1 items-end pt-2">
