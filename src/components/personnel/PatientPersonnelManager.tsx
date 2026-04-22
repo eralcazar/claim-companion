@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import {
   useMyAccesses,
   useAllAccesses,
@@ -191,6 +193,7 @@ export function PatientPersonnelManager({ mode }: Props) {
 
 function GrantAccessDialog({ mode, onClose }: { mode: "patient" | "admin"; onClose: () => void }) {
   const isAdmin = mode === "admin";
+  const { user } = useAuth();
   const [patientId, setPatientId] = useState<string>("");
   const [roleType, setRoleType] = useState<AppRole | "todos" | "">("");
   const [personnelId, setPersonnelId] = useState<string>("");
@@ -203,11 +206,9 @@ function GrantAccessDialog({ mode, onClose }: { mode: "patient" | "admin"; onClo
   const handleSubmit = async () => {
     if (!roleType || !personnelId) return;
     if (isAdmin && !patientId) return;
+    const targetPatient = isAdmin ? patientId : user!.id;
 
     if (roleType === "todos") {
-      const role = personnel.find((p) => p.user_id === personnelId);
-      // For "todos", we still need a specific role — pull it from user_roles for that user
-      const { supabase } = await import("@/integrations/supabase/client");
       const { data: ur } = await supabase
         .from("user_roles")
         .select("role")
@@ -216,7 +217,7 @@ function GrantAccessDialog({ mode, onClose }: { mode: "patient" | "admin"; onClo
       const roles = (ur ?? []).map((r) => r.role as AppRole);
       for (const r of roles) {
         await grant.mutateAsync({
-          patient_id: isAdmin ? patientId : "__self__",
+          patient_id: targetPatient,
           personnel_id: personnelId,
           personnel_role: r,
           notes: notes || null,
@@ -224,7 +225,7 @@ function GrantAccessDialog({ mode, onClose }: { mode: "patient" | "admin"; onClo
       }
     } else {
       await grant.mutateAsync({
-        patient_id: isAdmin ? patientId : "__self__",
+        patient_id: targetPatient,
         personnel_id: personnelId,
         personnel_role: roleType as AppRole,
         notes: notes || null,
