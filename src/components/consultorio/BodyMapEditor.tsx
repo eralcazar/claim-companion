@@ -54,6 +54,22 @@ export function BodyMapEditor({ appointmentId, patientId, canEdit = false, title
     return acc;
   }, {});
 
+  // Total annotations per body_part across both views (for quick access selector)
+  const countsByPart = useMemo(() => {
+    return annotations.reduce<Record<string, number>>((acc, a) => {
+      acc[a.body_part] = (acc[a.body_part] ?? 0) + 1;
+      return acc;
+    }, {});
+  }, [annotations]);
+
+  const sortedParts = useMemo(
+    () =>
+      Object.entries(BODY_PARTS_LABEL).sort(([, a], [, b]) =>
+        String(a).localeCompare(String(b), "es"),
+      ),
+    [],
+  );
+
   const handlePick = (info: { body_part: string; marker_x: number; marker_y: number }) => {
     if (!canEdit) return;
     setEditing(null);
