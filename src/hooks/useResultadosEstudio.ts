@@ -168,3 +168,38 @@ export function useExtractIndicators() {
     },
   });
 }
+
+export function useBulkInsertIndicadores() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      resultado_id,
+      patient_id,
+      rows,
+    }: {
+      resultado_id: string;
+      patient_id: string;
+      rows: Array<{
+        nombre_indicador: string;
+        valor: number | null;
+        unidad: string | null;
+        valor_referencia_min: number | null;
+        valor_referencia_max: number | null;
+        es_normal: boolean | null;
+        flagged: boolean;
+      }>;
+    }) => {
+      if (!rows.length) return { inserted: 0 };
+      const payload = rows.map((r) => ({ ...r, resultado_id, patient_id }));
+      const { error } = await supabase.from("indicadores_estudio").insert(payload);
+      if (error) throw error;
+      return { inserted: rows.length };
+    },
+    onSuccess: (data, vars) => {
+      qc.invalidateQueries({ queryKey: ["indicadores", vars.resultado_id] });
+      qc.invalidateQueries({ queryKey: ["indicadores"] });
+      toast.success(`${data.inserted} indicadores importados`);
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Error al importar indicadores"),
+  });
+}
