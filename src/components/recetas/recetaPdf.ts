@@ -55,35 +55,64 @@ export function generateRecetaPDF({ receta, patient, doctor }: Args) {
   if (patient.telefono) { doc.text(`Tel: ${patient.telefono}`, 14, y); y += 5; }
   y += 4;
 
-  // Medication
-  const dosisStr = [receta.dosis, receta.unidad_dosis].filter(Boolean).join(" ");
-  const freq = receta.frecuencia === "otro" && receta.frecuencia_horas
-    ? `Cada ${receta.frecuencia_horas} h`
-    : FREQ_LABEL[receta.frecuencia] ?? receta.frecuencia;
+  // Medications table (one row per medicamento)
+  const items: any[] = Array.isArray(receta.items) && receta.items.length > 0
+    ? receta.items
+    : [{
+        medicamento_nombre: receta.medicamento_nombre,
+        marca_comercial: receta.marca_comercial,
+        dosis: receta.dosis, unidad_dosis: receta.unidad_dosis,
+        cantidad: receta.cantidad, via_administracion: receta.via_administracion,
+        frecuencia: receta.frecuencia, frecuencia_horas: receta.frecuencia_horas,
+        dias_a_tomar: receta.dias_a_tomar, indicacion: receta.indicacion,
+      }];
+
+  const body = items.map((it, i) => {
+    const dosisStr = [it.dosis, it.unidad_dosis].filter(Boolean).join(" ");
+    const freq = it.frecuencia === "otro" && it.frecuencia_horas
+      ? `Cada ${it.frecuencia_horas} h`
+      : FREQ_LABEL[it.frecuencia] ?? it.frecuencia ?? "-";
+    return [
+      String(i + 1),
+      (it.medicamento_nombre ?? "-") + (it.marca_comercial ? ` (${it.marca_comercial})` : ""),
+      dosisStr || "-",
+      it.cantidad != null && it.cantidad !== "" ? `${it.cantidad}` : "-",
+      it.via_administracion ?? "-",
+      freq,
+      it.dias_a_tomar ? `${it.dias_a_tomar} días` : "-",
+    ];
+  });
 
   autoTable(doc, {
     startY: y,
-    head: [["Medicamento", "Dosis", "Cantidad", "Vía", "Frecuencia", "Duración"]],
-    body: [[
-      receta.medicamento_nombre + (receta.marca_comercial ? ` (${receta.marca_comercial})` : ""),
-      dosisStr || "-",
-      receta.cantidad ? `${receta.cantidad}` : "-",
-      receta.via_administracion ?? "-",
-      freq,
-      receta.dias_a_tomar ? `${receta.dias_a_tomar} días` : "-",
-    ]],
+    head: [["#", "Medicamento", "Dosis", "Cantidad", "Vía", "Frecuencia", "Duración"]],
+    body,
     theme: "striped",
     headStyles: { fillColor: [59, 130, 246] },
+    styles: { fontSize: 9 },
   });
   // @ts-ignore
   y = (doc as any).lastAutoTable.finalY + 10;
 
-  if (receta.indicacion) {
-    doc.setFont("helvetica", "bold"); doc.text("Indicación:", 14, y); y += 5;
+  // Indicaciones generales + por medicamento
+  const perItemInd = items
+    .map((it, i) => (it.indicacion ? `${i + 1}. ${it.medicamento_nombre}: ${it.indicacion}` : null))
+    .filter(Boolean) as string[];
+
+  if (receta.indicacion || perItemInd.length > 0) {
+    doc.setFont("helvetica", "bold"); doc.text("Indicaciones:", 14, y); y += 5;
     doc.setFont("helvetica", "normal");
-    const lines = doc.splitTextToSize(receta.indicacion, pageW - 28);
-    doc.text(lines, 14, y); y += lines.length * 5 + 3;
+    if (receta.indicacion) {
+      const lines = doc.splitTextToSize(receta.indicacion, pageW - 28);
+      doc.text(lines, 14, y); y += lines.length * 5 + 2;
+    }
+    for (const ind of perItemInd) {
+      const lines = doc.splitTextToSize(`• ${ind}`, pageW - 28);
+      doc.text(lines, 14, y); y += lines.length * 5 + 1;
+    }
+    y += 2;
   }
+
   if (receta.observaciones) {
     doc.setFont("helvetica", "bold"); doc.text("Observaciones:", 14, y); y += 5;
     doc.setFont("helvetica", "normal");
@@ -103,5 +132,7 @@ export function generateRecetaPDF({ receta, patient, doctor }: Args) {
     doc.text(`Cédula Profesional: ${doctor.cedula}`, pageW / 2, y, { align: "center" });
   }
 
-  doc.save(`receta_${receta.medicamento_nombre || "medicamento"}_${new Date(receta.created_at).toISOString().slice(0, 10)}.pdf`);
+  const dateStr = new Date(receta.created_at).toISOString().slice(0, 10);
+  const suffix = items.length > 1 ? `${items.length}meds` : (items[0]?.medicamento_nombre || "medicamento").replace(/\s+/g, "_");
+  doc.save(`receta_${dateStr}_${suffix}.pdf`);
 }

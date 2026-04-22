@@ -19,12 +19,40 @@ interface Props {
   onEdit?: (r: any) => void;
 }
 
+function itemFrequency(it: any) {
+  if (it.frecuencia === "otro" && it.frecuencia_horas) return `c/${it.frecuencia_horas}h`;
+  return FREQ_LABEL[it.frecuencia] ?? it.frecuencia;
+}
+
+function getItems(receta: any): any[] {
+  if (Array.isArray(receta.items) && receta.items.length > 0) return receta.items;
+  // Fallback for legacy single-medication recetas
+  if (receta.medicamento_nombre) {
+    return [{
+      medicamento_nombre: receta.medicamento_nombre,
+      marca_comercial: receta.marca_comercial,
+      dosis: receta.dosis,
+      unidad_dosis: receta.unidad_dosis,
+      cantidad: receta.cantidad,
+      via_administracion: receta.via_administracion,
+      frecuencia: receta.frecuencia,
+      frecuencia_horas: receta.frecuencia_horas,
+      dias_a_tomar: receta.dias_a_tomar,
+      indicacion: receta.indicacion,
+    }];
+  }
+  return [];
+}
+
 export function RecetaCard({ receta, onEdit }: Props) {
   const { user, roles } = useAuth();
   const del = useDeleteReceta();
   const upd = useUpdateReceta();
   const isAdmin = roles.includes("admin");
   const canEdit = isAdmin || receta.doctor_id === user?.id || receta.created_by === user?.id;
+  const items = getItems(receta);
+  const visible = items.slice(0, 3);
+  const extra = items.length - visible.length;
 
   const downloadPdf = async () => {
     try {
@@ -35,7 +63,7 @@ export function RecetaCard({ receta, onEdit }: Props) {
       ]);
       const nameOf = (p: any) => p?.full_name?.trim() || [p?.first_name, p?.paternal_surname].filter(Boolean).join(" ") || "—";
       generateRecetaPDF({
-        receta,
+        receta: { ...receta, items },
         patient: { nombre: nameOf(pat), email: pat?.email, telefono: pat?.telefono_celular },
         doctor: {
           nombre: nameOf(doc),
@@ -54,9 +82,7 @@ export function RecetaCard({ receta, onEdit }: Props) {
     await upd.mutateAsync({ id: receta.id, estado: "cancelada" });
   };
 
-  const dosisStr = [receta.dosis, receta.unidad_dosis].filter(Boolean).join(" ");
-  const freq = receta.frecuencia === "otro" && receta.frecuencia_horas
-    ? `c/${receta.frecuencia_horas}h` : FREQ_LABEL[receta.frecuencia];
+  const fecha = new Date(receta.created_at).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" });
 
   return (
     <Card>
@@ -65,17 +91,33 @@ export function RecetaCard({ receta, onEdit }: Props) {
           <div className="flex items-center gap-2">
             <Pill className="h-5 w-5 text-primary" />
             <div>
-              <div className="font-semibold">{receta.medicamento_nombre}</div>
-              {receta.marca_comercial && <div className="text-xs text-muted-foreground">{receta.marca_comercial}</div>}
+              <div className="font-semibold">Receta · {fecha}</div>
+              <div className="text-xs text-muted-foreground">{items.length} medicamento{items.length !== 1 ? "s" : ""}</div>
             </div>
           </div>
           <Badge variant={ESTADO_VARIANT[receta.estado] ?? "secondary"}>{receta.estado}</Badge>
         </div>
-        <div className="text-sm text-muted-foreground space-y-0.5">
-          {dosisStr && <div>Dosis: {dosisStr} {receta.cantidad ? `× ${receta.cantidad}` : ""} {receta.via_administracion ?? ""}</div>}
-          <div>Frecuencia: {freq}{receta.dias_a_tomar ? ` · ${receta.dias_a_tomar} días` : ""}</div>
-          {receta.indicacion && <div className="line-clamp-2">{receta.indicacion}</div>}
-        </div>
+        <ul className="text-sm space-y-1">
+          {visible.map((it, i) => {
+            const dosis = [it.dosis, it.unidad_dosis].filter(Boolean).join(" ");
+            const parts = [
+              it.medicamento_nombre,
+              dosis && `— ${dosis}`,
+              it.cantidad ? `× ${it.cantidad}` : null,
+              `· ${itemFrequency(it)}`,
+              it.dias_a_tomar ? `· ${it.dias_a_tomar} días` : null,
+            ].filter(Boolean).join(" ");
+            return (
+              <li key={i} className="flex gap-2">
+                <Pill className="h-3.5 w-3.5 text-primary mt-0.5 flex-shrink-0" />
+                <span className="flex-1">{parts}</span>
+              </li>
+            );
+          })}
+          {extra > 0 && <li className="text-xs text-muted-foreground pl-5">y {extra} más…</li>}
+          {items.length === 0 && <li className="text-xs text-muted-foreground">Sin medicamentos</li>}
+        </ul>
+        {receta.indicacion && <div className="text-xs text-muted-foreground line-clamp-2">{receta.indicacion}</div>}
         <div className="flex flex-wrap gap-2 pt-2">
           <Button size="sm" variant="outline" onClick={downloadPdf}><Download className="h-3.5 w-3.5 mr-1" />PDF</Button>
           {canEdit && onEdit && (

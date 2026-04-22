@@ -1210,6 +1210,71 @@ export type Database = {
         }
         Relationships: []
       }
+      receta_items: {
+        Row: {
+          cantidad: number | null
+          created_at: string
+          dias_a_tomar: number | null
+          dosis: number | null
+          es_generico: boolean
+          frecuencia: Database["public"]["Enums"]["receta_frecuencia"]
+          frecuencia_horas: number | null
+          id: string
+          indicacion: string | null
+          marca_comercial: string | null
+          medicamento_nombre: string
+          orden: number
+          precio_aproximado: number | null
+          receta_id: string
+          unidad_dosis: string | null
+          via_administracion: string | null
+        }
+        Insert: {
+          cantidad?: number | null
+          created_at?: string
+          dias_a_tomar?: number | null
+          dosis?: number | null
+          es_generico?: boolean
+          frecuencia?: Database["public"]["Enums"]["receta_frecuencia"]
+          frecuencia_horas?: number | null
+          id?: string
+          indicacion?: string | null
+          marca_comercial?: string | null
+          medicamento_nombre: string
+          orden?: number
+          precio_aproximado?: number | null
+          receta_id: string
+          unidad_dosis?: string | null
+          via_administracion?: string | null
+        }
+        Update: {
+          cantidad?: number | null
+          created_at?: string
+          dias_a_tomar?: number | null
+          dosis?: number | null
+          es_generico?: boolean
+          frecuencia?: Database["public"]["Enums"]["receta_frecuencia"]
+          frecuencia_horas?: number | null
+          id?: string
+          indicacion?: string | null
+          marca_comercial?: string | null
+          medicamento_nombre?: string
+          orden?: number
+          precio_aproximado?: number | null
+          receta_id?: string
+          unidad_dosis?: string | null
+          via_administracion?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "receta_items_receta_id_fkey"
+            columns: ["receta_id"]
+            isOneToOne: false
+            referencedRelation: "recetas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       recetas: {
         Row: {
           appointment_id: string | null
@@ -1226,7 +1291,7 @@ export type Database = {
           id: string
           indicacion: string | null
           marca_comercial: string | null
-          medicamento_nombre: string
+          medicamento_nombre: string | null
           observaciones: string | null
           patient_id: string
           precio_aproximado: number | null
@@ -1249,7 +1314,7 @@ export type Database = {
           id?: string
           indicacion?: string | null
           marca_comercial?: string | null
-          medicamento_nombre: string
+          medicamento_nombre?: string | null
           observaciones?: string | null
           patient_id: string
           precio_aproximado?: number | null
@@ -1272,7 +1337,7 @@ export type Database = {
           id?: string
           indicacion?: string | null
           marca_comercial?: string | null
-          medicamento_nombre?: string
+          medicamento_nombre?: string | null
           observaciones?: string | null
           patient_id?: string
           precio_aproximado?: number | null

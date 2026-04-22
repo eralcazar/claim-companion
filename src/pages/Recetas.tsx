@@ -27,7 +27,16 @@ export default function Recetas() {
 
   const filtered = recetas.filter((r) => {
     if (estado !== "all" && r.estado !== estado) return false;
-    if (q && !`${r.medicamento_nombre} ${r.marca_comercial ?? ""}`.toLowerCase().includes(q.toLowerCase())) return false;
+    if (q) {
+      const needle = q.toLowerCase();
+      const items: any[] = Array.isArray(r.items) && r.items.length > 0
+        ? r.items
+        : [{ medicamento_nombre: r.medicamento_nombre, marca_comercial: r.marca_comercial }];
+      const matches = items.some((it) =>
+        `${it.medicamento_nombre ?? ""} ${it.marca_comercial ?? ""}`.toLowerCase().includes(needle)
+      );
+      if (!matches) return false;
+    }
     return true;
   });
 
