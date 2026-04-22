@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Save, Plus, Trash2, Upload, Download, FileText } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Props {
   userId: string;
@@ -59,8 +60,19 @@ export function MedicoEditor({ userId, displayName }: Props) {
     cedula_general: "",
     telefono_consultorio: "",
     direccion_consultorio: "",
+    nombre_consultorio: "",
+    email_consultorio: "",
+    horario_atencion: "",
+    consultorio_calle: "",
+    consultorio_numero: "",
+    consultorio_colonia: "",
+    consultorio_cp: "",
+    consultorio_municipio: "",
+    consultorio_estado: "",
+    foto_path: "",
   });
   const [newEspId, setNewEspId] = useState("");
+  const [fotoUrl, setFotoUrl] = useState<string | null>(null);
   const [docToDelete, setDocToDelete] = useState<typeof documentos[number] | null>(
     null
   );
@@ -71,12 +83,45 @@ export function MedicoEditor({ userId, displayName }: Props) {
         cedula_general: medico.cedula_general ?? "",
         telefono_consultorio: medico.telefono_consultorio ?? "",
         direccion_consultorio: medico.direccion_consultorio ?? "",
+        nombre_consultorio: medico.nombre_consultorio ?? "",
+        email_consultorio: medico.email_consultorio ?? "",
+        horario_atencion: medico.horario_atencion ?? "",
+        consultorio_calle: medico.consultorio_calle ?? "",
+        consultorio_numero: medico.consultorio_numero ?? "",
+        consultorio_colonia: medico.consultorio_colonia ?? "",
+        consultorio_cp: medico.consultorio_cp ?? "",
+        consultorio_municipio: medico.consultorio_municipio ?? "",
+        consultorio_estado: medico.consultorio_estado ?? "",
+        foto_path: medico.foto_path ?? "",
       });
+      if (medico.foto_path) {
+        supabase.storage.from("medicos").createSignedUrl(medico.foto_path, 3600)
+          .then(({ data }) => setFotoUrl(data?.signedUrl ?? null));
+      } else {
+        setFotoUrl(null);
+      }
     }
   }, [medico?.id]);
 
   const handleSave = async () => {
     await upsert.mutateAsync({ user_id: userId, ...form });
+  };
+
+  const handleFotoUpload = async (file: File) => {
+    const ext = file.name.split(".").pop() ?? "jpg";
+    const path = `${userId}/foto-${Date.now()}.${ext}`;
+    const { error: upErr } = await supabase.storage
+      .from("medicos")
+      .upload(path, file, { upsert: true });
+    if (upErr) {
+      toast.error(upErr.message);
+      return;
+    }
+    setForm((prev) => ({ ...prev, foto_path: path }));
+    await upsert.mutateAsync({ user_id: userId, ...form, foto_path: path });
+    const { data } = await supabase.storage.from("medicos").createSignedUrl(path, 3600);
+    setFotoUrl(data?.signedUrl ?? null);
+    toast.success("Foto actualizada");
   };
 
   const handleAddEsp = async () => {
