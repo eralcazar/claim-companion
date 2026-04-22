@@ -247,15 +247,16 @@ export default function NewClaim() {
   };
 
   const handleSaveDraft = async () => {
-    if (!effectiveUserId || !definition || !policy) {
+    if (!effectiveUserId || !policy || (!useDynamic && !definition)) {
       toast.error("Selecciona aseguradora y trámite");
       return;
     }
+    const formCode = definition?.code || tramite.slice(0, 3).toUpperCase();
     const payload = {
       user_id: effectiveUserId,
       policy_id: policy.id,
       insurer,
-      form_code: definition.code,
+      form_code: formCode,
       tramite_type: tramite,
       data: data as any,
       status: "draft" as const,
