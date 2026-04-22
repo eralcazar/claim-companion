@@ -8,6 +8,16 @@ export type Medico = {
   cedula_general: string | null;
   telefono_consultorio: string | null;
   direccion_consultorio: string | null;
+  nombre_consultorio?: string | null;
+  email_consultorio?: string | null;
+  horario_atencion?: string | null;
+  consultorio_calle?: string | null;
+  consultorio_numero?: string | null;
+  consultorio_colonia?: string | null;
+  consultorio_cp?: string | null;
+  consultorio_municipio?: string | null;
+  consultorio_estado?: string | null;
+  foto_path?: string | null;
 };
 
 export type MedicoEspecialidad = {
