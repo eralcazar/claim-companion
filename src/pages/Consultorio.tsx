@@ -26,6 +26,8 @@ import { RecetaCard } from "@/components/recetas/RecetaCard";
 import { RecetaForm } from "@/components/recetas/RecetaForm";
 import { EstudioCard } from "@/components/estudios/EstudioCard";
 import { EstudioForm } from "@/components/estudios/EstudioForm";
+import { useAssignedPatients } from "@/hooks/usePatientPersonnel";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function Consultorio() {
   const { appointmentId } = useParams<{ appointmentId: string }>();
@@ -35,6 +37,10 @@ export default function Consultorio() {
   const [obs, setObs] = useState("");
   const [recOpen, setRecOpen] = useState(false);
   const [estOpen, setEstOpen] = useState(false);
+  const [freePatientId, setFreePatientId] = useState<string | undefined>(undefined);
+
+  const freeMode = !appointmentId;
+  const { data: assignedPatients = [] } = useAssignedPatients("medico");
 
   const { data: appointment, isLoading } = useQuery({
     queryKey: ["consultorio-appointment", appointmentId],
