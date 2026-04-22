@@ -2,8 +2,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Maximize2 } from "lucide-react";
-import { useState } from "react";
+import { Maximize2, History } from "lucide-react";
+import { useState, useMemo } from "react";
 import { BodyMapSVG } from "./BodyMapSVG";
 import { BodyAnnotationDialog } from "./BodyAnnotationDialog";
 import { RegionDetailDialog } from "./RegionDetailDialog";
@@ -16,12 +16,14 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface Props {
   appointmentId?: string;
   patientId: string;
   canEdit?: boolean;
   title?: string;
+  showQuickRegionAccess?: boolean;
 }
 
 const severityVariant: Record<string, "default" | "secondary" | "destructive"> = {
@@ -30,7 +32,7 @@ const severityVariant: Record<string, "default" | "secondary" | "destructive"> =
   grave: "destructive",
 };
 
-export function BodyMapEditor({ appointmentId, patientId, canEdit = false, title }: Props) {
+export function BodyMapEditor({ appointmentId, patientId, canEdit = false, title, showQuickRegionAccess = false }: Props) {
   const [view, setView] = useState<"frontal" | "posterior">("frontal");
   const [pick, setPick] = useState<{ body_part: string; marker_x: number; marker_y: number } | null>(null);
   const [editing, setEditing] = useState<BodyAnnotation | null>(null);
