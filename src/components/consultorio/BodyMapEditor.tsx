@@ -2,8 +2,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Maximize2 } from "lucide-react";
-import { useState } from "react";
+import { Maximize2, History } from "lucide-react";
+import { useState, useMemo } from "react";
 import { BodyMapSVG } from "./BodyMapSVG";
 import { BodyAnnotationDialog } from "./BodyAnnotationDialog";
 import { RegionDetailDialog } from "./RegionDetailDialog";
@@ -16,12 +16,14 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface Props {
   appointmentId?: string;
   patientId: string;
   canEdit?: boolean;
   title?: string;
+  showQuickRegionAccess?: boolean;
 }
 
 const severityVariant: Record<string, "default" | "secondary" | "destructive"> = {
@@ -30,7 +32,7 @@ const severityVariant: Record<string, "default" | "secondary" | "destructive"> =
   grave: "destructive",
 };
 
-export function BodyMapEditor({ appointmentId, patientId, canEdit = false, title }: Props) {
+export function BodyMapEditor({ appointmentId, patientId, canEdit = false, title, showQuickRegionAccess = false }: Props) {
   const [view, setView] = useState<"frontal" | "posterior">("frontal");
   const [pick, setPick] = useState<{ body_part: string; marker_x: number; marker_y: number } | null>(null);
   const [editing, setEditing] = useState<BodyAnnotation | null>(null);
@@ -51,6 +53,22 @@ export function BodyMapEditor({ appointmentId, patientId, canEdit = false, title
     (acc[a.body_part] ||= []).push(a);
     return acc;
   }, {});
+
+  // Total annotations per body_part across both views (for quick access selector)
+  const countsByPart = useMemo(() => {
+    return annotations.reduce<Record<string, number>>((acc, a) => {
+      acc[a.body_part] = (acc[a.body_part] ?? 0) + 1;
+      return acc;
+    }, {});
+  }, [annotations]);
+
+  const sortedParts = useMemo(
+    () =>
+      Object.entries(BODY_PARTS_LABEL).sort(([, a], [, b]) =>
+        String(a).localeCompare(String(b), "es"),
+      ),
+    [],
+  );
 
   const handlePick = (info: { body_part: string; marker_x: number; marker_y: number }) => {
     if (!canEdit) return;
@@ -98,6 +116,46 @@ export function BodyMapEditor({ appointmentId, patientId, canEdit = false, title
             />
           </TabsContent>
         </Tabs>
+
+        {showQuickRegionAccess && (
+          <div className="rounded-md border border-dashed p-3 space-y-2 bg-muted/30">
+            <p className="text-xs font-semibold flex items-center gap-1.5">
+              <History className="h-3.5 w-3.5 text-primary" />
+              Ir al historial de una zona
+            </p>
+            <Select
+              value=""
+              onValueChange={(part) => {
+                if (part) setRegionPart(part);
+              }}
+            >
+              <SelectTrigger className="h-9">
+                <SelectValue placeholder="Selecciona una zona del cuerpo..." />
+              </SelectTrigger>
+              <SelectContent>
+                {sortedParts.map(([key, label]) => {
+                  const count = countsByPart[key] ?? 0;
+                  return (
+                    <SelectItem key={key} value={key}>
+                      <span className="flex items-center justify-between gap-3 w-full">
+                        <span>{label}</span>
+                        <Badge
+                          variant={count > 0 ? "secondary" : "outline"}
+                          className="text-[10px] h-4 px-1.5"
+                        >
+                          {count}
+                        </Badge>
+                      </span>
+                    </SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
+            <p className="text-[10px] text-muted-foreground">
+              Abre el historial completo y la moderación de la zona seleccionada.
+            </p>
+          </div>
+        )}
 
         <div className="space-y-2">
           <p className="text-xs font-medium text-muted-foreground">
