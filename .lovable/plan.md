@@ -2,47 +2,56 @@
 
 ## Objetivo
 
-Agregar filtro de rango de fechas (últimos 3/6/12 meses, todo el historial) en la página de Tendencias, filtrando client-side los puntos de cada indicador.
+Permitir comparar hasta 3 indicadores en un mismo gráfico en `/tendencias`, con doble eje Y (izquierdo y derecho) y un tercero compartiendo eje. Modo de comparación opcional que coexiste con la vista actual de tarjetas individuales.
 
 ## Cambios
 
-### 1. Actualizar `src/hooks/useTendencias.ts`
+### 1. Nuevo componente: `IndicadorCompareChart`
 
-Añadir export de helper `filterTendenciasByRango(indicadores, rango)`:
+Archivo: `src/components/tendencias/IndicadorCompareChart.tsx`.
 
-- `rango` valores: `'3m' | '6m' | '12m' | 'todo'`.
-- Calcula fecha límite con `Date.now()` menos meses correspondientes.
-- Para cada `TendenciaIndicador`, filtra `puntos` donde `punto.fecha >= fecha_limite_iso`.
-- Si `rango === 'todo'`, devuelve indicadores sin filtrar puntos (pero filtra indicadores sin puntos restantes).
-- Devuelve array `TendenciaIndicador[]` con `puntos` filtrados (mantiene estructura para que `IndicadorTrendChart` funcione igual).
+- Props: `indicadores: TendenciaIndicador[]` (1 a 3).
+- Renderiza un `LineChart` grande (~h-96) de recharts con:
+  - Eje X compartido: fechas combinadas y ordenadas de todos los indicadores.
+  - **Eje Y izquierdo**: primer indicador (color primario azul).
+  - **Eje Y derecho**: segundo indicador (color naranja/secundario).
+  - **Tercer indicador**: comparte eje Y derecho con el segundo (color violeta) — se indica en la leyenda.
+  - Cada línea con su propio `dataKey` (`valor_0`, `valor_1`, `valor_2`).
+  - Tooltip combinado mostrando fecha + valor de cada indicador con su unidad.
+  - Leyenda clickeable para ocultar/mostrar líneas.
+- Construcción del dataset: hace merge por fecha — cada punto del array final tiene `{ fechaLabel, fechaIso, valor_0?, valor_1?, valor_2? }`. Si un indicador no tiene medición en esa fecha, queda `undefined` y recharts lo conecta con `connectNulls`.
 
 ### 2. Actualizar `src/pages/Tendencias.tsx`
 
-- Importar `filterTendenciasByRango`.
-- Añadir state `rangoFechas` con default `'todo'`.
-- Añadir Select de rango de fechas en la barra de filtros (al lado del buscador o paciente):
-  - Opciones: `todo` → "Todo el historial", `3m` → "Últimos 3 meses", `6m` → "Últimos 6 meses", `12m` → "Últimos 12 meses".
-- Filtrado pipeline actualizado:
-  1. `useTendenciasPaciente(targetId)` trae todos los datos.
-  2. `filteredByRango = useMemo(() => filterTendenciasByRango(indicadores, rangoFechas), [indicadores, rangoFechas])`.
-  3. `filteredBySearch = filteredByRango.filter(i => i.nombre.toLowerCase().includes(q.toLowerCase()))`.
-- Ajustar layout responsive para que el buscador, el selector de paciente y el rango de fechas quepan en una línea (o flex-wrap).
-- Actualizar mensaje vacío: si `indicadores.length > 0` pero `filteredByRango.length === 0`, mostrar "No hay datos en el periodo seleccionado. Prueba con un rango mayor."
+- Añadir state `modo: 'individual' | 'comparar'` (default `'individual'`).
+- Añadir state `seleccionados: string[]` (claves normalizadas de indicadores, máx 3).
+- Añadir botones de tabs/toggle al inicio: "Vista individual" / "Comparar indicadores".
+- En modo `'comparar'`:
+  - Renderizar un panel de selección con multi-select (checkboxes o chips) listando todos los indicadores disponibles (`filteredByRango`).
+  - Limitar selección a 3; al intentar seleccionar un cuarto, mostrar toast "Máximo 3 indicadores".
+  - Si `seleccionados.length === 0`, mostrar mensaje "Selecciona 1 a 3 indicadores para comparar".
+  - Si hay seleccionados, renderizar `<IndicadorCompareChart indicadores={...} />`.
+  - Mantener el filtro de búsqueda y rango de fechas activos sobre la lista de selección.
+- En modo `'individual'`: comportamiento actual (grid de `IndicadorTrendChart`).
+- El selector de paciente, búsqueda y rango siguen funcionando en ambos modos.
 
 ### 3. Detalles UX
 
-- El filtro de rango aplica incluso si no hay búsqueda por nombre.
-- Orden de puntos dentro de cada indicador se mantiene cronológico.
-- El badge de "n puntos" o sparkline no se ven afectados visualmente; solo los gráficos grandes muestran datos acotados.
-- Reset de rango al cambiar de paciente (opcional: mantener preferencia del usuario).
+- Chips seleccionados se muestran arriba del gráfico con su color asignado y botón ✕ para quitar.
+- Color por posición: 0 = `hsl(var(--primary))` (azul), 1 = naranja `hsl(25 95% 55%)`, 2 = violeta `hsl(265 80% 60%)`.
+- Etiquetas de eje Y muestran el nombre del indicador y su unidad (ej. "Glucosa (mg/dL)").
+- Leyenda y tooltip mantienen consistencia de colores con los chips.
+- Si un indicador seleccionado se queda sin puntos tras filtrar por rango, se ignora silenciosamente (no rompe el gráfico).
 
 ## Archivos a tocar
 
+**Creados:**
+- `src/components/tendencias/IndicadorCompareChart.tsx`
+
 **Modificados:**
-- `src/hooks/useTendencias.ts` — añadir export `filterTendenciasByRango`.
-- `src/pages/Tendencias.tsx` — añadir Select de rango, integrar filtro en pipeline de datos.
+- `src/pages/Tendencias.tsx` — agregar toggle de modo, panel de selección, render del comparador.
 
 ## Resultado esperado
 
-En `/tendencias`, usuario selecciona "Últimos 6 meses" → cada gráfico muestra solo los puntos de ese periodo, manteniendo ejes y referencias. Al pasar a "Todo el historial", se ven todos los datos nuevamente. El filtro es instantáneo (client-side) sin recargar datos del backend.
+En `/tendencias`, usuario hace click en "Comparar indicadores" → ve checkboxes con todos los indicadores disponibles → selecciona "Glucosa" y "Hemoglobina glicosilada" → aparece gráfico grande con dos líneas, eje Y izquierdo en mg/dL para glucosa, eje Y derecho en % para HbA1c, ambas con sus referencias visibles. Puede agregar un tercer indicador (ej. "Triglicéridos") que comparte el eje derecho. El filtro de fechas (3/6/12m) se aplica al gráfico combinado.
 
