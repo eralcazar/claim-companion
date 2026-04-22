@@ -28,8 +28,8 @@ export default function PharmacyPanel() {
       ) : (
         <div className="space-y-2">
           {patients.map((p) => (
-            <Card key={p.id} asChild>
-              <Link to={`/personal/paciente/${p.patient_id}`}>
+            <Link key={p.id} to={`/personal/paciente/${p.patient_id}`}>
+              <Card>
                 <CardContent className="p-4 flex items-center justify-between">
                   <div>
                     <p className="font-medium">{p.patient_name}</p>
@@ -37,8 +37,8 @@ export default function PharmacyPanel() {
                   </div>
                   <ChevronRight className="h-4 w-4 text-muted-foreground" />
                 </CardContent>
-              </Link>
-            </Card>
+              </Card>
+            </Link>
           ))}
         </div>
       )}
