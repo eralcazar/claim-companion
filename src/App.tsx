@@ -44,6 +44,7 @@ import InventoryManager from "@/pages/admin/InventoryManager";
 import PlanManager from "@/pages/admin/PlanManager";
 import Plans from "@/pages/Plans";
 import Subscription from "@/pages/Subscription";
+import Consultorio from "@/pages/Consultorio";
 
 const queryClient = new QueryClient();
 
@@ -74,6 +75,7 @@ const App = () => (
               <Route path="/broker" element={<BrokerPanel />} />
               <Route path="/medico" element={<DoctorPanel />} />
               <Route path="/medico/reclamos-sin-informe" element={<ClaimsWithoutReport />} />
+              <Route path="/consultorio/:appointmentId" element={<Consultorio />} />
               <Route path="/enfermeria" element={<NursePanel />} />
               <Route path="/laboratorio" element={<LabPanel />} />
               <Route path="/farmacia" element={<PharmacyPanel />} />

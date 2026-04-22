@@ -12,6 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { useEffect, useMemo, useState } from "react";
 import { Plus, Calendar, Trash2, MapPin, Bell, Pencil } from "lucide-react";
+import { Video } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import type { Database } from "@/integrations/supabase/types";
@@ -77,6 +78,8 @@ export default function Appointments() {
     reminder_minutes_before: 60,
     patient_id: null as string | null,
     patient_name: "",
+    is_telemedicine: false,
+    meeting_url: "" as string,
   };
   const [form, setForm] = useState(initialForm);
 
@@ -119,6 +122,8 @@ export default function Appointments() {
       reminder_minutes_before: apt.reminder_minutes_before ?? 60,
       patient_id: apt.user_id ?? null,
       patient_name: apt._patientName ?? "",
+      is_telemedicine: !!apt.is_telemedicine,
+      meeting_url: apt.meeting_url ?? "",
     });
     setEditingId(apt.id);
     setOpen(true);
@@ -134,9 +139,13 @@ export default function Appointments() {
       appointment_date: form.appointment_date,
       appointment_type: form.appointment_type,
       notes: form.notes,
-      address: form.address || null,
-      address_lat: form.address_lat,
-      address_lng: form.address_lng,
+      address: form.is_telemedicine ? null : (form.address || null),
+      address_lat: form.is_telemedicine ? null : form.address_lat,
+      address_lng: form.is_telemedicine ? null : form.address_lng,
+      is_telemedicine: form.is_telemedicine,
+      meeting_url: form.is_telemedicine
+        ? (form.meeting_url || `https://meet.jit.si/mediclaim-${crypto.randomUUID()}`)
+        : null,
       reminder_enabled: form.reminder_enabled,
       reminder_minutes_before: form.reminder_enabled ? form.reminder_minutes_before : null,
       doctor_id: null,
@@ -335,13 +344,31 @@ export default function Appointments() {
               </div>
 
               <div className="space-y-2">
-                <Label>Dirección de la consulta</Label>
-                <AddressAutocomplete
-                  value={form.address}
-                  lat={form.address_lat}
-                  lng={form.address_lng}
-                  onChange={(v) => setForm({ ...form, address: v.address, address_lat: v.lat, address_lng: v.lng })}
-                />
+                <div className="flex items-center justify-between rounded-md border p-3">
+                  <Label className="flex items-center gap-2 cursor-pointer">
+                    <Video className="h-4 w-4" /> Consulta a distancia (videoconferencia)
+                  </Label>
+                  <Switch
+                    checked={form.is_telemedicine}
+                    onCheckedChange={(v) => setForm({ ...form, is_telemedicine: v })}
+                  />
+                </div>
+                {!form.is_telemedicine && (
+                  <>
+                    <Label>Dirección de la consulta</Label>
+                    <AddressAutocomplete
+                      value={form.address}
+                      lat={form.address_lat}
+                      lng={form.address_lng}
+                      onChange={(v) => setForm({ ...form, address: v.address, address_lat: v.lat, address_lng: v.lng })}
+                    />
+                  </>
+                )}
+                {form.is_telemedicine && (
+                  <p className="text-xs text-muted-foreground">
+                    Se generará un link de videoconferencia automáticamente al guardar.
+                  </p>
+                )}
               </div>
               <div className="space-y-2 rounded-md border p-3">
                 <div className="flex items-center justify-between">

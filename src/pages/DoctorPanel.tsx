@@ -2,7 +2,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
-import { Stethoscope, Calendar, CalendarIcon, Users, ChevronRight } from "lucide-react";
+import { Stethoscope, Calendar, CalendarIcon, Users, ChevronRight, Video, ArrowUpRight } from "lucide-react";
 import { format, startOfDay, endOfDay, subDays, subMonths } from "date-fns";
 import { es } from "date-fns/locale";
 import { useState } from "react";
@@ -17,6 +17,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Link } from "react-router-dom";
+import { Badge } from "@/components/ui/badge";
 import { useAssignedPatients } from "@/hooks/usePatientPersonnel";
 
 type FilterMode = "upcoming" | "today" | "week" | "month" | "range";
@@ -28,6 +29,7 @@ export default function DoctorPanel() {
   const [fromDate, setFromDate] = useState<Date | undefined>();
   const [toDate, setToDate] = useState<Date | undefined>();
   const [sinReceta, setSinReceta] = useState(false);
+  const [soloVideo, setSoloVideo] = useState(false);
   const [searchPatient, setSearchPatient] = useState("");
 
   const computeRange = (): { from?: Date; to?: Date; futureOnly?: boolean } => {
@@ -99,6 +101,7 @@ export default function DoctorPanel() {
 
   const appointments = (data ?? []).filter((apt: any) => {
     if (sinReceta && aptIdsWithReceta?.has(apt.id)) return false;
+    if (soloVideo && !apt.is_telemedicine) return false;
     return true;
   });
 
@@ -167,6 +170,8 @@ export default function DoctorPanel() {
         <div className="flex items-center gap-2">
           <Switch id="sin-receta" checked={sinReceta} onCheckedChange={setSinReceta} />
           <Label htmlFor="sin-receta" className="text-sm cursor-pointer">Solo sin receta</Label>
+          <Switch id="solo-video" checked={soloVideo} onCheckedChange={setSoloVideo} className="ml-3" />
+          <Label htmlFor="solo-video" className="text-sm cursor-pointer">Solo videoconsultas</Label>
         </div>
 
         {!isLoading && (
@@ -183,18 +188,32 @@ export default function DoctorPanel() {
         <div className="space-y-3">
           {appointments?.map((apt: any) => (
             <Card key={apt.id} className="cursor-pointer hover:bg-accent/30 transition-colors" onClick={() => setDetail({ apt, name: apt._patientName })}>
-              <CardContent className="p-4 flex items-center gap-3">
-                <Calendar className="h-5 w-5 text-primary" />
-                <div>
-                  <p className="text-sm font-medium">{apt._patientName}</p>
-                  <p className="text-xs text-muted-foreground capitalize">{apt.appointment_type}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {format(new Date(apt.appointment_date), "PPP 'a las' p", { locale: es })}
-                  </p>
-                  {apt.address && (
-                    <p className="text-xs text-muted-foreground truncate max-w-[220px]">{apt.address}</p>
-                  )}
+              <CardContent className="p-4 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <Calendar className="h-5 w-5 text-primary shrink-0" />
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-sm font-medium truncate">{apt._patientName}</p>
+                      {apt.is_telemedicine && (
+                        <Badge variant="default" className="h-5 text-[10px]">
+                          <Video className="h-3 w-3 mr-0.5" />Video
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground capitalize">{apt.appointment_type}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {format(new Date(apt.appointment_date), "PPP 'a las' p", { locale: es })}
+                    </p>
+                    {apt.address && !apt.is_telemedicine && (
+                      <p className="text-xs text-muted-foreground truncate max-w-[220px]">{apt.address}</p>
+                    )}
+                  </div>
                 </div>
+                <Button asChild size="sm" variant="outline" onClick={(e) => e.stopPropagation()}>
+                  <Link to={`/consultorio/${apt.id}`}>
+                    <ArrowUpRight className="h-3 w-3 mr-1" />Consultorio
+                  </Link>
+                </Button>
               </CardContent>
             </Card>
           ))}
