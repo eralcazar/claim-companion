@@ -21,6 +21,7 @@ import { toast } from "sonner";
 import { IndicadorSparkline } from "@/components/tendencias/IndicadorSparkline";
 import { IndicadorEditRow } from "./IndicadorEditRow";
 import { IndicadoresBulkImportDialog } from "./IndicadoresBulkImportDialog";
+import { ResultadoEditDialog } from "./ResultadoEditDialog";
 
 interface Props {
   estudio: any;
