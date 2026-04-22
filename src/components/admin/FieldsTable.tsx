@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { Plus, Trash2, Save, Search, Upload, ChevronDown, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -379,7 +379,7 @@ export function FieldsTable({ formularioId, secciones }: Props) {
               );
               const seccionesOpts = seccionesPagina.length > 0 ? seccionesPagina : secciones;
               return (
-                <FragmentWithKey key={c.id}>
+                <Fragment key={c.id}>
                 <TableRow
                   className={cn(isDirty && "bg-warning/5", isSelected && "bg-primary/5")}
                 >
@@ -625,7 +625,7 @@ export function FieldsTable({ formularioId, secciones }: Props) {
                     </TableCell>
                   </TableRow>
                 )}
-                </FragmentWithKey>
+                </Fragment>
               );
             })}
           </TableBody>
