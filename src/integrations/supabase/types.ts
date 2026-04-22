@@ -1619,7 +1619,14 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "broker" | "paciente" | "medico"
+      app_role:
+        | "admin"
+        | "broker"
+        | "paciente"
+        | "medico"
+        | "enfermero"
+        | "laboratorio"
+        | "farmacia"
       appointment_document_category:
         | "receta"
         | "estudio"
@@ -1781,7 +1788,15 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "broker", "paciente", "medico"],
+      app_role: [
+        "admin",
+        "broker",
+        "paciente",
+        "medico",
+        "enfermero",
+        "laboratorio",
+        "farmacia",
+      ],
       appointment_document_category: [
         "receta",
         "estudio",
