@@ -91,6 +91,7 @@ function ResultadoItem({ resultado, canManage, onDownload, onDelete }: any) {
   const extract = useExtractIndicators();
   const delAllInd = useDeleteIndicadoresByResultado();
   const [showInd, setShowInd] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState({ nombre_indicador: "", valor: "", unidad: "", valor_referencia_min: "", valor_referencia_max: "" });
 
   const handleExtract = async () => {
