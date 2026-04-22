@@ -1,15 +1,19 @@
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Maximize2 } from "lucide-react";
 import { useState } from "react";
 import { BodyMapSVG } from "./BodyMapSVG";
 import { BodyAnnotationDialog } from "./BodyAnnotationDialog";
+import { RegionDetailDialog } from "./RegionDetailDialog";
 import {
   useBodyAnnotations,
   BODY_PARTS_LABEL,
   SEVERITY_LABEL,
   BodyAnnotation,
 } from "@/hooks/useBodyAnnotations";
+import { useAuth } from "@/contexts/AuthContext";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
