@@ -239,15 +239,29 @@ function ResultadoItem({ resultado, canManage, onDownload, onDelete }: any) {
             )
           ))}
           {canManage && (
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-1 items-end pt-2">
-              <div><Label className="text-xs">Indicador</Label><Input value={draft.nombre_indicador} onChange={(e) => setDraft({ ...draft, nombre_indicador: e.target.value })} /></div>
-              <div><Label className="text-xs">Valor</Label><Input type="number" step="0.01" value={draft.valor} onChange={(e) => setDraft({ ...draft, valor: e.target.value })} /></div>
-              <div><Label className="text-xs">Unidad</Label><Input value={draft.unidad} onChange={(e) => setDraft({ ...draft, unidad: e.target.value })} /></div>
-              <div><Label className="text-xs">Min</Label><Input type="number" step="0.01" value={draft.valor_referencia_min} onChange={(e) => setDraft({ ...draft, valor_referencia_min: e.target.value })} /></div>
-              <div className="flex gap-1">
-                <Input type="number" step="0.01" placeholder="Max" value={draft.valor_referencia_max} onChange={(e) => setDraft({ ...draft, valor_referencia_max: e.target.value })} />
-                <Button size="sm" onClick={addIndicador}><Plus className="h-3.5 w-3.5" /></Button>
-              </div>
+            <div className="pt-2">
+              {!addingIndicador ? (
+                <Button size="sm" variant="outline" onClick={() => setAddingIndicador(true)}>
+                  <Plus className="h-3.5 w-3.5 mr-1" />Agregar indicador manual
+                </Button>
+              ) : (
+                <div className="space-y-2 p-2 border rounded-md bg-muted/30">
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-2 items-end">
+                    <div><Label className="text-xs">Indicador</Label><Input autoFocus value={draft.nombre_indicador} onChange={(e) => setDraft({ ...draft, nombre_indicador: e.target.value })} onKeyDown={handleAddKey} /></div>
+                    <div><Label className="text-xs">Valor</Label><Input type="number" step="0.01" value={draft.valor} onChange={(e) => setDraft({ ...draft, valor: e.target.value })} onKeyDown={handleAddKey} /></div>
+                    <div><Label className="text-xs">Unidad</Label><Input value={draft.unidad} onChange={(e) => setDraft({ ...draft, unidad: e.target.value })} onKeyDown={handleAddKey} /></div>
+                    <div><Label className="text-xs">Min</Label><Input type="number" step="0.01" value={draft.valor_referencia_min} onChange={(e) => setDraft({ ...draft, valor_referencia_min: e.target.value })} onKeyDown={handleAddKey} /></div>
+                    <div><Label className="text-xs">Max</Label><Input type="number" step="0.01" value={draft.valor_referencia_max} onChange={(e) => setDraft({ ...draft, valor_referencia_max: e.target.value })} onKeyDown={handleAddKey} /></div>
+                  </div>
+                  <div className="flex gap-2 justify-end">
+                    <Button size="sm" variant="outline" onClick={cancelAdd} disabled={saveInd.isPending}>Cancelar</Button>
+                    <Button size="sm" onClick={addIndicador} disabled={saveInd.isPending}>
+                      {saveInd.isPending && <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />}
+                      Guardar
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
