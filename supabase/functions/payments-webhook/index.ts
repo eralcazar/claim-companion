@@ -188,6 +188,50 @@ serve(async (req) => {
       }
     }
 
+    // Subscription lifecycle
+    if (
+      event.type === "customer.subscription.created" ||
+      event.type === "customer.subscription.updated"
+    ) {
+      const s: any = event.data.object;
+      const userId = s.metadata?.userId;
+      const planId = s.metadata?.plan_id || null;
+      if (userId) {
+        const item = s.items?.data?.[0];
+        const priceId = item?.price?.id || null;
+        const productId = item?.price?.product || null;
+        await supabase.from("subscriptions").upsert(
+          {
+            user_id: userId,
+            plan_id: planId,
+            stripe_subscription_id: s.id,
+            stripe_customer_id: s.customer,
+            product_id: productId,
+            price_id: priceId,
+            status: s.status,
+            current_period_start: s.current_period_start
+              ? new Date(s.current_period_start * 1000).toISOString()
+              : null,
+            current_period_end: s.current_period_end
+              ? new Date(s.current_period_end * 1000).toISOString()
+              : null,
+            cancel_at_period_end: !!s.cancel_at_period_end,
+            environment: env,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "stripe_subscription_id" },
+        );
+      }
+    }
+    if (event.type === "customer.subscription.deleted") {
+      const s: any = event.data.object;
+      await supabase
+        .from("subscriptions")
+        .update({ status: "canceled", updated_at: new Date().toISOString() })
+        .eq("stripe_subscription_id", s.id)
+        .eq("environment", env);
+    }
+
     return new Response(JSON.stringify({ received: true }), {
       status: 200,
       headers: { "Content-Type": "application/json" },
