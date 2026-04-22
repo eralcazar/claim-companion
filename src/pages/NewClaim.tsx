@@ -50,6 +50,19 @@ export default function NewClaim() {
   const [generating, setGenerating] = useState(false);
   const saveTimer = useRef<number | null>(null);
 
+  // Resolución de formulario dinámico desde BD (campos + secciones)
+  const [dynFormularioId, setDynFormularioId] = useState<string | null>(null);
+  const [resolvingDyn, setResolvingDyn] = useState(false);
+
+  // Firma electrónica (paso de revisión)
+  const { data: firmas = [] } = useFirmas(effectiveUserId);
+  const firmaPredeterminada = useMemo(() => firmas.find((f) => f.es_predeterminada) || firmas[0] || null, [firmas]);
+  const [firmarElectronicamente, setFirmarElectronicamente] = useState(true);
+  const [firmaIdSel, setFirmaIdSel] = useState<string | null>(null);
+  useEffect(() => {
+    if (!firmaIdSel && firmaPredeterminada) setFirmaIdSel(firmaPredeterminada.id);
+  }, [firmaPredeterminada, firmaIdSel]);
+
   // Cargar borrador desde query param
   useEffect(() => {
     if (!effectiveUserId || !draftQuery || draftLoaded) return;
