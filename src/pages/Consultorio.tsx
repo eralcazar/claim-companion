@@ -195,6 +195,7 @@ export default function Consultorio() {
             patientId={freePatientId}
             canEdit={true}
             title="Mapa corporal · Exploración libre"
+            showQuickRegionAccess={true}
           />
         ) : (
           <Card>
