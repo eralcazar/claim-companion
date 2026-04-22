@@ -12,6 +12,9 @@ const ROLE_LABEL: Record<AppRoleLite, string> = {
   broker: "Broker",
   paciente: "Paciente",
   medico: "Médico",
+  enfermero: "Enfermero",
+  laboratorio: "Laboratorio",
+  farmacia: "Farmacia",
 };
 
 export function PermissionMatrix({ permissions }: { permissions: RolePermissionRow[] }) {
