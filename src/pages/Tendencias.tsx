@@ -149,7 +149,7 @@ export default function Tendencias() {
             <Skeleton key={i} className="h-64 w-full rounded-lg" />
           ))}
         </div>
-      ) : filtered.length === 0 ? (
+      ) : modo === "individual" && filtered.length === 0 ? (
         <Card>
           <CardContent className="py-10 text-center text-muted-foreground">
             {indicadores.length === 0
@@ -159,11 +159,91 @@ export default function Tendencias() {
                 : "Ningún indicador coincide con tu búsqueda."}
           </CardContent>
         </Card>
-      ) : (
+      ) : modo === "individual" ? (
         <div className="grid gap-4 md:grid-cols-2">
           {filtered.map((ind) => (
             <IndicadorTrendChart key={ind.nombre} indicador={ind} />
           ))}
+        </div>
+      ) : (
+        <div className="grid gap-4 lg:grid-cols-[280px_1fr]">
+          <Card>
+            <CardContent className="py-4 space-y-2">
+              <div className="text-sm font-medium mb-2">
+                Selecciona indicadores ({seleccionados.length}/3)
+              </div>
+              {filtered.length === 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  No hay indicadores disponibles con los filtros actuales.
+                </p>
+              ) : (
+                <div className="max-h-[480px] overflow-y-auto space-y-1 pr-1">
+                  {filtered.map((ind) => {
+                    const checked = seleccionados.includes(ind.nombre);
+                    const idx = seleccionados.indexOf(ind.nombre);
+                    return (
+                      <label
+                        key={ind.nombre}
+                        className="flex items-center gap-2 p-2 rounded hover:bg-muted/50 cursor-pointer text-sm"
+                      >
+                        <Checkbox
+                          checked={checked}
+                          onCheckedChange={() => toggleSeleccion(ind.nombre)}
+                        />
+                        {checked && (
+                          <span
+                            className="inline-block w-2 h-2 rounded-full shrink-0"
+                            style={{ background: COMPARE_COLORS[idx] }}
+                          />
+                        )}
+                        <span className="flex-1 truncate">{ind.nombre}</span>
+                        <span className="text-xs text-muted-foreground shrink-0">
+                          {ind.puntos.length}
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+          <div className="space-y-3">
+            {seleccionados.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {seleccionados.map((nombre, idx) => (
+                  <span
+                    key={nombre}
+                    className="inline-flex items-center gap-2 px-2 py-1 rounded-full text-xs border bg-background"
+                  >
+                    <span
+                      className="inline-block w-2 h-2 rounded-full"
+                      style={{ background: COMPARE_COLORS[idx] }}
+                    />
+                    {nombre}
+                    <button
+                      type="button"
+                      onClick={() => toggleSeleccion(nombre)}
+                      className="text-muted-foreground hover:text-foreground"
+                      aria-label={`Quitar ${nombre}`}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+            {indicadoresComparar.length === 0 ? (
+              <Card>
+                <CardContent className="py-10 text-center text-muted-foreground text-sm">
+                  {seleccionados.length === 0
+                    ? "Selecciona 1 a 3 indicadores para comparar."
+                    : "Los indicadores seleccionados no tienen datos en el periodo elegido."}
+                </CardContent>
+              </Card>
+            ) : (
+              <IndicadorCompareChart indicadores={indicadoresComparar} />
+            )}
+          </div>
         </div>
       )}
     </div>
