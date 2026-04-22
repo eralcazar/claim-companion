@@ -115,10 +115,18 @@ export default function DoctorPanel() {
 
   return (
     <div className="space-y-6 animate-fade-in max-w-lg mx-auto">
-      <h1 className="font-heading text-2xl font-bold flex items-center gap-2">
-        <Stethoscope className="h-6 w-6 text-primary" />
-        Panel Médico
-      </h1>
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <h1 className="font-heading text-2xl font-bold flex items-center gap-2">
+          <Stethoscope className="h-6 w-6 text-primary" />
+          Panel Médico
+        </h1>
+        <Button asChild size="sm" variant="default">
+          <Link to="/consultorio">
+            <Stethoscope className="h-4 w-4 mr-1" />
+            Consultorio digital
+          </Link>
+        </Button>
+      </div>
 
       <Tabs defaultValue="agenda">
         <TabsList>
