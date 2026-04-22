@@ -272,8 +272,10 @@ export default function NewClaim() {
     }
   };
 
-  // Paso 0: selección póliza + formato (no es del FormDefinition)
-  if (!definition) {
+  // Paso 0: selección póliza + formato. Mostrar selector si todavía no hay
+  // definición legacy ni dinámica resuelta.
+  const hasAnyForm = useDynamic || !!definition;
+  if (!hasAnyForm) {
     return (
       <div className="space-y-6 animate-fade-in max-w-lg mx-auto pb-24">
         <h1 className="font-heading text-2xl font-bold">Nuevo Reclamo</h1>
@@ -327,8 +329,13 @@ export default function NewClaim() {
                 </p>
               )}
             </div>
-            {tramite && policyId && !getFormDefinition(insurer, tramite) && (
-              <p className="text-xs text-destructive">No hay formulario disponible para esta combinación.</p>
+            {tramite && policyId && resolvingDyn && (
+              <p className="text-xs text-muted-foreground">Resolviendo formulario…</p>
+            )}
+            {tramite && policyId && !resolvingDyn && !useDynamic && !getFormDefinition(insurer, tramite) && (
+              <p className="text-xs text-destructive">
+                No hay formulario configurado para esta combinación. Pídele al admin que mapee los campos en Gestor de Formatos.
+              </p>
             )}
             {tramite && formatAvailable === false && (
               <p className="text-xs text-destructive">
