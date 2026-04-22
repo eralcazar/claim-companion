@@ -10,6 +10,12 @@ export type CatalogItem = {
   precio_centavos: number;
   moneda: string;
   activo: boolean;
+  categoria: string | null;
+  sku: string | null;
+  descripcion_larga: string | null;
+  imagen_url: string | null;
+  stripe_product_id: string | null;
+  stripe_price_id: string | null;
 };
 
 export function useCatalog(opts: { onlyActive?: boolean; q?: string } = {}) {
@@ -34,19 +40,43 @@ export function useUpsertCatalog() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (input: Partial<CatalogItem> & { id?: string }) => {
-      if (input.id) {
-        const { error } = await supabase.from("pharmacy_catalog").update(input).eq("id", input.id);
+      // Strip read-only / managed fields
+      const { id, created_at, updated_at, ...rest } = input as any;
+      void created_at;
+      void updated_at;
+      // Normalize empty strings on optional unique fields → null
+      const payload: any = { ...rest };
+      if (payload.sku === "") payload.sku = null;
+      if (payload.categoria === "") payload.categoria = null;
+      if (payload.descripcion === "") payload.descripcion = null;
+      if (payload.descripcion_larga === "") payload.descripcion_larga = null;
+      if (payload.imagen_url === "") payload.imagen_url = null;
+      if (payload.presentacion === "") payload.presentacion = null;
+
+      if (id) {
+        const { data, error } = await supabase
+          .from("pharmacy_catalog")
+          .update(payload)
+          .eq("id", id)
+          .select()
+          .single();
         if (error) throw error;
+        return data;
       } else {
-        const { error } = await supabase.from("pharmacy_catalog").insert(input as any);
+        const { data, error } = await supabase
+          .from("pharmacy_catalog")
+          .insert(payload)
+          .select()
+          .single();
         if (error) throw error;
+        return data;
       }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["pharmacy_catalog"] });
       toast.success("Catálogo actualizado");
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: any) => toast.error(e?.message || "No se pudo guardar"),
   });
 }
 

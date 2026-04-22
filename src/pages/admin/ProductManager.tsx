@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { useCatalog, useUpsertCatalog, useDeleteCatalog, type CatalogItem } from "@/hooks/usePharmacy";
+import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,11 +19,12 @@ export default function ProductManager() {
   const [q, setQ] = useState("");
   const [onlyActive, setOnlyActive] = useState(false);
   const [open, setOpen] = useState(false);
-  const [editing, setEditing] = useState<Partial<CatalogItem & { categoria: string; sku: string; descripcion_larga: string; imagen_url: string }> | null>(null);
+  const [editing, setEditing] = useState<Partial<CatalogItem> | null>(null);
   const [syncingId, setSyncingId] = useState<string | null>(null);
   const { data: items = [], isLoading } = useCatalog({ q });
   const upsert = useUpsertCatalog();
   const del = useDeleteCatalog();
+  const qc = useQueryClient();
 
   const filtered = useMemo(
     () => (onlyActive ? items.filter((i) => i.activo) : items),
@@ -33,27 +35,50 @@ export default function ProductManager() {
     setEditing({ nombre: "", presentacion: "", precio_centavos: 0, moneda: "mxn", activo: true });
     setOpen(true);
   };
-  const startEdit = (it: any) => {
+  const startEdit = (it: CatalogItem) => {
     setEditing(it);
     setOpen(true);
   };
   const save = async () => {
-    if (!editing?.nombre) return;
-    await upsert.mutateAsync(editing as any);
-    setOpen(false);
-    setEditing(null);
+    if (!editing) return;
+    if (!editing.nombre || !editing.nombre.trim()) {
+      toast.error("El nombre es obligatorio");
+      return;
+    }
+    if (!editing.precio_centavos || editing.precio_centavos <= 0) {
+      toast.error("El precio debe ser mayor a 0");
+      return;
+    }
+    try {
+      await upsert.mutateAsync(editing);
+      setOpen(false);
+      setEditing(null);
+    } catch {
+      // toast handled in hook
+    }
   };
 
   const sync = async (id: string) => {
     setSyncingId(id);
     try {
-      const { error } = await supabase.functions.invoke("sync-catalog-product", {
+      const { data, error } = await supabase.functions.invoke("sync-catalog-product", {
         body: { catalog_id: id, environment: getStripeEnvironment() },
       });
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
       toast.success("Sincronizado con cobros");
+      qc.invalidateQueries({ queryKey: ["pharmacy_catalog"] });
     } catch (e: any) {
-      toast.error(e.message ?? "No se pudo sincronizar");
+      const ctx = e?.context;
+      let msg = e?.message ?? "No se pudo sincronizar";
+      try {
+        if (ctx && typeof ctx.text === "function") {
+          const body = await ctx.text();
+          const parsed = JSON.parse(body);
+          if (parsed?.error) msg = parsed.error;
+        }
+      } catch { /* ignore */ }
+      toast.error(msg);
     } finally {
       setSyncingId(null);
     }
@@ -95,7 +120,7 @@ export default function ProductManager() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map((it: any) => (
+                {filtered.map((it) => (
                   <TableRow key={it.id}>
                     <TableCell>
                       <p className="font-medium">{it.nombre}</p>
@@ -111,7 +136,13 @@ export default function ProductManager() {
                       {it.stripe_product_id ? <Badge variant="outline">Sincronizado</Badge> : <Badge variant="secondary">Pendiente</Badge>}
                     </TableCell>
                     <TableCell className="flex gap-1 justify-end">
-                      <Button size="sm" variant="outline" onClick={() => sync(it.id)} disabled={syncingId === it.id}>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => sync(it.id)}
+                        disabled={syncingId === it.id || !it.activo || !it.precio_centavos}
+                        title={!it.activo ? "Activá el producto" : !it.precio_centavos ? "Definí un precio > 0" : "Sincronizar con cobros"}
+                      >
                         <RefreshCw className={`h-3 w-3 mr-1 ${syncingId === it.id ? "animate-spin" : ""}`} />Sync
                       </Button>
                       <Button size="icon" variant="ghost" onClick={() => startEdit(it)}><Edit className="h-4 w-4" /></Button>
