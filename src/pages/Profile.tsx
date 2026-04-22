@@ -10,6 +10,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import { ESTADOS_MX, ESTADOS_CIVILES, TIPOS_IDENTIFICACION } from "@/lib/constants";
+import { Link } from "react-router-dom";
+import { Pen } from "lucide-react";
 
 const INITIAL_FORM = {
   first_name: "",
@@ -286,6 +288,12 @@ export default function Profile() {
 
       <Button className="w-full" onClick={() => mutation.mutate()} disabled={mutation.isPending}>
         {mutation.isPending ? "Guardando..." : "Guardar cambios"}
+      </Button>
+
+      <Button asChild variant="outline" className="w-full">
+        <Link to="/perfil/firmas">
+          <Pen className="h-4 w-4 mr-1" /> Mis firmas electrónicas
+        </Link>
       </Button>
 
       <Button variant="outline" className="w-full text-destructive" onClick={signOut}>

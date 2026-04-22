@@ -9,6 +9,7 @@ import { AppLayout } from "@/components/AppLayout";
 import Login from "@/pages/Login";
 import Dashboard from "@/pages/Dashboard";
 import Profile from "@/pages/Profile";
+import FirmasManager from "@/pages/FirmasManager";
 import Policies from "@/pages/Policies";
 import Claims from "@/pages/Claims";
 import NewClaim from "@/pages/NewClaim";
@@ -46,6 +47,7 @@ const App = () => (
             <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
               <Route path="/" element={<Dashboard />} />
               <Route path="/perfil" element={<Profile />} />
+              <Route path="/perfil/firmas" element={<FirmasManager />} />
               <Route path="/polizas" element={<Policies />} />
               <Route path="/reclamos" element={<Claims />} />
               <Route path="/formatos" element={<Formats />} />

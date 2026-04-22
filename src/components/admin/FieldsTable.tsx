@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { Plus, Trash2, Save, Search, Upload } from "lucide-react";
+import { Fragment, useEffect, useMemo, useState } from "react";
+import { Plus, Trash2, Save, Search, Upload, ChevronDown, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -42,6 +42,7 @@ import {
 } from "@/hooks/useFormatos";
 import { cn } from "@/lib/utils";
 import { CSVImportDialog, type CSVValidationResult } from "./CSVImportDialog";
+import { CampoOpcionesEditor, type CampoOpcion } from "./CampoOpcionesEditor";
 
 const TIPOS = [
   "texto", "numero", "fecha", "checkbox", "radio", "select",
@@ -55,7 +56,8 @@ const NO_SECTION_VALUE = "__none_section__";
 const NO_CATALOG = "__no_catalog__";
 const NO_MAPPING = "__no_mapping__";
 
-type CatalogoTipo = "perfil" | "poliza" | "siniestro" | "medico";
+type CatalogoTipo = "perfil" | "poliza" | "siniestro" | "medico" | "firma";
+const FIRMA_MAPPING_ID = "firma_usuario";
 
 function blankCampo(formularioId: string, orden: number): Campo {
   return {
@@ -112,6 +114,16 @@ export function FieldsTable({ formularioId, secciones }: Props) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkConfirm, setBulkConfirm] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+  const toggleExpand = (id: string) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   useEffect(() => {
     setDraft(campos);
@@ -195,6 +207,7 @@ export function FieldsTable({ formularioId, secciones }: Props) {
   };
 
   const getCatalogo = (c: Campo): CatalogoTipo | null => {
+    if (c.mapeo_perfil === FIRMA_MAPPING_ID) return "firma";
     if (c.mapeo_perfil !== null && c.mapeo_perfil !== undefined) return "perfil";
     if (c.mapeo_poliza !== null && c.mapeo_poliza !== undefined) return "poliza";
     if (c.mapeo_siniestro !== null && c.mapeo_siniestro !== undefined) return "siniestro";
@@ -204,7 +217,7 @@ export function FieldsTable({ formularioId, secciones }: Props) {
 
   const setCatalogo = (id: string, t: CatalogoTipo | null) => {
     update(id, {
-      mapeo_perfil: t === "perfil" ? "" : null,
+      mapeo_perfil: t === "perfil" ? "" : t === "firma" ? FIRMA_MAPPING_ID : null,
       mapeo_poliza: t === "poliza" ? "" : null,
       mapeo_siniestro: t === "siniestro" ? "" : null,
       mapeo_medico: t === "medico" ? "" : null,
@@ -213,7 +226,7 @@ export function FieldsTable({ formularioId, secciones }: Props) {
 
   const setCampoMapeo = (id: string, t: CatalogoTipo, mapeoId: string | null) => {
     update(id, {
-      mapeo_perfil: t === "perfil" ? mapeoId : null,
+      mapeo_perfil: t === "perfil" ? mapeoId : t === "firma" ? FIRMA_MAPPING_ID : null,
       mapeo_poliza: t === "poliza" ? mapeoId : null,
       mapeo_siniestro: t === "siniestro" ? mapeoId : null,
       mapeo_medico: t === "medico" ? mapeoId : null,
@@ -225,7 +238,8 @@ export function FieldsTable({ formularioId, secciones }: Props) {
     if (t === "perfil") return mapeos.perfiles;
     if (t === "poliza") return mapeos.polizas;
     if (t === "siniestro") return mapeos.siniestros;
-    return mapeos.medicos;
+    if (t === "medico") return mapeos.medicos;
+    return [];
   };
 
   const addNew = () => {
@@ -320,6 +334,7 @@ export function FieldsTable({ formularioId, secciones }: Props) {
                   aria-label="Seleccionar todos"
                 />
               </TableHead>
+              <TableHead className="w-8"></TableHead>
               <TableHead className="w-12">#</TableHead>
               <TableHead className="min-w-[140px]">Clave</TableHead>
               <TableHead className="min-w-[160px]">Etiqueta</TableHead>
@@ -341,14 +356,14 @@ export function FieldsTable({ formularioId, secciones }: Props) {
           <TableBody>
             {isLoading && (
               <TableRow>
-                <TableCell colSpan={17} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={18} className="text-center text-muted-foreground py-8">
                   Cargando…
                 </TableCell>
               </TableRow>
             )}
             {!isLoading && filtered.length === 0 && (
               <TableRow>
-                <TableCell colSpan={17} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={18} className="text-center text-muted-foreground py-8">
                   Sin campos. Agrega el primero con "Nuevo campo".
                 </TableCell>
               </TableRow>
@@ -356,14 +371,16 @@ export function FieldsTable({ formularioId, secciones }: Props) {
             {filtered.map((c, idx) => {
               const isDirty = dirty.has(c.id);
               const isSelected = selected.has(c.id);
+              const isExpanded = expanded.has(c.id);
+              const supportsOptions = c.tipo === "radio" || c.tipo === "checkbox" || c.tipo === "select";
               const preview = getMapeoPreview(c);
               const seccionesPagina = secciones.filter(
                 (s) => s.pagina === (c.campo_pagina ?? 1),
               );
               const seccionesOpts = seccionesPagina.length > 0 ? seccionesPagina : secciones;
               return (
+                <Fragment key={c.id}>
                 <TableRow
-                  key={c.id}
                   className={cn(isDirty && "bg-warning/5", isSelected && "bg-primary/5")}
                 >
                   <TableCell>
@@ -372,6 +389,23 @@ export function FieldsTable({ formularioId, secciones }: Props) {
                       onCheckedChange={(v) => toggleOne(c.id, !!v)}
                       aria-label={`Seleccionar ${c.clave}`}
                     />
+                  </TableCell>
+                  <TableCell>
+                    {supportsOptions && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        onClick={() => toggleExpand(c.id)}
+                        title={isExpanded ? "Ocultar opciones" : "Editar opciones"}
+                      >
+                        {isExpanded ? (
+                          <ChevronDown className="h-3.5 w-3.5" />
+                        ) : (
+                          <ChevronRight className="h-3.5 w-3.5" />
+                        )}
+                      </Button>
+                    )}
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground">
                     <div className="flex items-center gap-1">
@@ -491,6 +525,7 @@ export function FieldsTable({ formularioId, secciones }: Props) {
                         <SelectItem value="poliza">Póliza</SelectItem>
                         <SelectItem value="siniestro">Siniestro</SelectItem>
                         <SelectItem value="medico">Médico</SelectItem>
+                        <SelectItem value="firma">Firma</SelectItem>
                       </SelectContent>
                     </Select>
                   </TableCell>
@@ -579,6 +614,18 @@ export function FieldsTable({ formularioId, secciones }: Props) {
                     </Button>
                   </TableCell>
                 </TableRow>
+                {isExpanded && supportsOptions && (
+                  <TableRow className="bg-muted/10">
+                    <TableCell colSpan={18} className="p-3">
+                      <CampoOpcionesEditor
+                        opciones={(Array.isArray(c.opciones) ? (c.opciones as CampoOpcion[]) : []) as CampoOpcion[]}
+                        defaultPagina={c.campo_pagina}
+                        onChange={(next) => update(c.id, { opciones: next as any })}
+                      />
+                    </TableCell>
+                  </TableRow>
+                )}
+                </Fragment>
               );
             })}
           </TableBody>
