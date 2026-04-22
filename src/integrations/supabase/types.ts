@@ -196,6 +196,10 @@ export type Database = {
           id: string
           marker_x: number
           marker_y: number
+          moderated_at: string | null
+          moderated_by: string | null
+          moderation_note: string | null
+          moderation_status: string
           note: string | null
           patient_id: string
           severity: string
@@ -210,6 +214,10 @@ export type Database = {
           id?: string
           marker_x?: number
           marker_y?: number
+          moderated_at?: string | null
+          moderated_by?: string | null
+          moderation_note?: string | null
+          moderation_status?: string
           note?: string | null
           patient_id: string
           severity?: string
@@ -224,6 +232,10 @@ export type Database = {
           id?: string
           marker_x?: number
           marker_y?: number
+          moderated_at?: string | null
+          moderated_by?: string | null
+          moderation_note?: string | null
+          moderation_status?: string
           note?: string | null
           patient_id?: string
           severity?: string
