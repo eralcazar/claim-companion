@@ -2,94 +2,94 @@
 
 ## Objetivo
 
-Permitir que una **receta** contenga **varios medicamentos** (uno o más). Hoy cada fila en `recetas` representa un solo medicamento; vamos a separar la cabecera de receta de sus ítems de medicamento.
+Permitir que una **solicitud de estudios** contenga **varios tipos de estudio** (uno o más). Hoy cada fila en `estudios_solicitados` representa un solo estudio; vamos a separar la cabecera de solicitud de sus ítems de estudio, replicando el patrón ya aplicado a `recetas` / `receta_items`.
 
 ## Enfoque
 
-Crear tabla hija `receta_items` con los campos por medicamento. La tabla `recetas` queda como cabecera (paciente, médico, fecha, estado, indicación/observaciones generales). Los campos de medicamento existentes en `recetas` se mantienen por compatibilidad/migración pero la UI ya no los usa.
+Crear tabla hija `estudio_items` con los campos por estudio individual. La tabla `estudios_solicitados` queda como cabecera (paciente, médico, fecha, estado, indicación general, preparación general, laboratorio sugerido, observaciones, ayuno). Los campos de estudio existentes en la cabecera se mantienen por compatibilidad/migración pero la UI ya no los usa para detalle.
 
 ## Cambios
 
 ### 1. Migración SQL (schema)
 
-Nueva tabla `public.receta_items`:
+Nueva tabla `public.estudio_items`:
 - `id uuid pk default gen_random_uuid()`
-- `receta_id uuid not null` → referencia lógica a `recetas.id` (ON DELETE CASCADE vía trigger o FK)
+- `estudio_id uuid not null references estudios_solicitados(id) on delete cascade`
 - `orden int not null default 0`
-- `medicamento_nombre text not null`
-- `marca_comercial text`
-- `es_generico bool default false`
-- `dosis numeric`, `unidad_dosis text`, `cantidad numeric`
-- `via_administracion text`
-- `frecuencia receta_frecuencia not null default 'cada_8h'`
-- `frecuencia_horas int`
-- `dias_a_tomar int`
-- `precio_aproximado numeric`
-- `indicacion text` (opcional, por medicamento)
+- `tipo_estudio text not null`
+- `descripcion text`
+- `cantidad int not null default 1`
+- `prioridad estudio_prioridad not null default 'normal'`
+- `indicacion text` (opcional, por estudio)
 - `created_at timestamptz default now()`
+- Índice en `estudio_id`.
 
-RLS en `receta_items`: políticas espejo de `recetas` (insert/update/delete/select), validando vía `EXISTS (select 1 from recetas r where r.id = receta_items.receta_id and ...)`. Mismas reglas: paciente ve los suyos, médico/admin/broker manejan según su acceso a la receta padre.
+RLS en `estudio_items`: políticas espejo de `estudios_solicitados` (select/insert/update/delete) validando vía `EXISTS (select 1 from estudios_solicitados e where e.id = estudio_items.estudio_id and …)`. Mismas reglas: paciente ve los suyos, médico ve los que atiende, broker los asignados, admin todos.
 
-Migración de datos: por cada receta existente, copiar sus campos de medicamento como un `receta_items` con `orden=0`.
+Backfill: por cada solicitud existente copiar `(tipo_estudio, descripcion, cantidad, prioridad, indicacion)` como un `estudio_items` con `orden=0`.
 
-Los campos de medicamento en `recetas` se vuelven nullables (si no lo son) para no romper la compatibilidad, pero ya no se escriben.
+`tipo_estudio` en `estudios_solicitados` se vuelve nullable para no romper compatibilidad (pero la UI ya no lo escribe en la cabecera).
 
-### 2. Hooks (`src/hooks/useRecetas.ts`)
+### 2. Hooks (`src/hooks/useEstudios.ts`)
 
-- `useRecetas(filters)`: cambiar el `select` para traer `*, items:receta_items(*)` y ordenar los items por `orden`.
-- `useCreateReceta`: ahora recibe `{ ...header, items: [...] }`. Inserta en `recetas` (sin campos de medicamento), obtiene `id`, hace `insert` masivo en `receta_items` con `receta_id` asignado. La notificación al paciente lista el primer medicamento + "y N más" cuando aplica.
-- `useUpdateReceta`: recibe `{ id, header_patch, items? }`. Si `items` viene, hace `delete from receta_items where receta_id = id` + `insert` masivo nuevo (estrategia replace, simple y robusta). Si no, sólo actualiza la cabecera.
-- `useDeleteReceta`: agregar borrado previo de `receta_items` por `receta_id` antes de borrar la receta (si la FK no está en cascade).
+- `useEstudios(filters)`: cambiar `select` para traer `*, items:estudio_items(*)` y ordenar items por `orden`.
+- `useCreateEstudio`: ahora recibe `{ ...header, items: [...] }`. Inserta cabecera, obtiene `id`, hace `insert` masivo en `estudio_items`. La notificación al paciente lista el primer estudio + "y N más" cuando aplica.
+- `useUpdateEstudio`: si viene `items`, hace `delete from estudio_items where estudio_id = id` + `insert` masivo (estrategia replace). Si no, sólo actualiza cabecera.
+- `useDeleteEstudio`: con `ON DELETE CASCADE` no requiere borrado previo.
 
-### 3. Formulario `RecetaForm.tsx`
+### 3. Formulario `EstudioForm.tsx`
 
 Reestructurar:
-- Sección **Datos generales** (paciente, estado, indicación general, observaciones).
-- Sección **Medicamentos** con array `items[]`:
-  - Cada ítem: tarjeta colapsable con título "Medicamento #N — {nombre}" y botón "Eliminar" (sólo si hay > 1).
-  - Campos por ítem: medicamento, marca, genérico, dosis/unidad, cantidad, vía, frecuencia (+frecuencia_horas si "otro"), días, precio, indicación específica.
-  - Botón **"+ Agregar medicamento"** al pie de la lista.
-- Validación: al menos 1 ítem con `medicamento_nombre` obligatorio; frecuencia "otro" requiere `frecuencia_horas`.
-- Al editar (`initial`), hidratar `items` desde `initial.items` (o construir uno desde los campos legacy si `items` está vacío).
+- Sección **Datos generales**: paciente, fecha (implícita), prioridad por defecto, ayuno + horas, laboratorio sugerido, preparación general, indicación general, observaciones, estado.
+- Sección **Estudios solicitados** con array `items[]`:
+  - Cada ítem: tarjeta colapsable "Estudio #N — {tipo}" con botón "Eliminar" (sólo si hay > 1).
+  - Campos por ítem: `tipo_estudio` (Select con la lista `TIPOS`), `descripcion`, `cantidad` (default 1), `prioridad` (default 'normal'), `indicacion` específica.
+  - Botón **"+ Agregar estudio"** al pie de la lista.
+- Validación: al menos 1 ítem con `tipo_estudio` obligatorio.
+- Al editar, hidratar `items` desde `initial.items` (o construir uno desde campos legacy si `items` está vacío).
 - Submit envía `{ header, items }` a los hooks.
-- Dialog crece a `max-w-3xl` con `overflow-y-auto` para acomodar la lista.
+- Dialog crece a `max-w-3xl` con `overflow-y-auto`.
 
-### 4. Tarjeta `RecetaCard.tsx`
+### 4. Tarjeta `EstudioCard.tsx`
 
-- Título de la card: "Receta · {fecha}" + badge de estado.
-- Mostrar lista compacta de medicamentos: pill icon + `nombre — dosis × cantidad · frecuencia · N días` por cada ítem (max 3 visibles + "y N más" si excede).
-- Acciones (PDF, Editar, Cancelar, Eliminar) sin cambios funcionales.
-- Quitar dependencia de `receta.medicamento_nombre` en raíz; usar `receta.items[]` (con fallback al campo legacy si `items` viene vacío para recetas viejas).
+- Título: "Solicitud de estudios · {fecha}" + badge de estado + badge de prioridad máxima.
+- Mostrar lista compacta de estudios: por cada ítem `tipo (cantidad) · prioridad` (max 3 visibles + "y N más").
+- Acciones (PDF, Resultados, Editar, Cancelar, Eliminar) sin cambios funcionales.
+- Quitar dependencia directa de `estudio.tipo_estudio`; usar `estudio.items[]` con fallback a campos legacy si `items` viene vacío.
 
-### 5. PDF `recetaPdf.ts`
+### 5. PDF `estudioPdf.ts`
 
-- Cambiar la firma para aceptar `receta.items[]`.
-- En la tabla `autoTable`, generar **una fila por medicamento** con columnas: `#`, `Medicamento`, `Dosis`, `Cantidad`, `Vía`, `Frecuencia`, `Duración`.
-- Sección "Indicaciones" muestra la indicación general de la receta + listado de indicaciones específicas por medicamento si existen.
-- Filename: `receta_{fecha}_{N}meds.pdf`.
+- Cambiar firma para aceptar `estudio.items[]`.
+- En `autoTable` generar **una fila por estudio** con columnas: `#`, `Tipo de estudio`, `Descripción`, `Cantidad`, `Prioridad`.
+- Sección "Indicaciones" muestra la indicación general + listado por estudio si existen.
+- Filename: `solicitud_estudios_{fecha}_{N}items.pdf`.
 
-### 6. Página `Recetas.tsx`
+### 6. Página `Estudios.tsx`
 
-- Búsqueda `q` ahora matchea contra cualquier `item.medicamento_nombre` o `item.marca_comercial`.
+- Búsqueda `q` ahora matchea contra cualquier `item.tipo_estudio` o `item.descripcion`.
 - Resto sin cambios.
 
-### 7. Integraciones existentes
+### 7. Integración con resultados
 
-`AppointmentDetailDialog.tsx` (tab Recetas) usa `useRecetas({ appointmentId })` y `RecetaForm`/`RecetaCard` → funciona automáticamente con los cambios anteriores.
+`ResultadosManager` y `resultados_estudios` siguen ligados a la cabecera `estudio_id` (no al ítem). Un resultado puede contener indicadores de cualquiera de los estudios de la solicitud, lo cual es coherente con el flujo real (laboratorio entrega un PDF por solicitud).
+
+### 8. Integraciones existentes
+
+`AppointmentDetailDialog.tsx` (tab Estudios) usa `useEstudios({ appointmentId })` y `EstudioForm`/`EstudioCard` → funciona automáticamente.
 
 ## Archivos
 
 **Creados:**
-- Migración SQL nueva en `supabase/migrations/` para `receta_items` + RLS + data backfill.
+- Migración SQL nueva en `supabase/migrations/` para `estudio_items` + RLS + backfill.
 
 **Modificados:**
-- `src/hooks/useRecetas.ts` — soportar items en CRUD.
-- `src/components/recetas/RecetaForm.tsx` — UI de array de medicamentos.
-- `src/components/recetas/RecetaCard.tsx` — render de múltiples ítems.
-- `src/components/recetas/recetaPdf.ts` — tabla con N filas.
-- `src/pages/Recetas.tsx` — búsqueda contra items.
+- `src/hooks/useEstudios.ts` — soportar items en CRUD.
+- `src/components/estudios/EstudioForm.tsx` — UI de array de estudios.
+- `src/components/estudios/EstudioCard.tsx` — render de múltiples ítems.
+- `src/components/estudios/estudioPdf.ts` — tabla con N filas.
+- `src/pages/Estudios.tsx` — búsqueda contra items.
 
 ## Resultado esperado
 
-Médico abre "Nueva receta" → llena datos del paciente → agrega "Paracetamol 500mg c/8h × 5 días" → click **"+ Agregar medicamento"** → llena "Ibuprofeno 400mg c/12h × 3 días" → click **"+ Agregar medicamento"** otra vez para "Omeprazol 20mg c/24h × 7 días" → Guardar. La tarjeta muestra los 3 medicamentos en lista; el PDF incluye una tabla con 3 filas y la firma del médico al pie. Recetas existentes (un solo medicamento) siguen mostrándose correctamente porque la migración las convierte en items.
+Médico abre "Nuevo estudio" → llena datos del paciente + ayuno/preparación generales → agrega "Química sanguínea" → click **"+ Agregar estudio"** → "Biometría hemática" → click otra vez para "Examen general de orina" → Guardar. La tarjeta muestra los 3 estudios; el PDF imprime una orden con tabla de 3 filas y la firma del médico al pie. Solicitudes existentes (un solo estudio) siguen mostrándose correctamente porque la migración las convierte en items.
 
