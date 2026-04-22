@@ -5,6 +5,7 @@ import { toast } from "sonner";
 
 export type BodyView = "frontal" | "posterior";
 export type Severity = "leve" | "moderada" | "grave";
+export type ModerationStatus = "pendiente" | "validada" | "observada" | "rechazada";
 
 export interface BodyAnnotationFile {
   id: string;
@@ -29,6 +30,10 @@ export interface BodyAnnotation {
   severity: Severity;
   created_at: string;
   updated_at: string;
+  moderation_status: ModerationStatus;
+  moderation_note: string | null;
+  moderated_by: string | null;
+  moderated_at: string | null;
   files?: BodyAnnotationFile[];
 }
 
