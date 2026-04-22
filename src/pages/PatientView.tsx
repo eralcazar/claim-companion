@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, User } from "lucide-react";
+import { BodyMapEditor } from "@/components/consultorio/BodyMapEditor";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
@@ -128,6 +129,7 @@ export default function PatientView() {
           <TabsTrigger value="estudios">Estudios ({estudios?.length ?? 0})</TabsTrigger>
           <TabsTrigger value="medicamentos">Medicamentos ({meds?.length ?? 0})</TabsTrigger>
           <TabsTrigger value="registros">Registros ({records?.length ?? 0})</TabsTrigger>
+          <TabsTrigger value="cuerpo">Mapa corporal</TabsTrigger>
         </TabsList>
 
         <TabsContent value="agenda" className="space-y-2 mt-3">
@@ -204,6 +206,10 @@ export default function PatientView() {
               </CardContent>
             </Card>
           ))}
+        </TabsContent>
+
+        <TabsContent value="cuerpo" className="mt-3">
+          {id && <BodyMapEditor patientId={id} canEdit={false} title="Hallazgos históricos" />}
         </TabsContent>
       </Tabs>
     </div>
