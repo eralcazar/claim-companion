@@ -379,10 +379,10 @@ export function FieldsTable({ formularioId, secciones }: Props) {
               );
               const seccionesOpts = seccionesPagina.length > 0 ? seccionesPagina : secciones;
               return (
-                <>
-                <TableRow
+                <FieldRow
                   key={c.id}
-                  className={cn(isDirty && "bg-warning/5", isSelected && "bg-primary/5")}
+                  isDirty={isDirty}
+                  isSelected={isSelected}
                 >
                   <TableCell>
                     <Checkbox
