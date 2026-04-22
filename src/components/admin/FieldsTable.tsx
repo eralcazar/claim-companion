@@ -334,6 +334,7 @@ export function FieldsTable({ formularioId, secciones }: Props) {
                   aria-label="Seleccionar todos"
                 />
               </TableHead>
+              <TableHead className="w-8"></TableHead>
               <TableHead className="w-12">#</TableHead>
               <TableHead className="min-w-[140px]">Clave</TableHead>
               <TableHead className="min-w-[160px]">Etiqueta</TableHead>
