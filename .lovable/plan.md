@@ -1,32 +1,41 @@
 
 
-## Acceso directo a Consultorio digital desde /medico
+## Acceso directo al historial moderado por zona en modo exploración libre
 
-Hoy el `BodyMapEditor` solo se abre por cita (`/consultorio/:appointmentId`). Voy a agregar un acceso directo en `/medico` que permita explorar el mapa corporal de cualquier paciente asignado sin pasar por una cita específica.
+Hoy en `/consultorio` (sin appointmentId), el médico ve el `BodyMapEditor` con el historial completo del paciente y puede abrir "Ver zona" por cada `body_part` que ya tiene anotaciones. Falta un atajo para abrir directamente el historial moderado de **cualquier zona**, incluso las que aún no tienen marcadores, sin tener que clickear primero en el SVG.
 
 ### Cambios
 
-**1. Nueva ruta `/consultorio` (sin appointmentId)**
-- Modo "exploración libre": el doctor elige paciente de su lista de asignados y se abre el mapa corporal histórico de ese paciente, editable.
-- Las anotaciones creadas acá quedan asociadas al paciente pero sin `appointment_id` (campo ya nullable en la tabla).
+**1. `src/components/consultorio/BodyMapEditor.tsx`**
+- Nueva prop opcional `showQuickRegionAccess?: boolean` (default `false`).
+- Cuando está activa, debajo del SVG y antes de la lista agrupada, agregar un bloque **"Ir al historial de una zona"**:
+  - `Select` con todas las zonas de `BODY_PARTS_LABEL` (ordenadas alfabéticamente).
+  - Indicador a la derecha de cada opción con la cantidad de anotaciones existentes en esa zona (badge pequeño) — `0` si no hay.
+  - Al elegir una zona, abre directamente `RegionDetailDialog` con esa `body_part` y la `body_view` actual del tab activo.
+- Reusa el state `regionPart` que ya existe; no requiere lógica nueva de moderación (ya está en `RegionDetailDialog`).
 
 **2. `src/pages/Consultorio.tsx`**
-- Soportar dos modos según `useParams`:
-  - Con `appointmentId`: comportamiento actual (consulta en curso).
-  - Sin `appointmentId`: muestra selector de paciente arriba (`Select` con pacientes asignados vía `useAssignedPatients("medico")`), y al elegir uno renderiza solo la columna del paciente + `BodyMapEditor` con `patientId` y `canEdit=true`.
-
-**3. `src/pages/DoctorPanel.tsx`**
-- Botón nuevo arriba del panel, al lado del título: **"Consultorio digital"** (icono `Stethoscope`) que navega a `/consultorio`.
-- Visible siempre, no depende de tener citas.
-
-**4. `src/App.tsx`**
-- Registrar `<Route path="/consultorio" element={<Consultorio />} />` (sin parámetro), antes de la ruta con `:appointmentId`.
-
-**5. `src/lib/features.ts` + `src/components/AppSidebar.tsx`**
-- Asegurar que `consultorio` apunte a `/consultorio` (ruta base) para que también aparezca en el sidebar del médico.
+- En el modo "exploración libre" (sin `appointmentId`), pasar `showQuickRegionAccess={true}` al `BodyMapEditor`.
+- En el modo "consulta en curso" (con `appointmentId`), no se pasa la prop → comportamiento idéntico al actual.
 
 ### Lo que NO cambia
-- Esquema DB: `appointment_id` ya es nullable en `body_annotations`.
-- Permisos RLS: ya permiten al médico crear anotaciones por `patient_id` sin cita.
-- El flujo dentro de una cita sigue idéntico.
+- Esquema DB y RLS: sin cambios.
+- `RegionDetailDialog`: sin cambios — ya muestra historial completo + moderación.
+- Flujo dentro de cita ni vista del paciente.
+- No se agregan rutas nuevas.
+
+### Detalle técnico
+
+```text
+[Tabs Frontal/Posterior]
+[SVG cuerpo]
+─────────────────────────────
+Ir al historial de una zona
+[Select: Cabeza (3) ▾]   ← NUEVO, solo en modo exploración libre
+─────────────────────────────
+N anotación(es) en vista frontal
+[Lista agrupada por body_part con "Ver zona"]
+```
+
+El conteo por zona se calcula a partir de `annotations` (ya cargadas por `useBodyAnnotations({ patientId })`), agrupando por `body_part` ignorando la vista actual para mostrar el total histórico real por zona.
 
