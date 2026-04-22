@@ -75,6 +75,7 @@ const App = () => (
               <Route path="/broker" element={<BrokerPanel />} />
               <Route path="/medico" element={<DoctorPanel />} />
               <Route path="/medico/reclamos-sin-informe" element={<ClaimsWithoutReport />} />
+              <Route path="/consultorio" element={<Consultorio />} />
               <Route path="/consultorio/:appointmentId" element={<Consultorio />} />
               <Route path="/enfermeria" element={<NursePanel />} />
               <Route path="/laboratorio" element={<LabPanel />} />

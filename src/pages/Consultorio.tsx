@@ -26,6 +26,8 @@ import { RecetaCard } from "@/components/recetas/RecetaCard";
 import { RecetaForm } from "@/components/recetas/RecetaForm";
 import { EstudioCard } from "@/components/estudios/EstudioCard";
 import { EstudioForm } from "@/components/estudios/EstudioForm";
+import { useAssignedPatients } from "@/hooks/usePatientPersonnel";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function Consultorio() {
   const { appointmentId } = useParams<{ appointmentId: string }>();
@@ -35,6 +37,10 @@ export default function Consultorio() {
   const [obs, setObs] = useState("");
   const [recOpen, setRecOpen] = useState(false);
   const [estOpen, setEstOpen] = useState(false);
+  const [freePatientId, setFreePatientId] = useState<string | undefined>(undefined);
+
+  const freeMode = !appointmentId;
+  const { data: assignedPatients = [] } = useAssignedPatients("medico");
 
   const { data: appointment, isLoading } = useQuery({
     queryKey: ["consultorio-appointment", appointmentId],
@@ -134,6 +140,69 @@ export default function Consultorio() {
     return (
       <div className="flex justify-center p-8">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (freeMode) {
+    const selected = assignedPatients.find((p) => p.patient_id === freePatientId);
+    return (
+      <div className="max-w-5xl mx-auto p-4 space-y-4 animate-fade-in">
+        <div className="flex items-center justify-between gap-2">
+          <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
+            <ArrowLeft className="h-4 w-4 mr-1" />Volver
+          </Button>
+          <h1 className="font-heading text-xl font-bold flex items-center gap-2">
+            <Stethoscope className="h-5 w-5 text-primary" />
+            Consultorio digital
+          </h1>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <User className="h-4 w-4 text-primary" />
+              Selecciona un paciente
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <Select value={freePatientId} onValueChange={setFreePatientId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Elige un paciente asignado..." />
+              </SelectTrigger>
+              <SelectContent>
+                {assignedPatients.length === 0 ? (
+                  <div className="p-3 text-sm text-muted-foreground">Sin pacientes asignados.</div>
+                ) : (
+                  assignedPatients.map((p) => (
+                    <SelectItem key={p.patient_id} value={p.patient_id}>
+                      {p.patient_name}{p.patient_email ? ` · ${p.patient_email}` : ""}
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
+            {selected && (
+              <Button asChild variant="outline" size="sm">
+                <Link to={`/personal/paciente/${selected.patient_id}`}>Ver expediente completo</Link>
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+
+        {freePatientId ? (
+          <BodyMapEditor
+            patientId={freePatientId}
+            canEdit={true}
+            title="Mapa corporal · Exploración libre"
+          />
+        ) : (
+          <Card>
+            <CardContent className="p-8 text-center text-sm text-muted-foreground">
+              Selecciona un paciente para abrir su mapa corporal.
+            </CardContent>
+          </Card>
+        )}
       </div>
     );
   }
