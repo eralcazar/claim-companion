@@ -1,10 +1,15 @@
-import { useMyOcrPurchases, useMyOcrQuota, totalQuota } from "@/hooks/useOcrQuota";
+import { useCallback, useState } from "react";
+import { useMyOcrPurchases, useMyOcrQuota, totalQuota, useOcrPacks, type OcrPackPurchase } from "@/hooks/useOcrQuota";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Sparkles, Receipt, CheckCircle2, Clock, XCircle, RefreshCw } from "lucide-react";
+import { Sparkles, Receipt, CheckCircle2, Clock, XCircle, RefreshCw, AlertTriangle, RotateCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useQueryClient } from "@tanstack/react-query";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { EmbeddedCheckoutProvider, EmbeddedCheckout } from "@stripe/react-stripe-js";
+import { getStripe, getStripeEnvironment } from "@/lib/stripe";
+import { supabase } from "@/integrations/supabase/client";
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { label: string; cls: string; Icon: any }> = {
@@ -34,7 +39,9 @@ function formatDate(iso: string | null) {
 export function OcrPurchaseHistory() {
   const { data: purchases = [], isLoading, refetch, isFetching } = useMyOcrPurchases();
   const { data: quota } = useMyOcrQuota();
+  const { data: packs = [] } = useOcrPacks({ onlyActive: true });
   const qc = useQueryClient();
+  const [retryPackId, setRetryPackId] = useState<string | null>(null);
 
   const handleRefresh = () => {
     qc.invalidateQueries({ queryKey: ["my_ocr_quota"] });
@@ -45,6 +52,32 @@ export function OcrPurchaseHistory() {
   const addon = quota?.addon_balance ?? 0;
   const total = totalQuota(quota);
   const pending = purchases.filter((p) => p.status === "pending").length;
+  const failedPurchases = purchases.filter((p) => p.status === "failed");
+  const lastFailed: OcrPackPurchase | undefined = failedPurchases[0];
+
+  const failureReason = (p: OcrPackPurchase): string => {
+    if (!p.stripe_session_id && !p.stripe_payment_intent_id) {
+      return "No se inició el cobro en la pasarela. Probá de nuevo.";
+    }
+    if (p.environment === "sandbox") {
+      return "El pago fue rechazado en modo prueba (tarjeta declinada o autenticación 3DS fallida). Podés reintentar con otra tarjeta de prueba.";
+    }
+    return "Tu banco rechazó el cobro o la sesión expiró antes de completarse. Podés reintentar el pago.";
+  };
+
+  const retryPack = packs.find((pk) => pk.id === retryPackId) || null;
+
+  const fetchRetryClientSecret = useCallback(async (): Promise<string> => {
+    const { data, error } = await supabase.functions.invoke("ocr-pack-checkout", {
+      body: {
+        pack_id: retryPackId,
+        environment: getStripeEnvironment(),
+        returnUrl: `${window.location.origin}/checkout/return?session_id={CHECKOUT_SESSION_ID}&kind=ocr_pack`,
+      },
+    });
+    if (error || !data?.clientSecret) throw new Error(error?.message || "No se pudo iniciar el cobro");
+    return data.clientSecret;
+  }, [retryPackId]);
 
   return (
     <div id="compras-ocr" className="space-y-4 scroll-mt-20">
@@ -99,6 +132,44 @@ export function OcrPurchaseHistory() {
         </div>
       )}
 
+      {lastFailed && (
+        <div className="rounded-md border border-destructive/30 bg-destructive/10 p-4 space-y-2">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+            <div className="space-y-1 flex-1">
+              <div className="font-medium text-destructive">
+                Tu última compra OCR no se pudo completar
+              </div>
+              <div className="text-sm text-destructive/90">
+                <span className="font-medium">
+                  {lastFailed.ocr_packs?.nombre || "Paquete OCR"}
+                </span>{" "}
+                — {failureReason(lastFailed)}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                Intento del {formatDate(lastFailed.created_at)}.
+                {failedPurchases.length > 1 && ` (${failedPurchases.length} intentos fallidos en total)`}
+              </div>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2 pt-1">
+            {lastFailed.pack_id && packs.some((pk) => pk.id === lastFailed.pack_id) && (
+              <Button
+                size="sm"
+                onClick={() => setRetryPackId(lastFailed.pack_id!)}
+              >
+                <RotateCw className="h-4 w-4 mr-1" />
+                Reintentar pago
+              </Button>
+            )}
+            <Button size="sm" variant="outline" onClick={handleRefresh}>
+              <RefreshCw className="h-4 w-4 mr-1" />
+              Verificar estado
+            </Button>
+          </div>
+        </div>
+      )}
+
       <Card>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
@@ -110,13 +181,14 @@ export function OcrPurchaseHistory() {
                   <TableHead className="text-right">Escaneos</TableHead>
                   <TableHead className="text-right">Monto</TableHead>
                   <TableHead>Estado</TableHead>
+                  <TableHead className="text-right">Acción</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {isLoading ? (
-                  <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-6">Cargando…</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-6">Cargando…</TableCell></TableRow>
                 ) : purchases.length === 0 ? (
-                  <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-6">Aún no tenés compras de paquetes OCR.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-6">Aún no tenés compras de paquetes OCR.</TableCell></TableRow>
                 ) : (
                   purchases.map((p) => (
                     <TableRow key={p.id}>
@@ -129,6 +201,16 @@ export function OcrPurchaseHistory() {
                         {p.precio_centavos > 0 ? `$${(p.precio_centavos / 100).toFixed(2)} ${p.moneda}` : "—"}
                       </TableCell>
                       <TableCell><StatusBadge status={p.status} /></TableCell>
+                      <TableCell className="text-right">
+                        {p.status === "failed" && p.pack_id && packs.some((pk) => pk.id === p.pack_id) ? (
+                          <Button size="sm" variant="outline" onClick={() => setRetryPackId(p.pack_id!)}>
+                            <RotateCw className="h-3 w-3 mr-1" />
+                            Reintentar
+                          </Button>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
                     </TableRow>
                   ))
                 )}
@@ -137,6 +219,21 @@ export function OcrPurchaseHistory() {
           </div>
         </CardContent>
       </Card>
+
+      <Dialog open={!!retryPackId} onOpenChange={(v) => !v && setRetryPackId(null)}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              Reintentar pago{retryPack ? ` — ${retryPack.nombre}` : ""}
+            </DialogTitle>
+          </DialogHeader>
+          {retryPackId && (
+            <EmbeddedCheckoutProvider stripe={getStripe()} options={{ fetchClientSecret: fetchRetryClientSecret }}>
+              <EmbeddedCheckout />
+            </EmbeddedCheckoutProvider>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
