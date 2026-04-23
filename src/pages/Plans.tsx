@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { EmbeddedCheckoutProvider, EmbeddedCheckout } from "@stripe/react-stripe-js";
 import { getStripe, getStripeEnvironment } from "@/lib/stripe";
 import { supabase } from "@/integrations/supabase/client";
+import { OcrPurchaseHistory } from "@/components/ocr/OcrPurchaseHistory";
 
 export default function Plans() {
   const [billing, setBilling] = useState<"mensual" | "anual">("mensual");
@@ -178,6 +179,10 @@ export default function Plans() {
           )}
         </DialogContent>
       </Dialog>
+
+      <div className="pt-6 border-t">
+        <OcrPurchaseHistory />
+      </div>
     </div>
   );
 }
