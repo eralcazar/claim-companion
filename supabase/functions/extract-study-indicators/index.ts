@@ -83,6 +83,29 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "Sin permisos para extraer indicadores" }, 403);
     }
 
+    // Consume OCR quota (1 page) before doing the expensive AI call.
+    // Charge it to the caller so each professional has its own balance.
+    const { data: quotaResult, error: quotaErr } = await admin.rpc("consume_ocr_quota", {
+      _user_id: callerId,
+      _pages: 1,
+      _resource_id: resultadoId,
+    });
+    if (quotaErr) {
+      console.error("consume_ocr_quota error", quotaErr);
+      return jsonResponse({ error: "No se pudo verificar la cuota OCR" }, 500);
+    }
+    if (!quotaResult?.ok) {
+      return jsonResponse(
+        {
+          error: "Has llegado a tu límite de escaneos OCR. Comprá un paquete adicional para continuar.",
+          code: "quota_exceeded",
+          subscription_balance: quotaResult?.subscription_balance ?? 0,
+          addon_balance: quotaResult?.addon_balance ?? 0,
+        },
+        402,
+      );
+    }
+
     // Descargar archivo del bucket privado
     const { data: file, error: dlErr } = await admin.storage
       .from("estudios-resultados")
