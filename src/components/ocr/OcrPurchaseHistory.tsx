@@ -260,6 +260,141 @@ export function OcrPurchaseHistory() {
           )}
         </DialogContent>
       </Dialog>
+
+      <Dialog open={!!detailsPurchase} onOpenChange={(v) => !v && setDetailsPurchase(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Info className="h-5 w-5 text-primary" />
+              Detalles técnicos de la compra
+            </DialogTitle>
+            <DialogDescription>
+              Compartí esta información con soporte si necesitás ayuda para resolver el cobro.
+            </DialogDescription>
+          </DialogHeader>
+          {detailsPurchase && (
+            <div className="space-y-3 text-sm">
+              <div className="rounded-md border bg-muted/30 p-3 space-y-2">
+                <DetailRow label="Paquete" value={detailsPurchase.ocr_packs?.nombre || "—"} />
+                <DetailRow label="Estado" value={detailsPurchase.status} />
+                <DetailRow label="Entorno" value={detailsPurchase.environment} />
+                <DetailRow
+                  label="Monto"
+                  value={
+                    detailsPurchase.precio_centavos > 0
+                      ? `$${(detailsPurchase.precio_centavos / 100).toFixed(2)} ${detailsPurchase.moneda}`
+                      : "—"
+                  }
+                />
+                <DetailRow label="Escaneos" value={`+${detailsPurchase.cantidad_escaneos}`} />
+                <DetailRow label="Creada" value={formatDate(detailsPurchase.created_at)} />
+                {detailsPurchase.paid_at && (
+                  <DetailRow label="Pagada" value={formatDate(detailsPurchase.paid_at)} />
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <CopyRow
+                  label="ID de compra"
+                  value={detailsPurchase.id}
+                  field="purchase_id"
+                  copiedField={copiedField}
+                  onCopy={copyToClipboard}
+                />
+                <CopyRow
+                  label="Stripe Session ID"
+                  value={detailsPurchase.stripe_session_id}
+                  field="session_id"
+                  copiedField={copiedField}
+                  onCopy={copyToClipboard}
+                />
+                <CopyRow
+                  label="Stripe PaymentIntent ID"
+                  value={detailsPurchase.stripe_payment_intent_id}
+                  field="pi_id"
+                  copiedField={copiedField}
+                  onCopy={copyToClipboard}
+                />
+              </div>
+
+              {detailsPurchase.status === "failed" && (
+                <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive/90">
+                  <div className="font-medium mb-1">Motivo probable</div>
+                  {failureReason(detailsPurchase)}
+                </div>
+              )}
+
+              <div className="flex justify-end pt-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    const summary = [
+                      `Compra OCR (${detailsPurchase.status})`,
+                      `ID: ${detailsPurchase.id}`,
+                      `Session: ${detailsPurchase.stripe_session_id || "—"}`,
+                      `PaymentIntent: ${detailsPurchase.stripe_payment_intent_id || "—"}`,
+                      `Entorno: ${detailsPurchase.environment}`,
+                      `Fecha: ${formatDate(detailsPurchase.created_at)}`,
+                    ].join("\n");
+                    copyToClipboard(summary, "all");
+                  }}
+                >
+                  {copiedField === "all" ? (
+                    <><Check className="h-4 w-4 mr-1" />Copiado</>
+                  ) : (
+                    <><Copy className="h-4 w-4 mr-1" />Copiar todo para soporte</>
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function DetailRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between gap-3 text-xs">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="font-medium tabular-nums">{value}</span>
+    </div>
+  );
+}
+
+function CopyRow({
+  label,
+  value,
+  field,
+  copiedField,
+  onCopy,
+}: {
+  label: string;
+  value: string | null | undefined;
+  field: string;
+  copiedField: string | null;
+  onCopy: (v: string, f: string) => void;
+}) {
+  return (
+    <div className="space-y-1">
+      <div className="text-xs text-muted-foreground">{label}</div>
+      <div className="flex items-center gap-2">
+        <code className="flex-1 text-xs font-mono bg-muted px-2 py-1.5 rounded border break-all">
+          {value || "—"}
+        </code>
+        {value && (
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-8 w-8 p-0 shrink-0"
+            onClick={() => onCopy(value, field)}
+          >
+            {copiedField === field ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+          </Button>
+        )}
+      </div>
     </div>
   );
 }
