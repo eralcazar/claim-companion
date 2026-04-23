@@ -132,6 +132,44 @@ export function OcrPurchaseHistory() {
         </div>
       )}
 
+      {lastFailed && (
+        <div className="rounded-md border border-destructive/30 bg-destructive/10 p-4 space-y-2">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+            <div className="space-y-1 flex-1">
+              <div className="font-medium text-destructive">
+                Tu última compra OCR no se pudo completar
+              </div>
+              <div className="text-sm text-destructive/90">
+                <span className="font-medium">
+                  {lastFailed.ocr_packs?.nombre || "Paquete OCR"}
+                </span>{" "}
+                — {failureReason(lastFailed)}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                Intento del {formatDate(lastFailed.created_at)}.
+                {failedPurchases.length > 1 && ` (${failedPurchases.length} intentos fallidos en total)`}
+              </div>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2 pt-1">
+            {lastFailed.pack_id && packs.some((pk) => pk.id === lastFailed.pack_id) && (
+              <Button
+                size="sm"
+                onClick={() => setRetryPackId(lastFailed.pack_id!)}
+              >
+                <RotateCw className="h-4 w-4 mr-1" />
+                Reintentar pago
+              </Button>
+            )}
+            <Button size="sm" variant="outline" onClick={handleRefresh}>
+              <RefreshCw className="h-4 w-4 mr-1" />
+              Verificar estado
+            </Button>
+          </div>
+        </div>
+      )}
+
       <Card>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
@@ -143,13 +181,14 @@ export function OcrPurchaseHistory() {
                   <TableHead className="text-right">Escaneos</TableHead>
                   <TableHead className="text-right">Monto</TableHead>
                   <TableHead>Estado</TableHead>
+                  <TableHead className="text-right">Acción</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {isLoading ? (
-                  <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-6">Cargando…</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-6">Cargando…</TableCell></TableRow>
                 ) : purchases.length === 0 ? (
-                  <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-6">Aún no tenés compras de paquetes OCR.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-6">Aún no tenés compras de paquetes OCR.</TableCell></TableRow>
                 ) : (
                   purchases.map((p) => (
                     <TableRow key={p.id}>
@@ -162,6 +201,16 @@ export function OcrPurchaseHistory() {
                         {p.precio_centavos > 0 ? `$${(p.precio_centavos / 100).toFixed(2)} ${p.moneda}` : "—"}
                       </TableCell>
                       <TableCell><StatusBadge status={p.status} /></TableCell>
+                      <TableCell className="text-right">
+                        {p.status === "failed" && p.pack_id && packs.some((pk) => pk.id === p.pack_id) ? (
+                          <Button size="sm" variant="outline" onClick={() => setRetryPackId(p.pack_id!)}>
+                            <RotateCw className="h-3 w-3 mr-1" />
+                            Reintentar
+                          </Button>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
                     </TableRow>
                   ))
                 )}
@@ -170,6 +219,21 @@ export function OcrPurchaseHistory() {
           </div>
         </CardContent>
       </Card>
+
+      <Dialog open={!!retryPackId} onOpenChange={(v) => !v && setRetryPackId(null)}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              Reintentar pago{retryPack ? ` — ${retryPack.nombre}` : ""}
+            </DialogTitle>
+          </DialogHeader>
+          {retryPackId && (
+            <EmbeddedCheckoutProvider stripe={getStripe()} options={{ fetchClientSecret: fetchRetryClientSecret }}>
+              <EmbeddedCheckout />
+            </EmbeddedCheckoutProvider>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
