@@ -2,7 +2,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Calendar, Pill, FileText, Clock, Stethoscope } from "lucide-react";
+import { Calendar, Pill, FileText, Clock, Stethoscope, Activity } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
@@ -64,6 +64,21 @@ export default function Dashboard() {
     enabled: !!user,
   });
 
+  const { data: lastBP } = useQuery({
+    queryKey: ["last-bp", user?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("blood_pressure_readings" as any)
+        .select("systolic, diastolic, taken_at")
+        .eq("patient_id", user!.id)
+        .order("taken_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      return data as any;
+    },
+    enabled: !!user,
+  });
+
   const statusColors: Record<string, string> = {
     pendiente: "bg-warning/10 text-warning",
     aprobado: "bg-success/10 text-success",
@@ -97,6 +112,36 @@ export default function Dashboard() {
         <Stethoscope className="mr-2 h-5 w-5" />
         Mi Consultorio digital
       </Button>
+
+      {/* Blood pressure quick card */}
+      <Card
+        className="cursor-pointer hover:bg-muted/40 transition-colors"
+        onClick={() => navigate("/presion")}
+      >
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base font-heading">
+            <Activity className="h-5 w-5 text-primary" />
+            Presión arterial
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {lastBP ? (
+            <div className="flex items-baseline gap-2 flex-wrap">
+              <span className="text-2xl font-bold">
+                {lastBP.systolic}/{lastBP.diastolic}
+              </span>
+              <span className="text-xs text-muted-foreground">mmHg</span>
+              <p className="text-xs text-muted-foreground w-full">
+                Última toma: {format(new Date(lastBP.taken_at), "PPp", { locale: es })}
+              </p>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Aún no has registrado tomas. Toca para empezar.
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Upcoming appointments */}
       <Card>

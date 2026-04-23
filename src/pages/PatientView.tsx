@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, User, Stethoscope } from "lucide-react";
 import { BodyMapEditor } from "@/components/consultorio/BodyMapEditor";
+import { BloodPressureModule } from "@/components/presion/BloodPressureModule";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { useAuth } from "@/contexts/AuthContext";
@@ -143,6 +144,7 @@ export default function PatientView() {
           <TabsTrigger value="medicamentos">Medicamentos ({meds?.length ?? 0})</TabsTrigger>
           <TabsTrigger value="registros">Registros ({records?.length ?? 0})</TabsTrigger>
           <TabsTrigger value="cuerpo">Mapa corporal</TabsTrigger>
+          <TabsTrigger value="presion">Presión</TabsTrigger>
         </TabsList>
 
         <TabsContent value="agenda" className="space-y-2 mt-3">
@@ -228,6 +230,16 @@ export default function PatientView() {
               canEdit={canEditBody}
               showQuickRegionAccess={true}
               title="Mapa corporal del paciente"
+            />
+          )}
+        </TabsContent>
+
+        <TabsContent value="presion" className="mt-3">
+          {id && (
+            <BloodPressureModule
+              patientId={id}
+              patientName={patientName}
+              canEdit={canEditBody}
             />
           )}
         </TabsContent>

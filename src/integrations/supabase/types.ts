@@ -148,6 +148,51 @@ export type Database = {
         }
         Relationships: []
       }
+      blood_pressure_readings: {
+        Row: {
+          arm: string | null
+          created_at: string
+          created_by: string
+          diastolic: number
+          id: string
+          notes: string | null
+          patient_id: string
+          position: string | null
+          pulse: number | null
+          systolic: number
+          taken_at: string
+          updated_at: string
+        }
+        Insert: {
+          arm?: string | null
+          created_at?: string
+          created_by: string
+          diastolic: number
+          id?: string
+          notes?: string | null
+          patient_id: string
+          position?: string | null
+          pulse?: number | null
+          systolic: number
+          taken_at?: string
+          updated_at?: string
+        }
+        Update: {
+          arm?: string | null
+          created_at?: string
+          created_by?: string
+          diastolic?: number
+          id?: string
+          notes?: string | null
+          patient_id?: string
+          position?: string | null
+          pulse?: number | null
+          systolic?: number
+          taken_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       body_annotation_files: {
         Row: {
           annotation_id: string

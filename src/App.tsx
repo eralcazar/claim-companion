@@ -45,6 +45,7 @@ import PlanManager from "@/pages/admin/PlanManager";
 import Plans from "@/pages/Plans";
 import Subscription from "@/pages/Subscription";
 import Consultorio from "@/pages/Consultorio";
+import PresionArterial from "@/pages/PresionArterial";
 
 const queryClient = new QueryClient();
 
@@ -67,6 +68,7 @@ const App = () => (
               <Route path="/recetas" element={<Recetas />} />
               <Route path="/estudios" element={<Estudios />} />
               <Route path="/tendencias" element={<Tendencias />} />
+              <Route path="/presion" element={<PresionArterial />} />
               <Route path="/reclamos/nuevo" element={<NewClaim />} />
               <Route path="/reclamos/editar/:id" element={<EditClaim />} />
               <Route path="/agenda" element={<Appointments />} />
