@@ -528,6 +528,9 @@ export function BloodPressureModule({ patientId, patientName, canEdit = true }: 
         </CardContent>
       </Card>
 
+      {/* Recordatorios */}
+      <BpRemindersCard patientId={patientId} canEdit={canEdit} />
+
       <AlertDialog open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
