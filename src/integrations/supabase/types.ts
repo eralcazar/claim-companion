@@ -1407,6 +1407,164 @@ export type Database = {
         }
         Relationships: []
       }
+      ocr_pack_purchases: {
+        Row: {
+          cantidad_escaneos: number
+          created_at: string
+          environment: string
+          granted_by: string | null
+          id: string
+          moneda: string
+          pack_id: string | null
+          paid_at: string | null
+          precio_centavos: number
+          status: string
+          stripe_payment_intent_id: string | null
+          stripe_session_id: string | null
+          user_id: string
+        }
+        Insert: {
+          cantidad_escaneos: number
+          created_at?: string
+          environment?: string
+          granted_by?: string | null
+          id?: string
+          moneda?: string
+          pack_id?: string | null
+          paid_at?: string | null
+          precio_centavos?: number
+          status?: string
+          stripe_payment_intent_id?: string | null
+          stripe_session_id?: string | null
+          user_id: string
+        }
+        Update: {
+          cantidad_escaneos?: number
+          created_at?: string
+          environment?: string
+          granted_by?: string | null
+          id?: string
+          moneda?: string
+          pack_id?: string | null
+          paid_at?: string | null
+          precio_centavos?: number
+          status?: string
+          stripe_payment_intent_id?: string | null
+          stripe_session_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ocr_pack_purchases_pack_id_fkey"
+            columns: ["pack_id"]
+            isOneToOne: false
+            referencedRelation: "ocr_packs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ocr_packs: {
+        Row: {
+          activo: boolean
+          cantidad_escaneos: number
+          created_at: string
+          descripcion: string | null
+          id: string
+          moneda: string
+          nombre: string
+          orden: number
+          precio_centavos: number
+          stripe_price_id: string | null
+          stripe_product_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          activo?: boolean
+          cantidad_escaneos: number
+          created_at?: string
+          descripcion?: string | null
+          id?: string
+          moneda?: string
+          nombre: string
+          orden?: number
+          precio_centavos: number
+          stripe_price_id?: string | null
+          stripe_product_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          activo?: boolean
+          cantidad_escaneos?: number
+          created_at?: string
+          descripcion?: string | null
+          id?: string
+          moneda?: string
+          nombre?: string
+          orden?: number
+          precio_centavos?: number
+          stripe_price_id?: string | null
+          stripe_product_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      ocr_quotas: {
+        Row: {
+          addon_balance: number
+          period_end: string | null
+          period_start: string | null
+          subscription_balance: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          addon_balance?: number
+          period_end?: string | null
+          period_start?: string | null
+          subscription_balance?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          addon_balance?: number
+          period_end?: string | null
+          period_start?: string | null
+          subscription_balance?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      ocr_usage_log: {
+        Row: {
+          feature: string
+          id: string
+          pages: number
+          resource_id: string | null
+          source: string
+          used_at: string
+          user_id: string
+        }
+        Insert: {
+          feature?: string
+          id?: string
+          pages?: number
+          resource_id?: string | null
+          source: string
+          used_at?: string
+          user_id: string
+        }
+        Update: {
+          feature?: string
+          id?: string
+          pages?: number
+          resource_id?: string | null
+          source?: string
+          used_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       patient_personnel: {
         Row: {
           created_at: string
@@ -2099,6 +2257,7 @@ export type Database = {
           id: string
           moneda: string
           nombre: string
+          ocr_pages_per_month: number
           orden: number
           precio_anual_centavos: number
           precio_mensual_centavos: number
@@ -2114,6 +2273,7 @@ export type Database = {
           id?: string
           moneda?: string
           nombre: string
+          ocr_pages_per_month?: number
           orden?: number
           precio_anual_centavos?: number
           precio_mensual_centavos?: number
@@ -2129,6 +2289,7 @@ export type Database = {
           id?: string
           moneda?: string
           nombre?: string
+          ocr_pages_per_month?: number
           orden?: number
           precio_anual_centavos?: number
           precio_mensual_centavos?: number
@@ -2224,6 +2385,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      add_ocr_credits: {
+        Args: { _pages: number; _source?: string; _user_id: string }
+        Returns: undefined
+      }
+      consume_ocr_quota: {
+        Args: { _pages: number; _resource_id?: string; _user_id: string }
+        Returns: Json
+      }
       gen_folio: { Args: { _code: string; _insurer: string }; Returns: string }
       has_patient_access: {
         Args: { _patient: string; _personnel: string }
@@ -2235,6 +2404,10 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      sync_subscription_ocr_quota: {
+        Args: { _user_id: string }
+        Returns: undefined
       }
       user_has_plan_feature: {
         Args: { _feature: string; _user_id: string }

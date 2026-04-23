@@ -22,6 +22,8 @@ import { IndicadorSparkline } from "@/components/tendencias/IndicadorSparkline";
 import { IndicadorEditRow } from "./IndicadorEditRow";
 import { IndicadoresBulkImportDialog } from "./IndicadoresBulkImportDialog";
 import { ResultadoEditDialog } from "./ResultadoEditDialog";
+import { useMyOcrQuota, totalQuota } from "@/hooks/useOcrQuota";
+import { Link } from "react-router-dom";
 
 interface Props {
   estudio: any;
@@ -34,6 +36,8 @@ export function ResultadosManager({ estudio, canManage }: Props) {
   const upload = useUploadResultado();
   const del = useDeleteResultado();
   const dl = useDownloadResultado();
+  const { data: quota } = useMyOcrQuota();
+  const remaining = totalQuota(quota);
 
   const [file, setFile] = useState<File | null>(null);
   const [fecha, setFecha] = useState("");
@@ -62,6 +66,17 @@ export function ResultadosManager({ estudio, canManage }: Props) {
 
   return (
     <div className="space-y-3">
+      {canManage && (
+        <div className="text-xs flex items-center justify-between gap-2 p-2 rounded-md border bg-muted/30">
+          <span className="flex items-center gap-1">
+            <Sparkles className="h-3.5 w-3.5 text-primary" />
+            Escaneos OCR disponibles: <span className="font-bold">{remaining}</span>
+          </span>
+          <Link to="/planes" className="text-primary underline-offset-2 hover:underline">
+            Comprar más
+          </Link>
+        </div>
+      )}
       {canManage && (
         <div className="space-y-2 p-3 border rounded-md bg-muted/30">
           <div className="text-sm font-medium">Subir nuevo resultado</div>
