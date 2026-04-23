@@ -242,6 +242,36 @@ export default function PlanManager() {
           })()}
         </DialogContent>
       </Dialog>
+
+      <Dialog open={packOpen} onOpenChange={setPackOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>{packEditing?.id ? "Editar" : "Nuevo"} paquete OCR</DialogTitle></DialogHeader>
+          {packEditing && (
+            <div className="space-y-3">
+              <div><Label>Nombre</Label><Input value={packEditing.nombre || ""} onChange={(e) => setPackEditing({ ...packEditing, nombre: e.target.value })} /></div>
+              <div><Label>Descripción</Label><Textarea rows={2} value={packEditing.descripcion || ""} onChange={(e) => setPackEditing({ ...packEditing, descripcion: e.target.value })} /></div>
+              <div className="grid grid-cols-2 gap-3">
+                <div><Label>Cantidad de escaneos</Label>
+                  <Input type="number" value={packEditing.cantidad_escaneos ?? 0}
+                    onChange={(e) => setPackEditing({ ...packEditing, cantidad_escaneos: Math.max(1, parseInt(e.target.value || "0", 10)) })} /></div>
+                <div><Label>Precio (MXN)</Label>
+                  <Input type="number" step="0.01" value={(packEditing.precio_centavos ?? 0) / 100}
+                    onChange={(e) => setPackEditing({ ...packEditing, precio_centavos: Math.round(parseFloat(e.target.value || "0") * 100) })} /></div>
+                <div><Label>Orden</Label><Input type="number" value={packEditing.orden ?? 0} onChange={(e) => setPackEditing({ ...packEditing, orden: Number(e.target.value) })} /></div>
+                <div className="flex items-end gap-2">
+                  <Switch checked={!!packEditing.activo} onCheckedChange={(v) => setPackEditing({ ...packEditing, activo: v })} /><Label>Activo</Label>
+                </div>
+              </div>
+              <Button className="w-full" onClick={async () => {
+                if (!packEditing.nombre) { toast.error("Falta el nombre"); return; }
+                await upsertPack.mutateAsync(packEditing);
+                setPackOpen(false);
+                setPackEditing(null);
+              }} disabled={upsertPack.isPending}>Guardar</Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
