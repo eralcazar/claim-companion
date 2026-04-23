@@ -216,7 +216,7 @@ serve(async (req) => {
               user_id: userId,
               title: "Escaneos OCR añadidos",
               body: `Se acreditaron ${cantidad} escaneos OCR a tu cuenta.`,
-              link: "/planes",
+              link: `/planes?ocr_purchase=${purchaseId}#compras-ocr`,
             });
           }
         }
