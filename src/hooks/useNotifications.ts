@@ -61,7 +61,7 @@ export function useNotifications() {
               duration: 8000,
               action: n.link
                 ? {
-                    label: "Ver compras",
+                    label: "Ver detalles",
                     onClick: () => {
                       window.location.href = `${n.link}#compras-ocr`;
                     },
