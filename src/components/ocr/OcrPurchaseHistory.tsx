@@ -3,13 +3,14 @@ import { useMyOcrPurchases, useMyOcrQuota, totalQuota, useOcrPacks, type OcrPack
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Sparkles, Receipt, CheckCircle2, Clock, XCircle, RefreshCw, AlertTriangle, RotateCw } from "lucide-react";
+import { Sparkles, Receipt, CheckCircle2, Clock, XCircle, RefreshCw, AlertTriangle, RotateCw, Info, Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useQueryClient } from "@tanstack/react-query";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { EmbeddedCheckoutProvider, EmbeddedCheckout } from "@stripe/react-stripe-js";
 import { getStripe, getStripeEnvironment } from "@/lib/stripe";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { label: string; cls: string; Icon: any }> = {
