@@ -6,8 +6,19 @@ import { toast } from "@/hooks/use-toast";
 import { ALL_ROLES, type AppRoleLite } from "@/lib/features";
 import { useQueryClient } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, Trash2 } from "lucide-react";
+import { CheckCircle2, Trash2, ScanLine } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { useAdminGrantOcr } from "@/hooks/useOcrQuota";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -66,6 +77,9 @@ export function UserRolesRow({
   const [assignedBroker, setAssignedBroker] = useState<string>(assignedBrokerId ?? "__none__");
   const [savingBroker, setSavingBroker] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [grantOpen, setGrantOpen] = useState(false);
+  const [grantPages, setGrantPages] = useState<number>(10);
+  const grantOcr = useAdminGrantOcr();
 
   const handleDelete = async () => {
     setDeleting(true);
@@ -207,7 +221,17 @@ export function UserRolesRow({
       ))}
       <TableCell className="text-muted-foreground text-xs">{user.email || "—"}</TableCell>
       <TableCell className="text-right w-12">
-        {!isSelf && (
+        <div className="flex items-center justify-end gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-primary hover:bg-primary/10"
+            aria-label={`Regalar escaneos OCR a ${user.full_name}`}
+            onClick={() => setGrantOpen(true)}
+          >
+            <ScanLine className="h-4 w-4" />
+          </Button>
+          {!isSelf && (
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button
@@ -240,7 +264,40 @@ export function UserRolesRow({
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
-        )}
+          )}
+        </div>
+
+        <Dialog open={grantOpen} onOpenChange={setGrantOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Regalar escaneos OCR</DialogTitle>
+              <DialogDescription>
+                Se sumarán al saldo de complementos (addon) de <strong>{user.full_name}</strong>.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2">
+              <Label>Cantidad de páginas</Label>
+              <Input
+                type="number"
+                min={1}
+                value={grantPages}
+                onChange={(e) => setGrantPages(Math.max(1, parseInt(e.target.value || "1", 10)))}
+              />
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setGrantOpen(false)}>Cancelar</Button>
+              <Button
+                onClick={async () => {
+                  await grantOcr.mutateAsync({ user_id: user.user_id, pages: grantPages });
+                  setGrantOpen(false);
+                }}
+                disabled={grantOcr.isPending || grantPages <= 0}
+              >
+                Regalar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </TableCell>
     </TableRow>
   );
