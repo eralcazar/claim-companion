@@ -129,3 +129,42 @@ export function totalQuota(q?: OcrQuota | null): number {
   if (!q) return 0;
   return (q.subscription_balance || 0) + (q.addon_balance || 0);
 }
+
+export type OcrPackPurchase = {
+  id: string;
+  user_id: string;
+  pack_id: string | null;
+  cantidad_escaneos: number;
+  precio_centavos: number;
+  moneda: string;
+  status: string;
+  environment: string;
+  stripe_session_id: string | null;
+  stripe_payment_intent_id: string | null;
+  granted_by: string | null;
+  paid_at: string | null;
+  created_at: string;
+  ocr_packs?: { nombre: string } | null;
+};
+
+export function useMyOcrPurchases() {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ["my_ocr_purchases", user?.id],
+    enabled: !!user,
+    queryFn: async (): Promise<OcrPackPurchase[]> => {
+      const { data, error } = await supabase
+        .from("ocr_pack_purchases")
+        .select("*, ocr_packs(nombre)")
+        .eq("user_id", user!.id)
+        .order("created_at", { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      return (data || []) as any;
+    },
+    refetchInterval: (q) => {
+      const rows = (q.state.data || []) as OcrPackPurchase[];
+      return rows.some((r) => r.status === "pending") ? 5000 : false;
+    },
+  });
+}
