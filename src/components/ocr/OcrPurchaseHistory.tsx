@@ -43,6 +43,19 @@ export function OcrPurchaseHistory() {
   const { data: packs = [] } = useOcrPacks({ onlyActive: true });
   const qc = useQueryClient();
   const [retryPackId, setRetryPackId] = useState<string | null>(null);
+  const [detailsPurchase, setDetailsPurchase] = useState<OcrPackPurchase | null>(null);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
+
+  const copyToClipboard = async (value: string, field: string) => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopiedField(field);
+      toast.success("Copiado al portapapeles");
+      setTimeout(() => setCopiedField((f) => (f === field ? null : f)), 1500);
+    } catch {
+      toast.error("No se pudo copiar");
+    }
+  };
 
   const handleRefresh = () => {
     qc.invalidateQueries({ queryKey: ["my_ocr_quota"] });
