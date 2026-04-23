@@ -220,11 +220,19 @@ export function OcrPurchaseHistory() {
                       </TableCell>
                       <TableCell><StatusBadge status={p.status} /></TableCell>
                       <TableCell className="text-right">
-                        {p.status === "failed" && p.pack_id && packs.some((pk) => pk.id === p.pack_id) ? (
-                          <Button size="sm" variant="outline" onClick={() => setRetryPackId(p.pack_id!)}>
-                            <RotateCw className="h-3 w-3 mr-1" />
-                            Reintentar
-                          </Button>
+                        {p.status === "failed" ? (
+                          <div className="flex items-center justify-end gap-1">
+                            {p.pack_id && packs.some((pk) => pk.id === p.pack_id) && (
+                              <Button size="sm" variant="outline" onClick={() => setRetryPackId(p.pack_id!)}>
+                                <RotateCw className="h-3 w-3 mr-1" />
+                                Reintentar
+                              </Button>
+                            )}
+                            <Button size="sm" variant="ghost" onClick={() => setDetailsPurchase(p)}>
+                              <Info className="h-3 w-3 mr-1" />
+                              Detalles
+                            </Button>
+                          </div>
                         ) : (
                           <span className="text-xs text-muted-foreground">—</span>
                         )}
