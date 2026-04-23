@@ -1,4 +1,5 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useMyOcrPurchases, useMyOcrQuota, totalQuota, useOcrPacks, type OcrPackPurchase } from "@/hooks/useOcrQuota";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -45,6 +46,21 @@ export function OcrPurchaseHistory() {
   const [retryPackId, setRetryPackId] = useState<string | null>(null);
   const [detailsPurchase, setDetailsPurchase] = useState<OcrPackPurchase | null>(null);
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Auto-open details dialog when arriving via notification deep-link (?ocr_purchase=<id>)
+  useEffect(() => {
+    const targetId = searchParams.get("ocr_purchase");
+    if (!targetId || !purchases.length) return;
+    const match = purchases.find((p) => p.id === targetId);
+    if (match) {
+      setDetailsPurchase(match);
+      // Clean the param so a refresh doesn't reopen it
+      const next = new URLSearchParams(searchParams);
+      next.delete("ocr_purchase");
+      setSearchParams(next, { replace: true });
+    }
+  }, [searchParams, purchases, setSearchParams]);
 
   const copyToClipboard = async (value: string, field: string) => {
     try {

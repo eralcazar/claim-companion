@@ -61,9 +61,10 @@ export function useNotifications() {
               duration: 8000,
               action: n.link
                 ? {
-                    label: "Ver compras",
+                    label: "Ver detalles",
                     onClick: () => {
-                      window.location.href = `${n.link}#compras-ocr`;
+                      // Webhook already includes the deep-link with ?ocr_purchase=<id>#compras-ocr
+                      window.location.href = n.link!;
                     },
                   }
                 : undefined,
