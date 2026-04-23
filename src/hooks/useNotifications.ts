@@ -43,6 +43,7 @@ export function useNotifications() {
         (payload) => {
           const n = payload.new as Notification;
           const isMedReminder = n.title.startsWith("💊");
+          const isOcrCredit = /OCR/i.test(n.title) && /añad|acredit/i.test(n.body);
           if (isMedReminder) {
             playReminderSound();
             if (typeof window !== "undefined" && "Notification" in window && document.hidden && Notification.permission === "granted") {
@@ -51,6 +52,22 @@ export function useNotifications() {
               } catch {}
             }
             toast.warning(n.title, { description: n.body, duration: 30000 });
+          } else if (isOcrCredit) {
+            // Refresh OCR balance + purchase history immediately
+            qc.invalidateQueries({ queryKey: ["my_ocr_quota"] });
+            qc.invalidateQueries({ queryKey: ["my_ocr_purchases"] });
+            toast.success(`✨ ${n.title}`, {
+              description: n.body,
+              duration: 8000,
+              action: n.link
+                ? {
+                    label: "Ver compras",
+                    onClick: () => {
+                      window.location.href = `${n.link}#compras-ocr`;
+                    },
+                  }
+                : undefined,
+            });
           } else {
             toast(n.title, { description: n.body });
           }
