@@ -1,7 +1,7 @@
 import { useSearchParams, Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, Store, CreditCard, Sparkles } from "lucide-react";
+import { CheckCircle2, Store, CreditCard, Sparkles, Receipt } from "lucide-react";
 
 export default function CheckoutReturn() {
   const [params] = useSearchParams();
@@ -14,6 +14,7 @@ export default function CheckoutReturn() {
         title: "¡Escaneos añadidos!",
         message: "Tus escaneos OCR adicionales se acreditaron a tu cuenta.",
         primary: { label: "Volver a Estudios", to: "/estudios", icon: Sparkles },
+        secondary: { label: "Ver mis compras OCR", to: "/planes#compras-ocr", icon: Receipt },
       };
     }
     if (kind === "subscription") {
@@ -21,15 +22,18 @@ export default function CheckoutReturn() {
         title: "¡Suscripción activada!",
         message: "Tu suscripción quedó activa. Ya podés usar todas las funciones incluidas.",
         primary: { label: "Mi suscripción", to: "/suscripcion", icon: CreditCard },
+        secondary: null as null | { label: string; to: string; icon: any },
       };
     }
     return {
       title: "¡Pago recibido!",
       message: "Tu pago se procesó correctamente. La farmacia preparará tu pedido.",
       primary: { label: "Ver mis pedidos", to: "/farmacia", icon: Store },
+      secondary: null as null | { label: string; to: string; icon: any },
     };
   })();
   const Icon = config.primary.icon;
+  const SecondaryIcon = config.secondary?.icon;
 
   return (
     <div className="max-w-md mx-auto py-12 px-4">
@@ -44,6 +48,13 @@ export default function CheckoutReturn() {
             <Button asChild>
               <Link to={config.primary.to}><Icon className="h-4 w-4 mr-2" />{config.primary.label}</Link>
             </Button>
+            {config.secondary && SecondaryIcon && (
+              <Button variant="secondary" asChild>
+                <Link to={config.secondary.to}>
+                  <SecondaryIcon className="h-4 w-4 mr-2" />{config.secondary.label}
+                </Link>
+              </Button>
+            )}
             <Button variant="outline" asChild>
               <Link to="/">Inicio</Link>
             </Button>
