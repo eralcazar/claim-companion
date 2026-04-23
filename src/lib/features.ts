@@ -2,7 +2,7 @@ import {
   Home, FileText, Shield, Calendar, Pill, FolderOpen, User, Download,
   Users, Stethoscope, FolderTree, UserCog, KeyRound, GraduationCap, BadgeCheck, FlaskConical, TrendingUp,
   HeartPulse, FlaskRound, Store, UserCheck, FileWarning,
-  Package, Boxes, Layers, CreditCard,
+  Package, Boxes, Layers, CreditCard, Activity,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -17,7 +17,8 @@ export type FeatureKey =
   | "patient_personnel_manager" | "patient_view"
   | "claims_without_report"
   | "product_manager" | "inventory_manager" | "plan_manager"
-  | "planes" | "suscripcion" | "consultorio";
+  | "planes" | "suscripcion" | "consultorio"
+  | "presion_arterial";
 
 export interface FeatureDef {
   key: FeatureKey;
@@ -38,6 +39,7 @@ export const AVAILABLE_FEATURES: FeatureDef[] = [
   { key: "recetas", label: "Recetas", route: "/recetas", icon: Pill, group: "principal" },
   { key: "estudios", label: "Estudios", route: "/estudios", icon: FlaskConical, group: "principal" },
   { key: "tendencias", label: "Tendencias", route: "/tendencias", icon: TrendingUp, group: "principal" },
+  { key: "presion_arterial", label: "Presión arterial", route: "/presion", icon: Activity, group: "principal" },
   { key: "perfil", label: "Perfil", route: "/perfil", icon: User, group: "principal" },
   { key: "patient_personnel_manager", label: "Mis accesos", route: "/perfil/accesos", icon: UserCheck, group: "principal" },
   { key: "planes", label: "Planes", route: "/planes", icon: CreditCard, group: "principal" },
