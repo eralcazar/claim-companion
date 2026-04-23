@@ -39,7 +39,9 @@ function formatDate(iso: string | null) {
 export function OcrPurchaseHistory() {
   const { data: purchases = [], isLoading, refetch, isFetching } = useMyOcrPurchases();
   const { data: quota } = useMyOcrQuota();
+  const { data: packs = [] } = useOcrPacks({ onlyActive: true });
   const qc = useQueryClient();
+  const [retryPackId, setRetryPackId] = useState<string | null>(null);
 
   const handleRefresh = () => {
     qc.invalidateQueries({ queryKey: ["my_ocr_quota"] });
@@ -50,6 +52,32 @@ export function OcrPurchaseHistory() {
   const addon = quota?.addon_balance ?? 0;
   const total = totalQuota(quota);
   const pending = purchases.filter((p) => p.status === "pending").length;
+  const failedPurchases = purchases.filter((p) => p.status === "failed");
+  const lastFailed: OcrPackPurchase | undefined = failedPurchases[0];
+
+  const failureReason = (p: OcrPackPurchase): string => {
+    if (!p.stripe_session_id && !p.stripe_payment_intent_id) {
+      return "No se inició el cobro en la pasarela. Probá de nuevo.";
+    }
+    if (p.environment === "sandbox") {
+      return "El pago fue rechazado en modo prueba (tarjeta declinada o autenticación 3DS fallida). Podés reintentar con otra tarjeta de prueba.";
+    }
+    return "Tu banco rechazó el cobro o la sesión expiró antes de completarse. Podés reintentar el pago.";
+  };
+
+  const retryPack = packs.find((pk) => pk.id === retryPackId) || null;
+
+  const fetchRetryClientSecret = useCallback(async (): Promise<string> => {
+    const { data, error } = await supabase.functions.invoke("ocr-pack-checkout", {
+      body: {
+        pack_id: retryPackId,
+        environment: getStripeEnvironment(),
+        returnUrl: `${window.location.origin}/checkout/return?session_id={CHECKOUT_SESSION_ID}&kind=ocr_pack`,
+      },
+    });
+    if (error || !data?.clientSecret) throw new Error(error?.message || "No se pudo iniciar el cobro");
+    return data.clientSecret;
+  }, [retryPackId]);
 
   return (
     <div id="compras-ocr" className="space-y-4 scroll-mt-20">
