@@ -176,6 +176,10 @@ export function OcrPurchaseHistory() {
                 Reintentar pago
               </Button>
             )}
+            <Button size="sm" variant="outline" onClick={() => setDetailsPurchase(lastFailed)}>
+              <Info className="h-4 w-4 mr-1" />
+              Ver detalles
+            </Button>
             <Button size="sm" variant="outline" onClick={handleRefresh}>
               <RefreshCw className="h-4 w-4 mr-1" />
               Verificar estado
