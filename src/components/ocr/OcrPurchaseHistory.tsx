@@ -47,7 +47,7 @@ export function OcrPurchaseHistory() {
   const pending = purchases.filter((p) => p.status === "pending").length;
 
   return (
-    <div className="space-y-4">
+    <div id="compras-ocr" className="space-y-4 scroll-mt-20">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
           <h2 className="font-heading text-xl font-bold flex items-center gap-2">
