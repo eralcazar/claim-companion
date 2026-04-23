@@ -65,6 +65,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { exportBloodPressureToCSV } from "@/lib/exportBloodPressureCSV";
 import { toast } from "sonner";
+import { BpRemindersCard } from "./BpRemindersCard";
 
 interface Props {
   patientId: string;
