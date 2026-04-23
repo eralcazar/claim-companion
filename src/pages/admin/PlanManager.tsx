@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { usePlans, useUpsertPlan, useDeletePlan, usePlanFeatures, useTogglePlanFeature, type SubscriptionPlan } from "@/hooks/usePlans";
+import { useOcrPacks, useUpsertOcrPack, useDeleteOcrPack, useSyncOcrPack, type OcrPack } from "@/hooks/useOcrQuota";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,7 +10,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Layers, Plus, Edit, Trash2, RefreshCw } from "lucide-react";
+import { Layers, Plus, Edit, Trash2, RefreshCw, ScanLine } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AVAILABLE_FEATURES } from "@/lib/features";
 import { supabase } from "@/integrations/supabase/client";
 import { getStripeEnvironment } from "@/lib/stripe";
@@ -21,14 +23,20 @@ export default function PlanManager() {
   const upsert = useUpsertPlan();
   const del = useDeletePlan();
   const toggle = useTogglePlanFeature();
+  const { data: ocrPacks = [], isLoading: loadingPacks } = useOcrPacks({ onlyActive: false });
+  const upsertPack = useUpsertOcrPack();
+  const deletePack = useDeleteOcrPack();
+  const syncPack = useSyncOcrPack();
 
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Partial<SubscriptionPlan> | null>(null);
   const [featDialogPlan, setFeatDialogPlan] = useState<SubscriptionPlan | null>(null);
   const [syncing, setSyncing] = useState<string | null>(null);
+  const [packOpen, setPackOpen] = useState(false);
+  const [packEditing, setPackEditing] = useState<Partial<OcrPack> | null>(null);
 
   const startNew = () => {
-    setEditing({ nombre: "", descripcion: "", precio_mensual_centavos: 0, precio_anual_centavos: 0, moneda: "mxn", activo: true, orden: plans.length });
+    setEditing({ nombre: "", descripcion: "", precio_mensual_centavos: 0, precio_anual_centavos: 0, moneda: "mxn", activo: true, orden: plans.length, ocr_pages_per_month: 0 });
     setOpen(true);
   };
   const save = async () => {

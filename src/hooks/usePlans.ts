@@ -16,6 +16,7 @@ export type SubscriptionPlan = {
   stripe_price_id_anual: string | null;
   activo: boolean;
   orden: number;
+  ocr_pages_per_month?: number | null;
 };
 
 export type PlanFeature = {
