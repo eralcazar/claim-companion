@@ -186,6 +186,41 @@ serve(async (req) => {
           }
         }
       }
+
+      // OCR pack purchase
+      if (kind === "ocr_pack") {
+        const purchaseId = session.metadata?.purchase_id;
+        const userId = session.metadata?.userId;
+        const cantidad = Number(session.metadata?.cantidad_escaneos || 0);
+        if (purchaseId && userId && cantidad > 0) {
+          const { data: purchase } = await supabase
+            .from("ocr_pack_purchases")
+            .select("status")
+            .eq("id", purchaseId)
+            .maybeSingle();
+          if (purchase && purchase.status !== "paid") {
+            await supabase
+              .from("ocr_pack_purchases")
+              .update({
+                status: "paid",
+                paid_at: new Date().toISOString(),
+                stripe_payment_intent_id: session.payment_intent || null,
+              })
+              .eq("id", purchaseId);
+            await supabase.rpc("add_ocr_credits", {
+              _user_id: userId,
+              _pages: cantidad,
+              _source: "addon",
+            });
+            await supabase.from("notifications").insert({
+              user_id: userId,
+              title: "Escaneos OCR añadidos",
+              body: `Se acreditaron ${cantidad} escaneos OCR a tu cuenta.`,
+              link: "/planes",
+            });
+          }
+        }
+      }
     }
 
     // Subscription lifecycle
@@ -221,6 +256,12 @@ serve(async (req) => {
           },
           { onConflict: "stripe_subscription_id" },
         );
+        // Refresh OCR subscription quota according to current plan
+        try {
+          await supabase.rpc("sync_subscription_ocr_quota", { _user_id: userId });
+        } catch (qErr) {
+          console.error("sync_subscription_ocr_quota failed", qErr);
+        }
       }
     }
     if (event.type === "customer.subscription.deleted") {
