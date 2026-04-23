@@ -1,50 +1,97 @@
 
 
-## Mapa corporal editable y acceso a Consultorio digital desde la vista del paciente
+## Fase 1 — Registro de Presión Arterial
 
-Hoy `/personal/paciente/:id` tiene la pestaña "Mapa corporal" pero el editor está en modo **solo lectura** (`canEdit={false}`) y sin el selector rápido de zonas. Además, no hay forma de saltar directo al consultorio digital desde ahí.
+Módulo nuevo y autocontenido para que paciente y personal autorizado registren tomas de presión, las visualicen en grid + gráfico, y las exporten a CSV.
 
-### Problema confirmado
-- En la base de datos hay 1 anotación corporal para el paciente `5cc3060c…`. Ese paciente coincide con tu sesión, así que aparece en `/consultorio` (modo libre) cuando lo seleccionás.
-- Cuando hacés clic en **"Ver expediente completo"** y caés en `/personal/paciente/<otro-paciente>`, no aparece nada porque ese otro paciente no tiene anotaciones aún — y como la pestaña está en solo lectura no podés crearlas desde ahí.
-- Solución: hacer la pestaña editable para médicos/admins **y** agregar un acceso directo al consultorio digital del paciente.
+### 1. Base de datos (migración)
 
-### Cambios
+Tabla nueva `blood_pressure_readings`:
 
-**1. `src/pages/PatientView.tsx`**
-- Importar `useAuth` para leer `roles`.
-- Calcular `canEditBody = roles.includes("medico") || roles.includes("admin")`.
-- Pasar al `BodyMapEditor` de la pestaña "cuerpo":
-  - `canEdit={canEditBody}`
-  - `showQuickRegionAccess={true}` (para que el médico pueda abrir el historial moderado de cualquier zona aunque no tenga marcadores).
-  - `title` cambia a `"Mapa corporal del paciente"`.
-- Encabezado del paciente: agregar al lado del nombre un botón **"Consultorio digital"** (icono `Stethoscope`) visible solo si `canEditBody`, que navega a `/consultorio?paciente=<id>`.
+| columna | tipo | notas |
+|---|---|---|
+| `id` | uuid PK | `gen_random_uuid()` |
+| `patient_id` | uuid | dueño del registro |
+| `taken_at` | timestamptz | fecha/hora de la toma (default `now()`) |
+| `systolic` | int | mmHg, validar 50–260 |
+| `diastolic` | int | mmHg, validar 30–200 |
+| `pulse` | int nullable | latidos por minuto, validar 20–250 |
+| `position` | text nullable | sentado/parado/acostado (free text) |
+| `arm` | text nullable | izquierdo/derecho |
+| `notes` | text nullable | |
+| `created_by` | uuid | quién registró |
+| `created_at` / `updated_at` | timestamptz | |
 
-**2. `src/pages/Consultorio.tsx` (modo libre)**
-- Leer `useSearchParams()` y, si llega `?paciente=<uuid>` y existe en `assignedPatients`, autoseleccionar `freePatientId` con un `useEffect`. Así el botón de PatientView abre directo el mapa corporal editable del paciente sin tener que volver a elegirlo del selector.
-- Si el `paciente` no está en la lista de asignados, igual permitir setearlo (el médico ya está viendo su expediente desde otra ruta válida).
+Validación con **trigger** (no CHECK, por la regla del proyecto) que rechaza valores fuera de rango y `systolic <= diastolic`.
 
-**3. Sin cambios de DB / RLS**
-- Las políticas ya permiten al médico crear/leer anotaciones por `patient_id` cuando hay relación en `patient_personnel` (que es la fuente de `useAssignedPatients`).
-- Para casos donde el médico llega a `PatientView` sin estar en `patient_personnel` (ej. vía `appointments.doctor_id`), el `INSERT` puede fallar por RLS. En ese caso, el `BodyMapEditor` mostrará el toast de error real al intentar guardar. No introducimos cambios de RLS en esta iteración para no abrir acceso a más datos de lo deseado.
+### 2. RLS
 
-### Detalle de UX
+Mismo patrón que `body_annotations`:
 
-```text
-/personal/paciente/:id
-┌─────────────────────────────────────────────┐
-│ ← Volver                                     │
-│                                              │
-│ 👤 Juan Pérez            [🩺 Consultorio]   │  ← NUEVO botón (solo médico/admin)
-│    juan@correo.com                           │
-└─────────────────────────────────────────────┘
-[Agenda] [Recetas] [Estudios] [Meds] [Reg] [Mapa corporal]
-                                              ▲
-                                  AHORA editable + selector de zona rápida
-```
+- **SELECT**: paciente propio, `created_by`, admin, o `has_patient_access(auth.uid(), patient_id)` (cubre médico, enfermero, broker asignado).
+- **INSERT**: paciente propio, admin, o personal con `has_patient_access` (médico/enfermero/broker asignado). `created_by = auth.uid()` obligatorio.
+- **UPDATE / DELETE**: solo `created_by` o admin.
+
+### 3. Hook `useBloodPressure`
+
+`src/hooks/useBloodPressure.ts`:
+
+- `useBloodPressureReadings(patientId)` → React Query, ordenado por `taken_at` desc.
+- `useCreateBloodPressure()`, `useUpdateBloodPressure()`, `useDeleteBloodPressure()` con invalidación.
+- Helper `classifyBP(sys, dia)` → categoría visual (Normal / Elevada / Hipertensión 1 / Hipertensión 2 / Crisis) con color token.
+
+### 4. Página `/presion`
+
+`src/pages/PresionArterial.tsx`:
+
+- Header con nombre del paciente activo (paciente propio, o seleccionado si es personal con varios asignados — reutilizar patrón de `Consultorio.tsx`).
+- **Botón "Nueva toma"** → dialog con form (fecha/hora con default `now()`, sistólica, diastólica, pulso, posición, brazo, notas).
+- **Tarjetas resumen**: última toma, promedio últimos 7 días, # tomas mes actual.
+- **Gráfico** (recharts): líneas sistólica/diastólica + barra de pulso, eje X por fecha, en `Card`.
+- **Grid** editable: tabla con fecha, sistólica, diastólica, pulso, categoría (badge coloreado), notas, acciones (editar/borrar — solo si `created_by === user.id` o admin).
+- **Botón "Exportar CSV"** reutilizando el patrón de `exportTendenciasCSV.ts` → archivo con meta + tomas + clasificación.
+
+### 5. Integración en navegación
+
+- `src/lib/features.ts`: nueva `FeatureKey "presion_arterial"` con label "Presión arterial", ruta `/presion`, icono `Activity`, grupo `principal`.
+- `src/components/AppSidebar.tsx`: agregar a `mainItems`.
+- `src/components/BottomNav.tsx`: reemplazar uno de los tabs poco usados (no — el bottom nav está lleno; **dejarlo solo en sidebar** y agregar acceso desde Dashboard como "tarjeta rápida").
+- `src/pages/Dashboard.tsx`: nueva tarjeta "Última presión" con CTA a `/presion`.
+- `src/pages/PatientView.tsx`: nueva pestaña "Presión" con el mismo componente en modo lectura+escritura según `canEditBody`.
+
+### 6. Permisos
+
+- En `usePermissions`: `presion_arterial` visible para todos los roles autenticados (paciente lo ve para sí mismo, personal para asignados).
+- Filtrado real por RLS — el frontend solo pinta el menú.
 
 ### Lo que NO cambia
-- Esquema DB, RLS, hook `useBodyAnnotations`.
-- Flujo dentro de cita (`/consultorio/:appointmentId`).
-- Vista del paciente para roles no médicos sigue siendo solo lectura.
+
+- Sin cambios en planes/suscripciones (eso es Fase 2).
+- Sin cambios en agenda, recetas, CFDI, nutrición.
+- Sin cambios en OAuth ni en tablas existentes.
+
+### Diagrama UX
+
+```text
+/presion
+┌────────────────────────────────────────────┐
+│ Presión arterial — Juan Pérez   [+ Nueva]  │
+├────────────────────────────────────────────┤
+│ [Última: 128/82] [Prom 7d: 124/80] [12]    │
+├────────────────────────────────────────────┤
+│ ┌────────── Gráfico líneas ──────────┐    │
+│ │ sistólica ─── diastólica ─── pulso │    │
+│ └─────────────────────────────────────┘    │
+├────────────────────────────────────────────┤
+│ Fecha     Sis  Dia  FC  Cat       [✏️ 🗑]  │
+│ 23/04 09  128  82   72  Normal             │
+│ 22/04 21  142  91   80  HTA-1              │
+│ ...                                         │
+│                              [Exportar CSV] │
+└────────────────────────────────────────────┘
+```
+
+### Entregable de esta fase
+
+Paciente y personal con acceso pueden registrar, ver, editar, borrar, graficar y exportar tomas de presión. Listo para extender en futuras fases con alertas o vínculos a citas.
 
