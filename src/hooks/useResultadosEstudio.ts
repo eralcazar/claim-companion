@@ -186,11 +186,13 @@ export function useExtractIndicators() {
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ["indicadores"] });
       qc.invalidateQueries({ queryKey: ["resultados"] });
+      qc.invalidateQueries({ queryKey: ["my_ocr_quota"] });
       toast.success(`${data.inserted ?? 0} indicadores extraídos con IA`);
     },
     onError: (e: any) => {
       const msg = e?.message ?? "Error al extraer indicadores";
       toast.error(msg);
+      qc.invalidateQueries({ queryKey: ["my_ocr_quota"] });
     },
   });
 }
