@@ -65,6 +65,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { exportBloodPressureToCSV } from "@/lib/exportBloodPressureCSV";
 import { toast } from "sonner";
+import { BpRemindersCard } from "./BpRemindersCard";
 
 interface Props {
   patientId: string;
@@ -526,6 +527,9 @@ export function BloodPressureModule({ patientId, patientName, canEdit = true }: 
           )}
         </CardContent>
       </Card>
+
+      {/* Recordatorios */}
+      <BpRemindersCard patientId={patientId} canEdit={canEdit} />
 
       <AlertDialog open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)}>
         <AlertDialogContent>

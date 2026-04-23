@@ -43,6 +43,7 @@ export function useNotifications() {
         (payload) => {
           const n = payload.new as Notification;
           const isMedReminder = n.title.startsWith("💊");
+          const isBpReminder = n.title.startsWith("🩺");
           const isOcrCredit = /OCR/i.test(n.title) && /añad|acredit/i.test(n.body);
           if (isMedReminder) {
             playReminderSound();
@@ -52,6 +53,34 @@ export function useNotifications() {
               } catch {}
             }
             toast.warning(n.title, { description: n.body, duration: 30000 });
+          } else if (isBpReminder) {
+            playReminderSound();
+            if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
+              try {
+                const browserNotif = new window.Notification(n.title, {
+                  body: n.body,
+                  requireInteraction: true,
+                  tag: "bp-reminder",
+                });
+                browserNotif.onclick = () => {
+                  window.focus();
+                  if (n.link) window.location.href = n.link;
+                  browserNotif.close();
+                };
+              } catch {}
+            }
+            toast.warning(n.title, {
+              description: n.body,
+              duration: 30000,
+              action: n.link
+                ? {
+                    label: "Registrar",
+                    onClick: () => {
+                      window.location.href = n.link!;
+                    },
+                  }
+                : undefined,
+            });
           } else if (isOcrCredit) {
             // Refresh OCR balance + purchase history immediately
             qc.invalidateQueries({ queryKey: ["my_ocr_quota"] });

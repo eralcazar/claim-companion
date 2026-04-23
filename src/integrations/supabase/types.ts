@@ -296,6 +296,63 @@ export type Database = {
           },
         ]
       }
+      bp_reminder_schedules: {
+        Row: {
+          active: boolean
+          created_at: string
+          created_by: string
+          daily_times: string[] | null
+          ends_at: string | null
+          id: string
+          interval_hours: number | null
+          label: string | null
+          last_run_at: string | null
+          mode: string
+          next_run_at: string
+          patient_id: string
+          starts_at: string
+          timezone: string
+          updated_at: string
+          weekdays: number[] | null
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          created_by: string
+          daily_times?: string[] | null
+          ends_at?: string | null
+          id?: string
+          interval_hours?: number | null
+          label?: string | null
+          last_run_at?: string | null
+          mode: string
+          next_run_at?: string
+          patient_id: string
+          starts_at?: string
+          timezone?: string
+          updated_at?: string
+          weekdays?: number[] | null
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          created_by?: string
+          daily_times?: string[] | null
+          ends_at?: string | null
+          id?: string
+          interval_hours?: number | null
+          label?: string | null
+          last_run_at?: string | null
+          mode?: string
+          next_run_at?: string
+          patient_id?: string
+          starts_at?: string
+          timezone?: string
+          updated_at?: string
+          weekdays?: number[] | null
+        }
+        Relationships: []
+      }
       broker_patients: {
         Row: {
           broker_id: string
