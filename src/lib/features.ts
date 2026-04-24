@@ -29,7 +29,7 @@ export interface FeatureDef {
 }
 
 export const AVAILABLE_FEATURES: FeatureDef[] = [
-  { key: "inicio", label: "Inicio", route: "/", icon: Home, group: "principal" },
+  { key: "inicio", label: "Panel de Paciente", route: "/", icon: Home, group: "principal" },
   { key: "reclamos", label: "Reclamos", route: "/reclamos", icon: FileText, group: "principal" },
   { key: "agenda", label: "Agenda", route: "/agenda", icon: Calendar, group: "principal" },
   { key: "medicamentos", label: "Medicamentos", route: "/medicamentos", icon: Pill, group: "principal" },

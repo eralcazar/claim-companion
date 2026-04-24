@@ -12,7 +12,7 @@ export function BottomNav() {
   const showPatientConsultorio = !!patientConsultorioId && (roles.includes("paciente") || !!actingAsPatientId);
 
   const tabs = [
-    { to: "/", icon: Home, label: "Inicio" },
+    { to: "/", icon: Home, label: "Panel de Paciente" },
     { to: "/reclamos", icon: FileText, label: "Reclamos" },
     { to: "/agenda", icon: Calendar, label: "Agenda" },
     ...(showPatientConsultorio

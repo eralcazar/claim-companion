@@ -34,7 +34,7 @@ export default function CheckoutReturn() {
                 </Link>
               </Button>
               <Button variant="outline" asChild>
-                <Link to="/">Inicio</Link>
+                <Link to="/">Panel de Paciente</Link>
               </Button>
             </div>
           </CardContent>
