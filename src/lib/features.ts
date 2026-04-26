@@ -18,7 +18,8 @@ export type FeatureKey =
   | "claims_without_report"
   | "product_manager" | "inventory_manager" | "plan_manager"
   | "planes" | "suscripcion" | "consultorio"
-  | "presion_arterial";
+  | "presion_arterial"
+  | "oxygen_saturation";
 
 export interface FeatureDef {
   key: FeatureKey;
@@ -40,6 +41,7 @@ export const AVAILABLE_FEATURES: FeatureDef[] = [
   { key: "estudios", label: "Estudios", route: "/estudios", icon: FlaskConical, group: "principal" },
   { key: "tendencias", label: "Tendencias", route: "/tendencias", icon: TrendingUp, group: "principal" },
   { key: "presion_arterial", label: "Presión arterial", route: "/presion", icon: Activity, group: "principal" },
+  { key: "oxygen_saturation", label: "SpO2", route: "/oxygen-saturation", icon: Activity, group: "principal" },
   { key: "perfil", label: "Perfil", route: "/perfil", icon: User, group: "principal" },
   { key: "patient_personnel_manager", label: "Mis accesos", route: "/perfil/accesos", icon: UserCheck, group: "principal" },
   { key: "planes", label: "Planes", route: "/planes", icon: CreditCard, group: "principal" },
