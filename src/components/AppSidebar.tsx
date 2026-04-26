@@ -24,6 +24,7 @@ const mainItems: Item[] = [
   { title: "Estudios", url: "/estudios", icon: FlaskConical, feature: "estudios" },
   { title: "Tendencias", url: "/tendencias", icon: TrendingUp, feature: "tendencias" },
   { title: "Presión arterial", url: "/presion", icon: Activity, feature: "presion_arterial" },
+  { title: "SpO2", url: "/oxygen-saturation", icon: Activity, feature: "oxygen_saturation" },
   { title: "Registros Médicos", url: "/registros", icon: FolderOpen, feature: "registros" },
   { title: "Pólizas", url: "/polizas", icon: Shield, feature: "polizas" },
   { title: "Formatos", url: "/formatos", icon: Download, feature: "formatos" },

@@ -46,6 +46,7 @@ import Plans from "@/pages/Plans";
 import Subscription from "@/pages/Subscription";
 import Consultorio from "@/pages/Consultorio";
 import PresionArterial from "@/pages/PresionArterial";
+import OxygenSaturation from "@/pages/OxygenSaturation";
 
 const queryClient = new QueryClient();
 
@@ -99,6 +100,7 @@ const App = () => (
               <Route path="/farmacia/inventario" element={<InventoryManager />} />
               <Route path="/planes" element={<Plans />} />
               <Route path="/suscripcion" element={<Subscription />} />
+              <Route path="/oxygen-saturation" element={<OxygenSaturation />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
