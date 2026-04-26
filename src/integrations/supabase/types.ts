@@ -2306,6 +2306,45 @@ export type Database = {
           },
         ]
       }
+      spo2_readings: {
+        Row: {
+          context: string | null
+          created_at: string
+          created_by: string
+          id: string
+          notes: string | null
+          patient_id: string
+          pulse: number | null
+          spo2: number
+          taken_at: string
+          updated_at: string
+        }
+        Insert: {
+          context?: string | null
+          created_at?: string
+          created_by: string
+          id?: string
+          notes?: string | null
+          patient_id: string
+          pulse?: number | null
+          spo2: number
+          taken_at?: string
+          updated_at?: string
+        }
+        Update: {
+          context?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          notes?: string | null
+          patient_id?: string
+          pulse?: number | null
+          spo2?: number
+          taken_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       subscription_plans: {
         Row: {
           activo: boolean
