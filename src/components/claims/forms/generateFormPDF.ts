@@ -164,7 +164,7 @@ export function generateFormPDF({ definition, insurer, data, folio }: PDFContext
     doc.setFontSize(7);
     doc.setTextColor(120, 120, 120);
     doc.text(
-      `Documento generado por MediClaim · Folio: ${folio} · ${new Date().toLocaleDateString("es-MX")}`,
+      `Documento generado por Aplicación del Bienestar Ciudadano · Folio: ${folio} · ${new Date().toLocaleDateString("es-MX")}`,
       pageWidth / 2, pageHeight - 8, { align: "center" }
     );
     doc.text(`Página ${i} de ${pages}`, pageWidth - margin, pageHeight - 8, { align: "right" });
