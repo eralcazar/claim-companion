@@ -1,9 +1,14 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FolderOpen, Pill, FileText, FlaskConical, TrendingUp, Activity, HeartPulse, FolderTree } from "lucide-react";
+import Medications from "@/pages/Medications";
+import Recetas from "@/pages/Recetas";
+import Estudios from "@/pages/Estudios";
+import Tendencias from "@/pages/Tendencias";
+import PresionArterial from "@/pages/PresionArterial";
+import OxygenSaturation from "@/pages/OxygenSaturation";
+import MedicalRecords from "@/pages/MedicalRecords";
 import { useSearchParams } from "react-router-dom";
-import { PatientExpedienteTabs } from "@/components/expediente/PatientExpedienteTabs";
-import { useAuth } from "@/contexts/AuthContext";
 
 const TABS = [
   { value: "resumen", label: "Resumen", icon: FolderOpen },
@@ -19,7 +24,6 @@ const TABS = [
 export default function ExpedienteDigital() {
   const [params, setParams] = useSearchParams();
   const tab = params.get("tab") || "resumen";
-  const { user } = useAuth();
 
   return (
     <div className="space-y-4 animate-fade-in pb-24 max-w-7xl mx-auto">
@@ -31,33 +35,32 @@ export default function ExpedienteDigital() {
         </div>
       </div>
 
-      {tab === "resumen" ? (
-        <Tabs value={tab} onValueChange={(v) => setParams({ tab: v })} className="w-full">
-          <div className="overflow-x-auto -mx-2 px-2">
-            <TabsList className="inline-flex w-max">
-              {TABS.map((t) => {
-                const Icon = t.icon;
-                return (
-                  <TabsTrigger key={t.value} value={t.value} className="gap-1.5">
-                    <Icon className="h-4 w-4" />
-                    <span>{t.label}</span>
-                  </TabsTrigger>
-                );
-              })}
-            </TabsList>
-          </div>
-          <TabsContent value="resumen" className="mt-4">
-            <ResumenExpediente />
-          </TabsContent>
-        </Tabs>
-      ) : (
-        user?.id && (
-          <PatientExpedienteTabs
-            patientId={user.id}
-            defaultTab={tab}
-          />
-        )
-      )}
+      <Tabs value={tab} onValueChange={(v) => setParams({ tab: v })} className="w-full">
+        <div className="overflow-x-auto -mx-2 px-2">
+          <TabsList className="inline-flex w-max">
+            {TABS.map((t) => {
+              const Icon = t.icon;
+              return (
+                <TabsTrigger key={t.value} value={t.value} className="gap-1.5">
+                  <Icon className="h-4 w-4" />
+                  <span>{t.label}</span>
+                </TabsTrigger>
+              );
+            })}
+          </TabsList>
+        </div>
+
+        <TabsContent value="resumen" className="mt-4">
+          <ResumenExpediente />
+        </TabsContent>
+        <TabsContent value="medicamentos" className="mt-4"><Medications /></TabsContent>
+        <TabsContent value="recetas" className="mt-4"><Recetas /></TabsContent>
+        <TabsContent value="estudios" className="mt-4"><Estudios /></TabsContent>
+        <TabsContent value="tendencias" className="mt-4"><Tendencias /></TabsContent>
+        <TabsContent value="presion" className="mt-4"><PresionArterial /></TabsContent>
+        <TabsContent value="oxigenacion" className="mt-4"><OxygenSaturation /></TabsContent>
+        <TabsContent value="registros" className="mt-4"><MedicalRecords /></TabsContent>
+      </Tabs>
     </div>
   );
 }
