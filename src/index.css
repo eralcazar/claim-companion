@@ -6,10 +6,10 @@
 
 @layer base {
   :root {
-    /* Bienestar Móvil — Iniciativa Ciudadana
-       Paleta inspirada en guinda mexicano + dorado + crema */
+    /* Aplicación del Bienestar Ciudadano — Identidad 4T
+       Paleta oficialista: guinda mexicano profundo + dorado + crema */
     --background: 40 33% 96%;        /* crema #FAF6EE */
-    --foreground: 345 55% 15%;       /* guinda muy oscuro */
+    --foreground: 345 60% 12%;       /* guinda muy oscuro */
 
     --card: 0 0% 100%;
     --card-foreground: 345 55% 15%;
@@ -17,7 +17,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 345 55% 15%;
 
-    --primary: 343 58% 30%;          /* guinda #7A1F3D */
+    --primary: 345 70% 25%;          /* guinda 4T #6B1C32 */
     --primary-foreground: 40 33% 96%;
 
     --secondary: 40 30% 90%;
