@@ -33,12 +33,17 @@ export default function Login() {
     <div className="flex min-h-screen items-center justify-center bg-muted/30 p-4">
       <Card className="w-full max-w-sm animate-fade-in">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary">
-            <span className="text-2xl font-heading font-bold text-primary-foreground">M</span>
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary shadow-md ring-2 ring-accent/40">
+            <span className="text-2xl font-heading font-bold text-accent">BM</span>
           </div>
-          <CardTitle className="font-heading text-2xl">MediClaim</CardTitle>
-          <CardDescription>
-            Sistema de Gestión de Seguros y Salud
+          <CardTitle className="font-heading text-2xl">Bienestar Móvil</CardTitle>
+          <CardDescription className="space-y-1">
+            <span className="block text-xs uppercase tracking-widest text-accent font-semibold">
+              Iniciativa Ciudadana
+            </span>
+            <span className="block">
+              Salud, expediente digital y movilidad para las familias mexicanas
+            </span>
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
