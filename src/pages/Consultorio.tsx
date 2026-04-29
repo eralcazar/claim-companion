@@ -223,12 +223,6 @@ export default function Consultorio() {
 
         {freePatientId ? (
           <>
-            <BodyMapEditor
-              patientId={freePatientId}
-              canEdit={!isSelfView}
-              title={isSelfView ? "Mi mapa corporal" : "Mapa corporal · Exploración libre"}
-              showQuickRegionAccess={true}
-            />
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">
@@ -241,6 +235,7 @@ export default function Consultorio() {
                   patientId={freePatientId}
                   patientName={selected?.patient_name}
                   impersonate={!isSelfView}
+                  canEditBodyMap={!isSelfView}
                 />
               </CardContent>
             </Card>
@@ -425,12 +420,6 @@ export default function Consultorio() {
             </CardContent>
           </Card>
 
-          <BodyMapEditor
-            appointmentId={appointmentId}
-            patientId={patientId}
-            canEdit={isDoctor}
-            title="Mapa corporal · Hallazgos de la consulta"
-          />
         </div>
 
         {/* Right column */}
@@ -484,6 +473,7 @@ export default function Consultorio() {
             patientId={patientId}
             patientName={patientName}
             impersonate={true}
+            canEditBodyMap={isDoctor}
           />
         </CardContent>
       </Card>
