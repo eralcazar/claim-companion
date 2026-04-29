@@ -28,6 +28,8 @@ import { EstudioCard } from "@/components/estudios/EstudioCard";
 import { EstudioForm } from "@/components/estudios/EstudioForm";
 import { useAssignedPatients } from "@/hooks/usePatientPersonnel";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { PatientExpedienteTabs } from "@/components/expediente/PatientExpedienteTabs";
+import { FolderOpen } from "lucide-react";
 
 export default function Consultorio() {
   const { appointmentId } = useParams<{ appointmentId: string }>();
@@ -220,12 +222,29 @@ export default function Consultorio() {
         </Card>
 
         {freePatientId ? (
-          <BodyMapEditor
-            patientId={freePatientId}
-            canEdit={!isSelfView}
-            title={isSelfView ? "Mi mapa corporal" : "Mapa corporal · Exploración libre"}
-            showQuickRegionAccess={true}
-          />
+          <>
+            <BodyMapEditor
+              patientId={freePatientId}
+              canEdit={!isSelfView}
+              title={isSelfView ? "Mi mapa corporal" : "Mapa corporal · Exploración libre"}
+              showQuickRegionAccess={true}
+            />
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <FolderOpen className="h-5 w-5 text-primary" />
+                  Expediente Digital del paciente
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <PatientExpedienteTabs
+                  patientId={freePatientId}
+                  patientName={selected?.patient_name}
+                  impersonate={!isSelfView}
+                />
+              </CardContent>
+            </Card>
+          </>
         ) : (
           <Card>
             <CardContent className="p-8 text-center text-sm text-muted-foreground">
