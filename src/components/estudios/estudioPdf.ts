@@ -179,7 +179,7 @@ export function generateEstudioPDF({ estudio, patient, doctor }: Args) {
     doc.setFont("helvetica", "normal");
     doc.setTextColor(120, 120, 120);
     doc.text(
-      `Generado por MediClaim · ${new Date().toLocaleDateString("es-MX")}`,
+      `Generado por Aplicación del Bienestar Ciudadano · ${new Date().toLocaleDateString("es-MX")}`,
       14,
       pageH - 8
     );
