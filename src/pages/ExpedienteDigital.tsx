@@ -1,6 +1,6 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { FolderOpen, Pill, FileText, FlaskConical, TrendingUp, Activity, HeartPulse, FolderTree } from "lucide-react";
+import { FolderOpen, Pill, FileText, FlaskConical, TrendingUp, Activity, HeartPulse, FolderTree, Map } from "lucide-react";
 import Medications from "@/pages/Medications";
 import Recetas from "@/pages/Recetas";
 import Estudios from "@/pages/Estudios";
@@ -8,12 +8,17 @@ import Tendencias from "@/pages/Tendencias";
 import PresionArterial from "@/pages/PresionArterial";
 import OxygenSaturation from "@/pages/OxygenSaturation";
 import MedicalRecords from "@/pages/MedicalRecords";
+import { BodyMapEditor } from "@/components/consultorio/BodyMapEditor";
+import { useAuth } from "@/contexts/AuthContext";
 import { useSearchParams } from "react-router-dom";
 
-const TABS = [
+const TABS_ROW_1 = [
   { value: "resumen", label: "Resumen", icon: FolderOpen },
+  { value: "mapa", label: "Mapa corporal", icon: Map },
   { value: "medicamentos", label: "Medicamentos", icon: Pill },
   { value: "recetas", label: "Recetas", icon: FileText },
+];
+const TABS_ROW_2 = [
   { value: "estudios", label: "Estudios", icon: FlaskConical },
   { value: "tendencias", label: "Tendencias", icon: TrendingUp },
   { value: "presion", label: "Presión", icon: HeartPulse },
@@ -22,6 +27,7 @@ const TABS = [
 ];
 
 export default function ExpedienteDigital() {
+  const { user } = useAuth();
   const [params, setParams] = useSearchParams();
   const tab = params.get("tab") || "resumen";
 
@@ -36,14 +42,25 @@ export default function ExpedienteDigital() {
       </div>
 
       <Tabs value={tab} onValueChange={(v) => setParams({ tab: v })} className="w-full">
-        <div className="overflow-x-auto -mx-2 px-2">
-          <TabsList className="inline-flex w-max">
-            {TABS.map((t) => {
+        <div className="space-y-2">
+          <TabsList className="grid grid-cols-4 w-full h-auto gap-1">
+            {TABS_ROW_1.map((t) => {
               const Icon = t.icon;
               return (
-                <TabsTrigger key={t.value} value={t.value} className="gap-1.5">
+                <TabsTrigger key={t.value} value={t.value} className="gap-1.5 flex-col sm:flex-row py-2 text-xs sm:text-sm">
                   <Icon className="h-4 w-4" />
-                  <span>{t.label}</span>
+                  <span className="truncate">{t.label}</span>
+                </TabsTrigger>
+              );
+            })}
+          </TabsList>
+          <TabsList className="grid grid-cols-5 w-full h-auto gap-1">
+            {TABS_ROW_2.map((t) => {
+              const Icon = t.icon;
+              return (
+                <TabsTrigger key={t.value} value={t.value} className="gap-1.5 flex-col sm:flex-row py-2 text-xs sm:text-sm">
+                  <Icon className="h-4 w-4" />
+                  <span className="truncate">{t.label}</span>
                 </TabsTrigger>
               );
             })}
@@ -52,6 +69,16 @@ export default function ExpedienteDigital() {
 
         <TabsContent value="resumen" className="mt-4">
           <ResumenExpediente />
+        </TabsContent>
+        <TabsContent value="mapa" className="mt-4">
+          {user && (
+            <BodyMapEditor
+              patientId={user.id}
+              canEdit={false}
+              title="Mi mapa corporal"
+              showQuickRegionAccess
+            />
+          )}
         </TabsContent>
         <TabsContent value="medicamentos" className="mt-4"><Medications /></TabsContent>
         <TabsContent value="recetas" className="mt-4"><Recetas /></TabsContent>
