@@ -293,7 +293,7 @@ export function generateClaimPDF(
     doc.setPage(i);
     doc.setFontSize(6);
     doc.setTextColor(150);
-    doc.text(`Generado por MediClaim — ${company} — Página ${i} de ${pageCount}`, 105, 290, { align: "center" });
+    doc.text(`Generado por Aplicación del Bienestar Ciudadano — ${company} — Página ${i} de ${pageCount}`, 105, 290, { align: "center" });
     doc.setTextColor(0);
   }
 
