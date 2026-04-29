@@ -42,6 +42,7 @@ export const ASEGURADORAS = [
   "BANORTE",
   "BBVA",
   "GNP",
+  "IMSS",
   "INBURSA",
   "MAPFRE",
   "METLIFE",
