@@ -20,10 +20,10 @@ export function AppLayout() {
               <SidebarTrigger />
               <div className="flex flex-col leading-tight">
                 <h1 className="font-heading text-lg font-semibold text-primary">
-                  Bienestar Móvil
+                  Aplicación del Bienestar
                 </h1>
-                <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                  Iniciativa Ciudadana
+                <span className="text-[10px] uppercase tracking-wider text-accent font-semibold">
+                  Ciudadano · 4T
                 </span>
               </div>
               <div className="ml-auto">
@@ -36,10 +36,10 @@ export function AppLayout() {
             <header className="h-14 flex items-center border-b px-4">
               <div className="flex flex-col leading-tight">
                 <h1 className="font-heading text-base font-semibold text-primary">
-                  Bienestar Móvil
+                  Bienestar Ciudadano
                 </h1>
-                <span className="text-[9px] uppercase tracking-wider text-muted-foreground">
-                  Iniciativa Ciudadana
+                <span className="text-[9px] uppercase tracking-wider text-accent font-semibold">
+                  Aplicación · 4T
                 </span>
               </div>
               <div className="ml-auto">

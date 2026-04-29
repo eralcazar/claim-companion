@@ -17,7 +17,7 @@ export default function AccessManager() {
         <CardHeader>
           <CardTitle>Perfiles de Acceso</CardTitle>
           <CardDescription>
-            Define qué funciones de MediClaim puede ver y usar cada rol. Los cambios se aplican al instante.
+            Define qué funciones de la Aplicación del Bienestar Ciudadano puede ver y usar cada rol. Los cambios se aplican al instante.
           </CardDescription>
         </CardHeader>
         <CardContent>
