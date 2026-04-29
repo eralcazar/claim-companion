@@ -34,12 +34,12 @@ export default function Login() {
       <Card className="w-full max-w-sm animate-fade-in">
         <CardHeader className="text-center">
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary shadow-md ring-2 ring-accent/40">
-            <span className="text-2xl font-heading font-bold text-accent">BM</span>
+            <span className="text-2xl font-heading font-bold text-accent">BC</span>
           </div>
-          <CardTitle className="font-heading text-2xl">Bienestar Móvil</CardTitle>
+          <CardTitle className="font-heading text-2xl">Aplicación del Bienestar Ciudadano</CardTitle>
           <CardDescription className="space-y-1">
             <span className="block text-xs uppercase tracking-widest text-accent font-semibold">
-              Iniciativa Ciudadana
+              Cuarta Transformación · Por el pueblo
             </span>
             <span className="block">
               Salud, expediente digital y movilidad para las familias mexicanas
