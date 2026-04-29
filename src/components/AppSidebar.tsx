@@ -15,23 +15,13 @@ import { cn } from "@/lib/utils";
 type Item = { title: string; url: string; icon: typeof Home; feature: FeatureKey };
 
 const mainItems: Item[] = [
-  //{ title: "Inicio", url: "/", icon: Home, feature: "inicio" },
-  { title: "Panel de Paciente", url: "/", icon: Home, feature: "inicio" }  ,
+  { title: "Panel de Paciente", url: "/", icon: Home, feature: "inicio" },
   { title: "Reclamos", url: "/reclamos", icon: FileText, feature: "reclamos" },
   { title: "Agenda", url: "/agenda", icon: Calendar, feature: "agenda" },
-  { title: "Medicamentos", url: "/medicamentos", icon: Pill, feature: "medicamentos" },
-  { title: "Recetas", url: "/recetas", icon: Pill, feature: "recetas" },
-  { title: "Estudios", url: "/estudios", icon: FlaskConical, feature: "estudios" },
-  { title: "Tendencias", url: "/tendencias", icon: TrendingUp, feature: "tendencias" },
-  { title: "Presión arterial", url: "/presion", icon: Activity, feature: "presion_arterial" },
-  { title: "SpO2", url: "/oxygen-saturation", icon: Activity, feature: "oxygen_saturation" },
-  { title: "Registros Médicos", url: "/registros", icon: FolderOpen, feature: "registros" },
+  { title: "Expediente Digital", url: "/expediente", icon: FolderOpen, feature: "expediente_digital" },
   { title: "Pólizas", url: "/polizas", icon: Shield, feature: "polizas" },
   { title: "Formatos", url: "/formatos", icon: Download, feature: "formatos" },
   { title: "Perfil", url: "/perfil", icon: User, feature: "perfil" },
-  { title: "Mis accesos", url: "/perfil/accesos", icon: UserCheck, feature: "patient_personnel_manager" },
-  { title: "Planes", url: "/planes", icon: CreditCard, feature: "planes" },
-  { title: "Mi suscripción", url: "/suscripcion", icon: CreditCard, feature: "suscripcion" },
 ];
 
 const brokerItems: Item[] = [

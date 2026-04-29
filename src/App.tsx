@@ -47,6 +47,7 @@ import Subscription from "@/pages/Subscription";
 import Consultorio from "@/pages/Consultorio";
 import PresionArterial from "@/pages/PresionArterial";
 import OxygenSaturation from "@/pages/OxygenSaturation";
+import ExpedienteDigital from "@/pages/ExpedienteDigital";
 
 const queryClient = new QueryClient();
 
@@ -101,6 +102,7 @@ const App = () => (
               <Route path="/planes" element={<Plans />} />
               <Route path="/suscripcion" element={<Subscription />} />
               <Route path="/oxygen-saturation" element={<OxygenSaturation />} />
+              <Route path="/expediente" element={<ExpedienteDigital />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
