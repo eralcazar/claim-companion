@@ -472,6 +472,22 @@ export default function Consultorio() {
         </div>
       </div>
 
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <FolderOpen className="h-5 w-5 text-primary" />
+            Expediente Digital del paciente
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <PatientExpedienteTabs
+            patientId={patientId}
+            patientName={patientName}
+            impersonate={true}
+          />
+        </CardContent>
+      </Card>
+
       {isDoctor && (
         <>
           <RecetaForm
