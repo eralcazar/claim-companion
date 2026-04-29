@@ -19,7 +19,8 @@ export type FeatureKey =
   | "product_manager" | "inventory_manager" | "plan_manager"
   | "planes" | "suscripcion" | "consultorio"
   | "presion_arterial"
-  | "oxygen_saturation";
+  | "oxygen_saturation"
+  | "expediente_digital";
 
 export interface FeatureDef {
   key: FeatureKey;
@@ -42,6 +43,7 @@ export const AVAILABLE_FEATURES: FeatureDef[] = [
   { key: "tendencias", label: "Tendencias", route: "/tendencias", icon: TrendingUp, group: "principal" },
   { key: "presion_arterial", label: "Presión arterial", route: "/presion", icon: Activity, group: "principal" },
   { key: "oxygen_saturation", label: "SpO2", route: "/oxygen-saturation", icon: Activity, group: "principal" },
+  { key: "expediente_digital", label: "Expediente Digital", route: "/expediente", icon: FolderOpen, group: "principal" },
   { key: "perfil", label: "Perfil", route: "/perfil", icon: User, group: "principal" },
   { key: "patient_personnel_manager", label: "Mis accesos", route: "/perfil/accesos", icon: UserCheck, group: "principal" },
   { key: "planes", label: "Planes", route: "/planes", icon: CreditCard, group: "principal" },
