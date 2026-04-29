@@ -183,19 +183,15 @@ export default function Consultorio() {
           </h1>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <User className="h-4 w-4 text-primary" />
-              {isSelfView ? "Mi mapa corporal" : "Selecciona un paciente"}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {isSelfView ? (
-              <p className="text-sm text-muted-foreground">
-                Aquí puedes consultar las anotaciones que tu médico ha registrado sobre tu cuerpo.
-              </p>
-            ) : (
+        {!isSelfView && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <User className="h-4 w-4 text-primary" />
+                Selecciona un paciente
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
               <Select value={freePatientId} onValueChange={setFreePatientId}>
                 <SelectTrigger>
                   <SelectValue placeholder="Elige un paciente asignado..." />
@@ -212,14 +208,14 @@ export default function Consultorio() {
                   )}
                 </SelectContent>
               </Select>
-            )}
-            {selected && !isSelfView && (
-              <Button asChild variant="outline" size="sm">
-                <Link to={`/personal/paciente/${selected.patient_id}`}>Ver expediente completo</Link>
-              </Button>
-            )}
-          </CardContent>
-        </Card>
+              {selected && (
+                <Button asChild variant="outline" size="sm">
+                  <Link to={`/personal/paciente/${selected.patient_id}`}>Ver expediente completo</Link>
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {freePatientId ? (
           <>
