@@ -18,9 +18,14 @@ export function AppLayout() {
           {!isMobile && (
             <header className="h-14 flex items-center border-b px-4 gap-3">
               <SidebarTrigger />
-              <h1 className="font-heading text-lg font-semibold text-primary">
-                MediClaim
-              </h1>
+              <div className="flex flex-col leading-tight">
+                <h1 className="font-heading text-lg font-semibold text-primary">
+                  Bienestar Móvil
+                </h1>
+                <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  Iniciativa Ciudadana
+                </span>
+              </div>
               <div className="ml-auto">
                 <NotificationBell />
               </div>
@@ -29,9 +34,14 @@ export function AppLayout() {
 
           {isMobile && (
             <header className="h-14 flex items-center border-b px-4">
-              <h1 className="font-heading text-lg font-semibold text-primary">
-                MediClaim
-              </h1>
+              <div className="flex flex-col leading-tight">
+                <h1 className="font-heading text-base font-semibold text-primary">
+                  Bienestar Móvil
+                </h1>
+                <span className="text-[9px] uppercase tracking-wider text-muted-foreground">
+                  Iniciativa Ciudadana
+                </span>
+              </div>
               <div className="ml-auto">
                 <NotificationBell />
               </div>
