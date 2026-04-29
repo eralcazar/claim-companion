@@ -1,99 +1,156 @@
-## Problema
 
-`src/pages/OxygenSaturation.tsx` importa 3 componentes que **no existen** → el build se rompe:
-- `@/components/oxygen-saturation/SpO2Form`
-- `@/components/oxygen-saturation/SpO2List`
-- `@/components/oxygen-saturation/SpO2Chart`
+# Plan — "Bienestar Móvil": Expediente Digital + Rediseño 4T + IMSS
 
-Además `AppSidebar.tsx` usa `feature: "oxygen_saturation"` pero esa clave no está declarada en `src/lib/features.ts` → error de TypeScript.
+Trabajo dividido en fases para no romper nada. **Esta entrega cubre Fase 1 + Rediseño visual + IMSS como aseguradora.** CFDI (Facturama) y módulo Uber quedan planificados aparte.
 
-## Solución (Opción B: con persistencia en Lovable Cloud)
+---
 
-Replicar el patrón ya usado por **Presión Arterial** (`useBloodPressure` + `BloodPressureModule`). Mismo nivel de calidad, RLS, React Query, validaciones, y se podrá integrar a "Tendencias" después.
+## FASE 1 — Expediente Digital (consolidar módulos clínicos)
 
-### 1. Base de datos — nueva tabla `spo2_readings`
+### Objetivo
+Unificar **Medicamentos, Recetas, Estudios, Tendencias, Presión Arterial, Oxigenación (SpO2) y Registros Médicos** en una sola sección **Expediente Digital** en `/expediente`.
 
-```sql
-CREATE TABLE public.spo2_readings (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  patient_id uuid NOT NULL,
-  created_by uuid NOT NULL,
-  taken_at timestamptz NOT NULL DEFAULT now(),
-  spo2 integer NOT NULL,           -- 0-100 %
-  pulse integer,                    -- bpm opcional
-  notes text,
-  context text,                     -- 'reposo' | 'actividad' | 'sueño' | etc.
-  created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now()
-);
+### Menú principal final (paciente)
+- Panel de Paciente (`/`)
+- Reclamos (`/reclamos`)
+- Agenda (`/agenda`)
+- **Expediente Digital** (`/expediente`) ← nueva
+- Pólizas (`/polizas`)
+- Formatos (`/formatos`)
+- Perfil (`/perfil`)
 
-ALTER TABLE public.spo2_readings ENABLE ROW LEVEL SECURITY;
+Las rutas viejas siguen funcionando, solo se ocultan del menú.
+
+### Nueva página: `src/pages/ExpedienteDigital.tsx`
+Panel con tabs (desktop) / acordeón (mobile):
+
+```text
++-------------------------------------------------------+
+|  Expediente Digital                                   |
++-------------------------------------------------------+
+| [Resumen][Medicamentos][Recetas][Estudios]            |
+| [Tendencias][Presión][Oxigenación][Registros]         |
++-------------------------------------------------------+
+| Contenido del tab activo (reusa componentes)          |
++-------------------------------------------------------+
 ```
 
-**RLS** (mismo patrón que `blood_pressure_readings`, usa `has_patient_access`):
-- SELECT: paciente, creador, admin, o personal con acceso
-- INSERT: `created_by = auth.uid()` y tiene acceso al paciente
-- UPDATE / DELETE: creador o admin
+- Tab "Resumen": KPIs con últimas mediciones + sparklines.
+- Resto: monta los componentes/páginas existentes sin duplicar lógica.
 
-**Validación trigger** (rangos médicos seguros):
-- `spo2` entre 50 y 100
-- `pulse` entre 20 y 250 si se provee
+### Cambios
+1. Crear `src/pages/ExpedienteDigital.tsx` con shadcn `Tabs`.
+2. Agregar feature `"expediente_digital"` en `src/lib/features.ts`.
+3. Ruta `/expediente` en `src/App.tsx`.
+4. Limpiar `AppSidebar.tsx` y `BottomNav.tsx` para mostrar solo los 7 ítems del menú.
+5. Refactor mínimo si hace falta extraer cuerpos de páginas a componentes reutilizables.
 
-**Trigger** `update_updated_at_column` (ya existe en BD).
+---
 
-### 2. Hook `src/hooks/useOxygenSaturation.ts`
+## NUEVO — Aseguradora IMSS
 
-Espejo de `useBloodPressure.ts`:
-- `classifySpO2(value)` → `{ key, label, className }` con tokens semánticos:
-  - `≥95` Normal (success)
-  - `90-94` Bajo (warning)
-  - `85-89` Crítico (destructive/80)
-  - `<85` Emergencia (destructive)
-- `useSpO2Readings(patientId)` — query
-- `useCreateSpO2()` / `useUpdateSpO2()` / `useDeleteSpO2()` — mutations con toasts en español
+### Objetivo
+Agregar **IMSS** al catálogo de aseguradoras junto a las 10 actuales, crear su carpeta en Storage y un formato genérico de ejemplo.
 
-### 3. Componentes en `src/components/oxygen-saturation/`
+### Cambios
+1. **Migración SQL**: insertar IMSS en `aseguradoras` con `carpeta_storage = 'IMSS'`.
+2. **Constante**: agregar `"IMSS"` al array `ASEGURADORAS` en `src/lib/constants.ts` (queda al inicio, alfabético).
+3. **Carpeta storage**: crear `IMSS/` dentro del bucket público `formatos/` subiendo un placeholder `.keep`.
+4. **PDF genérico de ejemplo**: generar un PDF simple "Solicitud de Atención Médica IMSS — Formato Genérico" con campos típicos (nombre, NSS, CURP, derechohabiente, médico, diagnóstico, firma) usando reportlab. Subirlo a `formatos/IMSS/solicitud-atencion-medica-generica.pdf`.
+5. **Registro en BD**: insertar fila en `formularios` (o tabla equivalente) apuntando a ese PDF para que aparezca en el árbol del Gestor de Formatos y en la página `/formatos` del paciente.
+6. Verificar que `InsurerTree.tsx` lo lista automáticamente (ya consulta `useAseguradoras()`, así que sale solo).
 
-- **`SpO2Form.tsx`** — input con `Input` de shadcn, validación 0-100, fecha/hora, contexto, notas, pulso opcional. `onSuccess` callback para refrescar lista.
-- **`SpO2List.tsx`** — tabla con shadcn `Table`, columnas: fecha, %SpO2, pulso, contexto, badge de clasificación, acciones editar/eliminar (con `AlertDialog` de confirmación).
-- **`SpO2Chart.tsx`** — `LineChart` de Recharts con línea de %SpO2 en el tiempo, líneas de referencia en 95 y 90, tooltip en español, formato de fecha con `date-fns/locale/es`.
+### Nota
+Este formato es **un placeholder de ejemplo**. Para reclamos reales con IMSS necesitarás el formato oficial vigente del instituto; podemos reemplazarlo después subiéndolo desde el Gestor de Formatos del admin.
 
-Todos usan tokens semánticos de Tailwind (no colores hardcoded), siguiendo la regla del proyecto.
+---
 
-### 4. `src/pages/OxygenSaturation.tsx`
+## REDISEÑO VISUAL — "Bienestar Móvil" (paleta 4T)
 
-Mantener tal cual está (ya está bien con `Tabs` Registrar / Historial / Tendencias). Solo va a funcionar porque ahora los 3 componentes existirán.
+### Inspiración
+Identidad visual Gobierno de México 4T / Bienestar:
+- **Guinda institucional** primario
+- **Dorado** acento
+- **Crema/marfil** fondo cálido
+- Sensación oficial pero amable
 
-Pasar `patientId={user.id}` desde `useAuth` a los componentes.
+### Paleta nueva (HSL para `index.css`)
 
-### 5. `src/lib/features.ts`
-
-Agregar:
-```ts
-| "oxygen_saturation"
+```text
+--primary:        345 65% 28%   guinda  (#7A1F3D)
+--primary-foreground: 45 65% 92%
+--accent:         42 75% 52%    dorado  (#D4A02A)
+--accent-foreground: 345 65% 15%
+--background:     40 30% 97%    crema   (#FAF6EE)
+--foreground:     345 30% 15%
+--muted:          40 25% 92%
+--success:        142 50% 35%
+--warning:        25 85% 50%
+--destructive:    0 65% 45%
+--ring:           345 65% 28%
 ```
-a `FeatureKey` y entrada en `AVAILABLE_FEATURES`:
-```ts
-{ key: "oxygen_saturation", label: "SpO2", route: "/oxygen-saturation", icon: Activity, group: "principal" }
-```
 
-Esto hace que aparezca en el Gestor de Perfiles de Acceso y se pueda permisar por rol.
+Modo oscuro: guinda profundo de fondo, dorado de acento.
 
-### 6. Tipos de Supabase
+### Tipografía
+Mantengo **Sora (headings) + Manrope (body)** que ya están cargadas y combinan con la nueva paleta.
 
-`src/integrations/supabase/types.ts` se regenera automáticamente al correr la migración. No tocarlo.
+### Identidad
+- **Nombre**: "Bienestar Móvil" (reemplaza "MediClaim").
+- **Logo**: SVG simple — monograma "BM" en guinda con detalle dorado tipo sello institucional.
+- **Tagline**: "Tu salud, tu expediente, en tu mano."
 
-## Resultado
+### Preview antes de aplicar
+Te genero un **PNG de muestra** con:
+- La paleta aplicada
+- Logo propuesto
+- Mock del Panel de Paciente
+- Mock del menú nuevo
+- IMSS visible en el listado de aseguradoras
 
-- ✅ Build vuelve a compilar
-- ✅ Los registros de SpO2 se guardan en BD por usuario, con RLS
-- ✅ Personal asignado / brokers pueden ver lecturas de sus pacientes (igual que presión arterial)
-- ✅ Aparece en sidebar y se puede gestionar permiso por rol
-- ✅ Listo para integrarse a "Tendencias" después si querés
+Lo verás como artifact descargable. Si te gusta seguimos; si no, ajustamos y regeneramos antes de tocar código.
 
-## Aprobación
+### Cambios técnicos del rediseño
+1. Generar preview PNG → mostrar.
+2. **Esperar tu OK.**
+3. Actualizar `src/index.css` con la nueva paleta HSL.
+4. Reemplazar "MediClaim" → "Bienestar Móvil" en `index.html`, `Login.tsx`, `AppLayout.tsx`.
+5. Crear `public/logo-bienestar.svg` y usarlo en sidebar/login.
+6. Actualizar memoria (`mem://design/tokens` + `mem://index.md`).
 
-Cuando aprobés el plan, ejecuto en este orden:
-1. Migración SQL (tabla + RLS + trigger validación)
-2. Hook + 3 componentes + actualización de `features.ts`
-3. Verifico que no queden errores de tipos
+---
+
+## Fuera de esta entrega (planificadas para próximas)
+
+### FASE 2 — CFDI 4.0 con Facturama
+- Pedir API Key Facturama (sandbox) vía `add_secret`.
+- Sección **CFDI** en panel del médico.
+- Tabla `cfdi_invoices` + bucket privado para XML/PDF.
+- Sección "Datos de facturación" en perfil paciente y médico.
+- Edge function `cfdi-emit` → Facturama API.
+- Flujo médico: elegir paciente registrado (autocompleta) o no registrado (captura manual) → conceptos → timbrar → enviar por **WhatsApp / Email / Plataforma**.
+- CFDIs recibidos visibles en Expediente del paciente.
+
+### FASE 3 — "Bienestar Movilidad" tipo Uber
+- Roles nuevos: chofer, conductor, chofer_propietario.
+- Tablas: vehicles, driver_profiles, trips, trip_offers, vehicle_rentals.
+- MVP: viajes a citas médicas integrado con `/agenda`. Tracking real-time con Supabase Realtime y Mapbox/Google Maps.
+- Pagos por viaje con Stripe en iteración posterior.
+
+---
+
+## Tareas concretas tras tu aprobación
+
+1. Crear `ExpedienteDigital.tsx` con tabs.
+2. Agregar feature key + ruta.
+3. Limpiar Sidebar + BottomNav.
+4. Migración SQL: insertar IMSS en `aseguradoras`.
+5. Agregar "IMSS" en `constants.ts`.
+6. Generar PDF genérico IMSS y subirlo a `formatos/IMSS/`.
+7. Registrar el formulario IMSS en BD.
+8. Generar preview PNG del rediseño Bienestar Móvil.
+9. **Pausar y esperar tu OK al diseño.**
+10. Aplicar paleta + renombrar app + logo.
+11. Actualizar memoria del proyecto.
+
+¿Procedo? Cuando termine me decís si arrancamos **Fase 2 (CFDI/Facturama)** o **Fase 3 (Movilidad tipo Uber)**.
