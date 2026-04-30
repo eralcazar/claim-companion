@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=Manrope:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Manrope:wght@300;400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,95 +6,101 @@
 
 @layer base {
   :root {
-    /* Aplicación del Bienestar Ciudadano — Identidad 4T
-       Paleta oficialista: guinda mexicano profundo + dorado + crema */
-    --background: 40 33% 96%;        /* crema #FAF6EE */
-    --foreground: 345 60% 12%;       /* guinda muy oscuro */
+    /* CareCentral — Identidad de salud digital
+       Paleta: teal primario + navy + cyan + blanco */
+    --background: 210 40% 98%;       /* blanco azulado #F8FAFC */
+    --foreground: 222 47% 11%;       /* navy #0F172A */
 
     --card: 0 0% 100%;
-    --card-foreground: 345 55% 15%;
+    --card-foreground: 222 47% 11%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 345 55% 15%;
+    --popover-foreground: 222 47% 11%;
 
-    --primary: 345 70% 25%;          /* guinda 4T #6B1C32 */
-    --primary-foreground: 40 33% 96%;
+    --primary: 173 80% 40%;          /* teal CareCentral #14B8A6 */
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 40 30% 90%;
-    --secondary-foreground: 343 58% 30%;
+    --secondary: 210 40% 94%;
+    --secondary-foreground: 222 47% 11%;
 
-    --muted: 40 25% 92%;
-    --muted-foreground: 345 20% 35%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
 
-    --accent: 41 65% 50%;            /* dorado #D4A02A */
-    --accent-foreground: 345 55% 15%;
+    --accent: 187 85% 53%;           /* cyan #22D3EE */
+    --accent-foreground: 222 47% 11%;
 
     --destructive: 0 75% 45%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 40 20% 85%;
-    --input: 40 20% 85%;
-    --ring: 343 58% 30%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 173 80% 40%;
 
-    --radius: 0.75rem;
+    --radius: 1rem;
 
-    --sidebar-background: 343 58% 30%;
-    --sidebar-foreground: 40 33% 96%;
-    --sidebar-primary: 41 65% 50%;
-    --sidebar-primary-foreground: 345 55% 15%;
-    --sidebar-accent: 343 50% 38%;
-    --sidebar-accent-foreground: 40 33% 96%;
-    --sidebar-border: 343 40% 25%;
-    --sidebar-ring: 41 65% 50%;
+    --sidebar-background: 222 47% 11%;       /* navy */
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 173 80% 40%;          /* teal */
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 222 40% 18%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 222 30% 22%;
+    --sidebar-ring: 173 80% 40%;
 
     --success: 142 60% 35%;
     --success-foreground: 0 0% 100%;
-    --warning: 41 80% 45%;
-    --warning-foreground: 345 55% 15%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 222 47% 11%;
+
+    /* Gradientes y sombras de marca */
+    --gradient-brand: linear-gradient(135deg, hsl(173 80% 40%), hsl(187 85% 53%));
+    --gradient-hero: linear-gradient(135deg, hsl(173 80% 40% / 0.15), hsl(187 85% 53% / 0.10) 50%, hsl(222 47% 11% / 0.05));
+    --shadow-brand: 0 10px 40px -10px hsl(173 80% 40% / 0.35);
+    --shadow-glass: 0 8px 32px hsl(222 47% 11% / 0.08);
   }
 
   .dark {
-    --background: 345 35% 8%;
-    --foreground: 40 33% 96%;
+    --background: 222 47% 7%;
+    --foreground: 210 40% 98%;
 
-    --card: 345 30% 12%;
-    --card-foreground: 40 33% 96%;
+    --card: 222 40% 11%;
+    --card-foreground: 210 40% 98%;
 
-    --popover: 345 30% 12%;
-    --popover-foreground: 40 33% 96%;
+    --popover: 222 40% 11%;
+    --popover-foreground: 210 40% 98%;
 
-    --primary: 41 65% 50%;
-    --primary-foreground: 345 55% 15%;
+    --primary: 173 80% 45%;
+    --primary-foreground: 222 47% 11%;
 
-    --secondary: 343 30% 20%;
-    --secondary-foreground: 40 33% 96%;
+    --secondary: 222 30% 18%;
+    --secondary-foreground: 210 40% 98%;
 
-    --muted: 343 25% 18%;
-    --muted-foreground: 40 20% 70%;
+    --muted: 222 25% 16%;
+    --muted-foreground: 215 20% 70%;
 
-    --accent: 41 65% 50%;
-    --accent-foreground: 345 55% 15%;
+    --accent: 187 85% 53%;
+    --accent-foreground: 222 47% 11%;
 
     --destructive: 0 65% 40%;
-    --destructive-foreground: 40 33% 96%;
+    --destructive-foreground: 210 40% 98%;
 
-    --border: 343 25% 22%;
-    --input: 343 25% 22%;
-    --ring: 41 65% 50%;
+    --border: 222 25% 22%;
+    --input: 222 25% 22%;
+    --ring: 173 80% 45%;
 
-    --sidebar-background: 345 40% 10%;
-    --sidebar-foreground: 40 33% 96%;
-    --sidebar-primary: 41 65% 50%;
-    --sidebar-primary-foreground: 345 55% 15%;
-    --sidebar-accent: 343 35% 18%;
-    --sidebar-accent-foreground: 40 33% 96%;
-    --sidebar-border: 343 30% 18%;
-    --sidebar-ring: 41 65% 50%;
+    --sidebar-background: 222 47% 7%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 173 80% 45%;
+    --sidebar-primary-foreground: 222 47% 11%;
+    --sidebar-accent: 222 35% 14%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 222 30% 16%;
+    --sidebar-ring: 173 80% 45%;
 
     --success: 142 60% 40%;
     --success-foreground: 0 0% 100%;
-    --warning: 41 80% 50%;
-    --warning-foreground: 345 55% 15%;
+    --warning: 38 92% 55%;
+    --warning-foreground: 222 47% 11%;
   }
 }
 
@@ -109,5 +115,21 @@
 
   h1, h2, h3, h4, h5, h6 {
     @apply font-heading;
+  }
+}
+
+@layer utilities {
+  .glass-card {
+    background: hsl(0 0% 100% / 0.65);
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    border: 1px solid hsl(0 0% 100% / 0.5);
+    box-shadow: var(--shadow-glass);
+  }
+  .gradient-brand {
+    background: var(--gradient-brand);
+  }
+  .gradient-hero {
+    background: var(--gradient-hero);
   }
 }
