@@ -332,6 +332,38 @@ export default function PlanManager() {
           )}
         </DialogContent>
       </Dialog>
+
+      <Dialog open={aiPackOpen} onOpenChange={setAiPackOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>{aiPackEditing?.id ? "Editar" : "Nuevo"} paquete de Kari (IA)</DialogTitle></DialogHeader>
+          {aiPackEditing && (
+            <div className="space-y-3">
+              <div><Label>Nombre</Label><Input value={aiPackEditing.nombre || ""} onChange={(e) => setAiPackEditing({ ...aiPackEditing, nombre: e.target.value })} /></div>
+              <div><Label>Descripción</Label><Textarea rows={2} value={aiPackEditing.descripcion || ""} onChange={(e) => setAiPackEditing({ ...aiPackEditing, descripcion: e.target.value })} /></div>
+              <div className="grid grid-cols-2 gap-3">
+                <div><Label>Tokens</Label>
+                  <Input type="number" value={aiPackEditing.tokens ?? 0}
+                    onChange={(e) => setAiPackEditing({ ...aiPackEditing, tokens: Math.max(1, parseInt(e.target.value || "0", 10)) })} />
+                  <p className="text-[11px] text-muted-foreground mt-1">~400 tokens ≈ 1 mensaje breve.</p>
+                </div>
+                <div><Label>Precio (MXN)</Label>
+                  <Input type="number" step="0.01" value={(aiPackEditing.precio_centavos ?? 0) / 100}
+                    onChange={(e) => setAiPackEditing({ ...aiPackEditing, precio_centavos: Math.round(parseFloat(e.target.value || "0") * 100) })} /></div>
+                <div><Label>Orden</Label><Input type="number" value={aiPackEditing.orden ?? 0} onChange={(e) => setAiPackEditing({ ...aiPackEditing, orden: Number(e.target.value) })} /></div>
+                <div className="flex items-end gap-2">
+                  <Switch checked={!!aiPackEditing.activo} onCheckedChange={(v) => setAiPackEditing({ ...aiPackEditing, activo: v })} /><Label>Activo</Label>
+                </div>
+              </div>
+              <Button className="w-full" onClick={async () => {
+                if (!aiPackEditing.nombre) { toast.error("Falta el nombre"); return; }
+                await upsertAiPack.mutateAsync(aiPackEditing);
+                setAiPackOpen(false);
+                setAiPackEditing(null);
+              }} disabled={upsertAiPack.isPending}>Guardar</Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
