@@ -7,6 +7,7 @@ import { ALL_ROLES, type AppRoleLite } from "@/lib/features";
 import { useQueryClient } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle2, Trash2, ScanLine, Package } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -66,11 +67,15 @@ export function UserRolesRow({
   brokers,
   assignedBrokerId,
   isSelf,
+  ocrSubscription = 0,
+  ocrAddon = 0,
 }: {
   user: UserWithRoles;
   brokers: BrokerOption[];
   assignedBrokerId: string | null;
   isSelf: boolean;
+  ocrSubscription?: number;
+  ocrAddon?: number;
 }) {
   const qc = useQueryClient();
   const [pending, setPending] = useState<AppRoleLite | null>(null);
@@ -221,6 +226,32 @@ export function UserRolesRow({
           </div>
         </TableCell>
       ))}
+      <TableCell className="text-center w-28">
+        {(() => {
+          const total = ocrSubscription + ocrAddon;
+          const variant =
+            total === 0
+              ? "bg-destructive/15 text-destructive border-destructive/30"
+              : total <= 5
+                ? "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30"
+                : "bg-success/15 text-success border-success/20";
+          return (
+            <TooltipProvider delayDuration={200}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge variant="outline" className={`gap-1 ${variant} cursor-default`}>
+                    <ScanLine className="h-3 w-3" />
+                    {total}
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent>
+                  Suscripción: {ocrSubscription} · Adicionales: {ocrAddon}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          );
+        })()}
+      </TableCell>
       <TableCell className="text-muted-foreground text-xs">{user.email || "—"}</TableCell>
       <TableCell className="text-right w-12">
         <div className="flex items-center justify-end gap-1">
