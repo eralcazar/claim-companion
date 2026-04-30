@@ -37,14 +37,17 @@ export default function UserManager() {
         { data: profiles, error: pErr },
         { data: rolesData, error: rErr },
         { data: quotasData, error: qErr },
+        { data: kariData, error: kErr },
       ] = await Promise.all([
         supabase.from("profiles").select("user_id, full_name, first_name, paternal_surname, email"),
         supabase.from("user_roles").select("user_id, role"),
         supabase.from("ocr_quotas").select("user_id, subscription_balance, addon_balance"),
+        supabase.from("ai_token_balances").select("user_id, balance, lifetime_granted, lifetime_consumed"),
       ]);
       if (pErr) throw pErr;
       if (rErr) throw rErr;
       if (qErr) throw qErr;
+      if (kErr) throw kErr;
       const rolesByUser = new Map<string, AppRoleLite[]>();
       (rolesData ?? []).forEach((r) => {
         const arr = rolesByUser.get(r.user_id) ?? [];
@@ -58,9 +61,18 @@ export default function UserManager() {
           addon: q.addon_balance ?? 0,
         });
       });
+      const kariByUser = new Map<string, { balance: number; granted: number; consumed: number }>();
+      (kariData ?? []).forEach((k: any) => {
+        kariByUser.set(k.user_id, {
+          balance: k.balance ?? 0,
+          granted: k.lifetime_granted ?? 0,
+          consumed: k.lifetime_consumed ?? 0,
+        });
+      });
       return (profiles ?? []).map((p) => {
         const composed = [p.first_name, p.paternal_surname].filter(Boolean).join(" ").trim();
         const q = quotaByUser.get(p.user_id) ?? { sub: 0, addon: 0 };
+        const k = kariByUser.get(p.user_id) ?? { balance: 0, granted: 0, consumed: 0 };
         return {
           user_id: p.user_id,
           full_name: p.full_name?.trim() || composed || "(sin nombre)",
@@ -68,6 +80,9 @@ export default function UserManager() {
           roles: rolesByUser.get(p.user_id) ?? [],
           ocr_sub: q.sub,
           ocr_addon: q.addon,
+          kari_balance: k.balance,
+          kari_granted: k.granted,
+          kari_consumed: k.consumed,
         };
       });
     },
@@ -123,7 +138,7 @@ export default function UserManager() {
   if (loading) return null;
   if (!roles.includes("admin")) return <Navigate to="/" replace />;
 
-  const colCount = 5 + ALL_ROLES.length; // user, broker, ...roles, OCR, email, actions
+  const colCount = 6 + ALL_ROLES.length; // user, broker, ...roles, OCR, Kari, email, actions
 
   return (
     <div className="container mx-auto p-4 md:p-6 space-y-4">
@@ -168,6 +183,7 @@ export default function UserManager() {
                     <TableHead key={r} className="text-center w-20">{ROLE_LABEL[r]}</TableHead>
                   ))}
                   <TableHead className="text-center w-28">Escaneos OCR</TableHead>
+                  <TableHead className="text-center w-28">Tokens Kari</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead className="w-12 text-right">Acciones</TableHead>
                 </TableRow>
@@ -196,6 +212,9 @@ export default function UserManager() {
                     isSelf={u.user_id === user?.id}
                     ocrSubscription={u.ocr_sub}
                     ocrAddon={u.ocr_addon}
+                    kariBalance={u.kari_balance}
+                    kariGranted={u.kari_granted}
+                    kariConsumed={u.kari_consumed}
                   />
                 ))}
               </TableBody>
