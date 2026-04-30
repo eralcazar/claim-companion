@@ -262,6 +262,31 @@ export function UserRolesRow({
           );
         })()}
       </TableCell>
+      <TableCell className="text-center w-28">
+        {(() => {
+          const variant =
+            kariBalance === 0
+              ? "bg-destructive/15 text-destructive border-destructive/30"
+              : kariBalance < 500
+                ? "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30"
+                : "bg-accent/15 text-accent border-accent/30";
+          return (
+            <TooltipProvider delayDuration={200}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge variant="outline" className={`gap-1 ${variant} cursor-default`}>
+                    <Sparkles className="h-3 w-3" />
+                    {kariBalance.toLocaleString("es-MX")}
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent>
+                  Otorgados: {kariGranted.toLocaleString("es-MX")} · Consumidos: {kariConsumed.toLocaleString("es-MX")}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          );
+        })()}
+      </TableCell>
       <TableCell className="text-muted-foreground text-xs">{user.email || "—"}</TableCell>
       <TableCell className="text-right w-12">
         <div className="flex items-center justify-end gap-1">
