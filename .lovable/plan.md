@@ -1,34 +1,85 @@
-# Armonizar colores de la barra lateral con la app
+# Unificar paquetes Kari en "Planes y paquetes" + selector de modelo IA
 
-## Problema
-La barra lateral usa fondo **navy oscuro** (`#0F172A`) mientras que el resto de la app usa fondo claro blanco azulado con acentos teal. Esto rompe la unidad visual de CareCentral.
+## Qué se va a construir
 
-## Solución propuesta: Sidebar clara con acentos teal
-Cambiar la paleta del sidebar para que sea coherente con el resto: fondo casi blanco, texto navy, ítem activo en teal de marca.
+### 1. Nuevo tab "Paquetes Kari (IA)" en `/admin/planes`
+La página `PlanManager.tsx` hoy tiene 2 tabs (**Suscripciones** y **Paquetes OCR**). Se agrega un tercer tab **Paquetes Kari** con la misma estética y patrón:
 
-### Cambios en `src/index.css` (modo claro `:root`)
+- Tabla con: Nombre · Tokens · Precio · Estado · Acciones (editar/borrar/sincronizar con cobros)
+- Botón "Nuevo paquete Kari"
+- Diálogo de edición con: nombre, descripción, tokens, precio (MXN), orden, activo
+- Botón "Sync" por fila para publicar el paquete en cobros (Stripe), igual que los OCR
 
-| Variable | Antes | Después |
-|---|---|---|
-| `--sidebar-background` | navy `222 47% 11%` | blanco azulado `210 40% 98%` |
-| `--sidebar-foreground` | claro `210 40% 98%` | navy `222 47% 11%` |
-| `--sidebar-primary` | teal `173 80% 40%` | teal (igual) |
-| `--sidebar-primary-foreground` | blanco | blanco (igual) |
-| `--sidebar-accent` (hover/activo bg) | `222 40% 18%` | teal suave `173 70% 94%` |
-| `--sidebar-accent-foreground` | claro | teal oscuro `173 80% 30%` |
-| `--sidebar-border` | `222 30% 22%` | `214 32% 91%` (mismo que `--border`) |
-| `--sidebar-ring` | teal | teal (igual) |
+### 2. Hook nuevo `useAiTokenPacksAdmin` (paralelo a `useOcrPacks`)
+- `useAiTokenPacks({ onlyActive })` — listar
+- `useUpsertAiTokenPack` — crear/editar
+- `useDeleteAiTokenPack` — borrar
+- `useSyncAiTokenPack` — invocar edge function `sync-ai-token-pack` para publicar en cobros
 
-### Cambios en modo oscuro (`.dark`)
-Mantener sidebar oscura pero alinear mejor con el `--background` oscuro de la app (ya está cercano, ajustar para que coincidan exactamente).
+La tabla `ai_token_packs` **ya existe** con todas las columnas necesarias (incluye `stripe_product_id` y `stripe_price_id`), no se requiere migración de schema.
 
-### Detalle visual en `src/components/AppSidebar.tsx`
-- El header de la sidebar tiene un wrapper con `bg-sidebar` dentro del gradiente teal del logo. Con el nuevo fondo claro funciona igual de bien (el gradiente teal sigue resaltando el logo).
-- El botón "Cerrar sesión" usa `text-destructive` — sigue legible sobre fondo claro.
-- El badge de OCR y Kari mantienen sus variantes — siguen visibles.
+### 3. Edge function `sync-ai-token-pack` (nueva)
+Análoga a `sync-ocr-pack`: crea/actualiza producto + precio one-time en Stripe y guarda los IDs en `ai_token_packs`. Usa `createStripeClient(env)` del shared util.
+
+### 4. Selector de modelo IA de Kari (admin-only)
+- Nueva tabla mínima `ai_settings` (key/value singleton) o columna en `ai_token_monthly_limits`. Más limpio: tabla nueva `ai_settings` con un solo row.
+- Card en `/admin/kari-uso` (KariUsageAdmin.tsx) titulada **"Modelo de IA activo"** con un `<Select>` que permite elegir entre:
+  - `google/gemini-2.5-flash-lite` — Económico
+  - `google/gemini-3-flash-preview` — Recomendado (actual)
+  - `google/gemini-2.5-flash` — Estable
+  - `google/gemini-2.5-pro` — Premium (40× más caro)
+- Muestra al lado el costo µUSD/token input y output del modelo seleccionado.
+- La edge function `ai-kari-chat` lee `ACTIVE_MODEL` desde `ai_settings` (con fallback al hardcoded actual si la tabla está vacía).
+
+### 5. Card de "Margen" en `/admin/kari-uso`
+Se enriquece el resumen existente con un cálculo de utilidad real:
+- **Ingresos del periodo** (de `ai_token_purchases` ya existente)
+- **Costo IA real** (de `ai_token_usage_log.cost_usd_micros` ya existente)
+- **Margen bruto $** y **Margen %**
+
+Ya tienes los datos crudos — solo falta exponerlos.
+
+### 6. Limpieza
+- Quitar el link "Tokens Kari" del menú admin si era una página separada de gestión (no la del usuario `/kari/tokens` que es para comprar). Verificar que no exista una página huérfana.
+
+## Detalles técnicos
+
+**Archivos a crear:**
+- `src/hooks/useAiTokenPacks.ts` — CRUD + sync hooks
+- `supabase/functions/sync-ai-token-pack/index.ts` — Stripe upsert para paquetes Kari
+
+**Archivos a modificar:**
+- `src/pages/admin/PlanManager.tsx` — agregar tab "Paquetes Kari" replicando la estructura del tab OCR
+- `src/pages/admin/KariUsageAdmin.tsx` — agregar card "Modelo de IA activo" + card "Margen"
+- `supabase/functions/ai-kari-chat/index.ts` — leer modelo desde `ai_settings` en vez de constante hardcoded
+- `supabase/config.toml` — registrar nueva función si requiere config
+
+**Migración SQL:**
+```sql
+create table public.ai_settings (
+  key text primary key,
+  value jsonb not null,
+  updated_at timestamptz default now()
+);
+alter table public.ai_settings enable row level security;
+create policy "admin manage ai_settings" on public.ai_settings
+  for all to authenticated
+  using (public.has_role(auth.uid(),'admin'))
+  with check (public.has_role(auth.uid(),'admin'));
+create policy "anyone read ai_settings" on public.ai_settings
+  for select to authenticated using (true);
+insert into public.ai_settings(key,value) values
+  ('kari_active_model','"google/gemini-3-flash-preview"'::jsonb);
+```
+
+## Lo que NO se cambia
+
+- **No se modifica el modelo activo automáticamente.** Sigue `gemini-3-flash-preview`. Tú decides cuándo cambiarlo desde el nuevo selector.
+- **No se cambian los precios de los 3 paquetes existentes** (Mini/Plus/Pro). Solo se agrega la UI para administrarlos.
+- **No se toca** la lógica de descuento de tokens ni de límite mensual — siguen funcionando igual.
 
 ## Resultado esperado
-Sidebar blanca con bordes sutiles, logo destacado en gradiente teal, ítem activo resaltado en teal claro con texto teal oscuro. Toda la app comparte la misma sensación clara, limpia y de salud digital.
 
-## Archivos a modificar
-- `src/index.css` (variables CSS de sidebar en `:root` y `.dark`)
+- Admin entra a **/admin/planes** y ve 3 tabs: Suscripciones · Paquetes OCR · **Paquetes Kari** — todo en un solo lugar.
+- Admin entra a **/admin/kari-uso** y puede cambiar el modelo de IA con un dropdown, y ver utilidad neta del periodo.
+- Cero scripts SQL manuales para gestionar paquetes Kari.
