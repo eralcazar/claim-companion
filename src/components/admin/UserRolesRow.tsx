@@ -391,6 +391,61 @@ export function UserRolesRow({
           userId={user.user_id}
           userName={user.full_name}
         />
+
+        <Dialog open={grantTokensOpen} onOpenChange={setGrantTokensOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Regalar tokens de Kari</DialogTitle>
+              <DialogDescription>
+                Se sumarán al saldo de IA de <strong>{user.full_name}</strong>. Saldo actual:{" "}
+                <strong>{kariBalance.toLocaleString("es-MX")}</strong> tokens.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3">
+              <Label>Cantidad de tokens</Label>
+              <Input
+                type="number"
+                min={1}
+                step={500}
+                value={grantTokens}
+                onChange={(e) => setGrantTokens(Math.max(1, parseInt(e.target.value || "1", 10)))}
+              />
+              <div className="flex flex-wrap gap-2">
+                {[1000, 5000, 10000, 50000].map((n) => (
+                  <Button
+                    key={n}
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setGrantTokens(n)}
+                  >
+                    +{n.toLocaleString("es-MX")}
+                  </Button>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Referencia: ~200 tokens por mensaje corto de Kari.
+              </p>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setGrantTokensOpen(false)}>
+                Cancelar
+              </Button>
+              <Button
+                onClick={async () => {
+                  await grantAiTokens.mutateAsync({
+                    user_id: user.user_id,
+                    tokens: grantTokens,
+                  });
+                  setGrantTokensOpen(false);
+                }}
+                disabled={grantAiTokens.isPending || grantTokens <= 0}
+              >
+                Regalar tokens
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </TableCell>
     </TableRow>
   );
