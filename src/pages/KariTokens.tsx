@@ -10,11 +10,13 @@ import { EmbeddedCheckoutProvider, EmbeddedCheckout } from "@stripe/react-stripe
 import { getStripe, getStripeEnvironment } from "@/lib/stripe";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
+import { ConfirmPurchaseDialog } from "@/components/kari/ConfirmPurchaseDialog";
 
 export default function KariTokens() {
   const { data: packs = [] } = useAiTokenPacks();
   const { data: balance } = useKariBalance();
   const { data: purchases = [] } = useMyKariPurchases();
+  const [confirmPackId, setConfirmPackId] = useState<string | null>(null);
   const [checkoutPackId, setCheckoutPackId] = useState<string | null>(null);
 
   const fetchClientSecret = useCallback(async (): Promise<string> => {
@@ -28,6 +30,8 @@ export default function KariTokens() {
     if (error || !data?.clientSecret) throw new Error(error?.message || "No se pudo iniciar el cobro");
     return data.clientSecret;
   }, [checkoutPackId]);
+
+  const confirmPack = packs.find((p) => p.id === confirmPackId) ?? null;
 
   return (
     <div className="container max-w-4xl py-6 space-y-6">
@@ -67,7 +71,7 @@ export default function KariTokens() {
                 size="sm"
                 className="w-full"
                 disabled={!p.stripe_price_id}
-                onClick={() => setCheckoutPackId(p.id)}
+                onClick={() => setConfirmPackId(p.id)}
               >
                 {p.stripe_price_id ? "Comprar" : "No disponible"}
               </Button>
@@ -119,6 +123,16 @@ export default function KariTokens() {
           )}
         </DialogContent>
       </Dialog>
+
+      <ConfirmPurchaseDialog
+        open={!!confirmPackId}
+        onOpenChange={(v) => !v && setConfirmPackId(null)}
+        pack={confirmPack}
+        onConfirm={() => {
+          setCheckoutPackId(confirmPackId);
+          setConfirmPackId(null);
+        }}
+      />
     </div>
   );
 }

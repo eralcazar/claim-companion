@@ -7,7 +7,7 @@ import { useImpersonation } from "@/contexts/ImpersonationContext";
 import { usePermissions } from "@/hooks/usePermissions";
 import type { FeatureKey } from "@/lib/features";
 import {
-  Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
+  Sidebar, SidebarContent, SidebarHeader, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
   SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarFooter, useSidebar,
 } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
@@ -15,6 +15,7 @@ import { Sparkles } from "lucide-react";
 import { useMyOcrQuota, totalQuota } from "@/hooks/useOcrQuota";
 import { useKariBalance } from "@/hooks/useKariTokens";
 import { Badge } from "@/components/ui/badge";
+import { CareCentralLogo } from "@/components/brand/CareCentralLogo";
 
 type Item = { title: string; url: string; icon: typeof Home; feature: FeatureKey };
 
@@ -93,6 +94,33 @@ export function AppSidebar() {
 
   return (
     <Sidebar collapsible="icon">
+      <SidebarHeader className="border-b border-sidebar-border">
+        <div
+          className={cn(
+            "flex items-center gap-2 py-2",
+            collapsed ? "justify-center px-1" : "px-2",
+          )}
+        >
+          <div
+            className="rounded-xl p-0.5 flex-shrink-0"
+            style={{ background: "var(--gradient-brand)" }}
+          >
+            <div className="rounded-[10px] bg-sidebar p-1">
+              <CareCentralLogo size={collapsed ? 28 : 32} />
+            </div>
+          </div>
+          {!collapsed && (
+            <div className="flex flex-col leading-tight min-w-0">
+              <span className="font-heading font-bold text-sidebar-foreground text-base truncate">
+                CareCentral
+              </span>
+              <span className="text-[10px] text-sidebar-foreground/60 truncate">
+                Tu salud conectada
+              </span>
+            </div>
+          )}
+        </div>
+      </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel>{!collapsed && "Principal"}</SidebarGroupLabel>
