@@ -6,7 +6,7 @@ import { toast } from "@/hooks/use-toast";
 import { ALL_ROLES, type AppRoleLite } from "@/lib/features";
 import { useQueryClient } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, Trash2, ScanLine } from "lucide-react";
+import { CheckCircle2, Trash2, ScanLine, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,6 +19,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useAdminGrantOcr } from "@/hooks/useOcrQuota";
+import { AssignPlanDialog } from "@/components/admin/AssignPlanDialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -79,6 +80,7 @@ export function UserRolesRow({
   const [deleting, setDeleting] = useState(false);
   const [grantOpen, setGrantOpen] = useState(false);
   const [grantPages, setGrantPages] = useState<number>(10);
+  const [assignPlanOpen, setAssignPlanOpen] = useState(false);
   const grantOcr = useAdminGrantOcr();
 
   const handleDelete = async () => {
@@ -226,6 +228,15 @@ export function UserRolesRow({
             variant="ghost"
             size="icon"
             className="h-8 w-8 text-primary hover:bg-primary/10"
+            aria-label={`Asignar paquete a ${user.full_name}`}
+            onClick={() => setAssignPlanOpen(true)}
+          >
+            <Package className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-primary hover:bg-primary/10"
             aria-label={`Regalar escaneos OCR a ${user.full_name}`}
             onClick={() => setGrantOpen(true)}
           >
@@ -298,6 +309,13 @@ export function UserRolesRow({
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        <AssignPlanDialog
+          open={assignPlanOpen}
+          onOpenChange={setAssignPlanOpen}
+          userId={user.user_id}
+          userName={user.full_name}
+        />
       </TableCell>
     </TableRow>
   );
