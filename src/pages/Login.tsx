@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { lovable } from "@/integrations/lovable";
 import { Button } from "@/components/ui/button";
@@ -157,16 +157,24 @@ export default function Login() {
             </div>
 
             <p className="mt-6 text-center text-[11px] leading-relaxed text-muted-foreground">
-              Al continuar aceptas los <span className="underline">Términos</span> y{" "}
-              <span className="underline">Política de privacidad</span> de CareCentral.
+              Al continuar aceptas los{" "}
+              <Link
+                to="/legal#terminos"
+                className="font-medium text-primary underline underline-offset-2 hover:text-primary/80"
+              >
+                Términos
+              </Link>{" "}
+              y la{" "}
+              <Link
+                to="/legal#privacidad"
+                className="font-medium text-primary underline underline-offset-2 hover:text-primary/80"
+              >
+                Política de privacidad
+              </Link>{" "}
+              de CareCentral.
             </p>
           </div>
 
-          {/* Paquete gratuito badge */}
-          <div className="mt-4 flex items-center justify-center gap-2 text-xs text-muted-foreground">
-            <Sparkles className="h-3.5 w-3.5 text-primary" />
-            Incluye <strong className="text-foreground">5 escaneos OCR gratis</strong> al registrarte
-          </div>
         </div>
       </div>
     </div>
