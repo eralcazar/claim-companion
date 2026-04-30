@@ -1940,8 +1940,44 @@ export type Database = {
           },
         ]
       }
+      plan_role_features: {
+        Row: {
+          allowed: boolean
+          created_at: string
+          feature_key: string
+          id: string
+          plan_id: string
+          role: Database["public"]["Enums"]["app_role"]
+        }
+        Insert: {
+          allowed?: boolean
+          created_at?: string
+          feature_key: string
+          id?: string
+          plan_id: string
+          role: Database["public"]["Enums"]["app_role"]
+        }
+        Update: {
+          allowed?: boolean
+          created_at?: string
+          feature_key?: string
+          id?: string
+          plan_id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_role_features_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
+          active_role: Database["public"]["Enums"]["app_role"] | null
           address: string | null
           birth_country: string | null
           birth_state: string | null
@@ -1983,6 +2019,7 @@ export type Database = {
           vigencia_identificacion: string | null
         }
         Insert: {
+          active_role?: Database["public"]["Enums"]["app_role"] | null
           address?: string | null
           birth_country?: string | null
           birth_state?: string | null
@@ -2024,6 +2061,7 @@ export type Database = {
           vigencia_identificacion?: string | null
         }
         Update: {
+          active_role?: Database["public"]["Enums"]["app_role"] | null
           address?: string | null
           birth_country?: string | null
           birth_state?: string | null
@@ -2485,6 +2523,10 @@ export type Database = {
         Args: { _pages: number; _source?: string; _user_id: string }
         Returns: undefined
       }
+      assign_free_plan: {
+        Args: { _months?: number; _plan_id: string; _user_id: string }
+        Returns: undefined
+      }
       consume_ocr_quota: {
         Args: { _pages: number; _resource_id?: string; _user_id: string }
         Returns: Json
@@ -2501,9 +2543,20 @@ export type Database = {
         }
         Returns: boolean
       }
+      set_active_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: undefined
+      }
       sync_subscription_ocr_quota: {
         Args: { _user_id: string }
         Returns: undefined
+      }
+      user_has_feature_access: {
+        Args: { _feature: string; _user_id: string }
+        Returns: boolean
       }
       user_has_plan_feature: {
         Args: { _feature: string; _user_id: string }
