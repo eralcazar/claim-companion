@@ -1,75 +1,97 @@
-## Contexto
+## Plan: Rebrand a CareCentral + Acceso universal a Planes y Paquetes OCR
 
-Tienes razón: cuando unificamos el Expediente Digital del paciente, dejamos el **Consultorio Digital** del médico a medias. Hoy en `src/pages/Consultorio.tsx` el médico solo ve:
+Dos entregas en una sola implementación.
 
-- Mapa corporal
-- Recetas / Estudios / Documentos de la cita (tabs reducidos en columna derecha)
-- Observaciones, pólizas, medicamentos activos (resumen)
+---
 
-Le **faltan** dentro de la misma vista: Medicamentos (gestión), Recetas (histórico completo del paciente), Estudios (histórico), Tendencias, Presión Arterial, Oxigenación SpO2 y Registros Médicos — exactamente los mismos módulos que ya están unificados en el Expediente Digital del paciente.
+## PARTE A — Rebrand visual a CareCentral
 
-## Objetivo
+### Tokens (`src/index.css`)
+- Reemplazar paleta 4T por:
+  - `--primary: 172 76% 40%` (#14B8A6) + `--primary-foreground: 0 0% 100%`
+  - `--background: 210 40% 98%` (#F8FAFC), `--foreground: 222 47% 11%` (navy #0F172A)
+  - `--accent: 187 85% 53%` (cyan #22D3EE)
+  - `--success: 142 71% 45%` (#22C55E), `--warning: 38 92% 50%`, `--destructive: 0 84% 60%`
+  - `--radius: 1rem` (16px)
+  - `--sidebar` navy oscuro con acento teal
+  - Variantes dark coherentes
+- Reemplazar import de Sora+Manrope por **Inter** (400/500/600/700/800)
 
-Que el **médico, al abrir el Consultorio Digital de un paciente** (ya sea desde una cita o en modo libre `/consultorio?paciente=...`), tenga acceso al **Expediente Digital completo del paciente** dentro de la misma pantalla, sin tener que salir a otra ruta.
+### Tipografía (`tailwind.config.ts`)
+- `fontFamily.heading` y `fontFamily.body` ambos = `["Inter", "sans-serif"]`
 
-## Cambios
+### Branding
+- **Crear** `src/components/brand/CareCentralLogo.tsx`:
+  - Logo SVG: círculo gradient teal con cruz blanca + arco "mano" abrazando
+  - Wordmark "Care" navy + "Central" teal
+  - Tamaños sm/md/lg/xl
+- **Crear** `src/assets/kari.png` (copiar la imagen subida al proyecto)
+- `index.html`: título "CareCentral · Tu salud, conectada contigo"
 
-### 1. Nuevo bloque "Expediente del paciente" en `src/pages/Consultorio.tsx`
+### Login (`src/pages/Login.tsx`) — según preview aprobado
+- Header: logo + wordmark + tagline "Tu salud, conectada contigo ♥"
+- Hero: Kari de cuerpo completo a la izquierda + bloque derecho con "¡Bienvenido!" + 3 cards glass (Seguro/Rápido/Cercano)
+- Card de login: solo botones Google + Apple (estilo blanco con sombra)
+- Footer Términos + Política
+- Decoraciones suaves (cruces y halos teal/cyan)
 
-Agregar debajo del Mapa Corporal (modo cita) y debajo del selector de paciente (modo libre) un componente `<PatientExpedienteTabs patientId={patientId} canEdit={isDoctor} />` con tabs:
+### Header (`src/components/AppLayout.tsx`)
+- Reemplazar texto "Aplicación del Bienestar / 4T" por logo CareCentral compacto + "CareCentral"
+- Tagline: "Tu salud, conectada contigo"
 
-- Medicamentos
-- Recetas (histórico completo del paciente, no solo de la cita)
-- Estudios (histórico completo)
-- Tendencias
-- Presión Arterial
-- Oxigenación (SpO2)
-- Registros Médicos
+### Limpieza de identidad anterior
+Reemplazar "Bienestar Ciudadano / 4T / Aplicación del Bienestar" por "CareCentral" en:
+- `src/components/claims/forms/generateFormPDF.ts`
+- `src/components/claims/generateClaimPDF.ts`
+- `src/components/estudios/estudioPdf.ts`
+- `src/pages/admin/AccessManager.tsx`
 
-### 2. Refactor de `src/pages/ExpedienteDigital.tsx`
+### Memoria
+Actualizar `mem://index.md` y `mem://design/tokens`:
+- App name: CareCentral
+- Paleta: teal #14B8A6 + navy #0F2A4A + cyan #22D3EE
+- Fuente: Inter
+- Tagline: "Tu salud, conectada contigo"
+- Eliminar refs a 4T / Bienestar / MediClaim
 
-Extraer la lógica de tabs a un componente reutilizable `src/components/expediente/PatientExpedienteTabs.tsx` que acepte:
+---
 
-```ts
-{ patientId: string; canEdit?: boolean; defaultTab?: string }
-```
+## PARTE B — Acceso universal a Planes y Paquetes OCR (Stripe)
 
-`ExpedienteDigital.tsx` (vista del paciente) lo seguirá usando con `patientId = user.id`. El Consultorio lo usará con el `patientId` del paciente atendido.
+### Diagnóstico
+- ✅ Edge functions existen: `subscription-create-checkout`, `ocr-pack-checkout`, `payments-webhook`, `create-portal-session`
+- ✅ Tablas: `subscription_plans`, `ocr_packs`, `subscriptions`, `ocr_quotas`
+- ✅ Página `/planes` y `/suscripcion` ya programadas con embedded checkout
+- ✅ Stripe sandbox configurado (`STRIPE_SANDBOX_API_KEY`, `PAYMENTS_SANDBOX_WEBHOOK_SECRET`)
+- ✅ Paquetes OCR tienen `stripe_price_id` válido
+- ❌ Único plan activo "PLAN INICIAL" NO tiene `stripe_price_id_mensual/anual` → no se puede cobrar
+- ❌ `/planes` y `/suscripcion` **no aparecen** en `AppSidebar` ni `BottomNav` para pacientes
+- ❌ No hay banner "Sin escaneos / Suscríbete" donde cuenta
 
-### 3. Ajustar páginas hijas para aceptar `patientId` por prop
+### Cambios
 
-Las páginas `Medications`, `Recetas`, `Estudios`, `Tendencias`, `PresionArterial`, `OxygenSaturation`, `MedicalRecords` actualmente leen al usuario actual del `AuthContext`. Hay que permitir un override:
+**1. Crear productos/precios reales en Stripe** vía `payments--batch_create_product` (sandbox + auto-sync a live al publicar):
+- `carecentral_basico` — Plan Básico — $99 MXN/mes y $990 MXN/año — 50 escaneos OCR/mes
+- `carecentral_pro` — Plan Pro — $199 MXN/mes y $1990 MXN/año — 200 escaneos OCR/mes
+- `carecentral_familiar` — Plan Familiar — $349 MXN/mes y $3490 MXN/año — 500 escaneos OCR/mes
 
-- Si recibe prop `patientId`, usa ese id para queries/mutations en lugar del `user.id`.
-- Si no, comportamiento actual (paciente viendo lo suyo).
+**2. Migración**: Insertar/actualizar `subscription_plans` con esos `stripe_price_id_mensual` / `stripe_price_id_anual` y `ocr_pages_per_month`. Marcar el actual "PLAN INICIAL" como `activo=false`.
 
-Esto se hace de forma incremental: las pages exportan también un componente "embebible" (`MedicationsView({ patientId, canEdit })`, etc.), y la page actual lo invoca con su propio `user.id`. El `PatientExpedienteTabs` invoca los `*View` con el `patientId` del paciente.
+**3. Navegación accesible para todos los usuarios**:
+- `AppSidebar`: agregar items "Planes" (`/planes`, icono `Sparkles`) y "Mi suscripción" (`/suscripcion`, icono `CreditCard`) bajo `mainItems` (visibles para paciente/broker/médico)
+- `BottomNav` (mobile): reemplazar uno de los tabs existentes por "Planes" o agregar un menú "Más" — propuesta concreta: añadir item "Planes" (5 → 6 tabs no cabe bien, así que reemplazo "Reclamos" por dropdown o muevo "Reclamos" al sidebar largo). Decisión: **dejar BottomNav como está** y exponer Planes/Suscripción solo en sidebar desktop + en menú de perfil mobile (link nuevo en `Profile.tsx`)
 
-### 4. Permisos / RLS
+**4. UX de upsell**:
+- En `Estudios` (cuando intenten OCR sin créditos): mostrar banner "Sin escaneos disponibles → Comprar paquete" con link directo a `/planes#paquetes`
+- En `Profile.tsx`: tarjeta resumen con plan actual + saldo OCR + botones "Ver planes" y "Mi suscripción"
 
-Las RLS ya permiten al médico leer/escribir datos del paciente vía `has_patient_access()` (existe en BD) o vía la cita asignada. No requiere migración. Se valida `canEdit = isDoctor` para deshabilitar formularios cuando aplique (médico no asignado en modo libre ⇒ solo lectura).
+**5. Verificar edge functions** (`supabase--curl_edge_functions` con auth real) que `subscription-create-checkout` y `ocr-pack-checkout` devuelvan `clientSecret` correctamente con los nuevos `price_id`.
 
-### 5. UX en Consultorio
+**6. Banner de modo prueba** (`PaymentTestModeBanner` ya existe en el repo) — verificar que se monta en `AppLayout` para que en preview se vea claramente que son pagos sandbox.
 
-- Modo **cita**: el bloque del Expediente queda como `<Card>` colapsable a ancho completo (col-span-12) bajo el grid actual, para no romper la cuadrícula de 3 columnas.
-- Modo **libre**: se renderiza al seleccionar paciente, debajo del Mapa Corporal.
+### Fuera de alcance
+- Stripe LIVE (se activa al publicar, requiere verificación de cuenta)
+- Personalización de portal Stripe (logo, colores) — se hace en dashboard Stripe
+- Cambios en lógica de roles, RLS o BD más allá del seed de planes
 
-## Archivos
-
-**Crear**
-- `src/components/expediente/PatientExpedienteTabs.tsx`
-
-**Editar**
-- `src/pages/Consultorio.tsx` — montar `PatientExpedienteTabs`
-- `src/pages/ExpedienteDigital.tsx` — usar el nuevo componente compartido
-- `src/pages/Medications.tsx`, `Recetas.tsx`, `Estudios.tsx`, `Tendencias.tsx`, `PresionArterial.tsx`, `OxygenSaturation.tsx`, `MedicalRecords.tsx` — aceptar `patientId` opcional
-
-**Sin cambios**: rutas, navegación, BD, RLS.
-
-## Fuera de alcance (siguiente fase)
-
-- Facturama / CFDI
-- Módulo tipo Uber (Bienestar Móvil mobility)
-- Más ajustes visuales 4T
-
-¿Apruebas para implementar?
+¿Apruebas para implementar todo?
