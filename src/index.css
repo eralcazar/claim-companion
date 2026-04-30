@@ -38,13 +38,13 @@
 
     --radius: 1rem;
 
-    --sidebar-background: 222 47% 11%;       /* navy */
-    --sidebar-foreground: 210 40% 98%;
+    --sidebar-background: 210 40% 98%;       /* mismo fondo claro que la app */
+    --sidebar-foreground: 222 47% 11%;       /* navy */
     --sidebar-primary: 173 80% 40%;          /* teal */
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 222 40% 18%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 222 30% 22%;
+    --sidebar-accent: 173 70% 94%;           /* teal muy suave para hover/activo */
+    --sidebar-accent-foreground: 173 80% 25%;/* teal oscuro legible */
+    --sidebar-border: 214 32% 91%;           /* mismo border que la app */
     --sidebar-ring: 173 80% 40%;
 
     --success: 142 60% 35%;
@@ -88,13 +88,13 @@
     --input: 222 25% 22%;
     --ring: 173 80% 45%;
 
-    --sidebar-background: 222 47% 7%;
+    --sidebar-background: 222 47% 7%;        /* coincide con --background dark */
     --sidebar-foreground: 210 40% 98%;
     --sidebar-primary: 173 80% 45%;
     --sidebar-primary-foreground: 222 47% 11%;
-    --sidebar-accent: 222 35% 14%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 222 30% 16%;
+    --sidebar-accent: 173 60% 18%;           /* teal apagado para hover/activo */
+    --sidebar-accent-foreground: 173 80% 80%;
+    --sidebar-border: 222 25% 22%;           /* mismo border que dark */
     --sidebar-ring: 173 80% 45%;
 
     --success: 142 60% 40%;

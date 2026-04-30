@@ -1,27 +1,34 @@
+# Armonizar colores de la barra lateral con la app
+
 ## Problema
+La barra lateral usa fondo **navy oscuro** (`#0F172A`) mientras que el resto de la app usa fondo claro blanco azulado con acentos teal. Esto rompe la unidad visual de CareCentral.
 
-La ruta `/legal` está montada **fuera** del `AppLayout` en `src/App.tsx`, por lo que no muestra el sidebar ni el bottom nav. Cuando un usuario entra al Aviso Legal o de Privacidad queda atrapado sin forma visible de regresar al menú principal.
+## Solución propuesta: Sidebar clara con acentos teal
+Cambiar la paleta del sidebar para que sea coherente con el resto: fondo casi blanco, texto navy, ítem activo en teal de marca.
 
-## Solución
+### Cambios en `src/index.css` (modo claro `:root`)
 
-Agregar un botón **"Volver al menú principal"** en la cabecera de `src/pages/Legal.tsx`, visible siempre, en la parte superior izquierda antes del título.
+| Variable | Antes | Después |
+|---|---|---|
+| `--sidebar-background` | navy `222 47% 11%` | blanco azulado `210 40% 98%` |
+| `--sidebar-foreground` | claro `210 40% 98%` | navy `222 47% 11%` |
+| `--sidebar-primary` | teal `173 80% 40%` | teal (igual) |
+| `--sidebar-primary-foreground` | blanco | blanco (igual) |
+| `--sidebar-accent` (hover/activo bg) | `222 40% 18%` | teal suave `173 70% 94%` |
+| `--sidebar-accent-foreground` | claro | teal oscuro `173 80% 30%` |
+| `--sidebar-border` | `222 30% 22%` | `214 32% 91%` (mismo que `--border`) |
+| `--sidebar-ring` | teal | teal (igual) |
 
-- Si el usuario está autenticado → lo lleva al Dashboard (`/`).
-- Si no está autenticado (entró desde el login) → la `ProtectedRoute` lo redirigirá automáticamente al `/login`, así que el botón funciona en ambos casos.
+### Cambios en modo oscuro (`.dark`)
+Mantener sidebar oscura pero alinear mejor con el `--background` oscuro de la app (ya está cercano, ajustar para que coincidan exactamente).
 
-## Cambio único
+### Detalle visual en `src/components/AppSidebar.tsx`
+- El header de la sidebar tiene un wrapper con `bg-sidebar` dentro del gradiente teal del logo. Con el nuevo fondo claro funciona igual de bien (el gradiente teal sigue resaltando el logo).
+- El botón "Cerrar sesión" usa `text-destructive` — sigue legible sobre fondo claro.
+- El badge de OCR y Kari mantienen sus variantes — siguen visibles.
 
-**`src/pages/Legal.tsx`**
-- Importar `Link` de `react-router-dom`, `Button` de `@/components/ui/button` y el icono `ArrowLeft` de `lucide-react`.
-- Insertar antes del `<header>` actual:
+## Resultado esperado
+Sidebar blanca con bordes sutiles, logo destacado en gradiente teal, ítem activo resaltado en teal claro con texto teal oscuro. Toda la app comparte la misma sensación clara, limpia y de salud digital.
 
-```tsx
-<Button asChild variant="ghost" size="sm" className="mb-4">
-  <Link to="/">
-    <ArrowLeft className="h-4 w-4 mr-1" />
-    Volver al menú principal
-  </Link>
-</Button>
-```
-
-No se tocan rutas, layout ni otros archivos.
+## Archivos a modificar
+- `src/index.css` (variables CSS de sidebar en `:root` y `.dark`)
