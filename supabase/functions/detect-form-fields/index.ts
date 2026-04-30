@@ -1,3 +1,5 @@
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -53,6 +55,22 @@ Deno.serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY no configurada");
 
+    // Modelo OCR dinámico (configurable por admin via ai_settings)
+    let ocrModel = "google/gemini-2.5-pro";
+    try {
+      const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+      const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+      if (SUPABASE_URL && SERVICE_ROLE) {
+        const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
+        const { data: cfg } = await admin
+          .from("ai_settings")
+          .select("value")
+          .eq("key", "ocr_active_model")
+          .maybeSingle();
+        if (cfg?.value && typeof cfg.value === "string") ocrModel = cfg.value;
+      }
+    } catch (_) { /* fallback al default */ }
+
     const dataUrl = image_base64.startsWith("data:")
       ? image_base64
       : `data:image/png;base64,${image_base64}`;
@@ -61,7 +79,7 @@ Deno.serve(async (req) => {
 Identifica todos los campos rellenables visibles en la imagen y devuelve el resultado usando la herramienta proponer_campos.`;
 
     const body = {
-      model: "google/gemini-2.5-pro",
+      model: ocrModel,
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
         {
