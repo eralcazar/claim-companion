@@ -49,46 +49,46 @@ export default function Login() {
             </p>
           </div>
 
-          {/* Capa 0: piernas de Kari como silueta de fondo (parte inferior, blur) */}
-          <img
-            src={kariAvatar}
-            alt=""
-            aria-hidden
-            className="pointer-events-none absolute left-1/2 bottom-0 h-[34rem] w-auto -translate-x-1/2 object-contain opacity-20 blur-md lg:left-0 lg:translate-x-0"
-            style={{
-              objectPosition: "center bottom",
-              maskImage:
-                "linear-gradient(to top, black 0%, black 35%, transparent 60%)",
-              WebkitMaskImage:
-                "linear-gradient(to top, black 0%, black 35%, transparent 60%)",
-            }}
-          />
-
-          {/* Capa 2: Kari recortada hasta la cintura (parte superior nítida) */}
-          <div className="relative z-10 mt-2 self-center lg:self-start">
-            <div
-              className="relative h-64 w-56 sm:h-72 sm:w-64 lg:h-80 lg:w-72 overflow-hidden"
+          {/* Wrapper de Kari: piernas detrás (blur) + torso recortado a la cintura */}
+          <div className="relative z-10 mt-2 h-72 w-64 sm:h-80 sm:w-72 lg:h-96 lg:w-80 self-center lg:self-start">
+            {/* Capa 0: piernas como silueta de fondo (mitad inferior, blur) */}
+            <img
+              src={kariAvatar}
+              alt=""
+              aria-hidden
+              className="pointer-events-none absolute inset-0 mx-auto h-full w-auto object-contain opacity-25 blur-[6px]"
               style={{
                 maskImage:
-                  "linear-gradient(to bottom, black 0%, black 70%, transparent 100%)",
+                  "linear-gradient(to top, black 0%, black 30%, transparent 55%)",
                 WebkitMaskImage:
-                  "linear-gradient(to bottom, black 0%, black 70%, transparent 100%)",
+                  "linear-gradient(to top, black 0%, black 30%, transparent 55%)",
+              }}
+            />
+
+            {/* Capa 2: Kari nítida — solo cabeza y torso hasta la cintura (~55% superior) */}
+            <div
+              className="absolute inset-0 overflow-hidden"
+              style={{
+                maskImage:
+                  "linear-gradient(to bottom, black 0%, black 50%, transparent 62%)",
+                WebkitMaskImage:
+                  "linear-gradient(to bottom, black 0%, black 50%, transparent 62%)",
               }}
             >
               <img
                 src={kariAvatar}
                 alt="Kari, tu asistente médica de CareCentral"
-                className="absolute inset-x-0 top-0 mx-auto h-[28rem] w-auto object-contain drop-shadow-2xl"
+                className="mx-auto h-full w-auto object-contain drop-shadow-2xl"
                 loading="eager"
               />
             </div>
 
-            {/* Capa 3: Burbuja de chat junto a la cabeza */}
-            <div className="absolute -right-4 top-6 sm:-right-8 sm:top-8 lg:-right-2 lg:top-10 z-20 animate-fade-in">
-              <div className="relative rounded-2xl rounded-bl-sm bg-foreground px-4 py-2 text-xs font-medium text-background shadow-xl">
+            {/* Capa 3: Burbuja de chat a la altura de la cabeza */}
+            <div className="absolute right-0 top-4 sm:right-2 sm:top-6 lg:right-0 lg:top-8 z-20 animate-fade-in">
+              <div className="relative rounded-2xl rounded-bl-sm bg-foreground px-3.5 py-2 text-xs font-medium text-background shadow-xl">
                 ¡Hola! Soy Kari 👋
                 {/* Cola de la burbuja apuntando a Kari */}
-                <span className="absolute -left-1.5 bottom-2 h-3 w-3 rotate-45 bg-foreground" />
+                <span className="absolute -left-1 bottom-2 h-3 w-3 rotate-45 bg-foreground" />
               </div>
             </div>
           </div>

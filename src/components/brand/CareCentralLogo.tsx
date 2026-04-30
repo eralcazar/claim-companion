@@ -17,10 +17,11 @@ export function CareCentralLogo({ className, size = 40, withText = false }: Prop
         src={logo3d}
         alt="CareCentral"
         className={cn("inline-block object-contain", className)}
-        style={{ height: size * 1.4, width: "auto" }}
+        style={{ height: size * 1.6, width: "auto" }}
       />
     );
   }
+  // Solo ícono: recortamos el ~65% superior del PNG (que contiene el círculo+cruz+mano).
   return (
     <div
       className={cn("inline-block overflow-hidden", className)}
@@ -29,9 +30,13 @@ export function CareCentralLogo({ className, size = 40, withText = false }: Prop
       <img
         src={logo3d}
         alt="CareCentral"
-        className="object-cover object-top"
-        // El ícono ocupa ~60% superior del PNG; escalamos y recortamos.
-        style={{ width: size, height: size * 1.7, objectPosition: "center top" }}
+        style={{
+          width: size,
+          height: size / 0.65,
+          objectFit: "cover",
+          objectPosition: "center top",
+          display: "block",
+        }}
       />
     </div>
   );
