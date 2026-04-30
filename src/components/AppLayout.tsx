@@ -5,6 +5,7 @@ import { BottomNav } from "@/components/BottomNav";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ImpersonationBanner } from "@/components/ImpersonationBanner";
 import { NotificationBell } from "@/components/NotificationBell";
+import { CareCentralLogo } from "@/components/brand/CareCentralLogo";
 
 export function AppLayout() {
   const isMobile = useIsMobile();
@@ -18,14 +19,7 @@ export function AppLayout() {
           {!isMobile && (
             <header className="h-14 flex items-center border-b px-4 gap-3">
               <SidebarTrigger />
-              <div className="flex flex-col leading-tight">
-                <h1 className="font-heading text-lg font-semibold text-primary">
-                  Aplicación del Bienestar
-                </h1>
-                <span className="text-[10px] uppercase tracking-wider text-accent font-semibold">
-                  Ciudadano · 4T
-                </span>
-              </div>
+              <CareCentralLogo size={28} withText />
               <div className="ml-auto">
                 <NotificationBell />
               </div>
@@ -34,14 +28,7 @@ export function AppLayout() {
 
           {isMobile && (
             <header className="h-14 flex items-center border-b px-4">
-              <div className="flex flex-col leading-tight">
-                <h1 className="font-heading text-base font-semibold text-primary">
-                  Bienestar Ciudadano
-                </h1>
-                <span className="text-[9px] uppercase tracking-wider text-accent font-semibold">
-                  Aplicación · 4T
-                </span>
-              </div>
+              <CareCentralLogo size={26} withText />
               <div className="ml-auto">
                 <NotificationBell />
               </div>
