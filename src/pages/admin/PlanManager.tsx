@@ -193,6 +193,58 @@ export default function PlanManager() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        <TabsContent value="kari" className="space-y-4">
+          <div className="flex justify-end">
+            <Button onClick={() => { setAiPackEditing({ nombre: "", descripcion: "", tokens: 10000, precio_centavos: 0, moneda: "mxn", activo: true, orden: aiPacks.length }); setAiPackOpen(true); }}>
+              <Plus className="h-4 w-4 mr-1" />Nuevo paquete Kari
+            </Button>
+          </div>
+          <Card>
+            <CardContent className="p-0 overflow-x-auto">
+              {loadingAiPacks ? (
+                <div className="p-8 flex justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" /></div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Paquete</TableHead>
+                      <TableHead className="text-right">Tokens</TableHead>
+                      <TableHead className="text-right">Precio</TableHead>
+                      <TableHead>Estado</TableHead>
+                      <TableHead>Cobros</TableHead>
+                      <TableHead></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {aiPacks.map((p) => (
+                      <TableRow key={p.id}>
+                        <TableCell>
+                          <p className="font-medium">{p.nombre}</p>
+                          {p.descripcion && <p className="text-xs text-muted-foreground">{p.descripcion}</p>}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">{p.tokens.toLocaleString("es-MX")}</TableCell>
+                        <TableCell className="text-right tabular-nums">${(p.precio_centavos / 100).toFixed(2)} {p.moneda?.toUpperCase()}</TableCell>
+                        <TableCell><Badge variant={p.activo ? "default" : "secondary"}>{p.activo ? "Activo" : "Inactivo"}</Badge></TableCell>
+                        <TableCell>{p.stripe_product_id ? <Badge variant="outline">OK</Badge> : <Badge variant="secondary">Pendiente</Badge>}</TableCell>
+                        <TableCell className="text-right space-x-1">
+                          <Button size="sm" variant="outline" onClick={() => syncAiPack.mutate({ pack_id: p.id, environment: getStripeEnvironment() as "sandbox" | "live" })} disabled={syncAiPack.isPending}>
+                            <RefreshCw className={`h-3 w-3 mr-1 ${syncAiPack.isPending ? "animate-spin" : ""}`} />Publicar
+                          </Button>
+                          <Button size="icon" variant="ghost" onClick={() => { setAiPackEditing(p); setAiPackOpen(true); }}><Edit className="h-4 w-4" /></Button>
+                          <Button size="icon" variant="ghost" onClick={() => deleteAiPack.mutate(p.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {aiPacks.length === 0 && (
+                      <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground p-8">Sin paquetes de Kari. Creá el primero.</TableCell></TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
 
       <Dialog open={open} onOpenChange={setOpen}>
