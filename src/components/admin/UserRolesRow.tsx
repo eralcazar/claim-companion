@@ -283,6 +283,15 @@ export function UserRolesRow({
           >
             <ScanLine className="h-4 w-4" />
           </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-accent hover:bg-accent/10"
+            aria-label={`Regalar tokens de Kari a ${user.full_name}`}
+            onClick={() => setGrantTokensOpen(true)}
+          >
+            <Sparkles className="h-4 w-4" />
+          </Button>
           {!isSelf && (
           <AlertDialog>
             <AlertDialogTrigger asChild>
