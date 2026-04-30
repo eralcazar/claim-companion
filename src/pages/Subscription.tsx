@@ -15,8 +15,13 @@ export default function SubscriptionPage() {
   const [opening, setOpening] = useState(false);
 
   const plan = plans.find((p) => p.id === subscription?.plan_id);
+  const hasStripeCustomer = !!subscription?.stripe_customer_id;
 
   const openPortal = async () => {
+    if (!hasStripeCustomer) {
+      toast.error("Tu paquete actual no tiene pagos registrados. Para gestionarlo, cambia a un plan de pago.");
+      return;
+    }
     setOpening(true);
     try {
       const { data, error } = await supabase.functions.invoke("create-portal-session", {
@@ -61,11 +66,18 @@ export default function SubscriptionPage() {
                 </p>
               )}
               <div className="flex gap-2 flex-wrap">
-                <Button onClick={openPortal} disabled={opening}>
-                  <ExternalLink className="h-4 w-4 mr-1" />Gestionar suscripción
-                </Button>
+                {hasStripeCustomer && (
+                  <Button onClick={openPortal} disabled={opening}>
+                    <ExternalLink className="h-4 w-4 mr-1" />Gestionar suscripción
+                  </Button>
+                )}
                 <Button variant="outline" asChild><Link to="/planes">Cambiar de plan</Link></Button>
               </div>
+              {!hasStripeCustomer && (
+                <p className="text-xs text-muted-foreground">
+                  Este paquete fue asignado manualmente o es gratuito, por lo que no tiene gestión de pagos.
+                </p>
+              )}
             </>
           )}
         </CardContent>
