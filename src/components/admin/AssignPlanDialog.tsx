@@ -91,9 +91,9 @@ export function AssignPlanDialog({
       const { data, error } = await supabase.functions.invoke("subscription-create-checkout", {
         body: {
           plan_id: planId,
-          interval: "mensual",
-          target_user_id: userId,
-          return_url: `${origin}/checkout/return?session_id={CHECKOUT_SESSION_ID}`,
+          billing: "mensual",
+          environment: (import.meta.env.VITE_PAYMENTS_CLIENT_TOKEN || "").startsWith("pk_test_") ? "sandbox" : "live",
+          returnUrl: `${origin}/checkout/return?session_id={CHECKOUT_SESSION_ID}`,
         },
       });
       if (error) throw error;
