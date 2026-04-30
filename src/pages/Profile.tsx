@@ -12,6 +12,7 @@ import { useState, useEffect } from "react";
 import { ESTADOS_MX, ESTADOS_CIVILES, TIPOS_IDENTIFICACION } from "@/lib/constants";
 import { Link } from "react-router-dom";
 import { Pen } from "lucide-react";
+import { ActiveRoleSelector } from "@/components/profile/ActiveRoleSelector";
 
 const INITIAL_FORM = {
   first_name: "",
@@ -145,6 +146,8 @@ export default function Profile() {
   return (
     <div className="space-y-4 animate-fade-in max-w-lg mx-auto pb-24">
       <h1 className="font-heading text-2xl font-bold">Mi Perfil</h1>
+
+      <ActiveRoleSelector />
 
       {/* Datos Personales */}
       <Card>
