@@ -23,7 +23,7 @@ export function AppLayout() {
             <header className="h-16 flex items-center border-b px-4 gap-3 bg-background/80 backdrop-blur">
               <SidebarTrigger />
               <div className="h-6 w-px bg-border" />
-              <CareCentralLogo size={36} withText />
+              <CareCentralLogo size={52} withText />
               <div className="ml-auto">
                 <NotificationBell />
               </div>
@@ -32,7 +32,7 @@ export function AppLayout() {
 
           {isMobile && (
             <header className="h-16 flex items-center border-b px-4 bg-background/80 backdrop-blur">
-              <CareCentralLogo size={34} withText />
+              <CareCentralLogo size={44} withText />
               <div className="ml-auto">
                 <NotificationBell />
               </div>

@@ -106,7 +106,7 @@ export function AppSidebar() {
             style={{ background: "var(--gradient-brand)" }}
           >
             <div className="rounded-[10px] bg-sidebar p-1">
-              <CareCentralLogo size={collapsed ? 28 : 32} />
+              <CareCentralLogo size={collapsed ? 36 : 48} />
             </div>
           </div>
           {!collapsed && (

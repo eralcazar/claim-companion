@@ -44,7 +44,8 @@ export function BottomNav() {
               <img
                 src={kariAvatar}
                 alt=""
-                className="h-11 w-11 rounded-full object-cover"
+                className="h-14 w-14 rounded-full object-cover"
+                style={{ objectPosition: "center top" }}
               />
             </span>
           </span>
