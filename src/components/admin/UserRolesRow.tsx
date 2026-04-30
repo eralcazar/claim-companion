@@ -6,7 +6,7 @@ import { toast } from "@/hooks/use-toast";
 import { ALL_ROLES, type AppRoleLite } from "@/lib/features";
 import { useQueryClient } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, Trash2, ScanLine, Package } from "lucide-react";
+import { CheckCircle2, Trash2, ScanLine, Package, Sparkles } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +20,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useAdminGrantOcr } from "@/hooks/useOcrQuota";
+import { useAdminGrantAiTokens } from "@/hooks/useAiTokenPacks";
 import { AssignPlanDialog } from "@/components/admin/AssignPlanDialog";
 import {
   AlertDialog,
@@ -69,6 +70,9 @@ export function UserRolesRow({
   isSelf,
   ocrSubscription = 0,
   ocrAddon = 0,
+  kariBalance = 0,
+  kariGranted = 0,
+  kariConsumed = 0,
 }: {
   user: UserWithRoles;
   brokers: BrokerOption[];
@@ -76,6 +80,9 @@ export function UserRolesRow({
   isSelf: boolean;
   ocrSubscription?: number;
   ocrAddon?: number;
+  kariBalance?: number;
+  kariGranted?: number;
+  kariConsumed?: number;
 }) {
   const qc = useQueryClient();
   const [pending, setPending] = useState<AppRoleLite | null>(null);
@@ -86,7 +93,10 @@ export function UserRolesRow({
   const [grantOpen, setGrantOpen] = useState(false);
   const [grantPages, setGrantPages] = useState<number>(10);
   const [assignPlanOpen, setAssignPlanOpen] = useState(false);
+  const [grantTokensOpen, setGrantTokensOpen] = useState(false);
+  const [grantTokens, setGrantTokens] = useState<number>(1000);
   const grantOcr = useAdminGrantOcr();
+  const grantAiTokens = useAdminGrantAiTokens();
 
   const handleDelete = async () => {
     setDeleting(true);
