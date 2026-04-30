@@ -35,7 +35,8 @@ export function KariFloatingButton() {
           <img
             src={kariAvatar}
             alt="Kari"
-            className="h-12 w-12 rounded-full object-cover"
+            className="h-16 w-16 rounded-full object-cover"
+            style={{ objectPosition: "center top" }}
           />
           <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-[10px] font-bold rounded-full px-1.5 py-0.5 flex items-center gap-0.5 shadow">
             <Sparkles className="h-2.5 w-2.5" />

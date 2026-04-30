@@ -54,7 +54,12 @@ export default function Kari() {
     <div className="container max-w-6xl py-4 space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-3">
-          <img src={kariAvatar} alt="Kari" className="h-12 w-12 rounded-full object-cover" />
+          <img
+            src={kariAvatar}
+            alt="Kari"
+            className="h-20 w-20 rounded-full object-cover ring-2 ring-primary/30"
+            style={{ objectPosition: "center top" }}
+          />
           <div>
             <h1 className="text-2xl font-bold flex items-center gap-2">Kari</h1>
             <p className="text-sm text-muted-foreground">Asistente de salud con IA · No sustituye consulta médica</p>

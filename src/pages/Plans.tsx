@@ -80,7 +80,7 @@ export default function Plans() {
                   ${(cents / 100).toFixed(2)} <span className="text-sm font-normal text-muted-foreground">/{billing === "mensual" ? "mes" : "año"}</span>
                 </div>
                 <ul className="space-y-1 text-sm">
-                  {ocrPages > 0 && (
+                  {ocrPages > 0 && cents > 0 && (
                     <li className="flex items-center gap-2">
                       <Sparkles className="h-4 w-4 text-primary" />
                       {ocrPages} escaneos OCR / mes
