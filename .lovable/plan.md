@@ -1,97 +1,52 @@
-## Plan: Rebrand a CareCentral + Acceso universal a Planes y Paquetes OCR
+## Plan: Rediseño del Login con nuevo logo y composición de Kari
 
-Dos entregas en una sola implementación.
+### Preview ASCII de la composición propuesta
 
----
-
-## PARTE A — Rebrand visual a CareCentral
-
-### Tokens (`src/index.css`)
-- Reemplazar paleta 4T por:
-  - `--primary: 172 76% 40%` (#14B8A6) + `--primary-foreground: 0 0% 100%`
-  - `--background: 210 40% 98%` (#F8FAFC), `--foreground: 222 47% 11%` (navy #0F172A)
-  - `--accent: 187 85% 53%` (cyan #22D3EE)
-  - `--success: 142 71% 45%` (#22C55E), `--warning: 38 92% 50%`, `--destructive: 0 84% 60%`
-  - `--radius: 1rem` (16px)
-  - `--sidebar` navy oscuro con acento teal
-  - Variantes dark coherentes
-- Reemplazar import de Sora+Manrope por **Inter** (400/500/600/700/800)
-
-### Tipografía (`tailwind.config.ts`)
-- `fontFamily.heading` y `fontFamily.body` ambos = `["Inter", "sans-serif"]`
-
-### Branding
-- **Crear** `src/components/brand/CareCentralLogo.tsx`:
-  - Logo SVG: círculo gradient teal con cruz blanca + arco "mano" abrazando
-  - Wordmark "Care" navy + "Central" teal
-  - Tamaños sm/md/lg/xl
-- **Crear** `src/assets/kari.png` (copiar la imagen subida al proyecto)
-- `index.html`: título "CareCentral · Tu salud, conectada contigo"
-
-### Login (`src/pages/Login.tsx`) — según preview aprobado
-- Header: logo + wordmark + tagline "Tu salud, conectada contigo ♥"
-- Hero: Kari de cuerpo completo a la izquierda + bloque derecho con "¡Bienvenido!" + 3 cards glass (Seguro/Rápido/Cercano)
-- Card de login: solo botones Google + Apple (estilo blanco con sombra)
-- Footer Términos + Política
-- Decoraciones suaves (cruces y halos teal/cyan)
-
-### Header (`src/components/AppLayout.tsx`)
-- Reemplazar texto "Aplicación del Bienestar / 4T" por logo CareCentral compacto + "CareCentral"
-- Tagline: "Tu salud, conectada contigo"
-
-### Limpieza de identidad anterior
-Reemplazar "Bienestar Ciudadano / 4T / Aplicación del Bienestar" por "CareCentral" en:
-- `src/components/claims/forms/generateFormPDF.ts`
-- `src/components/claims/generateClaimPDF.ts`
-- `src/components/estudios/estudioPdf.ts`
-- `src/pages/admin/AccessManager.tsx`
-
-### Memoria
-Actualizar `mem://index.md` y `mem://design/tokens`:
-- App name: CareCentral
-- Paleta: teal #14B8A6 + navy #0F2A4A + cyan #22D3EE
-- Fuente: Inter
-- Tagline: "Tu salud, conectada contigo"
-- Eliminar refs a 4T / Bienestar / MediClaim
-
----
-
-## PARTE B — Acceso universal a Planes y Paquetes OCR (Stripe)
-
-### Diagnóstico
-- ✅ Edge functions existen: `subscription-create-checkout`, `ocr-pack-checkout`, `payments-webhook`, `create-portal-session`
-- ✅ Tablas: `subscription_plans`, `ocr_packs`, `subscriptions`, `ocr_quotas`
-- ✅ Página `/planes` y `/suscripcion` ya programadas con embedded checkout
-- ✅ Stripe sandbox configurado (`STRIPE_SANDBOX_API_KEY`, `PAYMENTS_SANDBOX_WEBHOOK_SECRET`)
-- ✅ Paquetes OCR tienen `stripe_price_id` válido
-- ❌ Único plan activo "PLAN INICIAL" NO tiene `stripe_price_id_mensual/anual` → no se puede cobrar
-- ❌ `/planes` y `/suscripcion` **no aparecen** en `AppSidebar` ni `BottomNav` para pacientes
-- ❌ No hay banner "Sin escaneos / Suscríbete" donde cuenta
+```
+┌─────────────────────────────────────────────────────────────┐
+│  [LOGO 3D CareCentral]   "Tu salud, conectada contigo"      │
+│                                                              │
+│  ┌──────────────────────┐    ┌────────────────────────────┐ │
+│  │                      │    │   Bienvenido               │ │
+│  │   ╭───────────╮      │    │   Inicia sesión            │ │
+│  │   │ ¡Hola!    │◀──── │    │                            │ │
+│  │   │ Soy Kari 👋│ ⬤   │    │   [G] Continuar Google     │ │
+│  │   ╰───────────╯ /│\  │    │   [] Continuar Apple      │ │
+│  │                 / │ \ │    │                            │ │
+│  │  ════════════════════│    │   Términos · Privacidad    │ │
+│  │   Tu salud, en un   │    └────────────────────────────┘ │
+│  │   solo lugar        │     ⭐ 5 escaneos OCR gratis       │
+│  │  [piernas como      │                                    │
+│  │   silueta de fondo, │                                    │
+│  │   blur + opacity]   │                                    │
+│  └──────────────────────┘                                    │
+└─────────────────────────────────────────────────────────────┘
+```
 
 ### Cambios
 
-**1. Crear productos/precios reales en Stripe** vía `payments--batch_create_product` (sandbox + auto-sync a live al publicar):
-- `carecentral_basico` — Plan Básico — $99 MXN/mes y $990 MXN/año — 50 escaneos OCR/mes
-- `carecentral_pro` — Plan Pro — $199 MXN/mes y $1990 MXN/año — 200 escaneos OCR/mes
-- `carecentral_familiar` — Plan Familiar — $349 MXN/mes y $3490 MXN/año — 500 escaneos OCR/mes
+**1. Nuevo logo CareCentral (3D adjunto)**
+- Copiar `user-uploads://image-17.png` recortado a `src/assets/carecentral-logo-3d.png` (solo el logo + wordmark, sin el badge "05" ni la tagline duplicada — usaré el PNG completo y lo posicionaré para mostrar solo logo+nombre).
+- Actualizar `src/components/brand/CareCentralLogo.tsx`: reemplazar el SVG actual por `<img>` del PNG 3D. Mantener props `size` y `withText` (cuando `withText=false` recorto solo el ícono; cuando `withText=true` muestro logo+wordmark integrado del PNG).
 
-**2. Migración**: Insertar/actualizar `subscription_plans` con esos `stripe_price_id_mensual` / `stripe_price_id_anual` y `ocr_pages_per_month`. Marcar el actual "PLAN INICIAL" como `activo=false`.
+**2. Recomposición del hero de Kari (`src/pages/Login.tsx`)**
+Estructura en capas (z-index) dentro de la columna izquierda:
+- **Capa 0 (fondo)**: silueta de las piernas de Kari — misma imagen `kari-avatar.png` posicionada absolute, alineada al bottom, con `opacity: 0.15`, `filter: blur(8px)`, escala mayor. Solo se ve la mitad inferior.
+- **Capa 1 (tipografía)**: el bloque de texto "Tu salud, en un solo lugar" + descripción + 3 cards glass se mueve hacia arriba para que su borde superior quede aproximadamente a la altura de la cintura de Kari (ocupa el espacio que antes estaba vacío debajo del avatar).
+- **Capa 2 (Kari recortada)**: `kari-avatar.png` con `clip-path: inset(0 0 45% 0)` o usando un wrapper con `overflow:hidden` + `mask-image: linear-gradient(to bottom, black 55%, transparent 100%)` para que se desvanezca hacia abajo a la altura de la cintura.
+- **Capa 3 (burbuja de chat)**: el badge "¡Hola! Soy Kari 👋" se reposiciona como burbuja de conversación (`rounded-2xl` con cola triangular vía pseudo-element) flotando a la derecha de la cabeza de Kari (`absolute top-[10%] right-[5%]` aprox), no debajo de ella.
 
-**3. Navegación accesible para todos los usuarios**:
-- `AppSidebar`: agregar items "Planes" (`/planes`, icono `Sparkles`) y "Mi suscripción" (`/suscripcion`, icono `CreditCard`) bajo `mainItems` (visibles para paciente/broker/médico)
-- `BottomNav` (mobile): reemplazar uno de los tabs existentes por "Planes" o agregar un menú "Más" — propuesta concreta: añadir item "Planes" (5 → 6 tabs no cabe bien, así que reemplazo "Reclamos" por dropdown o muevo "Reclamos" al sidebar largo). Decisión: **dejar BottomNav como está** y exponer Planes/Suscripción solo en sidebar desktop + en menú de perfil mobile (link nuevo en `Profile.tsx`)
+**3. Header del Login**
+- Reemplazar el `<CareCentralLogo size={48} withText />` actual por el nuevo logo 3D más prominente (≈ 56px) seguido del tagline en una línea: "Tu salud, conectada contigo".
 
-**4. UX de upsell**:
-- En `Estudios` (cuando intenten OCR sin créditos): mostrar banner "Sin escaneos disponibles → Comprar paquete" con link directo a `/planes#paquetes`
-- En `Profile.tsx`: tarjeta resumen con plan actual + saldo OCR + botones "Ver planes" y "Mi suscripción"
+### Detalles técnicos
 
-**5. Verificar edge functions** (`supabase--curl_edge_functions` con auth real) que `subscription-create-checkout` y `ocr-pack-checkout` devuelvan `clientSecret` correctamente con los nuevos `price_id`.
+- Archivos editados:
+  - `src/components/brand/CareCentralLogo.tsx` — usa `<img src={logoPng}>` en lugar de SVG inline.
+  - `src/pages/Login.tsx` — nueva estructura de capas en la columna izquierda con `relative`/`absolute` positioning, mask-image en CSS para fundido de Kari, y burbuja con cola.
+- Archivo creado:
+  - `src/assets/carecentral-logo-3d.png` — copia del upload.
+- Sin cambios en BD, rutas, auth ni edge functions.
 
-**6. Banner de modo prueba** (`PaymentTestModeBanner` ya existe en el repo) — verificar que se monta en `AppLayout` para que en preview se vea claramente que son pagos sandbox.
-
-### Fuera de alcance
-- Stripe LIVE (se activa al publicar, requiere verificación de cuenta)
-- Personalización de portal Stripe (logo, colores) — se hace en dashboard Stripe
-- Cambios en lógica de roles, RLS o BD más allá del seed de planes
-
-¿Apruebas para implementar todo?
+### Confirmación
+Después de aplicar, tomaré un `browser--screenshot` de `/login` para verificar que la composición coincide con el ASCII de arriba antes de cerrar la tarea.
