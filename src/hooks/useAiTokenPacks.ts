@@ -136,3 +136,45 @@ export function useAdminGrantAiTokens() {
     onError: (e: any) => toast.error(e.message ?? "No se pudo acreditar tokens"),
   });
 }
+
+// ===== OCR Settings (modelo activo para escaneo de documentos) =====
+
+export const OCR_MODEL_OPTIONS: { value: string; label: string; inputMicros: number; outputMicros: number; note: string }[] = [
+  { value: "google/gemini-2.5-flash-lite", label: "Gemini 2.5 Flash Lite", inputMicros: 10, outputMicros: 80, note: "El más económico (formularios simples)" },
+  { value: "google/gemini-2.5-flash", label: "Gemini 2.5 Flash", inputMicros: 30, outputMicros: 250, note: "Balanceado, recomendado" },
+  { value: "google/gemini-3-flash-preview", label: "Gemini 3 Flash (preview)", inputMicros: 30, outputMicros: 250, note: "Última generación" },
+  { value: "google/gemini-2.5-pro", label: "Gemini 2.5 Pro", inputMicros: 1250, outputMicros: 5000, note: "Premium, máxima precisión (actual)" },
+];
+
+export function useOcrActiveModel() {
+  return useQuery({
+    queryKey: ["ai_settings", "ocr_active_model"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("ai_settings")
+        .select("value")
+        .eq("key", "ocr_active_model")
+        .maybeSingle();
+      if (error) throw error;
+      const v = data?.value;
+      return (typeof v === "string" ? v : "google/gemini-2.5-pro") as string;
+    },
+  });
+}
+
+export function useSetOcrActiveModel() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (model: string) => {
+      const { error } = await supabase
+        .from("ai_settings")
+        .upsert({ key: "ocr_active_model", value: model as any }, { onConflict: "key" });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["ai_settings", "ocr_active_model"] });
+      toast.success("Modelo de OCR actualizado");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+}
