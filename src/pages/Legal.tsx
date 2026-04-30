@@ -1,8 +1,9 @@
 import { useEffect } from "react";
-import { useLocation } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScrollText, ShieldCheck } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { ArrowLeft, ScrollText, ShieldCheck } from "lucide-react";
 
 export default function Legal() {
   const location = useLocation();
@@ -14,6 +15,12 @@ export default function Legal() {
 
   return (
     <div className="container mx-auto max-w-4xl px-4 py-8">
+      <Button asChild variant="ghost" size="sm" className="mb-4">
+        <Link to="/">
+          <ArrowLeft className="h-4 w-4 mr-1" />
+          Volver al menú principal
+        </Link>
+      </Button>
       <header className="mb-6">
         <h1 className="font-heading text-3xl font-bold tracking-tight text-foreground">
           Aviso legal
