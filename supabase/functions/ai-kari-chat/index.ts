@@ -34,7 +34,23 @@ const MODEL_COSTS_USD_PER_TOKEN_MICROS: Record<string, { input: number; output: 
   "google/gemini-2.5-pro": { input: 1250, output: 5000 },
 };
 
-const ACTIVE_MODEL = "google/gemini-3-flash-preview";
+const DEFAULT_MODEL = "google/gemini-3-flash-preview";
+
+async function getActiveModel(admin: ReturnType<typeof createClient>): Promise<string> {
+  try {
+    const { data } = await admin
+      .from("ai_settings")
+      .select("value")
+      .eq("key", "kari_active_model")
+      .maybeSingle();
+    const v = data?.value;
+    const model = typeof v === "string" ? v : null;
+    if (model && MODEL_COSTS_USD_PER_TOKEN_MICROS[model]) return model;
+    return DEFAULT_MODEL;
+  } catch {
+    return DEFAULT_MODEL;
+  }
+}
 
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -71,6 +87,7 @@ Deno.serve(async (req) => {
     let conversationId: string | null = body?.conversation_id ?? null;
 
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
+    const ACTIVE_MODEL = await getActiveModel(admin);
 
     // Verificar límite mensual por rol/paquete
     const { data: limitInfo } = await admin.rpc("check_kari_monthly_limit", { _user_id: user.id });

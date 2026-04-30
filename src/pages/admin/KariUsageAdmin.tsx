@@ -3,12 +3,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Sparkles, Download, Users, DollarSign, TrendingUp, Activity } from "lucide-react";
+import { Sparkles, Download, Users, DollarSign, TrendingUp, Activity, Cpu } from "lucide-react";
 import {
   useKariUsageSummary, useKariUsageByUser, useKariUsageDaily,
 } from "@/hooks/useKariUsageAdmin";
 import { exportKariUsageCSV } from "@/lib/exportKariUsageCSV";
 import { KariMonthlyLimitsEditor } from "@/components/admin/KariMonthlyLimitsEditor";
+import { useKariActiveModel, useSetKariActiveModel, KARI_MODEL_OPTIONS } from "@/hooks/useAiTokenPacks";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid,
 } from "recharts";
@@ -33,6 +35,9 @@ export default function KariUsageAdmin() {
   const { data: rows = [] } = useKariUsageByUser(fromIso, toIso, 200, 0);
   const { data: daily = [] } = useKariUsageDaily(fromIso, toIso);
   const [search, setSearch] = useState("");
+  const { data: activeModel } = useKariActiveModel();
+  const setModel = useSetKariActiveModel();
+  const modelMeta = KARI_MODEL_OPTIONS.find((m) => m.value === activeModel);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -69,6 +74,41 @@ export default function KariUsageAdmin() {
           <Button variant="outline" onClick={() => exportKariUsageCSV(filtered, fromIso, toIso)}>
             <Download className="h-4 w-4 mr-1" />Exportar CSV
           </Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <Cpu className="h-5 w-5 text-primary" />
+            <h2 className="font-semibold text-sm">Modelo de IA activo</h2>
+          </div>
+          <div className="grid md:grid-cols-2 gap-3 items-end">
+            <div>
+              <Label className="text-xs">Modelo usado por Kari</Label>
+              <Select
+                value={activeModel}
+                onValueChange={(v) => setModel.mutate(v)}
+                disabled={setModel.isPending}
+              >
+                <SelectTrigger className="h-9"><SelectValue placeholder="Seleccionar…" /></SelectTrigger>
+                <SelectContent>
+                  {KARI_MODEL_OPTIONS.map((m) => (
+                    <SelectItem key={m.value} value={m.value}>
+                      {m.label} — {m.note}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {modelMeta && (
+              <div className="text-xs text-muted-foreground space-y-0.5">
+                <div><span className="font-medium text-foreground">Costo input:</span> {modelMeta.inputMicros} µUSD/token (~${(modelMeta.inputMicros / 1_000_000 * 1000).toFixed(4)} USD/1k)</div>
+                <div><span className="font-medium text-foreground">Costo output:</span> {modelMeta.outputMicros} µUSD/token (~${(modelMeta.outputMicros / 1_000_000 * 1000).toFixed(4)} USD/1k)</div>
+                <p>El cambio aplica al siguiente mensaje enviado a Kari.</p>
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
 

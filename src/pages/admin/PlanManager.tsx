@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { usePlans, useUpsertPlan, useDeletePlan, usePlanFeatures, useTogglePlanFeature, type SubscriptionPlan } from "@/hooks/usePlans";
 import { useOcrPacks, useUpsertOcrPack, useDeleteOcrPack, useSyncOcrPack, type OcrPack } from "@/hooks/useOcrQuota";
+import { useAiTokenPacks, useUpsertAiTokenPack, useDeleteAiTokenPack, useSyncAiTokenPack, type AiTokenPack } from "@/hooks/useAiTokenPacks";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Layers, Plus, Edit, Trash2, RefreshCw, ScanLine } from "lucide-react";
+import { Layers, Plus, Edit, Trash2, RefreshCw, ScanLine, Sparkles } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AVAILABLE_FEATURES } from "@/lib/features";
 import { supabase } from "@/integrations/supabase/client";
@@ -27,6 +28,10 @@ export default function PlanManager() {
   const upsertPack = useUpsertOcrPack();
   const deletePack = useDeleteOcrPack();
   const syncPack = useSyncOcrPack();
+  const { data: aiPacks = [], isLoading: loadingAiPacks } = useAiTokenPacks({ onlyActive: false });
+  const upsertAiPack = useUpsertAiTokenPack();
+  const deleteAiPack = useDeleteAiTokenPack();
+  const syncAiPack = useSyncAiTokenPack();
 
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Partial<SubscriptionPlan> | null>(null);
@@ -34,6 +39,8 @@ export default function PlanManager() {
   const [syncing, setSyncing] = useState<string | null>(null);
   const [packOpen, setPackOpen] = useState(false);
   const [packEditing, setPackEditing] = useState<Partial<OcrPack> | null>(null);
+  const [aiPackOpen, setAiPackOpen] = useState(false);
+  const [aiPackEditing, setAiPackEditing] = useState<Partial<AiTokenPack> | null>(null);
 
   const startNew = () => {
     setEditing({ nombre: "", descripcion: "", precio_mensual_centavos: 0, precio_anual_centavos: 0, moneda: "mxn", activo: true, orden: plans.length, ocr_pages_per_month: 0 });
@@ -74,6 +81,7 @@ export default function PlanManager() {
         <TabsList>
           <TabsTrigger value="planes"><Layers className="h-4 w-4 mr-1" />Suscripciones</TabsTrigger>
           <TabsTrigger value="ocr"><ScanLine className="h-4 w-4 mr-1" />Paquetes OCR</TabsTrigger>
+          <TabsTrigger value="kari"><Sparkles className="h-4 w-4 mr-1" />Paquetes Kari (IA)</TabsTrigger>
         </TabsList>
 
         <TabsContent value="planes" className="space-y-4">
@@ -185,6 +193,58 @@ export default function PlanManager() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        <TabsContent value="kari" className="space-y-4">
+          <div className="flex justify-end">
+            <Button onClick={() => { setAiPackEditing({ nombre: "", descripcion: "", tokens: 10000, precio_centavos: 0, moneda: "mxn", activo: true, orden: aiPacks.length }); setAiPackOpen(true); }}>
+              <Plus className="h-4 w-4 mr-1" />Nuevo paquete Kari
+            </Button>
+          </div>
+          <Card>
+            <CardContent className="p-0 overflow-x-auto">
+              {loadingAiPacks ? (
+                <div className="p-8 flex justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" /></div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Paquete</TableHead>
+                      <TableHead className="text-right">Tokens</TableHead>
+                      <TableHead className="text-right">Precio</TableHead>
+                      <TableHead>Estado</TableHead>
+                      <TableHead>Cobros</TableHead>
+                      <TableHead></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {aiPacks.map((p) => (
+                      <TableRow key={p.id}>
+                        <TableCell>
+                          <p className="font-medium">{p.nombre}</p>
+                          {p.descripcion && <p className="text-xs text-muted-foreground">{p.descripcion}</p>}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">{p.tokens.toLocaleString("es-MX")}</TableCell>
+                        <TableCell className="text-right tabular-nums">${(p.precio_centavos / 100).toFixed(2)} {p.moneda?.toUpperCase()}</TableCell>
+                        <TableCell><Badge variant={p.activo ? "default" : "secondary"}>{p.activo ? "Activo" : "Inactivo"}</Badge></TableCell>
+                        <TableCell>{p.stripe_product_id ? <Badge variant="outline">OK</Badge> : <Badge variant="secondary">Pendiente</Badge>}</TableCell>
+                        <TableCell className="text-right space-x-1">
+                          <Button size="sm" variant="outline" onClick={() => syncAiPack.mutate({ pack_id: p.id, environment: getStripeEnvironment() as "sandbox" | "live" })} disabled={syncAiPack.isPending}>
+                            <RefreshCw className={`h-3 w-3 mr-1 ${syncAiPack.isPending ? "animate-spin" : ""}`} />Publicar
+                          </Button>
+                          <Button size="icon" variant="ghost" onClick={() => { setAiPackEditing(p); setAiPackOpen(true); }}><Edit className="h-4 w-4" /></Button>
+                          <Button size="icon" variant="ghost" onClick={() => deleteAiPack.mutate(p.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {aiPacks.length === 0 && (
+                      <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground p-8">Sin paquetes de Kari. Creá el primero.</TableCell></TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
 
       <Dialog open={open} onOpenChange={setOpen}>
@@ -268,6 +328,38 @@ export default function PlanManager() {
                 setPackOpen(false);
                 setPackEditing(null);
               }} disabled={upsertPack.isPending}>Guardar</Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={aiPackOpen} onOpenChange={setAiPackOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>{aiPackEditing?.id ? "Editar" : "Nuevo"} paquete de Kari (IA)</DialogTitle></DialogHeader>
+          {aiPackEditing && (
+            <div className="space-y-3">
+              <div><Label>Nombre</Label><Input value={aiPackEditing.nombre || ""} onChange={(e) => setAiPackEditing({ ...aiPackEditing, nombre: e.target.value })} /></div>
+              <div><Label>Descripción</Label><Textarea rows={2} value={aiPackEditing.descripcion || ""} onChange={(e) => setAiPackEditing({ ...aiPackEditing, descripcion: e.target.value })} /></div>
+              <div className="grid grid-cols-2 gap-3">
+                <div><Label>Tokens</Label>
+                  <Input type="number" value={aiPackEditing.tokens ?? 0}
+                    onChange={(e) => setAiPackEditing({ ...aiPackEditing, tokens: Math.max(1, parseInt(e.target.value || "0", 10)) })} />
+                  <p className="text-[11px] text-muted-foreground mt-1">~400 tokens ≈ 1 mensaje breve.</p>
+                </div>
+                <div><Label>Precio (MXN)</Label>
+                  <Input type="number" step="0.01" value={(aiPackEditing.precio_centavos ?? 0) / 100}
+                    onChange={(e) => setAiPackEditing({ ...aiPackEditing, precio_centavos: Math.round(parseFloat(e.target.value || "0") * 100) })} /></div>
+                <div><Label>Orden</Label><Input type="number" value={aiPackEditing.orden ?? 0} onChange={(e) => setAiPackEditing({ ...aiPackEditing, orden: Number(e.target.value) })} /></div>
+                <div className="flex items-end gap-2">
+                  <Switch checked={!!aiPackEditing.activo} onCheckedChange={(v) => setAiPackEditing({ ...aiPackEditing, activo: v })} /><Label>Activo</Label>
+                </div>
+              </div>
+              <Button className="w-full" onClick={async () => {
+                if (!aiPackEditing.nombre) { toast.error("Falta el nombre"); return; }
+                await upsertAiPack.mutateAsync(aiPackEditing);
+                setAiPackOpen(false);
+                setAiPackEditing(null);
+              }} disabled={upsertAiPack.isPending}>Guardar</Button>
             </div>
           )}
         </DialogContent>
