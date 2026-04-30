@@ -1,85 +1,41 @@
-# Unificar paquetes Kari en "Planes y paquetes" + selector de modelo IA
+## Objetivo
 
-## Qué se va a construir
+Permitir al admin asignar (regalar) tokens de Kari (IA) directamente desde el **Gestor de Usuarios** (`/admin/usuarios`), sin pasar por Stripe, similar al flujo actual de "Regalar escaneos OCR".
 
-### 1. Nuevo tab "Paquetes Kari (IA)" en `/admin/planes`
-La página `PlanManager.tsx` hoy tiene 2 tabs (**Suscripciones** y **Paquetes OCR**). Se agrega un tercer tab **Paquetes Kari** con la misma estética y patrón:
+## Cambios
 
-- Tabla con: Nombre · Tokens · Precio · Estado · Acciones (editar/borrar/sincronizar con cobros)
-- Botón "Nuevo paquete Kari"
-- Diálogo de edición con: nombre, descripción, tokens, precio (MXN), orden, activo
-- Botón "Sync" por fila para publicar el paquete en cobros (Stripe), igual que los OCR
+### 1. Nueva Edge Function: `admin-grant-ai-tokens`
 
-### 2. Hook nuevo `useAiTokenPacksAdmin` (paralelo a `useOcrPacks`)
-- `useAiTokenPacks({ onlyActive })` — listar
-- `useUpsertAiTokenPack` — crear/editar
-- `useDeleteAiTokenPack` — borrar
-- `useSyncAiTokenPack` — invocar edge function `sync-ai-token-pack` para publicar en cobros
+Archivo: `supabase/functions/admin-grant-ai-tokens/index.ts`
 
-La tabla `ai_token_packs` **ya existe** con todas las columnas necesarias (incluye `stripe_product_id` y `stripe_price_id`), no se requiere migración de schema.
+- Verifica que el llamador sea `admin` (mismo patrón que `admin-grant-ocr`).
+- Recibe `{ user_id, tokens }`, valida `tokens > 0`.
+- Llama al RPC existente `add_ai_tokens(_user_id, _tokens)` con service role (suma al balance + `lifetime_granted`).
+- Inserta un registro en `ai_token_purchases` con `status='granted'`, `amount_cents=0`, `environment='sandbox'`, `pack_id=null` para auditoría/historial.
 
-### 3. Edge function `sync-ai-token-pack` (nueva)
-Análoga a `sync-ocr-pack`: crea/actualiza producto + precio one-time en Stripe y guarda los IDs en `ai_token_packs`. Usa `createStripeClient(env)` del shared util.
+### 2. UI en `UserRolesRow.tsx`
 
-### 4. Selector de modelo IA de Kari (admin-only)
-- Nueva tabla mínima `ai_settings` (key/value singleton) o columna en `ai_token_monthly_limits`. Más limpio: tabla nueva `ai_settings` con un solo row.
-- Card en `/admin/kari-uso` (KariUsageAdmin.tsx) titulada **"Modelo de IA activo"** con un `<Select>` que permite elegir entre:
-  - `google/gemini-2.5-flash-lite` — Económico
-  - `google/gemini-3-flash-preview` — Recomendado (actual)
-  - `google/gemini-2.5-flash` — Estable
-  - `google/gemini-2.5-pro` — Premium (40× más caro)
-- Muestra al lado el costo µUSD/token input y output del modelo seleccionado.
-- La edge function `ai-kari-chat` lee `ACTIVE_MODEL` desde `ai_settings` (con fallback al hardcoded actual si la tabla está vacía).
+- Nueva columna en la tabla **"Tokens Kari"** (junto a "Escaneos OCR") mostrando un Badge con el balance actual del usuario y tooltip con `lifetime_granted` / `lifetime_consumed`.
+- Nuevo botón de acción con ícono `Sparkles` (Kari) que abre un diálogo **"Regalar tokens de Kari"** con input numérico (default 1000, paso 500) y presets rápidos (1k / 5k / 10k).
+- Al confirmar, invoca la edge function y refresca `users_with_roles`.
 
-### 5. Card de "Margen" en `/admin/kari-uso`
-Se enriquece el resumen existente con un cálculo de utilidad real:
-- **Ingresos del periodo** (de `ai_token_purchases` ya existente)
-- **Costo IA real** (de `ai_token_usage_log.cost_usd_micros` ya existente)
-- **Margen bruto $** y **Margen %**
+### 3. Datos en `UserManager.tsx`
 
-Ya tienes los datos crudos — solo falta exponerlos.
+- Ampliar el query `users_with_roles` para incluir `ai_token_balances` (`balance`, `lifetime_granted`, `lifetime_consumed`) por usuario, igual que se hace hoy con `ocr_quotas`.
+- Pasar `kariBalance` al `UserRolesRow` como prop.
+- Agregar la nueva columna `<TableHead>Tokens Kari</TableHead>` y actualizar `colCount`.
 
-### 6. Limpieza
-- Quitar el link "Tokens Kari" del menú admin si era una página separada de gestión (no la del usuario `/kari/tokens` que es para comprar). Verificar que no exista una página huérfana.
+### 4. Hook auxiliar
+
+Crear `useAdminGrantAiTokens` en `src/hooks/useAiTokenPacks.ts` (o nuevo archivo) que invoque `supabase.functions.invoke("admin-grant-ai-tokens", ...)` e invalide `users_with_roles` + `kari_balance`.
 
 ## Detalles técnicos
 
-**Archivos a crear:**
-- `src/hooks/useAiTokenPacks.ts` — CRUD + sync hooks
-- `supabase/functions/sync-ai-token-pack/index.ts` — Stripe upsert para paquetes Kari
-
-**Archivos a modificar:**
-- `src/pages/admin/PlanManager.tsx` — agregar tab "Paquetes Kari" replicando la estructura del tab OCR
-- `src/pages/admin/KariUsageAdmin.tsx` — agregar card "Modelo de IA activo" + card "Margen"
-- `supabase/functions/ai-kari-chat/index.ts` — leer modelo desde `ai_settings` en vez de constante hardcoded
-- `supabase/config.toml` — registrar nueva función si requiere config
-
-**Migración SQL:**
-```sql
-create table public.ai_settings (
-  key text primary key,
-  value jsonb not null,
-  updated_at timestamptz default now()
-);
-alter table public.ai_settings enable row level security;
-create policy "admin manage ai_settings" on public.ai_settings
-  for all to authenticated
-  using (public.has_role(auth.uid(),'admin'))
-  with check (public.has_role(auth.uid(),'admin'));
-create policy "anyone read ai_settings" on public.ai_settings
-  for select to authenticated using (true);
-insert into public.ai_settings(key,value) values
-  ('kari_active_model','"google/gemini-3-flash-preview"'::jsonb);
-```
-
-## Lo que NO se cambia
-
-- **No se modifica el modelo activo automáticamente.** Sigue `gemini-3-flash-preview`. Tú decides cuándo cambiarlo desde el nuevo selector.
-- **No se cambian los precios de los 3 paquetes existentes** (Mini/Plus/Pro). Solo se agrega la UI para administrarlos.
-- **No se toca** la lógica de descuento de tokens ni de límite mensual — siguen funcionando igual.
+- Reutilizamos el RPC `public.add_ai_tokens` que ya existe (atomic upsert sobre `ai_token_balances`).
+- El registro en `ai_token_purchases` con `status='granted'` permite que aparezca en el historial de compras de Kari del usuario (ya consultado por `useMyKariPurchases`).
+- No requiere cambios de schema ni nuevas RLS — el grant lo hace la edge function con service role.
+- La columna nueva solo se muestra para usuarios con feature `kari_tokens` activa (todos excepto laboratorio/farmacia), pero por simplicidad se muestra siempre y el balance será 0 si no aplica.
 
 ## Resultado esperado
 
-- Admin entra a **/admin/planes** y ve 3 tabs: Suscripciones · Paquetes OCR · **Paquetes Kari** — todo en un solo lugar.
-- Admin entra a **/admin/kari-uso** y puede cambiar el modelo de IA con un dropdown, y ver utilidad neta del periodo.
-- Cero scripts SQL manuales para gestionar paquetes Kari.
+El admin entra a `/admin/usuarios`, ve el balance de tokens Kari de cada usuario, y con un clic puede regalar N tokens que se acreditan al instante en el balance del usuario y quedan registrados en el historial.

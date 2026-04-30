@@ -116,3 +116,23 @@ export function useSetKariActiveModel() {
     onError: (e: any) => toast.error(e.message),
   });
 }
+
+// ===== Admin: regalar tokens de Kari a un usuario =====
+export function useAdminGrantAiTokens() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { user_id: string; tokens: number }) => {
+      const { data, error } = await supabase.functions.invoke("admin-grant-ai-tokens", {
+        body: input,
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+    },
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: ["users_with_roles"] });
+      qc.invalidateQueries({ queryKey: ["kari_balance", vars.user_id] });
+      toast.success("Tokens de Kari acreditados");
+    },
+    onError: (e: any) => toast.error(e.message ?? "No se pudo acreditar tokens"),
+  });
+}

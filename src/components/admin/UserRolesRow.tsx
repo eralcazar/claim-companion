@@ -6,7 +6,7 @@ import { toast } from "@/hooks/use-toast";
 import { ALL_ROLES, type AppRoleLite } from "@/lib/features";
 import { useQueryClient } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, Trash2, ScanLine, Package } from "lucide-react";
+import { CheckCircle2, Trash2, ScanLine, Package, Sparkles } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +20,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useAdminGrantOcr } from "@/hooks/useOcrQuota";
+import { useAdminGrantAiTokens } from "@/hooks/useAiTokenPacks";
 import { AssignPlanDialog } from "@/components/admin/AssignPlanDialog";
 import {
   AlertDialog,
@@ -69,6 +70,9 @@ export function UserRolesRow({
   isSelf,
   ocrSubscription = 0,
   ocrAddon = 0,
+  kariBalance = 0,
+  kariGranted = 0,
+  kariConsumed = 0,
 }: {
   user: UserWithRoles;
   brokers: BrokerOption[];
@@ -76,6 +80,9 @@ export function UserRolesRow({
   isSelf: boolean;
   ocrSubscription?: number;
   ocrAddon?: number;
+  kariBalance?: number;
+  kariGranted?: number;
+  kariConsumed?: number;
 }) {
   const qc = useQueryClient();
   const [pending, setPending] = useState<AppRoleLite | null>(null);
@@ -86,7 +93,10 @@ export function UserRolesRow({
   const [grantOpen, setGrantOpen] = useState(false);
   const [grantPages, setGrantPages] = useState<number>(10);
   const [assignPlanOpen, setAssignPlanOpen] = useState(false);
+  const [grantTokensOpen, setGrantTokensOpen] = useState(false);
+  const [grantTokens, setGrantTokens] = useState<number>(1000);
   const grantOcr = useAdminGrantOcr();
+  const grantAiTokens = useAdminGrantAiTokens();
 
   const handleDelete = async () => {
     setDeleting(true);
@@ -252,6 +262,31 @@ export function UserRolesRow({
           );
         })()}
       </TableCell>
+      <TableCell className="text-center w-28">
+        {(() => {
+          const variant =
+            kariBalance === 0
+              ? "bg-destructive/15 text-destructive border-destructive/30"
+              : kariBalance < 500
+                ? "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30"
+                : "bg-accent/15 text-accent border-accent/30";
+          return (
+            <TooltipProvider delayDuration={200}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge variant="outline" className={`gap-1 ${variant} cursor-default`}>
+                    <Sparkles className="h-3 w-3" />
+                    {kariBalance.toLocaleString("es-MX")}
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent>
+                  Otorgados: {kariGranted.toLocaleString("es-MX")} · Consumidos: {kariConsumed.toLocaleString("es-MX")}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          );
+        })()}
+      </TableCell>
       <TableCell className="text-muted-foreground text-xs">{user.email || "—"}</TableCell>
       <TableCell className="text-right w-12">
         <div className="flex items-center justify-end gap-1">
@@ -272,6 +307,15 @@ export function UserRolesRow({
             onClick={() => setGrantOpen(true)}
           >
             <ScanLine className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-accent hover:bg-accent/10"
+            aria-label={`Regalar tokens de Kari a ${user.full_name}`}
+            onClick={() => setGrantTokensOpen(true)}
+          >
+            <Sparkles className="h-4 w-4" />
           </Button>
           {!isSelf && (
           <AlertDialog>
@@ -347,6 +391,61 @@ export function UserRolesRow({
           userId={user.user_id}
           userName={user.full_name}
         />
+
+        <Dialog open={grantTokensOpen} onOpenChange={setGrantTokensOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Regalar tokens de Kari</DialogTitle>
+              <DialogDescription>
+                Se sumarán al saldo de IA de <strong>{user.full_name}</strong>. Saldo actual:{" "}
+                <strong>{kariBalance.toLocaleString("es-MX")}</strong> tokens.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3">
+              <Label>Cantidad de tokens</Label>
+              <Input
+                type="number"
+                min={1}
+                step={500}
+                value={grantTokens}
+                onChange={(e) => setGrantTokens(Math.max(1, parseInt(e.target.value || "1", 10)))}
+              />
+              <div className="flex flex-wrap gap-2">
+                {[1000, 5000, 10000, 50000].map((n) => (
+                  <Button
+                    key={n}
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setGrantTokens(n)}
+                  >
+                    +{n.toLocaleString("es-MX")}
+                  </Button>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Referencia: ~200 tokens por mensaje corto de Kari.
+              </p>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setGrantTokensOpen(false)}>
+                Cancelar
+              </Button>
+              <Button
+                onClick={async () => {
+                  await grantAiTokens.mutateAsync({
+                    user_id: user.user_id,
+                    tokens: grantTokens,
+                  });
+                  setGrantTokensOpen(false);
+                }}
+                disabled={grantAiTokens.isPending || grantTokens <= 0}
+              >
+                Regalar tokens
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </TableCell>
     </TableRow>
   );
