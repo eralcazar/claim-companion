@@ -63,6 +63,7 @@ const adminItems: Item[] = [
   { title: "Accesos Paciente↔Personal", url: "/admin/accesos-pacientes", icon: UserCheck, feature: "patient_personnel_manager" },
   { title: "Productos tienda", url: "/admin/productos", icon: Package, feature: "product_manager" },
   { title: "Paquetes / Planes", url: "/admin/planes", icon: Layers, feature: "plan_manager" },
+  { title: "Uso de Kari", url: "/admin/kari-uso", icon: Sparkles, feature: "kari_admin" },
 ];
 
 export function AppSidebar() {
