@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -27,6 +27,26 @@ export function useKariConversations() {
       if (error) throw error;
       return data || [];
     },
+  });
+}
+
+export function useDeleteKariConversation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (conversationId: string) => {
+      // Cascade en FK borra automáticamente los mensajes asociados.
+      const { error } = await supabase
+        .from("ai_chat_conversations")
+        .delete()
+        .eq("id", conversationId);
+      if (error) throw error;
+      return conversationId;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["kari_conversations"] });
+      toast.success("Conversación eliminada");
+    },
+    onError: (e: any) => toast.error(e?.message ?? "No se pudo eliminar"),
   });
 }
 
