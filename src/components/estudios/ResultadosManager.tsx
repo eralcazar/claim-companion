@@ -24,6 +24,8 @@ import { IndicadoresBulkImportDialog } from "./IndicadoresBulkImportDialog";
 import { ResultadoEditDialog } from "./ResultadoEditDialog";
 import { useMyOcrQuota, totalQuota } from "@/hooks/useOcrQuota";
 import { Link } from "react-router-dom";
+import { OutOfQuotaDialog } from "@/components/ocr/OutOfQuotaDialog";
+import { countPdfPages } from "@/lib/pdf-pages";
 
 interface Props {
   estudio: any;
@@ -43,11 +45,21 @@ export function ResultadosManager({ estudio, canManage }: Props) {
   const [fecha, setFecha] = useState("");
   const [lab, setLab] = useState("");
   const [notas, setNotas] = useState("");
+  const [quotaDialog, setQuotaDialog] = useState<{ open: boolean; pages: number }>({
+    open: false,
+    pages: 0,
+  });
 
   const extractAfterUpload = useExtractIndicators();
 
   const submit = async () => {
     if (!file || !user) return;
+    // Preflight: contar páginas y verificar saldo OCR
+    const pages = await countPdfPages(file);
+    if (pages > remaining) {
+      setQuotaDialog({ open: true, pages });
+      return;
+    }
     const created = await upload.mutateAsync({
       estudioId: estudio.id, patientId: estudio.patient_id, file, uploadedBy: user.id,
       fechaResultado: fecha || undefined, laboratorio: lab || undefined, notas: notas || undefined,
@@ -66,6 +78,12 @@ export function ResultadosManager({ estudio, canManage }: Props) {
 
   return (
     <div className="space-y-3">
+      <OutOfQuotaDialog
+        open={quotaDialog.open}
+        onOpenChange={(v) => setQuotaDialog((s) => ({ ...s, open: v }))}
+        pagesRequired={quotaDialog.pages}
+        pagesAvailable={remaining}
+      />
       {canManage && (
         <div className="text-xs flex items-center justify-between gap-2 p-2 rounded-md border bg-muted/30">
           <span className="flex items-center gap-1">

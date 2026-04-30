@@ -7,6 +7,7 @@ import { useEstudios } from "@/hooks/useEstudios";
 import { EstudioCard } from "@/components/estudios/EstudioCard";
 import { EstudioForm } from "@/components/estudios/EstudioForm";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { OcrBalanceCard } from "@/components/ocr/OcrBalanceCard";
 
 export default function Estudios() {
   const { user, roles } = useAuth();
@@ -52,6 +53,8 @@ export default function Estudios() {
           </Button>
         )}
       </div>
+
+      <OcrBalanceCard />
 
       <div className="relative">
         <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />

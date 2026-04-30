@@ -33,25 +33,41 @@ export default function UserManager() {
   const { data: users, isLoading } = useQuery({
     queryKey: ["users_with_roles"],
     queryFn: async () => {
-      const [{ data: profiles, error: pErr }, { data: rolesData, error: rErr }] = await Promise.all([
+      const [
+        { data: profiles, error: pErr },
+        { data: rolesData, error: rErr },
+        { data: quotasData, error: qErr },
+      ] = await Promise.all([
         supabase.from("profiles").select("user_id, full_name, first_name, paternal_surname, email"),
         supabase.from("user_roles").select("user_id, role"),
+        supabase.from("ocr_quotas").select("user_id, subscription_balance, addon_balance"),
       ]);
       if (pErr) throw pErr;
       if (rErr) throw rErr;
+      if (qErr) throw qErr;
       const rolesByUser = new Map<string, AppRoleLite[]>();
       (rolesData ?? []).forEach((r) => {
         const arr = rolesByUser.get(r.user_id) ?? [];
         arr.push(r.role as AppRoleLite);
         rolesByUser.set(r.user_id, arr);
       });
+      const quotaByUser = new Map<string, { sub: number; addon: number }>();
+      (quotasData ?? []).forEach((q: any) => {
+        quotaByUser.set(q.user_id, {
+          sub: q.subscription_balance ?? 0,
+          addon: q.addon_balance ?? 0,
+        });
+      });
       return (profiles ?? []).map((p) => {
         const composed = [p.first_name, p.paternal_surname].filter(Boolean).join(" ").trim();
+        const q = quotaByUser.get(p.user_id) ?? { sub: 0, addon: 0 };
         return {
           user_id: p.user_id,
           full_name: p.full_name?.trim() || composed || "(sin nombre)",
           email: p.email,
           roles: rolesByUser.get(p.user_id) ?? [],
+          ocr_sub: q.sub,
+          ocr_addon: q.addon,
         };
       });
     },
@@ -107,7 +123,7 @@ export default function UserManager() {
   if (loading) return null;
   if (!roles.includes("admin")) return <Navigate to="/" replace />;
 
-  const colCount = 4 + ALL_ROLES.length; // user, broker, ...roles, email, actions
+  const colCount = 5 + ALL_ROLES.length; // user, broker, ...roles, OCR, email, actions
 
   return (
     <div className="container mx-auto p-4 md:p-6 space-y-4">
@@ -151,6 +167,7 @@ export default function UserManager() {
                   {ALL_ROLES.map((r) => (
                     <TableHead key={r} className="text-center w-20">{ROLE_LABEL[r]}</TableHead>
                   ))}
+                  <TableHead className="text-center w-28">Escaneos OCR</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead className="w-12 text-right">Acciones</TableHead>
                 </TableRow>
@@ -177,6 +194,8 @@ export default function UserManager() {
                     brokers={brokers}
                     assignedBrokerId={assignedBrokerByPatient.get(u.user_id) ?? null}
                     isSelf={u.user_id === user?.id}
+                    ocrSubscription={u.ocr_sub}
+                    ocrAddon={u.ocr_addon}
                   />
                 ))}
               </TableBody>
