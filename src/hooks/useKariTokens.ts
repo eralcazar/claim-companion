@@ -38,7 +38,7 @@ export function useKariBalance() {
   useEffect(() => {
     if (!user) return;
     const channel = supabase
-      .channel(`kari-balance-${user.id}`)
+      .channel(`kari-balance-${user.id}-${Math.random().toString(36).slice(2)}`)
       .on(
         "postgres_changes",
         {
