@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { usePlans, useUpsertPlan, useDeletePlan, usePlanFeatures, useTogglePlanFeature, type SubscriptionPlan } from "@/hooks/usePlans";
 import { useOcrPacks, useUpsertOcrPack, useDeleteOcrPack, useSyncOcrPack, type OcrPack } from "@/hooks/useOcrQuota";
+import { useAiTokenPacks, useUpsertAiTokenPack, useDeleteAiTokenPack, useSyncAiTokenPack, type AiTokenPack } from "@/hooks/useAiTokenPacks";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Layers, Plus, Edit, Trash2, RefreshCw, ScanLine } from "lucide-react";
+import { Layers, Plus, Edit, Trash2, RefreshCw, ScanLine, Sparkles } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AVAILABLE_FEATURES } from "@/lib/features";
 import { supabase } from "@/integrations/supabase/client";
@@ -27,6 +28,10 @@ export default function PlanManager() {
   const upsertPack = useUpsertOcrPack();
   const deletePack = useDeleteOcrPack();
   const syncPack = useSyncOcrPack();
+  const { data: aiPacks = [], isLoading: loadingAiPacks } = useAiTokenPacks({ onlyActive: false });
+  const upsertAiPack = useUpsertAiTokenPack();
+  const deleteAiPack = useDeleteAiTokenPack();
+  const syncAiPack = useSyncAiTokenPack();
 
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Partial<SubscriptionPlan> | null>(null);
@@ -34,6 +39,8 @@ export default function PlanManager() {
   const [syncing, setSyncing] = useState<string | null>(null);
   const [packOpen, setPackOpen] = useState(false);
   const [packEditing, setPackEditing] = useState<Partial<OcrPack> | null>(null);
+  const [aiPackOpen, setAiPackOpen] = useState(false);
+  const [aiPackEditing, setAiPackEditing] = useState<Partial<AiTokenPack> | null>(null);
 
   const startNew = () => {
     setEditing({ nombre: "", descripcion: "", precio_mensual_centavos: 0, precio_anual_centavos: 0, moneda: "mxn", activo: true, orden: plans.length, ocr_pages_per_month: 0 });
@@ -74,6 +81,7 @@ export default function PlanManager() {
         <TabsList>
           <TabsTrigger value="planes"><Layers className="h-4 w-4 mr-1" />Suscripciones</TabsTrigger>
           <TabsTrigger value="ocr"><ScanLine className="h-4 w-4 mr-1" />Paquetes OCR</TabsTrigger>
+          <TabsTrigger value="kari"><Sparkles className="h-4 w-4 mr-1" />Paquetes Kari (IA)</TabsTrigger>
         </TabsList>
 
         <TabsContent value="planes" className="space-y-4">
