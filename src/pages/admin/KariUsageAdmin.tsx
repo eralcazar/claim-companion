@@ -9,7 +9,14 @@ import {
 } from "@/hooks/useKariUsageAdmin";
 import { exportKariUsageCSV } from "@/lib/exportKariUsageCSV";
 import { KariMonthlyLimitsEditor } from "@/components/admin/KariMonthlyLimitsEditor";
-import { useKariActiveModel, useSetKariActiveModel, KARI_MODEL_OPTIONS } from "@/hooks/useAiTokenPacks";
+import {
+  useKariActiveModel,
+  useSetKariActiveModel,
+  KARI_MODEL_OPTIONS,
+  useOcrActiveModel,
+  useSetOcrActiveModel,
+  OCR_MODEL_OPTIONS,
+} from "@/hooks/useAiTokenPacks";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid,
@@ -38,6 +45,14 @@ export default function KariUsageAdmin() {
   const { data: activeModel } = useKariActiveModel();
   const setModel = useSetKariActiveModel();
   const modelMeta = KARI_MODEL_OPTIONS.find((m) => m.value === activeModel);
+  const { data: ocrModel } = useOcrActiveModel();
+  const setOcrModel = useSetOcrActiveModel();
+  const ocrMeta = OCR_MODEL_OPTIONS.find((m) => m.value === ocrModel);
+  // Estimación de costo por escaneo OCR típico: ~3k tokens input + 2k output
+  const ocrCostPerScanUsd = ocrMeta
+    ? (3000 * ocrMeta.inputMicros + 2000 * ocrMeta.outputMicros) / 1_000_000
+    : 0;
+  const ocrCostPerScanMxn = ocrCostPerScanUsd * 18.5; // tipo de cambio aproximado
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -106,6 +121,49 @@ export default function KariUsageAdmin() {
                 <div><span className="font-medium text-foreground">Costo input:</span> {modelMeta.inputMicros} µUSD/token (~${(modelMeta.inputMicros / 1_000_000 * 1000).toFixed(4)} USD/1k)</div>
                 <div><span className="font-medium text-foreground">Costo output:</span> {modelMeta.outputMicros} µUSD/token (~${(modelMeta.outputMicros / 1_000_000 * 1000).toFixed(4)} USD/1k)</div>
                 <p>El cambio aplica al siguiente mensaje enviado a Kari.</p>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <Cpu className="h-5 w-5 text-accent" />
+            <h2 className="font-semibold text-sm">Modelo de IA para OCR</h2>
+          </div>
+          <p className="text-xs text-muted-foreground -mt-1">
+            Usado por <code>extract-study-indicators</code> (resultados de laboratorio) y{" "}
+            <code>detect-form-fields</code> (campos de formularios de aseguradoras).
+          </p>
+          <div className="grid md:grid-cols-2 gap-3 items-end">
+            <div>
+              <Label className="text-xs">Modelo activo de OCR</Label>
+              <Select
+                value={ocrModel}
+                onValueChange={(v) => setOcrModel.mutate(v)}
+                disabled={setOcrModel.isPending}
+              >
+                <SelectTrigger className="h-9"><SelectValue placeholder="Seleccionar…" /></SelectTrigger>
+                <SelectContent>
+                  {OCR_MODEL_OPTIONS.map((m) => (
+                    <SelectItem key={m.value} value={m.value}>
+                      {m.label} — {m.note}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {ocrMeta && (
+              <div className="text-xs text-muted-foreground space-y-0.5">
+                <div><span className="font-medium text-foreground">Costo input:</span> {ocrMeta.inputMicros} µUSD/token</div>
+                <div><span className="font-medium text-foreground">Costo output:</span> {ocrMeta.outputMicros} µUSD/token</div>
+                <div>
+                  <span className="font-medium text-foreground">Costo estimado por escaneo:</span>{" "}
+                  ~${ocrCostPerScanUsd.toFixed(4)} USD (~${ocrCostPerScanMxn.toFixed(2)} MXN)
+                </div>
+                <p>Basado en ~3,000 tokens entrada + 2,000 tokens salida por documento.</p>
               </div>
             )}
           </div>

@@ -46,6 +46,17 @@ Deno.serve(async (req) => {
 
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
 
+    // Modelo OCR dinámico (configurable por admin via ai_settings)
+    let ocrModel = "google/gemini-2.5-pro";
+    try {
+      const { data: cfg } = await admin
+        .from("ai_settings")
+        .select("value")
+        .eq("key", "ocr_active_model")
+        .maybeSingle();
+      if (cfg?.value && typeof cfg.value === "string") ocrModel = cfg.value;
+    } catch (_) { /* fallback al default */ }
+
     const body = await req.json().catch(() => null);
     const resultadoId = body?.resultado_id;
     if (!resultadoId || typeof resultadoId !== "string") {
@@ -191,7 +202,7 @@ Deno.serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-pro",
+        model: ocrModel,
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
           {

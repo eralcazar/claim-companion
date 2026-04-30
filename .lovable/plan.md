@@ -1,41 +1,56 @@
 ## Objetivo
 
-Permitir al admin asignar (regalar) tokens de Kari (IA) directamente desde el **Gestor de Usuarios** (`/admin/usuarios`), sin pasar por Stripe, similar al flujo actual de "Regalar escaneos OCR".
+Permitir al admin elegir el modelo de IA usado para OCR (extracción de indicadores de estudios y detección de campos de formularios), tal como se hace hoy con el modelo de Kari. El modelo se lee dinámicamente desde la tabla `ai_settings`.
 
 ## Cambios
 
-### 1. Nueva Edge Function: `admin-grant-ai-tokens`
+### 1. Nueva configuración global
 
-Archivo: `supabase/functions/admin-grant-ai-tokens/index.ts`
+Reutilizamos la tabla existente `ai_settings` (key/value JSON, RLS admin-only ya configurada).
+- Nuevo `key = 'ocr_active_model'`, value default `"google/gemini-2.5-pro"`.
 
-- Verifica que el llamador sea `admin` (mismo patrón que `admin-grant-ocr`).
-- Recibe `{ user_id, tokens }`, valida `tokens > 0`.
-- Llama al RPC existente `add_ai_tokens(_user_id, _tokens)` con service role (suma al balance + `lifetime_granted`).
-- Inserta un registro en `ai_token_purchases` con `status='granted'`, `amount_cents=0`, `environment='sandbox'`, `pack_id=null` para auditoría/historial.
+Se hace via `supabase--insert` (es solo un upsert de configuración, no schema).
 
-### 2. UI en `UserRolesRow.tsx`
+### 2. Edge functions: leer modelo dinámicamente
 
-- Nueva columna en la tabla **"Tokens Kari"** (junto a "Escaneos OCR") mostrando un Badge con el balance actual del usuario y tooltip con `lifetime_granted` / `lifetime_consumed`.
-- Nuevo botón de acción con ícono `Sparkles` (Kari) que abre un diálogo **"Regalar tokens de Kari"** con input numérico (default 1000, paso 500) y presets rápidos (1k / 5k / 10k).
-- Al confirmar, invoca la edge function y refresca `users_with_roles`.
+Modificar:
+- `supabase/functions/extract-study-indicators/index.ts`
+- `supabase/functions/detect-form-fields/index.ts`
 
-### 3. Datos en `UserManager.tsx`
+En cada una:
+- Antes de llamar al gateway, leer con service role:
+  ```ts
+  const { data } = await admin.from("ai_settings").select("value").eq("key", "ocr_active_model").maybeSingle();
+  const model = (typeof data?.value === "string" ? data.value : "google/gemini-2.5-pro");
+  ```
+- Reemplazar el literal `model: "google/gemini-2.5-pro"` por `model`.
+- Loggear el modelo + tokens usados (si la respuesta los trae) para auditoría.
 
-- Ampliar el query `users_with_roles` para incluir `ai_token_balances` (`balance`, `lifetime_granted`, `lifetime_consumed`) por usuario, igual que se hace hoy con `ocr_quotas`.
-- Pasar `kariBalance` al `UserRolesRow` como prop.
-- Agregar la nueva columna `<TableHead>Tokens Kari</TableHead>` y actualizar `colCount`.
+### 3. Hook frontend
 
-### 4. Hook auxiliar
+En `src/hooks/useAiTokenPacks.ts` agregar:
+- `useOcrActiveModel()` y `useSetOcrActiveModel()` análogos a los de Kari.
+- Constante `OCR_MODEL_OPTIONS` con los 4 modelos relevantes y su costo µUSD/token + nota de calidad:
+  - `google/gemini-2.5-flash-lite` — Más económico, solo formularios simples
+  - `google/gemini-2.5-flash` — Balanceado, recomendado para la mayoría
+  - `google/gemini-3-flash-preview` — Última generación, calidad/costo
+  - `google/gemini-2.5-pro` — Premium, máxima precisión (actual)
 
-Crear `useAdminGrantAiTokens` en `src/hooks/useAiTokenPacks.ts` (o nuevo archivo) que invoque `supabase.functions.invoke("admin-grant-ai-tokens", ...)` e invalide `users_with_roles` + `kari_balance`.
+### 4. UI de selector
+
+En `src/pages/admin/KariUsageAdmin.tsx`, agregar una segunda card **"Modelo de IA para OCR"** debajo de la de Kari, con:
+- Selector de modelo (mismo patrón que Kari).
+- Badge mostrando costo µUSD por 1k tokens input/output.
+- Estimación de costo por escaneo típico (~3k input + 2k output).
+- Nota explicando: este modelo se usa para `extract-study-indicators` y `detect-form-fields`.
 
 ## Detalles técnicos
 
-- Reutilizamos el RPC `public.add_ai_tokens` que ya existe (atomic upsert sobre `ai_token_balances`).
-- El registro en `ai_token_purchases` con `status='granted'` permite que aparezca en el historial de compras de Kari del usuario (ya consultado por `useMyKariPurchases`).
-- No requiere cambios de schema ni nuevas RLS — el grant lo hace la edge function con service role.
-- La columna nueva solo se muestra para usuarios con feature `kari_tokens` activa (todos excepto laboratorio/farmacia), pero por simplicidad se muestra siempre y el balance será 0 si no aplica.
+- Sin cambios de schema — usamos `ai_settings` existente.
+- Las edge functions usan service role para leer `ai_settings` (la RLS public read ya es `true` para authenticated, pero las edge functions corren sin sesión; service role bypasa RLS).
+- Fallback al modelo Pro actual si la config no existe, para no romper nada.
+- Despliegue automático de las dos edge functions modificadas.
 
 ## Resultado esperado
 
-El admin entra a `/admin/usuarios`, ve el balance de tokens Kari de cada usuario, y con un clic puede regalar N tokens que se acreditan al instante en el balance del usuario y quedan registrados en el historial.
+En `/admin/kari-uso` aparece una nueva card "Modelo de IA para OCR". El admin puede cambiar entre Pro/Flash/Flash-Lite según el balance precisión vs costo deseado, y el cambio se aplica al instante a todos los OCR posteriores. Costo estimado por escaneo se muestra junto al selector.
