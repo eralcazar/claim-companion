@@ -221,6 +221,39 @@ serve(async (req) => {
           }
         }
       }
+
+      // AI tokens (Kari) purchase
+      if (kind === "ai_tokens") {
+        const purchaseId = session.metadata?.purchase_id;
+        const userId = session.metadata?.userId;
+        const tokens = Number(session.metadata?.tokens || 0);
+        if (purchaseId && userId && tokens > 0) {
+          const { data: purchase } = await supabase
+            .from("ai_token_purchases")
+            .select("status")
+            .eq("id", purchaseId)
+            .maybeSingle();
+          if (purchase && purchase.status !== "completed") {
+            await supabase
+              .from("ai_token_purchases")
+              .update({
+                status: "completed",
+                updated_at: new Date().toISOString(),
+              })
+              .eq("id", purchaseId);
+            await supabase.rpc("add_ai_tokens", {
+              _user_id: userId,
+              _tokens: tokens,
+            });
+            await supabase.from("notifications").insert({
+              user_id: userId,
+              title: "Tokens de IA añadidos",
+              body: `Se acreditaron ${tokens.toLocaleString("es-MX")} tokens para chatear con Kari.`,
+              link: "/kari",
+            });
+          }
+        }
+      }
     }
 
     // Subscription lifecycle

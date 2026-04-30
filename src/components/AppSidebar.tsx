@@ -11,6 +11,10 @@ import {
   SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarFooter, useSidebar,
 } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
+import { Sparkles } from "lucide-react";
+import { useMyOcrQuota, totalQuota } from "@/hooks/useOcrQuota";
+import { useKariBalance } from "@/hooks/useKariTokens";
+import { Badge } from "@/components/ui/badge";
 
 type Item = { title: string; url: string; icon: typeof Home; feature: FeatureKey };
 
@@ -67,6 +71,11 @@ export function AppSidebar() {
   const { roles, signOut, user } = useAuth();
   const { actingAsPatientId } = useImpersonation();
   const { can } = usePermissions();
+  const { data: ocrQuota } = useMyOcrQuota();
+  const { data: kariBalance } = useKariBalance();
+  const ocrRemaining = totalQuota(ocrQuota);
+  const kariTokens = kariBalance?.balance ?? 0;
+  const ocrColor = ocrRemaining === 0 ? "destructive" : ocrRemaining <= 4 ? "secondary" : "default";
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -239,6 +248,52 @@ export function AppSidebar() {
 
       <SidebarFooter>
         <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild isActive={location.pathname.startsWith("/kari")}>
+              <RouterNavLink to="/kari" className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-primary" />
+                {!collapsed && (
+                  <span className="flex-1 flex items-center justify-between">
+                    <span>Pregúntale a Kari</span>
+                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">
+                      {kariTokens >= 1000 ? `${(kariTokens / 1000).toFixed(1)}k` : kariTokens}
+                    </Badge>
+                  </span>
+                )}
+              </RouterNavLink>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild isActive={location.pathname === "/planes"}>
+              <RouterNavLink to="/planes" className="flex items-center gap-2">
+                <CreditCard className="h-4 w-4" />
+                {!collapsed && <span className="flex-1">Mis planes</span>}
+              </RouterNavLink>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild isActive={location.pathname === "/suscripcion"}>
+              <RouterNavLink to="/suscripcion" className="flex items-center gap-2">
+                <BadgeCheck className="h-4 w-4" />
+                {!collapsed && <span>Mi suscripción</span>}
+              </RouterNavLink>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild isActive={location.pathname === "/planes" && location.hash === "#ocr"}>
+              <RouterNavLink to="/planes#ocr" className="flex items-center gap-2">
+                <FlaskConical className="h-4 w-4" />
+                {!collapsed && (
+                  <span className="flex-1 flex items-center justify-between">
+                    <span>Escaneos OCR</span>
+                    <Badge variant={ocrColor as any} className="text-[10px] px-1.5 py-0 h-4">
+                      {ocrRemaining}
+                    </Badge>
+                  </span>
+                )}
+              </RouterNavLink>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton asChild isActive={location.pathname === "/legal"}>
               <RouterNavLink to="/legal" className="flex items-center gap-2">

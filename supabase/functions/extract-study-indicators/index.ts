@@ -83,29 +83,6 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "Sin permisos para extraer indicadores" }, 403);
     }
 
-    // Consume OCR quota (1 page) before doing the expensive AI call.
-    // Charge it to the caller so each professional has its own balance.
-    const { data: quotaResult, error: quotaErr } = await admin.rpc("consume_ocr_quota", {
-      _user_id: callerId,
-      _pages: 1,
-      _resource_id: resultadoId,
-    });
-    if (quotaErr) {
-      console.error("consume_ocr_quota error", quotaErr);
-      return jsonResponse({ error: "No se pudo verificar la cuota OCR" }, 500);
-    }
-    if (!quotaResult?.ok) {
-      return jsonResponse(
-        {
-          error: "Has llegado a tu límite de escaneos OCR. Comprá un paquete adicional para continuar.",
-          code: "quota_exceeded",
-          subscription_balance: quotaResult?.subscription_balance ?? 0,
-          addon_balance: quotaResult?.addon_balance ?? 0,
-        },
-        402,
-      );
-    }
-
     // Descargar archivo del bucket privado
     const { data: file, error: dlErr } = await admin.storage
       .from("estudios-resultados")
@@ -125,6 +102,41 @@ Deno.serve(async (req) => {
       else if (lower.endsWith(".png")) mime = "image/png";
       else if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) mime = "image/jpeg";
       else if (lower.endsWith(".webp")) mime = "image/webp";
+    }
+
+    // Contar páginas reales para descontar la cuota correcta
+    let pagesToCharge = 1;
+    if (mime === "application/pdf") {
+      try {
+        const text = new TextDecoder("latin1").decode(new Uint8Array(arrayBuf));
+        const matches = text.match(/\/Type\s*\/Page[^s]/g);
+        const count = matches?.length ?? 0;
+        pagesToCharge = count > 0 ? count : 1;
+      } catch {
+        pagesToCharge = 1;
+      }
+    }
+
+    const { data: quotaResult, error: quotaErr } = await admin.rpc("consume_ocr_quota", {
+      _user_id: callerId,
+      _pages: pagesToCharge,
+      _resource_id: resultadoId,
+    });
+    if (quotaErr) {
+      console.error("consume_ocr_quota error", quotaErr);
+      return jsonResponse({ error: "No se pudo verificar la cuota OCR" }, 500);
+    }
+    if (!quotaResult?.ok) {
+      return jsonResponse(
+        {
+          error: `Necesitas ${pagesToCharge} escaneos OCR para procesar este archivo. Compra un paquete adicional para continuar.`,
+          code: "quota_exceeded",
+          pages_required: pagesToCharge,
+          subscription_balance: quotaResult?.subscription_balance ?? 0,
+          addon_balance: quotaResult?.addon_balance ?? 0,
+        },
+        402,
+      );
     }
 
     // base64
@@ -263,6 +275,7 @@ Deno.serve(async (req) => {
 
     return jsonResponse({
       inserted,
+      pages_charged: pagesToCharge,
       meta: { fecha_resultado: fechaResultado, laboratorio_nombre: laboratorioNombre },
     });
   } catch (e) {

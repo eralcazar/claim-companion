@@ -49,6 +49,8 @@ import Consultorio from "@/pages/Consultorio";
 import PresionArterial from "@/pages/PresionArterial";
 import OxygenSaturation from "@/pages/OxygenSaturation";
 import ExpedienteDigital from "@/pages/ExpedienteDigital";
+import Kari from "@/pages/Kari";
+import KariTokens from "@/pages/KariTokens";
 
 const queryClient = new QueryClient();
 
@@ -105,6 +107,8 @@ const App = () => (
               <Route path="/suscripcion" element={<Subscription />} />
               <Route path="/oxygen-saturation" element={<OxygenSaturation />} />
               <Route path="/expediente" element={<ExpedienteDigital />} />
+              <Route path="/kari" element={<Kari />} />
+              <Route path="/kari/tokens" element={<KariTokens />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
