@@ -127,6 +127,49 @@ export default function KariUsageAdmin() {
         </CardContent>
       </Card>
 
+      <Card>
+        <CardContent className="p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <Cpu className="h-5 w-5 text-accent" />
+            <h2 className="font-semibold text-sm">Modelo de IA para OCR</h2>
+          </div>
+          <p className="text-xs text-muted-foreground -mt-1">
+            Usado por <code>extract-study-indicators</code> (resultados de laboratorio) y{" "}
+            <code>detect-form-fields</code> (campos de formularios de aseguradoras).
+          </p>
+          <div className="grid md:grid-cols-2 gap-3 items-end">
+            <div>
+              <Label className="text-xs">Modelo activo de OCR</Label>
+              <Select
+                value={ocrModel}
+                onValueChange={(v) => setOcrModel.mutate(v)}
+                disabled={setOcrModel.isPending}
+              >
+                <SelectTrigger className="h-9"><SelectValue placeholder="Seleccionar…" /></SelectTrigger>
+                <SelectContent>
+                  {OCR_MODEL_OPTIONS.map((m) => (
+                    <SelectItem key={m.value} value={m.value}>
+                      {m.label} — {m.note}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {ocrMeta && (
+              <div className="text-xs text-muted-foreground space-y-0.5">
+                <div><span className="font-medium text-foreground">Costo input:</span> {ocrMeta.inputMicros} µUSD/token</div>
+                <div><span className="font-medium text-foreground">Costo output:</span> {ocrMeta.outputMicros} µUSD/token</div>
+                <div>
+                  <span className="font-medium text-foreground">Costo estimado por escaneo:</span>{" "}
+                  ~${ocrCostPerScanUsd.toFixed(4)} USD (~${ocrCostPerScanMxn.toFixed(2)} MXN)
+                </div>
+                <p>Basado en ~3,000 tokens entrada + 2,000 tokens salida por documento.</p>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <KpiCard icon={<Sparkles />} label="Tokens consumidos" value={summary?.tokens_consumed?.toLocaleString("es-MX") ?? "0"} />
         <KpiCard icon={<DollarSign />} label="Costo IA (USD)" value={formatUSD(summary?.cost_usd_micros ?? 0)} />
