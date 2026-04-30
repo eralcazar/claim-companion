@@ -1,26 +1,47 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import ReactMarkdown from "react-markdown";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Sparkles, Send, Plus, ShoppingCart, MessageSquare, AlertTriangle, Loader2 } from "lucide-react";
+import {
+  Sparkles, Send, Plus, ShoppingCart, MessageSquare, AlertTriangle, Loader2, Search, Trash2,
+} from "lucide-react";
 import { Link } from "react-router-dom";
-import { useKariChat, useKariConversations } from "@/hooks/useKariChat";
+import { useKariChat, useKariConversations, useDeleteKariConversation } from "@/hooks/useKariChat";
 import { useKariBalance } from "@/hooks/useKariTokens";
 import { cn } from "@/lib/utils";
 import kariAvatar from "@/assets/kari-avatar.png";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function Kari() {
   const { conversationId, setConversationId, messages, sendMessage, sending, error, newConversation } = useKariChat();
   const { data: conversations = [] } = useKariConversations();
   const { data: balance } = useKariBalance();
+  const deleteConv = useDeleteKariConversation();
   const [input, setInput] = useState("");
+  const [search, setSearch] = useState("");
+  const [pendingDelete, setPendingDelete] = useState<{ id: string; title: string } | null>(null);
 
   const tokens = balance?.balance ?? 0;
   const noTokens = tokens <= 0;
+
+  const filteredConversations = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return conversations;
+    return conversations.filter((c: any) => (c.title ?? "").toLowerCase().includes(q));
+  }, [conversations, search]);
 
   const handleSend = (text?: string) => {
     const t = (text ?? input).trim();
@@ -58,28 +79,56 @@ export default function Kari() {
             <Button onClick={newConversation} variant="default" size="sm" className="w-full">
               <Plus className="h-4 w-4 mr-1" />Nueva conversación
             </Button>
+            <div className="relative">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Buscar…"
+                className="pl-7 h-8 text-xs"
+              />
+            </div>
             <div className="text-xs font-semibold text-muted-foreground pt-2 px-1">Recientes</div>
             <div className="space-y-1 max-h-[60vh] overflow-y-auto">
               {conversations.length === 0 && (
                 <p className="text-xs text-muted-foreground text-center py-4">Sin conversaciones aún.</p>
               )}
-              {conversations.map((c: any) => (
-                <button
+              {conversations.length > 0 && filteredConversations.length === 0 && (
+                <p className="text-xs text-muted-foreground text-center py-4">Sin coincidencias.</p>
+              )}
+              {filteredConversations.map((c: any) => (
+                <div
                   key={c.id}
-                  onClick={() => setConversationId(c.id)}
                   className={cn(
-                    "w-full text-left text-xs px-2 py-2 rounded-md hover:bg-muted transition-colors",
-                    conversationId === c.id && "bg-muted font-medium",
+                    "group flex items-stretch rounded-md hover:bg-muted transition-colors",
+                    conversationId === c.id && "bg-muted",
                   )}
                 >
-                  <div className="truncate flex items-center gap-1">
-                    <MessageSquare className="h-3 w-3 flex-shrink-0" />
-                    <span className="truncate">{c.title}</span>
-                  </div>
-                  <div className="text-[10px] text-muted-foreground mt-0.5">
-                    {formatDistanceToNow(new Date(c.updated_at), { addSuffix: true, locale: es })}
-                  </div>
-                </button>
+                  <button
+                    onClick={() => setConversationId(c.id)}
+                    className="flex-1 text-left text-xs px-2 py-2 min-w-0"
+                  >
+                    <div className="truncate flex items-center gap-1">
+                      <MessageSquare className="h-3 w-3 flex-shrink-0" />
+                      <span className={cn("truncate", conversationId === c.id && "font-medium")}>
+                        {c.title}
+                      </span>
+                    </div>
+                    <div className="text-[10px] text-muted-foreground mt-0.5">
+                      {formatDistanceToNow(new Date(c.updated_at), { addSuffix: true, locale: es })}
+                    </div>
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setPendingDelete({ id: c.id, title: c.title });
+                    }}
+                    className="px-2 opacity-0 group-hover:opacity-100 focus:opacity-100 text-muted-foreground hover:text-destructive transition-opacity"
+                    aria-label={`Eliminar ${c.title}`}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
               ))}
             </div>
           </CardContent>
@@ -154,6 +203,33 @@ export default function Kari() {
           </div>
         </Card>
       </div>
+
+      <AlertDialog open={!!pendingDelete} onOpenChange={(v) => !v && setPendingDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar conversación?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Se eliminará permanentemente <strong>"{pendingDelete?.title}"</strong> y todos sus
+              mensajes. Esta acción no se puede deshacer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={async () => {
+                if (!pendingDelete) return;
+                const wasActive = pendingDelete.id === conversationId;
+                await deleteConv.mutateAsync(pendingDelete.id);
+                setPendingDelete(null);
+                if (wasActive) newConversation();
+              }}
+            >
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
