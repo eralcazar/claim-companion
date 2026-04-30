@@ -40,43 +40,84 @@ export default function Login() {
 
       <div className="relative z-10 mx-auto flex min-h-screen max-w-6xl flex-col items-center justify-center gap-8 px-4 py-8 lg:flex-row lg:gap-12 lg:py-16">
         {/* Columna izquierda: Kari + beneficios */}
-        <div className="flex flex-1 flex-col items-center text-center lg:items-start lg:text-left animate-fade-in">
-          <CareCentralLogo size={48} withText className="mb-6" />
+        <div className="relative flex flex-1 flex-col items-center text-center lg:items-start lg:text-left animate-fade-in min-h-[36rem] lg:min-h-[40rem] w-full">
+          {/* Header: logo + tagline */}
+          <div className="relative z-20 mb-4 flex flex-col items-center lg:items-start">
+            <CareCentralLogo size={56} withText />
+            <p className="mt-1 text-sm font-medium text-muted-foreground">
+              Tu salud, <span className="text-primary">conectada</span> contigo
+            </p>
+          </div>
 
-          <div className="relative mb-4 lg:mb-2">
-            <img
-              src={kariAvatar}
-              alt="Kari, tu asistente médica de CareCentral"
-              className="h-72 w-auto object-contain drop-shadow-2xl sm:h-80 lg:h-[26rem]"
-              loading="eager"
-            />
-            <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-foreground/90 px-4 py-1.5 text-xs font-medium text-background shadow-lg backdrop-blur">
-              ¡Hola! Soy Kari 👋
+          {/* Capa 0: piernas de Kari como silueta de fondo (parte inferior, blur) */}
+          <img
+            src={kariAvatar}
+            alt=""
+            aria-hidden
+            className="pointer-events-none absolute left-1/2 bottom-0 h-[34rem] w-auto -translate-x-1/2 object-contain opacity-20 blur-md lg:left-0 lg:translate-x-0"
+            style={{
+              objectPosition: "center bottom",
+              maskImage:
+                "linear-gradient(to top, black 0%, black 35%, transparent 60%)",
+              WebkitMaskImage:
+                "linear-gradient(to top, black 0%, black 35%, transparent 60%)",
+            }}
+          />
+
+          {/* Capa 2: Kari recortada hasta la cintura (parte superior nítida) */}
+          <div className="relative z-10 mt-2 self-center lg:self-start">
+            <div
+              className="relative h-64 w-56 sm:h-72 sm:w-64 lg:h-80 lg:w-72 overflow-hidden"
+              style={{
+                maskImage:
+                  "linear-gradient(to bottom, black 0%, black 70%, transparent 100%)",
+                WebkitMaskImage:
+                  "linear-gradient(to bottom, black 0%, black 70%, transparent 100%)",
+              }}
+            >
+              <img
+                src={kariAvatar}
+                alt="Kari, tu asistente médica de CareCentral"
+                className="absolute inset-x-0 top-0 mx-auto h-[28rem] w-auto object-contain drop-shadow-2xl"
+                loading="eager"
+              />
+            </div>
+
+            {/* Capa 3: Burbuja de chat junto a la cabeza */}
+            <div className="absolute -right-4 top-6 sm:-right-8 sm:top-8 lg:-right-2 lg:top-10 z-20 animate-fade-in">
+              <div className="relative rounded-2xl rounded-bl-sm bg-foreground px-4 py-2 text-xs font-medium text-background shadow-xl">
+                ¡Hola! Soy Kari 👋
+                {/* Cola de la burbuja apuntando a Kari */}
+                <span className="absolute -left-1.5 bottom-2 h-3 w-3 rotate-45 bg-foreground" />
+              </div>
             </div>
           </div>
 
-          <h1 className="mt-4 max-w-md font-heading text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-            Tu salud, <span className="text-primary">en un solo lugar</span>
-          </h1>
-          <p className="mt-2 max-w-md text-sm text-muted-foreground sm:text-base">
-            Expediente digital, recordatorios y reclamos médicos al alcance de tu familia.
-          </p>
+          {/* Capa 1: Tipografía + beneficios — sube hasta la cintura de Kari */}
+          <div className="relative z-10 mt-4 w-full max-w-md self-center lg:self-start">
+            <h1 className="font-heading text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+              Tu salud, <span className="text-primary">en un solo lugar</span>
+            </h1>
+            <p className="mt-2 text-sm text-muted-foreground sm:text-base">
+              Expediente digital, recordatorios y reclamos médicos al alcance de tu familia.
+            </p>
 
-          {/* Beneficios */}
-          <div className="mt-6 grid w-full max-w-md grid-cols-1 gap-2 sm:grid-cols-3">
-            {[
-              { icon: ScanLine, label: "Escaneo OCR" },
-              { icon: ShieldCheck, label: "Datos seguros" },
-              { icon: Sparkles, label: "Asistente IA" },
-            ].map(({ icon: Icon, label }) => (
-              <div
-                key={label}
-                className="glass-card flex items-center gap-2 rounded-2xl px-3 py-2.5 text-xs font-medium text-foreground"
-              >
-                <Icon className="h-4 w-4 text-primary" />
-                {label}
-              </div>
-            ))}
+            {/* Beneficios */}
+            <div className="mt-6 grid w-full grid-cols-1 gap-2 sm:grid-cols-3">
+              {[
+                { icon: ScanLine, label: "Escaneo OCR" },
+                { icon: ShieldCheck, label: "Datos seguros" },
+                { icon: Sparkles, label: "Asistente IA" },
+              ].map(({ icon: Icon, label }) => (
+                <div
+                  key={label}
+                  className="glass-card flex items-center gap-2 rounded-2xl px-3 py-2.5 text-xs font-medium text-foreground"
+                >
+                  <Icon className="h-4 w-4 text-primary" />
+                  {label}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
