@@ -9,7 +9,14 @@ import {
 } from "@/hooks/useKariUsageAdmin";
 import { exportKariUsageCSV } from "@/lib/exportKariUsageCSV";
 import { KariMonthlyLimitsEditor } from "@/components/admin/KariMonthlyLimitsEditor";
-import { useKariActiveModel, useSetKariActiveModel, KARI_MODEL_OPTIONS } from "@/hooks/useAiTokenPacks";
+import {
+  useKariActiveModel,
+  useSetKariActiveModel,
+  KARI_MODEL_OPTIONS,
+  useOcrActiveModel,
+  useSetOcrActiveModel,
+  OCR_MODEL_OPTIONS,
+} from "@/hooks/useAiTokenPacks";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid,
@@ -38,6 +45,14 @@ export default function KariUsageAdmin() {
   const { data: activeModel } = useKariActiveModel();
   const setModel = useSetKariActiveModel();
   const modelMeta = KARI_MODEL_OPTIONS.find((m) => m.value === activeModel);
+  const { data: ocrModel } = useOcrActiveModel();
+  const setOcrModel = useSetOcrActiveModel();
+  const ocrMeta = OCR_MODEL_OPTIONS.find((m) => m.value === ocrModel);
+  // Estimación de costo por escaneo OCR típico: ~3k tokens input + 2k output
+  const ocrCostPerScanUsd = ocrMeta
+    ? (3000 * ocrMeta.inputMicros + 2000 * ocrMeta.outputMicros) / 1_000_000
+    : 0;
+  const ocrCostPerScanMxn = ocrCostPerScanUsd * 18.5; // tipo de cambio aproximado
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
