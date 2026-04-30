@@ -2,7 +2,7 @@ import {
   Home, FileText, Shield, Calendar, Pill, FolderOpen, User, Download,
   Users, Stethoscope, FolderTree, UserCog, KeyRound, GraduationCap, BadgeCheck, FlaskConical, TrendingUp,
   HeartPulse, FlaskRound, Store, UserCheck, FileWarning,
-  Package, Boxes, Layers, CreditCard, Activity,
+  Package, Boxes, Layers, CreditCard, Activity, Sparkles,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -20,7 +20,8 @@ export type FeatureKey =
   | "planes" | "suscripcion" | "consultorio"
   | "presion_arterial"
   | "oxygen_saturation"
-  | "expediente_digital";
+  | "expediente_digital"
+  | "kari" | "kari_tokens" | "kari_admin";
 
 export interface FeatureDef {
   key: FeatureKey;
@@ -66,6 +67,9 @@ export const AVAILABLE_FEATURES: FeatureDef[] = [
   { key: "plan_manager", label: "Paquetes / Planes", route: "/admin/planes", icon: Layers, group: "admin" },
   { key: "doctor_profile", label: "Mi Perfil Médico", route: "/medico/perfil", icon: BadgeCheck, group: "medico" },
   { key: "consultorio", label: "Consultorio", route: "/consultorio", icon: Stethoscope, group: "medico" },
+  { key: "kari", label: "Pregúntale a Kari", route: "/kari", icon: Sparkles, group: "principal" },
+  { key: "kari_tokens", label: "Tokens de Kari", route: "/kari/tokens", icon: Sparkles, group: "principal" },
+  { key: "kari_admin", label: "Uso de Kari (Admin)", route: "/admin/kari-uso", icon: Sparkles, group: "admin" },
 ];
 
 export const ALL_ROLES = ["admin", "broker", "paciente", "medico", "enfermero", "laboratorio", "farmacia"] as const;
