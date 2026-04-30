@@ -14,6 +14,190 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_chat_conversations: {
+        Row: {
+          created_at: string
+          id: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          title?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      ai_chat_messages: {
+        Row: {
+          content: string
+          conversation_id: string
+          created_at: string
+          id: string
+          role: string
+          tokens_used: number
+          user_id: string
+        }
+        Insert: {
+          content: string
+          conversation_id: string
+          created_at?: string
+          id?: string
+          role: string
+          tokens_used?: number
+          user_id: string
+        }
+        Update: {
+          content?: string
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          role?: string
+          tokens_used?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_chat_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "ai_chat_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_token_balances: {
+        Row: {
+          balance: number
+          lifetime_consumed: number
+          lifetime_granted: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          balance?: number
+          lifetime_consumed?: number
+          lifetime_granted?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          balance?: number
+          lifetime_consumed?: number
+          lifetime_granted?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      ai_token_packs: {
+        Row: {
+          activo: boolean
+          codigo: string
+          created_at: string
+          descripcion: string | null
+          id: string
+          moneda: string
+          nombre: string
+          orden: number
+          precio_centavos: number
+          stripe_price_id: string | null
+          stripe_product_id: string | null
+          tokens: number
+          updated_at: string
+        }
+        Insert: {
+          activo?: boolean
+          codigo: string
+          created_at?: string
+          descripcion?: string | null
+          id?: string
+          moneda?: string
+          nombre: string
+          orden?: number
+          precio_centavos: number
+          stripe_price_id?: string | null
+          stripe_product_id?: string | null
+          tokens: number
+          updated_at?: string
+        }
+        Update: {
+          activo?: boolean
+          codigo?: string
+          created_at?: string
+          descripcion?: string | null
+          id?: string
+          moneda?: string
+          nombre?: string
+          orden?: number
+          precio_centavos?: number
+          stripe_price_id?: string | null
+          stripe_product_id?: string | null
+          tokens?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      ai_token_purchases: {
+        Row: {
+          amount_cents: number
+          created_at: string
+          currency: string
+          environment: string
+          id: string
+          pack_id: string | null
+          status: string
+          stripe_session_id: string | null
+          tokens: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount_cents: number
+          created_at?: string
+          currency?: string
+          environment?: string
+          id?: string
+          pack_id?: string | null
+          status?: string
+          stripe_session_id?: string | null
+          tokens: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount_cents?: number
+          created_at?: string
+          currency?: string
+          environment?: string
+          id?: string
+          pack_id?: string | null
+          status?: string
+          stripe_session_id?: string | null
+          tokens?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_token_purchases_pack_id_fkey"
+            columns: ["pack_id"]
+            isOneToOne: false
+            referencedRelation: "ai_token_packs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       appointment_documents: {
         Row: {
           appointment_id: string
@@ -2519,6 +2703,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      add_ai_tokens: {
+        Args: { _tokens: number; _user_id: string }
+        Returns: undefined
+      }
       add_ocr_credits: {
         Args: { _pages: number; _source?: string; _user_id: string }
         Returns: undefined
@@ -2526,6 +2714,10 @@ export type Database = {
       assign_free_plan: {
         Args: { _months?: number; _plan_id: string; _user_id: string }
         Returns: undefined
+      }
+      consume_ai_tokens: {
+        Args: { _tokens: number; _user_id: string }
+        Returns: Json
       }
       consume_ocr_quota: {
         Args: { _pages: number; _resource_id?: string; _user_id: string }
