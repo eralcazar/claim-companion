@@ -51,6 +51,7 @@ import OxygenSaturation from "@/pages/OxygenSaturation";
 import ExpedienteDigital from "@/pages/ExpedienteDigital";
 import Kari from "@/pages/Kari";
 import KariTokens from "@/pages/KariTokens";
+import KariUsageAdmin from "@/pages/admin/KariUsageAdmin";
 
 const queryClient = new QueryClient();
 
@@ -109,6 +110,7 @@ const App = () => (
               <Route path="/expediente" element={<ExpedienteDigital />} />
               <Route path="/kari" element={<Kari />} />
               <Route path="/kari/tokens" element={<KariTokens />} />
+              <Route path="/admin/kari-uso" element={<KariUsageAdmin />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>

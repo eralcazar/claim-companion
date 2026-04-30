@@ -10,6 +10,7 @@ import {
 import { Link } from "react-router-dom";
 import { useKariChat, useKariConversations, useDeleteKariConversation } from "@/hooks/useKariChat";
 import { useKariBalance } from "@/hooks/useKariTokens";
+import { LowBalanceBanner } from "@/components/kari/LowBalanceBanner";
 import { cn } from "@/lib/utils";
 import kariAvatar from "@/assets/kari-avatar.png";
 import { formatDistanceToNow } from "date-fns";
@@ -26,7 +27,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 export default function Kari() {
-  const { conversationId, setConversationId, messages, sendMessage, sending, error, newConversation } = useKariChat();
+  const { conversationId, setConversationId, messages, sendMessage, sending, error, monthlyLimit, newConversation } = useKariChat();
   const { data: conversations = [] } = useKariConversations();
   const { data: balance } = useKariBalance();
   const deleteConv = useDeleteKariConversation();
@@ -77,6 +78,8 @@ export default function Kari() {
           </Button>
         </div>
       </div>
+
+      <LowBalanceBanner monthlyLimit={monthlyLimit} />
 
       <div className="grid md:grid-cols-[260px_1fr] gap-4">
         <Card className="h-fit">

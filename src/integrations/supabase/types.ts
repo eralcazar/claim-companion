@@ -100,6 +100,44 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_token_monthly_limits: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          id: string
+          monthly_token_cap: number
+          plan_id: string | null
+          role: Database["public"]["Enums"]["app_role"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          monthly_token_cap: number
+          plan_id?: string | null
+          role: Database["public"]["Enums"]["app_role"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          monthly_token_cap?: number
+          plan_id?: string | null
+          role?: Database["public"]["Enums"]["app_role"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_token_monthly_limits_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_token_packs: {
         Row: {
           activo: boolean
@@ -197,6 +235,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      ai_token_usage_log: {
+        Row: {
+          completion_tokens: number
+          conversation_id: string | null
+          cost_usd_micros: number
+          created_at: string
+          id: string
+          message_id: string | null
+          model: string | null
+          prompt_tokens: number
+          total_tokens: number
+          user_id: string
+        }
+        Insert: {
+          completion_tokens?: number
+          conversation_id?: string | null
+          cost_usd_micros?: number
+          created_at?: string
+          id?: string
+          message_id?: string | null
+          model?: string | null
+          prompt_tokens?: number
+          total_tokens?: number
+          user_id: string
+        }
+        Update: {
+          completion_tokens?: number
+          conversation_id?: string | null
+          cost_usd_micros?: number
+          created_at?: string
+          id?: string
+          message_id?: string | null
+          model?: string | null
+          prompt_tokens?: number
+          total_tokens?: number
+          user_id?: string
+        }
+        Relationships: []
       }
       appointment_documents: {
         Row: {
@@ -2715,6 +2792,7 @@ export type Database = {
         Args: { _months?: number; _plan_id: string; _user_id: string }
         Returns: undefined
       }
+      check_kari_monthly_limit: { Args: { _user_id: string }; Returns: Json }
       consume_ai_tokens: {
         Args: { _tokens: number; _user_id: string }
         Returns: Json
@@ -2724,6 +2802,31 @@ export type Database = {
         Returns: Json
       }
       gen_folio: { Args: { _code: string; _insurer: string }; Returns: string }
+      get_kari_usage_by_user: {
+        Args: { _from: string; _limit?: number; _offset?: number; _to: string }
+        Returns: {
+          cost_usd_micros: number
+          email: string
+          full_name: string
+          last_activity: string
+          messages: number
+          total_tokens: number
+          user_id: string
+        }[]
+      }
+      get_kari_usage_daily: {
+        Args: { _from: string; _to: string }
+        Returns: {
+          cost_usd_micros: number
+          day: string
+          messages: number
+          total_tokens: number
+        }[]
+      }
+      get_kari_usage_summary: {
+        Args: { _from: string; _to: string }
+        Returns: Json
+      }
       has_patient_access: {
         Args: { _patient: string; _personnel: string }
         Returns: boolean

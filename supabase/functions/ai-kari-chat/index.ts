@@ -26,6 +26,16 @@ QUÉ PUEDES HACER:
 Si la pregunta es completamente fuera del ámbito de salud, redirige amablemente.
 Sé breve por defecto (máx ~5 párrafos) salvo que el usuario pida detalle.`;
 
+// Micro-USD por token (1 USD = 1_000_000). Aproximaciones de Lovable AI Gateway.
+const MODEL_COSTS_USD_PER_TOKEN_MICROS: Record<string, { input: number; output: number }> = {
+  "google/gemini-3-flash-preview": { input: 30, output: 250 },
+  "google/gemini-2.5-flash": { input: 30, output: 250 },
+  "google/gemini-2.5-flash-lite": { input: 10, output: 80 },
+  "google/gemini-2.5-pro": { input: 1250, output: 5000 },
+};
+
+const ACTIVE_MODEL = "google/gemini-3-flash-preview";
+
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -61,6 +71,22 @@ Deno.serve(async (req) => {
     let conversationId: string | null = body?.conversation_id ?? null;
 
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
+
+    // Verificar límite mensual por rol/paquete
+    const { data: limitInfo } = await admin.rpc("check_kari_monthly_limit", { _user_id: user.id });
+    const limit = (limitInfo ?? {}) as { allowed?: boolean; cap?: number | null; used?: number; resets_at?: string };
+    if (limit && limit.allowed === false) {
+      return jsonResponse(
+        {
+          error: "Has alcanzado el tope mensual de tokens de tu paquete.",
+          code: "monthly_limit_reached",
+          cap: limit.cap,
+          used: limit.used,
+          resets_at: limit.resets_at,
+        },
+        429,
+      );
+    }
 
     // Verificar saldo
     const { data: balanceRow } = await admin
@@ -128,7 +154,7 @@ Deno.serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: ACTIVE_MODEL,
         messages,
       }),
     });
@@ -147,15 +173,32 @@ Deno.serve(async (req) => {
 
     const aiJson = await aiResp.json();
     const assistantContent: string = aiJson?.choices?.[0]?.message?.content ?? "";
-    const totalTokens: number = Number(aiJson?.usage?.total_tokens) || Math.ceil((message.length + assistantContent.length) / 3);
+    const promptTokens: number = Number(aiJson?.usage?.prompt_tokens) || Math.ceil(message.length / 3);
+    const completionTokens: number = Number(aiJson?.usage?.completion_tokens) || Math.ceil(assistantContent.length / 3);
+    const totalTokens: number = Number(aiJson?.usage?.total_tokens) || promptTokens + completionTokens;
+
+    const cost = MODEL_COSTS_USD_PER_TOKEN_MICROS[ACTIVE_MODEL] ?? { input: 0, output: 0 };
+    const costMicros = promptTokens * cost.input + completionTokens * cost.output;
 
     // Guardar respuesta del asistente
-    await admin.from("ai_chat_messages").insert({
+    const { data: insertedMsg } = await admin.from("ai_chat_messages").insert({
       conversation_id: conversationId,
       user_id: user.id,
       role: "assistant",
       content: assistantContent,
       tokens_used: totalTokens,
+    }).select("id").maybeSingle();
+
+    // Log granular de uso
+    await admin.from("ai_token_usage_log").insert({
+      user_id: user.id,
+      conversation_id: conversationId,
+      message_id: insertedMsg?.id ?? null,
+      model: ACTIVE_MODEL,
+      prompt_tokens: promptTokens,
+      completion_tokens: completionTokens,
+      total_tokens: totalTokens,
+      cost_usd_micros: costMicros,
     });
 
     // Consumir tokens (usa min(saldo, totalTokens) para no fallar si excede)
@@ -173,6 +216,10 @@ Deno.serve(async (req) => {
       assistant: assistantContent,
       tokens_used: totalTokens,
       remaining: balance - consume,
+      low_balance: balance - consume > 0 && balance - consume < 500,
+      monthly_used: limit?.used != null ? (limit.used as number) + totalTokens : undefined,
+      monthly_cap: limit?.cap ?? undefined,
+      monthly_resets_at: limit?.resets_at,
     });
   } catch (e) {
     console.error("ai-kari-chat error", e);

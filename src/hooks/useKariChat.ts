@@ -12,6 +12,8 @@ export type ChatMessage = {
   created_at?: string;
 };
 
+export type MonthlyLimitInfo = { used: number; cap: number; resets_at: string } | null;
+
 export function useKariConversations() {
   const { user } = useAuth();
   return useQuery({
@@ -57,6 +59,7 @@ export function useKariChat() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<{ code?: string; message: string } | null>(null);
+  const [monthlyLimit, setMonthlyLimit] = useState<MonthlyLimitInfo>(null);
 
   // Cargar mensajes de una conversación seleccionada
   useEffect(() => {
@@ -104,6 +107,16 @@ export function useKariChat() {
           if (code === "insufficient_tokens") {
             setError({ code, message: errMsg });
             toast.error("Sin tokens de IA", { description: "Compra un paquete para seguir." });
+          } else if (code === "monthly_limit_reached") {
+            setError({ code, message: errMsg });
+            setMonthlyLimit({
+              used: payload?.used ?? 0,
+              cap: payload?.cap ?? 0,
+              resets_at: payload?.resets_at ?? new Date().toISOString(),
+            });
+            toast.error("Límite mensual alcanzado", {
+              description: "Tu paquete tiene un tope mensual. Espera al próximo ciclo o cambia de paquete.",
+            });
           } else if (code === "rate_limited") {
             toast.error("Kari está saturada, intenta en unos segundos.");
           } else {
@@ -126,6 +139,14 @@ export function useKariChat() {
             tokens_used: data?.tokens_used,
           },
         ]);
+
+        if (data?.monthly_cap) {
+          setMonthlyLimit({
+            used: data.monthly_used ?? 0,
+            cap: data.monthly_cap,
+            resets_at: data.monthly_resets_at ?? new Date().toISOString(),
+          });
+        }
 
         qc.invalidateQueries({ queryKey: ["kari_conversations"] });
         qc.invalidateQueries({ queryKey: ["kari_balance"] });
@@ -152,6 +173,7 @@ export function useKariChat() {
     sendMessage,
     sending,
     error,
+    monthlyLimit,
     newConversation,
   };
 }

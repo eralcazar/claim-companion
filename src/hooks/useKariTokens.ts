@@ -60,6 +60,14 @@ export function useKariBalance() {
   return query;
 }
 
+export function useKariBalanceStatus() {
+  const { data, ...rest } = useKariBalance();
+  const balance = data?.balance ?? 0;
+  const isEmpty = balance === 0;
+  const isLow = balance > 0 && balance < 500;
+  return { balance, isEmpty, isLow, data, ...rest };
+}
+
 export type AiTokenPack = {
   id: string;
   codigo: string;
