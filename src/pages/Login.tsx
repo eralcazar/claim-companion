@@ -43,8 +43,8 @@ export default function Login() {
         <div className="relative flex flex-1 flex-col items-center text-center lg:items-start lg:text-left animate-fade-in min-h-[36rem] lg:min-h-[40rem] w-full">
           {/* Header: logo + tagline */}
           <div className="relative z-20 mb-4 flex flex-col items-center lg:items-start">
-            <CareCentralLogo size={56} withText />
-            <p className="mt-1 text-sm font-medium text-muted-foreground">
+            <CareCentralLogo size={80} withText />
+            <p className="-mt-2 text-sm font-medium text-muted-foreground">
               Tu salud, <span className="text-primary">conectada</span> contigo
             </p>
           </div>
