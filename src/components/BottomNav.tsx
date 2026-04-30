@@ -1,4 +1,4 @@
-import { Home, FileText, Calendar, User, FolderOpen } from "lucide-react";
+import { Home, FileText, Calendar, User, Sparkles } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useImpersonation } from "@/contexts/ImpersonationContext";
@@ -8,8 +8,8 @@ export function BottomNav() {
   const tabs = [
     { to: "/", icon: Home, label: "Panel de Paciente" },
     { to: "/reclamos", icon: FileText, label: "Reclamos" },
+    { to: "/kari", icon: Sparkles, label: "Kari" },
     { to: "/agenda", icon: Calendar, label: "Agenda" },
-    { to: "/expediente", icon: FolderOpen, label: "Expediente" },
     { to: "/perfil", icon: User, label: "Perfil" },
   ];
 

@@ -111,6 +111,7 @@ export default function Plans() {
 
       {/* OCR packs */}
       <div className="space-y-3 pt-4">
+        <div id="ocr" />
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div>
             <h2 className="font-heading text-xl font-bold flex items-center gap-2">

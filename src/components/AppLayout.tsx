@@ -6,6 +6,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { ImpersonationBanner } from "@/components/ImpersonationBanner";
 import { NotificationBell } from "@/components/NotificationBell";
 import { CareCentralLogo } from "@/components/brand/CareCentralLogo";
+import { KariFloatingButton } from "@/components/kari/KariFloatingButton";
 
 export function AppLayout() {
   const isMobile = useIsMobile();
@@ -43,6 +44,7 @@ export function AppLayout() {
         </div>
 
         {isMobile && <BottomNav />}
+        <KariFloatingButton />
       </div>
     </SidebarProvider>
   );
