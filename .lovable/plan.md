@@ -1,88 +1,115 @@
-# Cierre Kari + Branding: validación y mejoras
+# Control fino de tokens de Kari + acceso "Pregúntale a Kari" en matriz
 
-Reviso lo que pediste contra lo que ya está construido y propongo solo lo que falta.
+## Lo que falta hoy y se va a entregar
 
-## Validación: qué ya existe vs qué falta
+1. `kari` no aparece en `/admin/perfiles-acceso` porque no está registrado como feature → se agrega.
+2. No hay log granular de consumo → tabla `ai_token_usage_log`.
+3. No hay vista admin de uso → `/admin/kari-uso`.
+4. No hay alertas de saldo bajo → banner en chat.
+5. No hay límites mensuales por rol/paquete → tabla `ai_token_monthly_limits` + función de chequeo.
+6. No se calcula costo real → micro-USD por modelo en cada respuesta.
 
-| Pedido | Estado | Acción |
-|---|---|---|
-| Listado de conversaciones de Kari | Listo en `/kari` | — |
-| Reanudar chats | Listo (click selecciona) | — |
-| **Búsqueda simple** en historial | **Falta** | Implementar |
-| **Borrar chats** | **Falta** | Implementar |
-| `consume_ai_tokens` por respuesta | Listo en edge `ai-kari-chat` | — |
-| Error sin saldo | Listo (HTTP 402 + UI) | — |
-| Pantalla de paquetes IA con Stripe | Listo en `/kari/tokens` | — |
-| **Confirmación antes de pagar** | **Falta** (abre checkout directo) | Implementar |
-| Mostrar balance en chat | Listo (badge en panel y `/kari`) | — |
-| **Color de la barra inferior móvil** no coincide | **Falta** | Ajustar a marca |
-| **Logo CareCentral más visual** en login y app | **Falta** | Aumentar y dar prominencia |
+---
 
-## 1. Búsqueda y borrado en historial de Kari (`/kari`)
+## 1. Registrar Kari como feature de permisos
 
-- Añadir `<Input>` de búsqueda en el panel lateral izquierdo, filtra por título de conversación (`includes` case-insensitive sobre `useKariConversations`).
-- Añadir botón papelera por fila en la lista de conversaciones con `AlertDialog` de confirmación.
-- Nuevo hook `useDeleteKariConversation` que borra la fila de `ai_chat_conversations` (las RLS ya permiten `DELETE` al dueño y los mensajes se borran en cascada por FK… **verificar**: si no hay cascade, hacer borrado explícito de `ai_chat_messages` por `conversation_id` antes vía edge function `kari-delete-conversation` con service role).
-- Si la conversación borrada es la activa → `newConversation()` para limpiar el panel.
-- Skeleton/empty state cuando no hay coincidencias de búsqueda.
+Editar `src/lib/features.ts`:
+- Agregar `"kari"` al union `FeatureKey`.
+- Insertar `{ key: "kari", label: "Pregúntale a Kari", route: "/kari", icon: Sparkles, group: "principal" }`.
+- Agregar `"kari_tokens"` (compra de paquetes) → `{ key: "kari_tokens", label: "Tokens de Kari", route: "/kari/tokens", icon: Sparkles, group: "principal" }`.
 
-## 2. Diálogo de confirmación antes de pagar tokens
+Sembrar matriz inicial via migración `INSERT … ON CONFLICT DO NOTHING` en `role_permissions` y `plan_role_features` para `kari` y `kari_tokens` activados a todos los roles en todos los paquetes (admin puede afinar después).
 
-En `KariTokens.tsx`, intercalar un `Dialog` de confirmación entre el botón "Comprar" y la apertura del Embedded Checkout:
+Proteger las rutas con `user_has_feature_access` (igual al patrón de Estudios/Tendencias) en `src/components/AppSidebar.tsx`, `BottomNav.tsx`, `KariFloatingButton.tsx` y `App.tsx` (ProtectedRoute con feature key).
 
-```text
-[Comprar] → AlertDialog "¿Confirmar compra?"
-   ├─ Resumen: pack, tokens, precio MXN
-   ├─ Aviso: cargo único, tokens no caducan
-   └─ [Cancelar] [Confirmar y pagar] → abre EmbeddedCheckout
-```
+## 2. Tabla `ai_token_usage_log`
 
-Aplicar el mismo patrón en una sola tarjeta nueva de "balance + atajo" en el `KariChatPanel` cuando el saldo está bajo (<500 tokens), con CTA directo al store.
+Migración nueva. Columnas: `id`, `user_id`, `conversation_id`, `message_id`, `model`, `prompt_tokens`, `completion_tokens`, `total_tokens`, `cost_usd_micros bigint`, `created_at`. Índices en `(user_id, created_at desc)` y `(created_at desc)`.
 
-## 3. Branding: barra inferior móvil
+RLS: SELECT propio o admin; INSERT solo service role.
 
-La barra inferior actualmente es gris plano (`bg-background`). La rediseño para que case con la paleta CareCentral:
+Backfill opcional: insertar filas históricas desde `ai_chat_messages` donde `role='assistant' AND tokens_used > 0` (sin costo, sin model).
 
-- Fondo glass con tinte navy: `bg-sidebar/95 backdrop-blur` + `border-t border-sidebar-border`.
-- Texto inactivo: `text-sidebar-foreground/70`.
-- Texto/ícono activo: `text-primary` (teal) con barra superior 2px en teal sobre el tab activo.
-- Tab central de **Kari** destacado: círculo flotante teal-cyan gradient con el avatar de Kari, elevado -8px (estilo "FAB inline").
-- Sombra superior sutil: `shadow-[0_-4px_20px_-8px_hsl(var(--primary)/0.15)]`.
+## 3. Tabla `ai_token_monthly_limits`
 
-## 4. Logo CareCentral más visual
+Columnas: `id`, `plan_id` (nullable = aplica a todos), `role app_role`, `monthly_token_cap int`, `enabled bool`. Único `(plan_id, role)`.
 
-**Login (`Login.tsx`)**: aumentar de `size={80}` a `size={120}` con `withText`, añadir ring teal sutil y leve animación `animate-in fade-in zoom-in-95` al cargar.
+Función `check_kari_monthly_limit(_user_id) returns jsonb` que devuelve `{ allowed, used_this_month, cap, resets_at }` consultando `ai_token_usage_log` del mes actual y el cap más restrictivo aplicable.
 
-**Header desktop (`AppLayout.tsx`)**: subir de `size={28}` a `size={36}`, separación visual con divisor.
+Sembrar valores por defecto: paciente Gratuito = 5000/mes, otros roles sin tope.
 
-**Header móvil**: subir de `size={26}` a `size={34}`, centrar visualmente.
+## 4. Edge function `ai-kari-chat`
 
-**Sidebar header**: añadir un nuevo `SidebarHeader` con el logo (versión solo ícono `size={32}`) + wordmark "CareCentral" en font-heading, fondo navy, separador inferior con accent-teal.
+- Antes del modelo: validar `check_kari_monthly_limit`. Si excede → HTTP 429 `{ code: 'monthly_limit_reached', resets_at }`.
+- Después de obtener `usage` del Lovable AI Gateway: calcular `cost_usd_micros` con tabla constante por modelo, insertar fila en `ai_token_usage_log`.
+- En la respuesta agregar `low_balance: boolean` (`balance < 500 && balance > 0`) y `monthly_used`/`monthly_cap` cuando aplique.
 
-**Splash al entrar**: pequeño componente `BrandSplash` (200ms fade) con logo grande centrado que se muestra una sola vez por sesión al entrar a `/` desde el login (state en `sessionStorage`).
+Tabla de costos (micro-USD por token):
+- `gemini-3-flash-preview`: input 30, output 250
+- `gemini-2.5-flash`: input 30, output 250
+- `gemini-2.5-pro`: input 1250, output 5000
 
-## Archivos a tocar
+## 5. Alerta de saldo bajo en cliente
 
-**Crear**
-- `src/hooks/useKariConversationActions.ts` — delete conversación
-- `src/components/kari/ConfirmPurchaseDialog.tsx` — confirmación de compra
-- `src/components/brand/BrandSplash.tsx` — splash al entrar
+- `useKariBalance`: derivar `isLow`, `isEmpty`.
+- Nuevo `src/components/kari/LowBalanceBanner.tsx` (amarillo si low, rojo si empty, CTA "Comprar tokens").
+- Integrar en `KariChatPanel.tsx` (header) y `Kari.tsx`.
+- Manejar `monthly_limit_reached` en `useKariChat` con toast claro y banner persistente.
 
-**Editar**
-- `src/pages/Kari.tsx` — input de búsqueda + botón eliminar por fila + AlertDialog
-- `src/pages/KariTokens.tsx` — intercalar confirmación antes del checkout
-- `src/components/BottomNav.tsx` — rediseño con paleta de marca y Kari como FAB inline
-- `src/pages/Login.tsx` — logo más grande con ring + animación
-- `src/components/AppLayout.tsx` — logos más grandes en headers; añadir `BrandSplash`
-- `src/components/AppSidebar.tsx` — añadir `SidebarHeader` con logo+wordmark
+## 6. Página admin `/admin/kari-uso`
 
-**Migración**
-- Verificar/añadir `ON DELETE CASCADE` de `ai_chat_messages.conversation_id → ai_chat_conversations.id`. Si no existe, agregar la FK con cascade (migración pequeña).
+Nuevo `src/pages/admin/KariUsageAdmin.tsx` (acceso solo admin):
 
-## Detalles técnicos
+- KPIs mes actual: tokens vendidos, consumidos, costo USD, margen, usuarios activos.
+- Filtros de rango de fechas.
+- Gráfico recharts: consumo diario últimos 30 días.
+- Tabla por usuario (email, mensajes, tokens, costo USD, última actividad), buscador, paginación 50.
+- Botón "Exportar CSV".
+- Sección "Límites mensuales" → editor CRUD de `ai_token_monthly_limits`.
 
-- Búsqueda: filtrado client-side sobre las 50 conversaciones ya cargadas — sin nuevas queries.
-- Borrado: usa el cliente Supabase normal con la RLS existente `ai_chat_conv_owner_delete`. La cascada elimina los mensajes.
-- Confirmación de compra: `AlertDialog` de shadcn — no abrir el `EmbeddedCheckoutProvider` hasta confirmar (evita pre-creación innecesaria de sesiones Stripe).
-- Branding: todos los colores vía tokens HSL existentes (`--sidebar-*`, `--primary`, `--accent`). Ningún color hardcoded.
-- Sin Stripe products nuevos. Sin nuevos secrets.
+Componentes/hooks nuevos:
+- `src/hooks/useKariUsageAdmin.ts`
+- `src/components/admin/KariMonthlyLimitsEditor.tsx`
+- `src/lib/exportKariUsageCSV.ts`
+
+RPCs (security definer, requieren admin):
+- `get_kari_usage_summary(_from, _to) returns jsonb`
+- `get_kari_usage_by_user(_from, _to, _limit, _offset) returns setof record`
+
+Entrada en sidebar admin "Uso de Kari" (icono Sparkles) y registrarla como feature `kari_admin` para que también sea controlable desde la matriz.
+
+---
+
+## Archivos a crear
+
+- migración SQL (tablas, función, RPCs, seeds)
+- `src/pages/admin/KariUsageAdmin.tsx`
+- `src/hooks/useKariUsageAdmin.ts`
+- `src/components/admin/KariMonthlyLimitsEditor.tsx`
+- `src/components/kari/LowBalanceBanner.tsx`
+- `src/lib/exportKariUsageCSV.ts`
+
+## Archivos a editar
+
+- `supabase/functions/ai-kari-chat/index.ts`
+- `src/lib/features.ts` (agregar `kari`, `kari_tokens`, `kari_admin`)
+- `src/App.tsx` (ruta admin nueva, ProtectedRoute con feature)
+- `src/components/AppSidebar.tsx` (entrada admin)
+- `src/components/BottomNav.tsx` (filtro por feature)
+- `src/components/kari/KariFloatingButton.tsx` (esconder si sin acceso)
+- `src/hooks/useKariTokens.ts` (`isLow`, `isEmpty`)
+- `src/hooks/useKariChat.ts` (manejar `monthly_limit_reached` y `low_balance`)
+- `src/components/kari/KariChatPanel.tsx` y `src/pages/Kari.tsx` (banner)
+
+## Memoria
+
+- Actualizar `mem://features/db-schema` con las 2 tablas nuevas.
+- Agregar a Core: "Kari registrado como feature `kari` en matriz; límite default paciente Gratuito = 5000 tokens/mes".
+
+---
+
+## Fuera de alcance
+
+- Notificaciones push reales (solo banner + toast in-app).
+- Exportación XLSX (solo CSV).
+- Alertas por email al admin cuando margen baja (queda como siguiente iteración).
