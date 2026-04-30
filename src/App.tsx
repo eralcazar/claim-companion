@@ -105,7 +105,6 @@ const App = () => (
               <Route path="/suscripcion" element={<Subscription />} />
               <Route path="/oxygen-saturation" element={<OxygenSaturation />} />
               <Route path="/expediente" element={<ExpedienteDigital />} />
-              <Route path="/legal-app" element={<Legal />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
