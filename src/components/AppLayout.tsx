@@ -7,20 +7,23 @@ import { ImpersonationBanner } from "@/components/ImpersonationBanner";
 import { NotificationBell } from "@/components/NotificationBell";
 import { CareCentralLogo } from "@/components/brand/CareCentralLogo";
 import { KariFloatingButton } from "@/components/kari/KariFloatingButton";
+import { BrandSplash } from "@/components/brand/BrandSplash";
 
 export function AppLayout() {
   const isMobile = useIsMobile();
 
   return (
     <SidebarProvider>
+      <BrandSplash />
       <div className="min-h-screen flex w-full">
         {!isMobile && <AppSidebar />}
 
         <div className="flex-1 flex flex-col min-w-0">
           {!isMobile && (
-            <header className="h-14 flex items-center border-b px-4 gap-3">
+            <header className="h-16 flex items-center border-b px-4 gap-3 bg-background/80 backdrop-blur">
               <SidebarTrigger />
-              <CareCentralLogo size={28} withText />
+              <div className="h-6 w-px bg-border" />
+              <CareCentralLogo size={36} withText />
               <div className="ml-auto">
                 <NotificationBell />
               </div>
@@ -28,8 +31,8 @@ export function AppLayout() {
           )}
 
           {isMobile && (
-            <header className="h-14 flex items-center border-b px-4">
-              <CareCentralLogo size={26} withText />
+            <header className="h-16 flex items-center border-b px-4 bg-background/80 backdrop-blur">
+              <CareCentralLogo size={34} withText />
               <div className="ml-auto">
                 <NotificationBell />
               </div>
