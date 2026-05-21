@@ -48,6 +48,8 @@ import Subscription from "@/pages/Subscription";
 import Consultorio from "@/pages/Consultorio";
 import PresionArterial from "@/pages/PresionArterial";
 import OxygenSaturation from "@/pages/OxygenSaturation";
+import Temperatura from "@/pages/Temperatura";
+import Glucosa from "@/pages/Glucosa";
 import ExpedienteDigital from "@/pages/ExpedienteDigital";
 import Kari from "@/pages/Kari";
 import KariTokens from "@/pages/KariTokens";
@@ -107,6 +109,8 @@ const App = () => (
               <Route path="/planes" element={<Plans />} />
               <Route path="/suscripcion" element={<Subscription />} />
               <Route path="/oxygen-saturation" element={<OxygenSaturation />} />
+              <Route path="/temperatura" element={<Temperatura />} />
+              <Route path="/glucosa" element={<Glucosa />} />
               <Route path="/expediente" element={<ExpedienteDigital />} />
               <Route path="/kari" element={<Kari />} />
               <Route path="/kari/tokens" element={<KariTokens />} />
