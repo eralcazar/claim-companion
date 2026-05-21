@@ -1,12 +1,14 @@
 import { useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Pill, FileText, FlaskConical, TrendingUp, Activity, HeartPulse, FolderTree, Map } from "lucide-react";
+import { Pill, FileText, FlaskConical, TrendingUp, Activity, HeartPulse, FolderTree, Map, Thermometer, Droplet } from "lucide-react";
 import Medications from "@/pages/Medications";
 import Recetas from "@/pages/Recetas";
 import Estudios from "@/pages/Estudios";
 import Tendencias from "@/pages/Tendencias";
 import PresionArterial from "@/pages/PresionArterial";
 import OxygenSaturation from "@/pages/OxygenSaturation";
+import Temperatura from "@/pages/Temperatura";
+import Glucosa from "@/pages/Glucosa";
 import MedicalRecords from "@/pages/MedicalRecords";
 import { BodyMapEditor } from "@/components/consultorio/BodyMapEditor";
 import { useImpersonation } from "@/contexts/ImpersonationContext";
@@ -23,6 +25,10 @@ const TABS_ROW_2 = [
   { value: "presion", label: "Presión", icon: HeartPulse },
   { value: "oxigenacion", label: "Oxigenación", icon: Activity },
   { value: "registros", label: "Registros", icon: FolderTree },
+];
+const TABS_ROW_3 = [
+  { value: "temperatura", label: "Temperatura", icon: Thermometer },
+  { value: "glucosa", label: "Glucosa", icon: Droplet },
 ];
 
 interface Props {
@@ -88,6 +94,17 @@ export function PatientExpedienteTabs({ patientId, patientName, defaultTab = "ma
             );
           })}
         </TabsList>
+        <TabsList className="grid grid-cols-2 w-full h-auto gap-1">
+          {TABS_ROW_3.map((t) => {
+            const Icon = t.icon;
+            return (
+              <TabsTrigger key={t.value} value={t.value} className="gap-1.5 flex-col sm:flex-row py-2 text-xs sm:text-sm">
+                <Icon className="h-4 w-4" />
+                <span className="truncate">{t.label}</span>
+              </TabsTrigger>
+            );
+          })}
+        </TabsList>
       </div>
 
       {!ready ? (
@@ -111,6 +128,8 @@ export function PatientExpedienteTabs({ patientId, patientName, defaultTab = "ma
           <TabsContent value="presion" className="mt-4"><PresionArterial /></TabsContent>
           <TabsContent value="oxigenacion" className="mt-4"><OxygenSaturation /></TabsContent>
           <TabsContent value="registros" className="mt-4"><MedicalRecords /></TabsContent>
+          <TabsContent value="temperatura" className="mt-4"><Temperatura /></TabsContent>
+          <TabsContent value="glucosa" className="mt-4"><Glucosa /></TabsContent>
         </>
       )}
     </Tabs>

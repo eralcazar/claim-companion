@@ -1,56 +1,106 @@
 ## Objetivo
+Agregar dos módulos clínicos nuevos al **Consultorio Digital** (y al Expediente del paciente): **Temperatura corporal** y **Glucosa capilar**, con registro de lecturas, listado histórico y gráficas de tendencia, siguiendo exactamente el mismo patrón que ya existe para **Presión arterial** y **Saturación de oxígeno (SpO2)**.
 
-Permitir al admin elegir el modelo de IA usado para OCR (extracción de indicadores de estudios y detección de campos de formularios), tal como se hace hoy con el modelo de Kari. El modelo se lee dinámicamente desde la tabla `ai_settings`.
+## Alcance funcional
 
-## Cambios
+Para cada uno de los dos módulos (Temperatura y Glucosa):
 
-### 1. Nueva configuración global
+- Formulario para capturar una lectura (fecha/hora, valor, contexto y notas).
+- Lista cronológica de lecturas con badges de clasificación clínica.
+- Gráfica de tendencia (line chart con `recharts`) con líneas de referencia para rangos normales / alterados.
+- Edición y borrado de lecturas propias (creator/admin), respetando RLS.
+- Acceso desde el Consultorio del médico y desde el Expediente Digital del paciente.
 
-Reutilizamos la tabla existente `ai_settings` (key/value JSON, RLS admin-only ya configurada).
-- Nuevo `key = 'ocr_active_model'`, value default `"google/gemini-2.5-pro"`.
+### Clasificación clínica
 
-Se hace via `supabase--insert` (es solo un upsert de configuración, no schema).
+**Temperatura (°C)**
+- Hipotermia: < 35.0 (destructive)
+- Normal: 35.0 – 37.4 (success)
+- Febrícula: 37.5 – 37.9 (warning)
+- Fiebre: 38.0 – 39.4 (destructive suave)
+- Fiebre alta: ≥ 39.5 (destructive)
 
-### 2. Edge functions: leer modelo dinámicamente
+**Glucosa (mg/dL)** — campo `context` define interpretación (ayuno / postprandial / aleatoria):
+- Hipoglucemia: < 70 (destructive)
+- Ayuno normal: 70 – 99 (success)
+- Prediabetes ayuno: 100 – 125 (warning)
+- Diabetes ayuno: ≥ 126 (destructive)
+- Postprandial normal: < 140 (success), alterada 140–199 (warning), diabetes ≥ 200 (destructive)
 
-Modificar:
-- `supabase/functions/extract-study-indicators/index.ts`
-- `supabase/functions/detect-form-fields/index.ts`
+## Cambios técnicos
 
-En cada una:
-- Antes de llamar al gateway, leer con service role:
-  ```ts
-  const { data } = await admin.from("ai_settings").select("value").eq("key", "ocr_active_model").maybeSingle();
-  const model = (typeof data?.value === "string" ? data.value : "google/gemini-2.5-pro");
-  ```
-- Reemplazar el literal `model: "google/gemini-2.5-pro"` por `model`.
-- Loggear el modelo + tokens usados (si la respuesta los trae) para auditoría.
+### 1. Base de datos (migración)
 
-### 3. Hook frontend
+Crear dos tablas espejo de `spo2_readings`:
 
-En `src/hooks/useAiTokenPacks.ts` agregar:
-- `useOcrActiveModel()` y `useSetOcrActiveModel()` análogos a los de Kari.
-- Constante `OCR_MODEL_OPTIONS` con los 4 modelos relevantes y su costo µUSD/token + nota de calidad:
-  - `google/gemini-2.5-flash-lite` — Más económico, solo formularios simples
-  - `google/gemini-2.5-flash` — Balanceado, recomendado para la mayoría
-  - `google/gemini-3-flash-preview` — Última generación, calidad/costo
-  - `google/gemini-2.5-pro` — Premium, máxima precisión (actual)
+```sql
+-- temperature_readings
+id uuid pk, patient_id uuid, taken_at timestamptz default now(),
+temperature_c numeric(4,2) not null,
+method text,            -- oral, axilar, timpánica, rectal, frontal
+context text, notes text,
+created_by uuid not null,
+created_at, updated_at
 
-### 4. UI de selector
+-- glucose_readings
+id uuid pk, patient_id uuid, taken_at timestamptz default now(),
+glucose_mgdl integer not null,
+measurement_context text not null default 'aleatoria', -- ayuno | postprandial | aleatoria | pre_comida
+hours_since_meal numeric,
+notes text,
+created_by uuid not null,
+created_at, updated_at
+```
 
-En `src/pages/admin/KariUsageAdmin.tsx`, agregar una segunda card **"Modelo de IA para OCR"** debajo de la de Kari, con:
-- Selector de modelo (mismo patrón que Kari).
-- Badge mostrando costo µUSD por 1k tokens input/output.
-- Estimación de costo por escaneo típico (~3k input + 2k output).
-- Nota explicando: este modelo se usa para `extract-study-indicators` y `detect-form-fields`.
+RLS idéntico al de `blood_pressure_readings`:
+- SELECT: paciente, creador, admin o `has_patient_access(auth.uid(), patient_id)`.
+- INSERT: `created_by = auth.uid()` y (paciente, admin o personal con acceso).
+- UPDATE/DELETE: creador o admin.
 
-## Detalles técnicos
+Trigger `update_updated_at_column` en ambas tablas.
 
-- Sin cambios de schema — usamos `ai_settings` existente.
-- Las edge functions usan service role para leer `ai_settings` (la RLS public read ya es `true` para authenticated, pero las edge functions corren sin sesión; service role bypasa RLS).
-- Fallback al modelo Pro actual si la config no existe, para no romper nada.
-- Despliegue automático de las dos edge functions modificadas.
+### 2. Hooks
 
-## Resultado esperado
+- `src/hooks/useTemperature.ts` — `useTemperatureReadings`, `useCreateTemperature`, `useUpdateTemperature`, `useDeleteTemperature`, `classifyTemperature`. Mismo shape que `useOxygenSaturation.ts`.
+- `src/hooks/useGlucose.ts` — equivalente, con `classifyGlucose(value, context)`.
 
-En `/admin/kari-uso` aparece una nueva card "Modelo de IA para OCR". El admin puede cambiar entre Pro/Flash/Flash-Lite según el balance precisión vs costo deseado, y el cambio se aplica al instante a todos los OCR posteriores. Costo estimado por escaneo se muestra junto al selector.
+### 3. Componentes
+
+```
+src/components/temperature/
+  TemperatureModule.tsx        // wrapper con form + lista + gráfica (paciente, name, canEdit)
+  TemperatureForm.tsx
+  TemperatureList.tsx
+  TemperatureChart.tsx         // recharts LineChart + ReferenceLine 37.5 / 38
+src/components/glucose/
+  GlucoseModule.tsx
+  GlucoseForm.tsx
+  GlucoseList.tsx
+  GlucoseChart.tsx             // ReferenceLines 70 / 100 / 126
+```
+
+Usar tokens semánticos (`hsl(var(--primary))`, `--success`, `--warning`, `--destructive`) — sin colores hardcoded.
+
+### 4. Páginas
+
+- `src/pages/Temperatura.tsx` y `src/pages/Glucosa.tsx`, espejos de `OxygenSaturation.tsx`, soportando impersonación via `useEffectiveUserId`.
+
+### 5. Navegación / integración
+
+- `src/components/expediente/PatientExpedienteTabs.tsx`: agregar tabs **"Temperatura"** (icon `Thermometer`) y **"Glucosa"** (icon `Droplet`) en una tercera fila `grid-cols-2` (o expandir filas existentes a `grid-cols-5`).
+- `src/App.tsx`: rutas `/temperatura` y `/glucosa` protegidas igual que `/oxigenacion`.
+- `src/components/AppSidebar.tsx` y `src/components/BottomNav.tsx`: enlaces opcionales (solo si ya están Presión/Oxigenación visibles para ese rol).
+
+### 6. Tendencias
+
+`src/hooks/useTendencias.ts` ya agrupa por `nombre_indicador` desde estudios. **No** se modifica: las nuevas lecturas viven en sus propias tablas y se grafican en su módulo dedicado.
+
+## Notas
+
+- Toda la UI en español, mobile-first, con `rounded-2xl` y paleta CareCentral (teal/navy/cyan) — sin colores literales.
+- Los módulos no consumen tokens de IA (no usan OCR ni LLM).
+- Permisos: paciente edita los suyos, médico/enfermero/admin con `has_patient_access` pueden registrar lecturas; broker solo lectura.
+
+## ¿Confirmas?
+
+Si apruebas, paso a build mode y ejecuto: migración → hooks → componentes → páginas → integración en tabs/rutas.
