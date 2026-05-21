@@ -1160,6 +1160,45 @@ export type Database = {
           },
         ]
       }
+      glucose_readings: {
+        Row: {
+          created_at: string
+          created_by: string
+          glucose_mgdl: number
+          hours_since_meal: number | null
+          id: string
+          measurement_context: string
+          notes: string | null
+          patient_id: string
+          taken_at: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          glucose_mgdl: number
+          hours_since_meal?: number | null
+          id?: string
+          measurement_context?: string
+          notes?: string | null
+          patient_id: string
+          taken_at?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          glucose_mgdl?: number
+          hours_since_meal?: number | null
+          id?: string
+          measurement_context?: string
+          notes?: string | null
+          patient_id?: string
+          taken_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       indicadores_estudio: {
         Row: {
           codigo_indicador: string | null
@@ -2771,6 +2810,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      temperature_readings: {
+        Row: {
+          context: string | null
+          created_at: string
+          created_by: string
+          id: string
+          method: string | null
+          notes: string | null
+          patient_id: string
+          taken_at: string
+          temperature_c: number
+          updated_at: string
+        }
+        Insert: {
+          context?: string | null
+          created_at?: string
+          created_by: string
+          id?: string
+          method?: string | null
+          notes?: string | null
+          patient_id: string
+          taken_at?: string
+          temperature_c: number
+          updated_at?: string
+        }
+        Update: {
+          context?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          method?: string | null
+          notes?: string | null
+          patient_id?: string
+          taken_at?: string
+          temperature_c?: number
+          updated_at?: string
+        }
+        Relationships: []
       }
       user_roles: {
         Row: {
