@@ -7,6 +7,7 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { AppLayout } from "@/components/AppLayout";
 import Login from "@/pages/Login";
+import Landing from "@/pages/Landing";
 import Legal from "@/pages/Legal";
 import Dashboard from "@/pages/Dashboard";
 import Profile from "@/pages/Profile";
@@ -57,7 +58,7 @@ import KariUsageAdmin from "@/pages/admin/KariUsageAdmin";
 
 const queryClient = new QueryClient();
 
-function RootRedirect() {
+function RootRoute() {
   const { user, loading } = useAuth();
   if (loading) {
     return (
@@ -66,7 +67,8 @@ function RootRedirect() {
       </div>
     );
   }
-  return <Navigate to={user ? "/dashboard" : "/login"} replace />;
+  if (user) return <Navigate to="/dashboard" replace />;
+  return <Landing />;
 }
 
 const App = () => (
@@ -79,7 +81,7 @@ const App = () => (
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/legal" element={<Legal />} />
-            <Route path="/" element={<RootRedirect />} />
+            <Route path="/" element={<RootRoute />} />
             <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/perfil" element={<Profile />} />
