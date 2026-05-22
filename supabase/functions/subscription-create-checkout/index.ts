@@ -7,13 +7,20 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+function jsonResponse(body: Record<string, unknown>, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
-      return new Response(JSON.stringify({ error: "Missing auth" }), { status: 401, headers: corsHeaders });
+      return jsonResponse({ error: "Missing auth" }, 401);
     }
     const userClient = createClient(
       Deno.env.get("SUPABASE_URL")!,
@@ -23,12 +30,12 @@ serve(async (req) => {
     const { data: userRes } = await userClient.auth.getUser();
     const user = userRes?.user;
     if (!user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
+      return jsonResponse({ error: "Unauthorized" }, 401);
     }
 
     const { plan_id, billing, environment, returnUrl } = await req.json();
     if (!plan_id || !["mensual", "anual"].includes(billing)) {
-      throw new Error("plan_id y billing (mensual|anual) requeridos");
+      return jsonResponse({ error: "plan_id y billing (mensual|anual) requeridos" }, 400);
     }
 
     const admin = createClient(
@@ -41,10 +48,15 @@ serve(async (req) => {
       .eq("id", plan_id)
       .eq("activo", true)
       .maybeSingle();
-    if (!plan) throw new Error("Plan no disponible");
+    if (!plan) return jsonResponse({ error: "Plan no disponible" }, 404);
 
     const priceId = billing === "mensual" ? plan.stripe_price_id_mensual : plan.stripe_price_id_anual;
-    if (!priceId) throw new Error("Plan no sincronizado con cobros. Publicá primero.");
+    if (!priceId) {
+      return jsonResponse(
+        { error: "Este plan todavía no está sincronizado con cobros. Publicalo desde Admin > Planes." },
+        409,
+      );
+    }
 
     const env = (environment || "sandbox") as StripeEnv;
     const stripe = createStripeClient(env);
@@ -85,14 +97,9 @@ serve(async (req) => {
         `${req.headers.get("origin")}/checkout/return?session_id={CHECKOUT_SESSION_ID}&kind=subscription`,
     });
 
-    return new Response(JSON.stringify({ clientSecret: session.client_secret }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ clientSecret: session.client_secret });
   } catch (e: any) {
     console.error("subscription-create-checkout error", e);
-    return new Response(JSON.stringify({ error: e.message }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: e.message }, 500);
   }
 });
