@@ -207,12 +207,12 @@ export default function Claims() {
   };
 
   const handleDeleteClaim = async (id: string) => {
-    if (!confirm("¿Eliminar este reclamo? Esta acción no se puede deshacer.")) return;
+    if (!confirm("¿Eliminar esta solicitud? Esta acción no se puede deshacer.")) return;
     await supabase.from("claim_documents").delete().eq("claim_id", id);
     const { error } = await supabase.from("claims").delete().eq("id", id);
-    if (error) toast.error("Error al eliminar el reclamo");
+    if (error) toast.error("Error al eliminar la solicitud");
     else {
-      toast.success("Reclamo eliminado");
+      toast.success("Solicitud eliminada");
       queryClient.invalidateQueries({ queryKey: ["claims", effectiveUserId] });
     }
   };
@@ -299,7 +299,7 @@ export default function Claims() {
   return (
     <div className="space-y-4 animate-fade-in max-w-lg mx-auto pb-24">
       <div className="flex items-center justify-between">
-        <h1 className="font-heading text-2xl font-bold">Mis Reclamos</h1>
+        <h1 className="font-heading text-2xl font-bold">Mis Solicitudes</h1>
         <Button size="sm" onClick={() => navigate("/reclamos/nuevo")}>
           <Plus className="h-4 w-4 mr-1" /> Nuevo
         </Button>
@@ -307,7 +307,7 @@ export default function Claims() {
 
       <Tabs defaultValue="claims" className="w-full">
         <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="claims">Reclamos {claims?.length ? `(${claims.length})` : ""}</TabsTrigger>
+          <TabsTrigger value="claims">Solicitudes {claims?.length ? `(${claims.length})` : ""}</TabsTrigger>
           <TabsTrigger value="drafts">Borradores {drafts.length ? `(${drafts.length})` : ""}</TabsTrigger>
           <TabsTrigger value="submitted">Enviados {submitted.length ? `(${submitted.length})` : ""}</TabsTrigger>
           <TabsTrigger value="errors">
@@ -319,7 +319,7 @@ export default function Claims() {
           {isLoading ? (
             <div className="flex justify-center p-8"><div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" /></div>
           ) : claims?.length === 0 ? (
-            <Card><CardContent className="p-8 text-center text-muted-foreground text-sm">No tienes reclamos</CardContent></Card>
+            <Card><CardContent className="p-8 text-center text-muted-foreground text-sm">No tienes solicitudes</CardContent></Card>
           ) : (
             claims?.map((claim) => (
               <Card key={claim.id}>

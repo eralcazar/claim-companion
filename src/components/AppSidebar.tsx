@@ -21,7 +21,7 @@ type Item = { title: string; url: string; icon: typeof Home; feature: FeatureKey
 
 const mainItems: Item[] = [
   { title: "Panel de Paciente", url: "/dashboard", icon: Home, feature: "inicio" },
-  { title: "Reclamos", url: "/reclamos", icon: FileText, feature: "reclamos" },
+  { title: "Solicitudes", url: "/reclamos", icon: FileText, feature: "reclamos" },
   { title: "Agenda", url: "/agenda", icon: Calendar, feature: "agenda" },
   { title: "Expediente Digital", url: "/expediente", icon: FolderOpen, feature: "expediente_digital" },
   { title: "Pólizas", url: "/polizas", icon: Shield, feature: "polizas" },
@@ -36,7 +36,7 @@ const brokerItems: Item[] = [
 const doctorItems: Item[] = [
   { title: "Panel Médico", url: "/medico", icon: Stethoscope, feature: "doctor_panel" },
   { title: "Consultorio digital", url: "/consultorio", icon: Stethoscope, feature: "consultorio" },
-  { title: "Reclamos sin informe", url: "/medico/reclamos-sin-informe", icon: FileWarning, feature: "claims_without_report" },
+  { title: "Solicitudes sin informe", url: "/medico/reclamos-sin-informe", icon: FileWarning, feature: "claims_without_report" },
   { title: "Mi Perfil Médico", url: "/medico/perfil", icon: BadgeCheck, feature: "doctor_profile" },
 ];
 

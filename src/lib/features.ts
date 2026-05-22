@@ -33,7 +33,7 @@ export interface FeatureDef {
 
 export const AVAILABLE_FEATURES: FeatureDef[] = [
   { key: "inicio", label: "Panel de Paciente", route: "/", icon: Home, group: "principal" },
-  { key: "reclamos", label: "Reclamos", route: "/reclamos", icon: FileText, group: "principal" },
+  { key: "reclamos", label: "Solicitudes", route: "/reclamos", icon: FileText, group: "principal" },
   { key: "agenda", label: "Agenda", route: "/agenda", icon: Calendar, group: "principal" },
   { key: "medicamentos", label: "Medicamentos", route: "/medicamentos", icon: Pill, group: "principal" },
   { key: "registros", label: "Registros Médicos", route: "/registros", icon: FolderOpen, group: "principal" },
@@ -51,7 +51,7 @@ export const AVAILABLE_FEATURES: FeatureDef[] = [
   { key: "suscripcion", label: "Mi suscripción", route: "/suscripcion", icon: CreditCard, group: "principal" },
   { key: "broker_panel", label: "Panel Broker", route: "/broker", icon: Users, group: "broker" },
   { key: "doctor_panel", label: "Panel Médico", route: "/medico", icon: Stethoscope, group: "medico" },
-  { key: "claims_without_report", label: "Reclamos sin informe", route: "/medico/reclamos-sin-informe", icon: FileWarning, group: "medico" },
+  { key: "claims_without_report", label: "Solicitudes sin informe", route: "/medico/reclamos-sin-informe", icon: FileWarning, group: "medico" },
   { key: "nurse_panel", label: "Panel Enfermería", route: "/enfermeria", icon: HeartPulse, group: "enfermero" },
   { key: "lab_panel", label: "Panel Laboratorio", route: "/laboratorio", icon: FlaskRound, group: "laboratorio" },
   { key: "pharmacy_panel", label: "Panel Farmacia", route: "/farmacia", icon: Store, group: "farmacia" },

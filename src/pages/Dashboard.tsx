@@ -101,7 +101,7 @@ export default function Dashboard() {
         onClick={() => navigate("/reclamos/nuevo")}
       >
         <FileText className="mr-2 h-5 w-5" />
-        Nuevo Reclamo
+        Nueva Solicitud
       </Button>
 
       <Button
@@ -203,12 +203,12 @@ export default function Dashboard() {
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base font-heading">
             <FileText className="h-5 w-5 text-primary" />
-            Reclamos Recientes
+            Solicitudes Recientes
           </CardTitle>
         </CardHeader>
         <CardContent>
           {recentClaims?.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Sin reclamos</p>
+            <p className="text-sm text-muted-foreground">Sin solicitudes</p>
           ) : (
             <div className="space-y-2">
               {recentClaims?.map((claim) => (

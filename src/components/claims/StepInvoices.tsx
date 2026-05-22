@@ -46,7 +46,7 @@ export default function StepInvoices({ form, onChange }: Props) {
 
       {form.invoices.length === 0 && (
         <p className="text-sm text-muted-foreground text-center py-4">
-          Agrega las facturas de tu reclamo
+          Agrega las facturas de tu solicitud
         </p>
       )}
 

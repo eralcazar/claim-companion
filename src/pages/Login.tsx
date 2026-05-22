@@ -107,7 +107,7 @@ export default function Login() {
               Tu salud, <span className="text-primary">en un solo lugar</span>
             </h1>
             <p className="mt-2 text-sm text-muted-foreground sm:text-base">
-              Expediente digital, recordatorios y reclamos médicos al alcance de tu familia.
+              Expediente digital, recordatorios y solicitudes médicas al alcance de tu familia.
             </p>
 
             {/* Beneficios */}

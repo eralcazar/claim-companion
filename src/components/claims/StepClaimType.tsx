@@ -12,7 +12,7 @@ export default function StepClaimType({ form, onChange }: Props) {
   return (
     <div className="space-y-6">
       <div className="space-y-3">
-        <Label className="text-base font-medium">¿Qué tipo de reclamo deseas hacer?</Label>
+        <Label className="text-base font-medium">¿Qué tipo de solicitud deseas hacer?</Label>
         <div className="grid grid-cols-1 gap-3">
           <Button
             variant={form.claim_type === "reembolso" ? "default" : "outline"}

@@ -88,16 +88,16 @@ export default function ClaimsWithoutReport() {
     <div className="space-y-4 max-w-3xl mx-auto">
       <h1 className="font-heading text-2xl font-bold flex items-center gap-2">
         <FileWarning className="h-6 w-6 text-primary" />
-        Reclamos sin informe médico
+        Solicitudes sin informe médico
       </h1>
       <p className="text-sm text-muted-foreground">
-        Reclamos de pacientes que atiendes y aún no tienen un informe médico cargado.
+        Solicitudes de pacientes que atiendes y aún no tienen un informe médico cargado.
       </p>
 
       {isLoading ? (
         <div className="flex justify-center p-8"><div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" /></div>
       ) : (data ?? []).length === 0 ? (
-        <Card><CardContent className="p-8 text-center text-muted-foreground">Todos los reclamos tienen informe médico cargado.</CardContent></Card>
+        <Card><CardContent className="p-8 text-center text-muted-foreground">Todas las solicitudes tienen informe médico cargado.</CardContent></Card>
       ) : (
         <div className="space-y-2">
           {(data ?? []).map((c: any) => (

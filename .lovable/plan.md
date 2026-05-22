@@ -1,31 +1,48 @@
-## Verificación de la landing `/` — resultados y ajustes propuestos
+## Renombrar "Reclamo/Reclamos" → "Solicitud/Solicitudes" en la UI
 
-### ✅ Tokens de diseño
-Inspección de `src/pages/Landing.tsx`:
-- **0 colores hardcodeados** (sin hex `#...`, sin `rgb()`, sin `text-white`, `bg-black`, etc.).
-- Todos los colores usan tokens semánticos: `text-primary`, `bg-primary/10`, `text-muted-foreground`, `bg-card`, `bg-background`, `border-border/...`, `bg-foreground`, `text-background`.
-- 1 `style` inline en la sección Pacientes usa correctamente `var(--gradient-hero)` (token CSS).
-- Clases utilitarias del proyecto: `glass-card`, `gradient-hero`, `animate-fade-in`.
+Reemplazo de la palabra **solo en textos visibles** en español. **No** se cambian:
+- Identificadores de código (variables, componentes `Claims`, tipos, props).
+- Nombres de tablas, columnas o funciones de DB (`claims`, `claim_documents`, etc.).
+- Rutas (`/reclamos`, `/reclamos/nuevo`, `/reclamos/editar/:id`) — cambiarlas rompería enlaces externos y bookmarks.
+- Nombres de archivos (`Claims.tsx`, `NewClaim.tsx`, etc.).
 
-**Conclusión**: la landing respeta la paleta CareCentral (Teal #14B8A6 primary, Navy fg, Cyan accent) vía tokens.
+### Reglas de reemplazo (preservando capitalización)
 
-### ⚠️ Mobile (390×844) — no verificable en sesión actual
-La sesión del preview está autenticada, por lo que `/` redirige a `/dashboard` y no permite ver la landing visualmente. La lógica de `RootRoute` es correcta: invitados ven `<Landing />`.
+| Antes | Después |
+|---|---|
+| Reclamos | Solicitudes |
+| reclamos | solicitudes |
+| Reclamo | Solicitud |
+| reclamo | solicitud |
+| Nuevo Reclamo | Nueva Solicitud |
+| Sin reclamos | Sin solicitudes |
+| Reclamos sin informe | Solicitudes sin informe |
 
-### Ajustes propuestos (mobile-first, sin tocar diseño general)
+### Archivos a tocar (solo strings de UI)
 
-Para garantizar legibilidad y respiración en pantallas ≤390px:
+- `src/components/BottomNav.tsx` — label "Reclamos"
+- `src/components/AppSidebar.tsx` — label "Reclamos"
+- `src/pages/Dashboard.tsx` — "Nuevo Reclamo", "Reclamos Recientes", "Sin reclamos"
+- `src/pages/Claims.tsx` — título, botones, textos vacíos
+- `src/pages/NewClaim.tsx` — títulos, breadcrumbs, toasts
+- `src/pages/EditClaim.tsx` — títulos, toasts
+- `src/pages/NewClaimLegacy.tsx` — títulos
+- `src/pages/Landing.tsx` — sección Brokers/Pacientes (textos visibles)
+- `src/pages/Login.tsx` — textos visibles
+- `src/pages/Legal.tsx` — textos visibles
+- `src/pages/medico/ClaimsWithoutReport.tsx` — "Reclamos sin informe"
+- `src/pages/admin/FormatManager.tsx` — textos visibles
+- `src/pages/FirmasManager.tsx` — textos visibles
+- `src/components/claims/StepClaimType.tsx` — textos visibles
+- `src/components/claims/StepInvoices.tsx` — textos visibles
+- `src/lib/features.ts` y `src/lib/constants.ts` — solo `label`/`description` visibles; las **keys** se mantienen
 
-1. **Hero**: reducir `text-4xl` → `text-3xl` en h1 mobile (cambiar a `text-3xl sm:text-4xl lg:text-6xl`). Reducir `py-14` → `py-10` en mobile.
-2. **Avatar Kari**: en mobile la imagen mide `h-72 w-64`, ocupa demasiado. Bajar a `h-56 w-52 sm:h-80 sm:w-72`.
-3. **CTAs hero**: ya son full-width en mobile via `flex-col`. Verificar que tengan `w-full sm:w-auto` para que llenen el ancho disponible.
-4. **Pacientes / Brokers**: en mobile las cards mockup (resumen de salud, tabla asegurados) pueden desbordar — añadir `text-xs` en valores secundarios y `min-w-0` a los contenedores.
-5. **Header**: el botón "Entrar" + hamburguesa en mobile están bien dimensionados; verificar `gap-2` no apriete el logo.
-6. **Footer**: en mobile el `flex-col` ya stackea correctamente.
-7. **Scroll anchors**: `scroll-mt-20` ya aplicado a `#pacientes`, `#brokers`, `#como-funciona` para compensar header sticky.
+### Proceso
 
-### Archivos a tocar
+1. Revisar cada archivo y reemplazar únicamente strings entre comillas que se muestran al usuario (JSX text, `label:`, `title:`, `placeholder=`, `toast(...)`).
+2. No tocar comentarios de código, claves de objeto, nombres de variables, ni feature flags.
+3. Verificar build después del sweep.
 
-- `src/pages/Landing.tsx` — ajustes responsive puntuales (tamaños de tipografía, alturas de imagen, `w-full sm:w-auto` en CTAs hero, `min-w-0` en cards mockup).
+### Pregunta abierta
 
-No se requieren cambios en `index.css` ni `tailwind.config.ts`.
+Las rutas `/reclamos*` se conservan tal cual. Si más adelante quieres también renombrarlas a `/solicitudes*` (con redirects), lo haremos en un cambio aparte.
