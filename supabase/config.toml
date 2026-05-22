@@ -6,5 +6,14 @@ verify_jwt = false
 [functions.pharmacy-create-checkout]
 verify_jwt = false
 
+[functions.subscription-create-checkout]
+verify_jwt = false
+
+[functions.ocr-pack-checkout]
+verify_jwt = false
+
+[functions.ai-tokens-checkout]
+verify_jwt = false
+
 [functions.payments-webhook]
 verify_jwt = false

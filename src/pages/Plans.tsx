@@ -1,17 +1,29 @@
-import { useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { usePlans, usePlanFeatures, useSubscription } from "@/hooks/usePlans";
 import { useOcrPacks, useMyOcrQuota, totalQuota } from "@/hooks/useOcrQuota";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CheckCircle2, CreditCard, Sparkles, Infinity as InfinityIcon } from "lucide-react";
+import { AlertCircle, CheckCircle2, CreditCard, Loader2, Sparkles, Infinity as InfinityIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { AVAILABLE_FEATURES } from "@/lib/features";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { EmbeddedCheckoutProvider, EmbeddedCheckout } from "@stripe/react-stripe-js";
 import { getStripe, getStripeEnvironment } from "@/lib/stripe";
 import { supabase } from "@/integrations/supabase/client";
 import { OcrPurchaseHistory } from "@/components/ocr/OcrPurchaseHistory";
+import { toast } from "sonner";
+
+async function getFunctionErrorMessage(error: any, fallback: string) {
+  if (!error) return fallback;
+  try {
+    const payload = await error.context?.json?.();
+    if (payload?.error) return payload.error;
+  } catch (_e) {
+    // Si el cuerpo ya fue leído o no es JSON, usamos el mensaje estándar.
+  }
+  return error.message || fallback;
+}
 
 export default function Plans() {
   const [billing, setBilling] = useState<"mensual" | "anual">("mensual");
@@ -22,31 +34,113 @@ export default function Plans() {
   const { subscription, isActive } = useSubscription();
   const [checkoutPlanId, setCheckoutPlanId] = useState<string | null>(null);
   const [checkoutPackId, setCheckoutPackId] = useState<string | null>(null);
+  const [planClientSecret, setPlanClientSecret] = useState<string | null>(null);
+  const [planCheckoutError, setPlanCheckoutError] = useState<string | null>(null);
+  const [loadingPlanCheckout, setLoadingPlanCheckout] = useState(false);
+  const [packClientSecret, setPackClientSecret] = useState<string | null>(null);
+  const [packCheckoutError, setPackCheckoutError] = useState<string | null>(null);
+  const [loadingPackCheckout, setLoadingPackCheckout] = useState(false);
 
-  const fetchClientSecret = useCallback(async (): Promise<string> => {
-    const { data, error } = await supabase.functions.invoke("subscription-create-checkout", {
-      body: {
-        plan_id: checkoutPlanId,
-        billing,
-        environment: getStripeEnvironment(),
-        returnUrl: `${window.location.origin}/checkout/return?session_id={CHECKOUT_SESSION_ID}&kind=subscription`,
-      },
-    });
-    if (error || !data?.clientSecret) throw new Error(error?.message || "No se pudo iniciar el cobro");
-    return data.clientSecret;
-  }, [checkoutPlanId, billing]);
+  useEffect(() => {
+    let cancelled = false;
 
-  const fetchPackClientSecret = useCallback(async (): Promise<string> => {
-    const { data, error } = await supabase.functions.invoke("ocr-pack-checkout", {
-      body: {
-        pack_id: checkoutPackId,
-        environment: getStripeEnvironment(),
-        returnUrl: `${window.location.origin}/checkout/return?session_id={CHECKOUT_SESSION_ID}&kind=ocr_pack`,
-      },
-    });
-    if (error || !data?.clientSecret) throw new Error(error?.message || "No se pudo iniciar el cobro");
-    return data.clientSecret;
-  }, [checkoutPackId]);
+    async function createPlanCheckout() {
+      if (!checkoutPlanId) {
+        setPlanClientSecret(null);
+        setPlanCheckoutError(null);
+        return;
+      }
+
+      setPlanClientSecret(null);
+      setPlanCheckoutError(null);
+      setLoadingPlanCheckout(true);
+
+      try {
+        const plan = plans.find((p) => p.id === checkoutPlanId);
+        const cents = billing === "mensual" ? plan?.precio_mensual_centavos : plan?.precio_anual_centavos;
+        const priceId = billing === "mensual" ? plan?.stripe_price_id_mensual : plan?.stripe_price_id_anual;
+
+        if (!plan) throw new Error("Plan no encontrado");
+        if ((cents ?? 0) <= 0) throw new Error("Este plan no está disponible para compra.");
+        if (!priceId) throw new Error("Este plan todavía no está sincronizado con cobros. Publicalo desde Admin > Planes.");
+
+        const { data, error } = await supabase.functions.invoke("subscription-create-checkout", {
+          body: {
+            plan_id: checkoutPlanId,
+            billing,
+            environment: getStripeEnvironment(),
+            returnUrl: `${window.location.origin}/checkout/return?session_id={CHECKOUT_SESSION_ID}&kind=subscription`,
+          },
+        });
+
+        if (error || !data?.clientSecret) {
+          throw new Error(await getFunctionErrorMessage(error, "No se pudo iniciar el cobro"));
+        }
+        if (!cancelled) setPlanClientSecret(data.clientSecret);
+      } catch (e: any) {
+        const message = e?.message || "No se pudo iniciar el cobro";
+        if (!cancelled) {
+          setPlanCheckoutError(message);
+          toast.error(message);
+        }
+      } finally {
+        if (!cancelled) setLoadingPlanCheckout(false);
+      }
+    }
+
+    createPlanCheckout();
+    return () => {
+      cancelled = true;
+    };
+  }, [billing, checkoutPlanId, plans]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function createPackCheckout() {
+      if (!checkoutPackId) {
+        setPackClientSecret(null);
+        setPackCheckoutError(null);
+        return;
+      }
+
+      setPackClientSecret(null);
+      setPackCheckoutError(null);
+      setLoadingPackCheckout(true);
+
+      try {
+        const pack = packs.find((p) => p.id === checkoutPackId);
+        if (!pack) throw new Error("Paquete no encontrado");
+        if (!pack.stripe_price_id) throw new Error("Este paquete todavía no está sincronizado con cobros.");
+
+        const { data, error } = await supabase.functions.invoke("ocr-pack-checkout", {
+          body: {
+            pack_id: checkoutPackId,
+            environment: getStripeEnvironment(),
+            returnUrl: `${window.location.origin}/checkout/return?session_id={CHECKOUT_SESSION_ID}&kind=ocr_pack`,
+          },
+        });
+
+        if (error || !data?.clientSecret) {
+          throw new Error(await getFunctionErrorMessage(error, "No se pudo iniciar el cobro"));
+        }
+        if (!cancelled) setPackClientSecret(data.clientSecret);
+      } catch (e: any) {
+        const message = e?.message || "No se pudo iniciar el cobro";
+        if (!cancelled) {
+          setPackCheckoutError(message);
+          toast.error(message);
+        }
+      } finally {
+        if (!cancelled) setLoadingPackCheckout(false);
+      }
+    }
+
+    createPackCheckout();
+    return () => {
+      cancelled = true;
+    };
+  }, [checkoutPackId, packs]);
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
@@ -178,9 +272,23 @@ export default function Plans() {
 
       <Dialog open={!!checkoutPlanId} onOpenChange={(v) => !v && setCheckoutPlanId(null)}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Suscripción</DialogTitle></DialogHeader>
-          {checkoutPlanId && (
-            <EmbeddedCheckoutProvider stripe={getStripe()} options={{ fetchClientSecret }}>
+          <DialogHeader>
+            <DialogTitle>Suscripción</DialogTitle>
+            <DialogDescription>Completá el pago seguro para activar tu plan.</DialogDescription>
+          </DialogHeader>
+          {loadingPlanCheckout && (
+            <div className="flex items-center justify-center gap-2 rounded-lg border bg-muted/30 p-8 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" /> Preparando cobro...
+            </div>
+          )}
+          {planCheckoutError && (
+            <div className="flex items-start gap-3 rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
+              <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+              <p>{planCheckoutError}</p>
+            </div>
+          )}
+          {planClientSecret && (
+            <EmbeddedCheckoutProvider key={planClientSecret} stripe={getStripe()} options={{ clientSecret: planClientSecret }}>
               <EmbeddedCheckout />
             </EmbeddedCheckoutProvider>
           )}
@@ -189,9 +297,23 @@ export default function Plans() {
 
       <Dialog open={!!checkoutPackId} onOpenChange={(v) => !v && setCheckoutPackId(null)}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Comprar escaneos OCR</DialogTitle></DialogHeader>
-          {checkoutPackId && (
-            <EmbeddedCheckoutProvider stripe={getStripe()} options={{ fetchClientSecret: fetchPackClientSecret }}>
+          <DialogHeader>
+            <DialogTitle>Comprar escaneos OCR</DialogTitle>
+            <DialogDescription>Completá el pago seguro para sumar escaneos a tu cuenta.</DialogDescription>
+          </DialogHeader>
+          {loadingPackCheckout && (
+            <div className="flex items-center justify-center gap-2 rounded-lg border bg-muted/30 p-8 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" /> Preparando cobro...
+            </div>
+          )}
+          {packCheckoutError && (
+            <div className="flex items-start gap-3 rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
+              <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+              <p>{packCheckoutError}</p>
+            </div>
+          )}
+          {packClientSecret && (
+            <EmbeddedCheckoutProvider key={packClientSecret} stripe={getStripe()} options={{ clientSecret: packClientSecret }}>
               <EmbeddedCheckout />
             </EmbeddedCheckoutProvider>
           )}
