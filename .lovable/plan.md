@@ -1,48 +1,55 @@
-## Renombrar "Reclamo/Reclamos" → "Solicitud/Solicitudes" en la UI
+## Fase 3 — Módulo Nutrición + rol Nutricionista (frontend)
 
-Reemplazo de la palabra **solo en textos visibles** en español. **No** se cambian:
-- Identificadores de código (variables, componentes `Claims`, tipos, props).
-- Nombres de tablas, columnas o funciones de DB (`claims`, `claim_documents`, etc.).
-- Rutas (`/reclamos`, `/reclamos/nuevo`, `/reclamos/editar/:id`) — cambiarlas rompería enlaces externos y bookmarks.
-- Nombres de archivos (`Claims.tsx`, `NewClaim.tsx`, etc.).
+La base de datos ya quedó lista (rol `nutricionista` agregado al enum, tablas `nutrition_metrics` y `nutrition_food_traffic` con RLS y triggers de validación). Falta el frontend.
 
-### Reglas de reemplazo (preservando capitalización)
+### 1. Catálogo de features y roles (`src/lib/features.ts`)
+- Agregar `FeatureKey`: `nutricion` (paciente) y `nutricion_panel` (nutricionista).
+- Nuevo grupo `nutricionista`.
+- Agregar `'nutricionista'` a `ALL_ROLES` para que aparezca en `AccessManager` y `UserRolesRow`.
+- Icono `Apple` de lucide.
 
-| Antes | Después |
-|---|---|
-| Reclamos | Solicitudes |
-| reclamos | solicitudes |
-| Reclamo | Solicitud |
-| reclamo | solicitud |
-| Nuevo Reclamo | Nueva Solicitud |
-| Sin reclamos | Sin solicitudes |
-| Reclamos sin informe | Solicitudes sin informe |
+### 2. Permisos por defecto (seed via insert tool en `role_permissions`)
+- `nutricion`: visible para `paciente`, `medico`, `enfermero`, `nutricionista`, `admin`.
+- `nutricion_panel`: visible para `nutricionista`, `admin`.
 
-### Archivos a tocar (solo strings de UI)
+### 3. Hook `src/hooks/useNutrition.ts`
+- `useNutritionMetrics(patientId)` — lista ordenada por `recorded_at desc`.
+- `useCreateNutritionMetric`, `useUpdateNutritionMetric`, `useDeleteNutritionMetric`.
+- `useFoodTraffic(patientId?)` — devuelve globales + del paciente (si se pasa).
+- `useCreateFoodTraffic`, `useUpdateFoodTraffic`, `useDeleteFoodTraffic`.
+- Helper `classifyIMC(imc)` con badges (Bajo peso / Normal / Sobrepeso / Obesidad I/II/III).
 
-- `src/components/BottomNav.tsx` — label "Reclamos"
-- `src/components/AppSidebar.tsx` — label "Reclamos"
-- `src/pages/Dashboard.tsx` — "Nuevo Reclamo", "Reclamos Recientes", "Sin reclamos"
-- `src/pages/Claims.tsx` — título, botones, textos vacíos
-- `src/pages/NewClaim.tsx` — títulos, breadcrumbs, toasts
-- `src/pages/EditClaim.tsx` — títulos, toasts
-- `src/pages/NewClaimLegacy.tsx` — títulos
-- `src/pages/Landing.tsx` — sección Brokers/Pacientes (textos visibles)
-- `src/pages/Login.tsx` — textos visibles
-- `src/pages/Legal.tsx` — textos visibles
-- `src/pages/medico/ClaimsWithoutReport.tsx` — "Reclamos sin informe"
-- `src/pages/admin/FormatManager.tsx` — textos visibles
-- `src/pages/FirmasManager.tsx` — textos visibles
-- `src/components/claims/StepClaimType.tsx` — textos visibles
-- `src/components/claims/StepInvoices.tsx` — textos visibles
-- `src/lib/features.ts` y `src/lib/constants.ts` — solo `label`/`description` visibles; las **keys** se mantienen
+### 4. Página `/nutricion` (`src/pages/Nutricion.tsx`)
+Dos tabs:
 
-### Proceso
+**Tab "Métricas"**
+- Selector de paciente si el usuario es personal con varios (reutiliza patrón de `PresionArterial.tsx`).
+- Botón **Nueva medición** → dialog con form (fecha, peso, peso seco, talla, % grasa, % agua, masa muscular, cintura, cadera, notas). IMC se autocalcula en el trigger.
+- Tarjetas resumen: último peso, último IMC con categoría, # mediciones del mes.
+- Gráfico recharts (líneas): peso e IMC en el tiempo.
+- Tabla editable con acciones (editar/borrar solo creador o admin).
+- Botón **Exportar CSV**.
 
-1. Revisar cada archivo y reemplazar únicamente strings entre comillas que se muestran al usuario (JSX text, `label:`, `title:`, `placeholder=`, `toast(...)`).
-2. No tocar comentarios de código, claves de objeto, nombres de variables, ni feature flags.
-3. Verificar build después del sweep.
+**Tab "Semáforo de alimentos"**
+- Grid visual de tarjetas coloreadas por grupo, agrupadas por color (verde / amarillo / rojo).
+- Filtro por grupo y por paciente (global vs personalizado).
+- Para nutricionistas y admin: CRUD (agregar / editar / borrar) con dialog. Permite marcar como global (`patient_id = NULL`) o vinculado al paciente activo.
+- Para pacientes y demás roles: solo lectura.
 
-### Pregunta abierta
+### 5. Navegación
+- `src/components/AppSidebar.tsx`: agregar item "Nutrición" (`Apple`, ruta `/nutricion`, feature `nutricion`) en `mainItems`. Agregar grupo `nutricionista` con "Panel Nutrición" (feature `nutricion_panel`) — mismo patrón que `nurseItems`.
+- `src/App.tsx`: nueva ruta `/nutricion` dentro de `ProtectedRoute`.
+- `src/pages/PatientView.tsx`: nueva pestaña "Nutrición" (opcional, mismo componente en modo embebido).
 
-Las rutas `/reclamos*` se conservan tal cual. Si más adelante quieres también renombrarlas a `/solicitudes*` (con redirects), lo haremos en un cambio aparte.
+### Archivos a tocar/crear
+
+- **Nuevo**: `src/hooks/useNutrition.ts`
+- **Nuevo**: `src/pages/Nutricion.tsx`
+- **Modificar**: `src/lib/features.ts`, `src/components/AppSidebar.tsx`, `src/App.tsx`
+- **Datos**: insertar filas en `role_permissions` para `nutricion` y `nutricion_panel`
+
+### Lo que NO cambia
+
+- No se tocan agenda, recetas, planes, ni OCR.
+- `usePermissions` ya consume `role_permissions` dinámicamente — basta con seed.
+- No se requiere nueva migración de DB.
