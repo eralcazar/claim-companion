@@ -272,9 +272,23 @@ export default function Plans() {
 
       <Dialog open={!!checkoutPlanId} onOpenChange={(v) => !v && setCheckoutPlanId(null)}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Suscripción</DialogTitle></DialogHeader>
-          {checkoutPlanId && (
-            <EmbeddedCheckoutProvider stripe={getStripe()} options={{ fetchClientSecret }}>
+          <DialogHeader>
+            <DialogTitle>Suscripción</DialogTitle>
+            <DialogDescription>Completá el pago seguro para activar tu plan.</DialogDescription>
+          </DialogHeader>
+          {loadingPlanCheckout && (
+            <div className="flex items-center justify-center gap-2 rounded-lg border bg-muted/30 p-8 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" /> Preparando cobro...
+            </div>
+          )}
+          {planCheckoutError && (
+            <div className="flex items-start gap-3 rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
+              <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+              <p>{planCheckoutError}</p>
+            </div>
+          )}
+          {planClientSecret && (
+            <EmbeddedCheckoutProvider key={planClientSecret} stripe={getStripe()} options={{ clientSecret: planClientSecret }}>
               <EmbeddedCheckout />
             </EmbeddedCheckoutProvider>
           )}
@@ -283,9 +297,23 @@ export default function Plans() {
 
       <Dialog open={!!checkoutPackId} onOpenChange={(v) => !v && setCheckoutPackId(null)}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Comprar escaneos OCR</DialogTitle></DialogHeader>
-          {checkoutPackId && (
-            <EmbeddedCheckoutProvider stripe={getStripe()} options={{ fetchClientSecret: fetchPackClientSecret }}>
+          <DialogHeader>
+            <DialogTitle>Comprar escaneos OCR</DialogTitle>
+            <DialogDescription>Completá el pago seguro para sumar escaneos a tu cuenta.</DialogDescription>
+          </DialogHeader>
+          {loadingPackCheckout && (
+            <div className="flex items-center justify-center gap-2 rounded-lg border bg-muted/30 p-8 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" /> Preparando cobro...
+            </div>
+          )}
+          {packCheckoutError && (
+            <div className="flex items-start gap-3 rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
+              <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+              <p>{packCheckoutError}</p>
+            </div>
+          )}
+          {packClientSecret && (
+            <EmbeddedCheckoutProvider key={packClientSecret} stripe={getStripe()} options={{ clientSecret: packClientSecret }}>
               <EmbeddedCheckout />
             </EmbeddedCheckoutProvider>
           )}
