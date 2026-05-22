@@ -37,7 +37,7 @@ const navLinks = [
 const features = [
   { icon: FileText, title: "Expediente digital familiar", desc: "Toda la información médica de tu familia centralizada." },
   { icon: BellRing, title: "Recordatorios inteligentes", desc: "Medicamentos, citas y controles a tiempo." },
-  { icon: ScanLine, title: "Reclamos con OCR", desc: "Sube facturas y CareCentral llena los formularios." },
+  { icon: ScanLine, title: "Solicitudes con OCR", desc: "Sube facturas y CareCentral llena los formularios." },
   { icon: Sparkles, title: "Asistente IA Kari", desc: "Tu asistente personal para dudas y trámites." },
 ];
 
@@ -51,15 +51,15 @@ const patientBenefits = [
 
 const brokerBenefits = [
   "Asignación masiva de pacientes vía CSV",
-  "Visibilidad de pólizas y reclamos por cliente",
-  "Seguimiento del estado de cada reclamo",
+  "Visibilidad de pólizas y solicitudes por cliente",
+  "Seguimiento del estado de cada solicitud",
   "Notificaciones automáticas a tus clientes",
 ];
 
 const steps = [
   { n: "1", title: "Regístrate gratis", desc: "Crea tu cuenta con Google o Apple en segundos." },
   { n: "2", title: "Conecta tu información", desc: "Sube pólizas, recetas y estudios. Kari los organiza por ti." },
-  { n: "3", title: "Gestiona tu salud", desc: "Recordatorios, reclamos y expediente, todo en un solo lugar." },
+  { n: "3", title: "Gestiona tu salud", desc: "Recordatorios, solicitudes y expediente, todo en un solo lugar." },
 ];
 
 function scrollToId(id: string) {
@@ -163,7 +163,7 @@ export default function Landing() {
               Tu salud, <span className="text-primary">en un solo lugar</span>
             </h1>
             <p className="mt-4 text-base text-muted-foreground sm:text-lg">
-              CareCentral reúne tu expediente digital, recordatorios, pólizas y reclamos médicos.
+              CareCentral reúne tu expediente digital, recordatorios, pólizas y solicitudes médicas.
               Con Kari, tu asistente IA, todo es más simple.
             </p>
             <div className="mt-8 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-center lg:justify-start">
@@ -329,7 +329,7 @@ export default function Landing() {
               Gestiona a tus asegurados <span className="text-primary">desde un solo panel</span>
             </h2>
             <p className="mt-3 text-muted-foreground">
-              Centraliza pólizas, reclamos y comunicación con tus clientes. Menos llamadas, más tiempo para crecer tu cartera.
+              Centraliza pólizas, solicitudes y comunicación con tus clientes. Menos llamadas, más tiempo para crecer tu cartera.
             </p>
             <ul className="mt-6 space-y-3">
               {brokerBenefits.map((b) => (

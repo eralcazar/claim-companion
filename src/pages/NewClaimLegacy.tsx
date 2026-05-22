@@ -61,7 +61,7 @@ export default function NewClaimLegacy() {
 
     // 1. Claim type
     steps.push({
-      title: "Tipo de Reclamo",
+      title: "Tipo de Solicitud",
       content: <StepClaimType form={form} onChange={onChange} />,
       valid: !!form.claim_type,
     });
@@ -221,10 +221,10 @@ export default function NewClaimLegacy() {
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Reclamo creado exitosamente");
+      toast.success("Solicitud creada exitosamente");
       navigate("/reclamos");
     },
-    onError: () => toast.error("Error al crear reclamo"),
+    onError: () => toast.error("Error al crear solicitud"),
   });
 
   const handleDownloadPDF = () => {
@@ -286,7 +286,7 @@ export default function NewClaimLegacy() {
 
   return (
     <div className="space-y-6 animate-fade-in max-w-lg mx-auto">
-      <h1 className="font-heading text-2xl font-bold">Nuevo Reclamo</h1>
+      <h1 className="font-heading text-2xl font-bold">Nueva Solicitud</h1>
 
       {/* Steps indicator */}
       <div className="flex items-center gap-1 overflow-x-auto pb-1">
@@ -348,7 +348,7 @@ export default function NewClaimLegacy() {
               onClick={() => createMutation.mutate()}
               disabled={createMutation.isPending}
             >
-              {createMutation.isPending ? "Enviando..." : "Enviar Reclamo"}
+              {createMutation.isPending ? "Enviando..." : "Enviar Solicitud"}
             </Button>
           </div>
         )}

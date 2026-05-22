@@ -151,7 +151,7 @@ export default function EditClaim() {
     const steps: { title: string; content: React.ReactNode; valid: boolean }[] = [];
 
     steps.push({
-      title: "Tipo de Reclamo",
+      title: "Tipo de Solicitud",
       content: <StepClaimType form={form} onChange={onChange} />,
       valid: !!form.claim_type,
     });
@@ -304,10 +304,10 @@ export default function EditClaim() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["claims"] });
-      toast.success("Reclamo actualizado exitosamente");
+      toast.success("Solicitud actualizada exitosamente");
       navigate("/reclamos");
     },
-    onError: () => toast.error("Error al actualizar reclamo"),
+    onError: () => toast.error("Error al actualizar solicitud"),
   });
 
   const handleDownloadOriginalPDF = async () => {
@@ -348,7 +348,7 @@ export default function EditClaim() {
   if (!claim) {
     return (
       <div className="space-y-6 animate-fade-in max-w-lg mx-auto">
-        <h1 className="font-heading text-2xl font-bold">Reclamo no encontrado</h1>
+        <h1 className="font-heading text-2xl font-bold">Solicitud no encontrada</h1>
         <Button variant="outline" onClick={() => navigate("/reclamos")}>
           <ArrowLeft className="h-4 w-4 mr-1" /> Volver
         </Button>
@@ -362,7 +362,7 @@ export default function EditClaim() {
         <Button variant="ghost" size="icon" onClick={() => navigate("/reclamos")}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
-        <h1 className="font-heading text-2xl font-bold">Editar Reclamo</h1>
+        <h1 className="font-heading text-2xl font-bold">Editar Solicitud</h1>
       </div>
 
       <div className="flex items-center gap-1 overflow-x-auto pb-1">

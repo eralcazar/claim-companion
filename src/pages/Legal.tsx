@@ -55,7 +55,7 @@ export default function Legal() {
               <h3>2. Descripción del servicio</h3>
               <p>
                 CareCentral es una plataforma digital para la gestión de tu expediente médico
-                personal, recordatorios, citas, recetas y trámites de reclamos a aseguradoras.
+                personal, recordatorios, citas, recetas y trámites de solicitudes a aseguradoras.
                 CareCentral <strong>no presta servicios médicos</strong> ni sustituye la consulta
                 con un profesional de la salud.
               </p>
@@ -127,7 +127,7 @@ export default function Legal() {
               <ul>
                 <li>Brindar y mejorar el servicio de gestión médica personal.</li>
                 <li>Recordatorios de medicamentos y citas.</li>
-                <li>Procesar reclamos a aseguradoras cuando lo solicites.</li>
+                <li>Procesar solicitudes a aseguradoras cuando lo solicites.</li>
                 <li>Cumplir obligaciones legales aplicables.</li>
               </ul>
 

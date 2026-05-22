@@ -253,7 +253,7 @@ export default function NewClaim() {
       navigate("/reclamos");
     } catch (e: any) {
       console.error("[handleGenerate] error:", e);
-      toast.error(e?.message || "Error al generar el PDF. Puedes reintentar desde Reclamos.");
+      toast.error(e?.message || "Error al generar el PDF. Puedes reintentar desde Solicitudes.");
     } finally {
       setGenerating(false);
     }
@@ -289,7 +289,7 @@ export default function NewClaim() {
   if (!hasAnyForm) {
     return (
       <div className="space-y-6 animate-fade-in max-w-lg mx-auto pb-24">
-        <h1 className="font-heading text-2xl font-bold">Nuevo Reclamo</h1>
+        <h1 className="font-heading text-2xl font-bold">Nueva Solicitud</h1>
         <Card>
           <CardHeader><CardTitle className="text-base">Póliza y formato</CardTitle></CardHeader>
           <CardContent className="space-y-4">
@@ -371,7 +371,7 @@ export default function NewClaim() {
   const stepTitle = step < totalSections
     ? (useDynamic ? (currentDyn?.nombre || `Sección ${step + 1}`) : (currentLegacy?.title || ""))
     : "Revisión y generación";
-  const formTitle = useDynamic ? `Reclamo ${insurer}` : (definition?.name || "Reclamo");
+  const formTitle = useDynamic ? `Solicitud ${insurer}` : (definition?.name || "Solicitud");
 
   return (
     <div className="space-y-4 animate-fade-in max-w-lg mx-auto pb-24">

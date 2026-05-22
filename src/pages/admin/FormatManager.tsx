@@ -188,7 +188,7 @@ function InfoTab({ formulario }: { formulario: Formulario }) {
         <div>
           <Label htmlFor="informe">Es formato de Informe Médico</Label>
           <p className="text-xs text-muted-foreground">
-            Se mostrará al médico para reclamos sin informe de esta aseguradora.
+            Se mostrará al médico para solicitudes sin informe de esta aseguradora.
           </p>
         </div>
         <Switch

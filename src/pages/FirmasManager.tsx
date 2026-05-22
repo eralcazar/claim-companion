@@ -88,7 +88,7 @@ export default function FirmasManager() {
         <h1 className="font-heading text-2xl font-bold">Mis firmas</h1>
       </div>
       <p className="text-sm text-muted-foreground">
-        Administra las firmas electrónicas que usarás para firmar reclamos. Sólo
+        Administra las firmas electrónicas que usarás para firmar solicitudes. Sólo
         puede haber una firma predeterminada.
       </p>
 
