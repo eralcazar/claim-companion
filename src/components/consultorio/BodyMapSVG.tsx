@@ -29,18 +29,18 @@ const FRONT_SHAPES: { tag: "ellipse" | "path" | "rect"; attrs: Record<string, st
   { tag: "path", attrs: { d: "M46 142 Q34 150 28 168 L24 220 Q22 250 24 278 Q28 296 36 308 Q44 304 46 290 Q50 264 52 232 Q54 200 58 175 Z" } },
   // Mano der paciente
   { tag: "path", attrs: { d: "M36 308 Q24 316 22 332 Q22 344 28 350 Q36 348 42 340 Q46 326 44 314 Z" } },
-  // Muslo izq paciente
-  { tag: "path", attrs: { d: "M110 272 Q140 272 156 272 Q160 300 158 330 Q156 358 148 372 Q138 372 130 364 Q118 340 110 310 Z" } },
-  // Pierna izq paciente
-  { tag: "path", attrs: { d: "M130 372 Q148 384 150 410 Q150 440 144 466 Q138 478 128 478 Q120 466 118 444 Q120 414 124 388 Z" } },
+  // Muslo izq paciente (solapa con pelvis y pierna)
+  { tag: "path", attrs: { d: "M110 264 Q140 264 158 268 Q162 300 158 332 Q156 360 148 378 Q138 378 130 368 Q118 340 110 310 Z" } },
+  // Pierna izq paciente (solapa con muslo y pie)
+  { tag: "path", attrs: { d: "M130 368 Q150 380 152 410 Q152 442 146 470 Q140 482 128 482 Q120 468 118 444 Q120 414 124 388 Z" } },
   // Pie izq paciente
-  { tag: "path", attrs: { d: "M128 478 Q146 482 152 494 L152 502 L120 502 Q116 490 118 480 Z" } },
+  { tag: "path", attrs: { d: "M128 476 Q148 482 154 496 L154 504 L118 504 Q114 490 118 478 Z" } },
   // Muslo der paciente
-  { tag: "path", attrs: { d: "M110 272 Q80 272 64 272 Q60 300 62 330 Q64 358 72 372 Q82 372 90 364 Q102 340 110 310 Z" } },
+  { tag: "path", attrs: { d: "M110 264 Q80 264 62 268 Q58 300 62 332 Q64 360 72 378 Q82 378 90 368 Q102 340 110 310 Z" } },
   // Pierna der paciente
-  { tag: "path", attrs: { d: "M90 372 Q72 384 70 410 Q70 440 76 466 Q82 478 92 478 Q100 466 102 444 Q100 414 96 388 Z" } },
+  { tag: "path", attrs: { d: "M90 368 Q70 380 68 410 Q68 442 74 470 Q80 482 92 482 Q100 468 102 444 Q100 414 96 388 Z" } },
   // Pie der paciente
-  { tag: "path", attrs: { d: "M92 478 Q74 482 68 494 L68 502 L100 502 Q104 490 102 480 Z" } },
+  { tag: "path", attrs: { d: "M92 476 Q72 482 66 496 L66 504 L102 504 Q106 490 102 478 Z" } },
 ];
 
 /** Detalles anatómicos decorativos (frontales) */
@@ -136,7 +136,7 @@ export function BodyMapSVG({ view, markers, onPick, onMarkerClick, readOnly }: P
   return (
     <svg
       viewBox="0 0 220 510"
-      className="w-full max-w-[260px] max-h-[520px] mx-auto select-none"
+      className="w-full max-w-[220px] max-h-[500px] mx-auto select-none"
       style={{ touchAction: "manipulation" }}
       preserveAspectRatio="xMidYMid meet"
     >
