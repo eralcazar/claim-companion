@@ -119,6 +119,11 @@ export function RecetaForm({ open, onOpenChange, initial, defaultPatientId, defa
   });
   const canSubmit = !!form.patient_id && itemsValid;
 
+  const normalizeItem = (it: any) => {
+    const { indefinido, precio_aproximado: _ignore, ...rest } = it;
+    return { ...rest, dias_a_tomar: indefinido ? null : rest.dias_a_tomar, precio_aproximado: null };
+  };
+
   const submit = async () => {
     if (!canSubmit) return;
     const doctorId = isMedico ? user!.id : (defaultDoctorId || form.doctor_id || user!.id);
