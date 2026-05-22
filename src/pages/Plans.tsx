@@ -69,6 +69,8 @@ export default function Plans() {
           const planFeats = features.filter((f) => f.plan_id === p.id);
           const isCurrent = isActive && subscription?.plan_id === p.id;
           const ocrPages = (p as any).ocr_pages_per_month ?? 0;
+          const priceId = billing === "mensual" ? p.stripe_price_id_mensual : p.stripe_price_id_anual;
+          const notSynced = cents > 0 && !priceId;
           return (
             <Card key={p.id} className={isCurrent ? "border-primary" : ""}>
               <CardContent className="p-6 space-y-4">
@@ -97,9 +99,24 @@ export default function Plans() {
                   })}
                   {planFeats.length === 0 && <li className="text-muted-foreground italic">Sin funciones definidas</li>}
                 </ul>
-                <Button className="w-full" disabled={isCurrent || cents === 0} onClick={() => setCheckoutPlanId(p.id)}>
-                  {isCurrent ? "Plan actual" : cents === 0 ? "No disponible" : "Suscribirme"}
+                <Button
+                  className="w-full"
+                  disabled={isCurrent || cents === 0 || notSynced}
+                  onClick={() => setCheckoutPlanId(p.id)}
+                >
+                  {isCurrent
+                    ? "Plan actual"
+                    : cents === 0
+                      ? "No disponible"
+                      : notSynced
+                        ? "Pendiente de publicar"
+                        : "Suscribirme"}
                 </Button>
+                {notSynced && (
+                  <p className="text-xs text-muted-foreground text-center">
+                    Este paquete aún no está sincronizado con cobros. Un admin debe publicar la app.
+                  </p>
+                )}
               </CardContent>
             </Card>
           );
