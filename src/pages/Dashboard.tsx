@@ -101,7 +101,7 @@ export default function Dashboard() {
         onClick={() => navigate("/reclamos/nuevo")}
       >
         <FileText className="mr-2 h-5 w-5" />
-        Nuevo Reclamo
+        Nueva Solicitud
       </Button>
 
       <Button
