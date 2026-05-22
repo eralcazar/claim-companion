@@ -427,6 +427,42 @@ export type Database = {
         }
         Relationships: []
       }
+      audit_logs: {
+        Row: {
+          action: string
+          actor_id: string | null
+          after: Json | null
+          at: string
+          before: Json | null
+          id: string
+          patient_id: string | null
+          record_id: string | null
+          table_name: string
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          after?: Json | null
+          at?: string
+          before?: Json | null
+          id?: string
+          patient_id?: string | null
+          record_id?: string | null
+          table_name: string
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          after?: Json | null
+          at?: string
+          before?: Json | null
+          id?: string
+          patient_id?: string | null
+          record_id?: string | null
+          table_name?: string
+        }
+        Relationships: []
+      }
       blood_pressure_readings: {
         Row: {
           arm: string | null
@@ -518,6 +554,7 @@ export type Database = {
           created_at: string
           created_by: string
           id: string
+          is_vigente: boolean
           marker_x: number
           marker_y: number
           moderated_at: string | null
@@ -527,6 +564,8 @@ export type Database = {
           note: string | null
           patient_id: string
           severity: string
+          superseded_at: string | null
+          superseded_by: string | null
           updated_at: string
         }
         Insert: {
@@ -536,6 +575,7 @@ export type Database = {
           created_at?: string
           created_by: string
           id?: string
+          is_vigente?: boolean
           marker_x?: number
           marker_y?: number
           moderated_at?: string | null
@@ -545,6 +585,8 @@ export type Database = {
           note?: string | null
           patient_id: string
           severity?: string
+          superseded_at?: string | null
+          superseded_by?: string | null
           updated_at?: string
         }
         Update: {
@@ -554,6 +596,7 @@ export type Database = {
           created_at?: string
           created_by?: string
           id?: string
+          is_vigente?: boolean
           marker_x?: number
           marker_y?: number
           moderated_at?: string | null
@@ -563,6 +606,8 @@ export type Database = {
           note?: string | null
           patient_id?: string
           severity?: string
+          superseded_at?: string | null
+          superseded_by?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -571,6 +616,13 @@ export type Database = {
             columns: ["appointment_id"]
             isOneToOne: false
             referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "body_annotations_superseded_by_fkey"
+            columns: ["superseded_by"]
+            isOneToOne: false
+            referencedRelation: "body_annotations"
             referencedColumns: ["id"]
           },
         ]
@@ -1477,6 +1529,60 @@ export type Database = {
           id?: string
           nombre_display?: string
           tipo?: string
+        }
+        Relationships: []
+      }
+      medical_alerts: {
+        Row: {
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          activa: boolean
+          created_at: string
+          created_by: string
+          expires_at: string | null
+          id: string
+          mensaje: string | null
+          patient_id: string
+          ref_id: string | null
+          ref_table: string | null
+          severidad: string
+          tipo: string
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          activa?: boolean
+          created_at?: string
+          created_by: string
+          expires_at?: string | null
+          id?: string
+          mensaje?: string | null
+          patient_id: string
+          ref_id?: string | null
+          ref_table?: string | null
+          severidad?: string
+          tipo: string
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          activa?: boolean
+          created_at?: string
+          created_by?: string
+          expires_at?: string | null
+          id?: string
+          mensaje?: string | null
+          patient_id?: string
+          ref_id?: string | null
+          ref_table?: string | null
+          severidad?: string
+          tipo?: string
+          titulo?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -2551,6 +2657,48 @@ export type Database = {
           },
         ]
       }
+      procedures_log: {
+        Row: {
+          created_at: string
+          created_by: string
+          fecha: string
+          id: string
+          lugar: string | null
+          nombre: string
+          observaciones: string | null
+          patient_id: string
+          profesional: string | null
+          tipo: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          fecha: string
+          id?: string
+          lugar?: string | null
+          nombre: string
+          observaciones?: string | null
+          patient_id: string
+          profesional?: string | null
+          tipo?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          fecha?: string
+          id?: string
+          lugar?: string | null
+          nombre?: string
+          observaciones?: string | null
+          patient_id?: string
+          profesional?: string | null
+          tipo?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           active_role: Database["public"]["Enums"]["app_role"] | null
@@ -3068,6 +3216,54 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      surgeries: {
+        Row: {
+          cirujano: string | null
+          complicaciones: string | null
+          created_at: string
+          created_by: string
+          fecha: string
+          hospital: string | null
+          id: string
+          nombre: string
+          notas: string | null
+          patient_id: string
+          tipo_anestesia: string | null
+          updated_at: string
+          vigente: boolean
+        }
+        Insert: {
+          cirujano?: string | null
+          complicaciones?: string | null
+          created_at?: string
+          created_by: string
+          fecha: string
+          hospital?: string | null
+          id?: string
+          nombre: string
+          notas?: string | null
+          patient_id: string
+          tipo_anestesia?: string | null
+          updated_at?: string
+          vigente?: boolean
+        }
+        Update: {
+          cirujano?: string | null
+          complicaciones?: string | null
+          created_at?: string
+          created_by?: string
+          fecha?: string
+          hospital?: string | null
+          id?: string
+          nombre?: string
+          notas?: string | null
+          patient_id?: string
+          tipo_anestesia?: string | null
+          updated_at?: string
+          vigente?: boolean
+        }
+        Relationships: []
       }
       temperature_readings: {
         Row: {
