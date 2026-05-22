@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import kariAvatar from "@/assets/kari-avatar.png";
 
 const sideTabs = [
-  { to: "/", icon: Home, label: "Inicio", end: true },
+  { to: "/dashboard", icon: Home, label: "Inicio", end: true },
   { to: "/reclamos", icon: FileText, label: "Reclamos", end: false },
   { to: "/agenda", icon: Calendar, label: "Agenda", end: false },
   { to: "/perfil", icon: User, label: "Perfil", end: false },
