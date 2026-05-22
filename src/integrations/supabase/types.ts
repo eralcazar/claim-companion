@@ -1782,6 +1782,99 @@ export type Database = {
         }
         Relationships: []
       }
+      nutrition_food_traffic: {
+        Row: {
+          alimento: string
+          color: string
+          created_at: string
+          created_by: string
+          grupo: string | null
+          id: string
+          notas: string | null
+          patient_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          alimento: string
+          color?: string
+          created_at?: string
+          created_by: string
+          grupo?: string | null
+          id?: string
+          notas?: string | null
+          patient_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          alimento?: string
+          color?: string
+          created_at?: string
+          created_by?: string
+          grupo?: string | null
+          id?: string
+          notas?: string | null
+          patient_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      nutrition_metrics: {
+        Row: {
+          agua_corporal_pct: number | null
+          cadera_cm: number | null
+          cintura_cm: number | null
+          created_at: string
+          created_by: string
+          grasa_corporal_pct: number | null
+          id: string
+          imc: number | null
+          masa_muscular_kg: number | null
+          notas: string | null
+          patient_id: string
+          peso_kg: number | null
+          peso_seco_kg: number | null
+          recorded_at: string
+          talla_cm: number | null
+          updated_at: string
+        }
+        Insert: {
+          agua_corporal_pct?: number | null
+          cadera_cm?: number | null
+          cintura_cm?: number | null
+          created_at?: string
+          created_by: string
+          grasa_corporal_pct?: number | null
+          id?: string
+          imc?: number | null
+          masa_muscular_kg?: number | null
+          notas?: string | null
+          patient_id: string
+          peso_kg?: number | null
+          peso_seco_kg?: number | null
+          recorded_at?: string
+          talla_cm?: number | null
+          updated_at?: string
+        }
+        Update: {
+          agua_corporal_pct?: number | null
+          cadera_cm?: number | null
+          cintura_cm?: number | null
+          created_at?: string
+          created_by?: string
+          grasa_corporal_pct?: number | null
+          id?: string
+          imc?: number | null
+          masa_muscular_kg?: number | null
+          notas?: string | null
+          patient_id?: string
+          peso_kg?: number | null
+          peso_seco_kg?: number | null
+          recorded_at?: string
+          talla_cm?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ocr_pack_purchases: {
         Row: {
           cantidad_escaneos: number
@@ -2963,6 +3056,7 @@ export type Database = {
         | "enfermero"
         | "laboratorio"
         | "farmacia"
+        | "nutricionista"
       appointment_document_category:
         | "receta"
         | "estudio"
@@ -3138,6 +3232,7 @@ export const Constants = {
         "enfermero",
         "laboratorio",
         "farmacia",
+        "nutricionista",
       ],
       appointment_document_category: [
         "receta",
