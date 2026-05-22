@@ -1,5 +1,5 @@
 import {
-  Home, FileText, Calendar, Pill, User, Shield, Users, Stethoscope, FolderOpen, Download, LogOut, FolderTree, UserCog, KeyRound, GraduationCap, BadgeCheck, FlaskConical, TrendingUp, HeartPulse, FlaskRound, Store, UserCheck, FileWarning, Package, Boxes, Layers, CreditCard, Activity, ScrollText
+  Home, FileText, Calendar, Pill, User, Shield, Users, Stethoscope, FolderOpen, Download, LogOut, FolderTree, UserCog, KeyRound, GraduationCap, BadgeCheck, FlaskConical, TrendingUp, HeartPulse, FlaskRound, Store, UserCheck, FileWarning, Package, Boxes, Layers, CreditCard, Activity, ScrollText, Apple
 } from "lucide-react";
 import { NavLink as RouterNavLink, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -24,6 +24,7 @@ const mainItems: Item[] = [
   { title: "Solicitudes", url: "/reclamos", icon: FileText, feature: "reclamos" },
   { title: "Agenda", url: "/agenda", icon: Calendar, feature: "agenda" },
   { title: "Expediente Digital", url: "/expediente", icon: FolderOpen, feature: "expediente_digital" },
+  { title: "Nutrición", url: "/nutricion", icon: Apple, feature: "nutricion" },
   { title: "Pólizas", url: "/polizas", icon: Shield, feature: "polizas" },
   { title: "Formatos", url: "/formatos", icon: Download, feature: "formatos" },
   { title: "Perfil", url: "/perfil", icon: User, feature: "perfil" },

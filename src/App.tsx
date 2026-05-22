@@ -48,6 +48,7 @@ import Plans from "@/pages/Plans";
 import Subscription from "@/pages/Subscription";
 import Consultorio from "@/pages/Consultorio";
 import PresionArterial from "@/pages/PresionArterial";
+import Nutricion from "@/pages/Nutricion";
 import OxygenSaturation from "@/pages/OxygenSaturation";
 import Temperatura from "@/pages/Temperatura";
 import Glucosa from "@/pages/Glucosa";
@@ -93,6 +94,7 @@ const App = () => (
               <Route path="/estudios" element={<Estudios />} />
               <Route path="/tendencias" element={<Tendencias />} />
               <Route path="/presion" element={<PresionArterial />} />
+              <Route path="/nutricion" element={<Nutricion />} />
               <Route path="/reclamos/nuevo" element={<NewClaim />} />
               <Route path="/reclamos/editar/:id" element={<EditClaim />} />
               <Route path="/agenda" element={<Appointments />} />
