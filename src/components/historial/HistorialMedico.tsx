@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   useConditions, useUpsertCondition, useDeleteCondition,
   useFamilyHistory, useUpsertFamily, useDeleteFamily,
@@ -81,7 +81,7 @@ function ConditionsSection({ patientId, canEdit }: Props) {
             {canEdit && (
               <div className="flex gap-1">
                 <Button size="icon" variant="ghost" onClick={() => { setEditing(c); setOpen(true); }}><Pencil className="h-4 w-4" /></Button>
-                <DeleteBtn onConfirm={() => useDeleteConditionWrapper(c.id, patientId)} />
+                <DeleteConditionBtn id={c.id} patientId={patientId} />
               </div>
             )}
           </div>
@@ -92,10 +92,9 @@ function ConditionsSection({ patientId, canEdit }: Props) {
   );
 }
 
-function useDeleteConditionWrapper(id: string, patient_id: string) {
-  // helper bridging delete hook call inside event handler
-  const m = useDeleteCondition();
-  m.mutate({ id, patient_id });
+function DeleteConditionBtn({ id, patientId }: { id: string; patientId: string }) {
+  const del = useDeleteCondition();
+  return <Button size="icon" variant="ghost" onClick={() => { if (confirm("¿Eliminar?")) del.mutate({ id, patient_id: patientId }); }}><Trash2 className="h-4 w-4" /></Button>;
 }
 
 function ConditionDialog({ open, onOpenChange, patientId, editing }: { open: boolean; onOpenChange: (v: boolean) => void; patientId: string; editing: MHCondition | null }) {
@@ -367,13 +366,16 @@ function LifestyleSection({ patientId, canEdit }: Props) {
   const upsert = useUpsertLifestyle();
   const [form, setForm] = useState<Partial<MHLifestyle>>({});
   const [newVac, setNewVac] = useState<MHVaccine>({ nombre: "", fecha: "" });
-  useStateOnOpen(true, () => { /* init once */ });
-  // sync when data loads
-  if (data && Object.keys(form).length === 0) {
-    setForm({ ...data, vacunas: data.vacunas ?? [] });
-  } else if (!data && !isLoading && Object.keys(form).length === 0) {
-    setForm({ tabaco: "nunca", alcohol: "nunca", ejercicio: "sedentario", vacunas: [] });
-  }
+  const [initialized, setInitialized] = useState(false);
+  useEffect(() => {
+    if (initialized || isLoading) return;
+    if (data) {
+      setForm({ ...data, vacunas: data.vacunas ?? [] });
+    } else {
+      setForm({ tabaco: "nunca", alcohol: "nunca", ejercicio: "sedentario", vacunas: [] });
+    }
+    setInitialized(true);
+  }, [data, isLoading, initialized]);
 
   const vacunas: MHVaccine[] = (form.vacunas as MHVaccine[]) ?? [];
   return (
@@ -467,14 +469,13 @@ function LifestyleSection({ patientId, canEdit }: Props) {
 
 // ============ helpers ============
 function useStateOnOpen(open: boolean, fn: () => void) {
-  // run side-effect when `open` flips to true
+  // Run side-effect when `open` becomes true
   const [last, setLast] = useState(false);
-  if (open && !last) { setLast(true); fn(); }
-  if (!open && last) { setLast(false); }
-}
-
-function DeleteBtn({ onConfirm }: { onConfirm: () => void }) {
-  return <Button size="icon" variant="ghost" onClick={() => { if (confirm("¿Eliminar?")) onConfirm(); }}><Trash2 className="h-4 w-4" /></Button>;
+  useEffect(() => {
+    if (open && !last) { setLast(true); fn(); }
+    if (!open && last) { setLast(false); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 }
 
 function tipoLabel(t: MHCondition["tipo"]) {
