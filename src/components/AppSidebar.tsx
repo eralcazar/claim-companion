@@ -20,7 +20,7 @@ import { CareCentralLogo } from "@/components/brand/CareCentralLogo";
 type Item = { title: string; url: string; icon: typeof Home; feature: FeatureKey };
 
 const mainItems: Item[] = [
-  { title: "Panel de Paciente", url: "/", icon: Home, feature: "inicio" },
+  { title: "Panel de Paciente", url: "/dashboard", icon: Home, feature: "inicio" },
   { title: "Reclamos", url: "/reclamos", icon: FileText, feature: "reclamos" },
   { title: "Agenda", url: "/agenda", icon: Calendar, feature: "agenda" },
   { title: "Expediente Digital", url: "/expediente", icon: FolderOpen, feature: "expediente_digital" },
