@@ -2,7 +2,7 @@ import {
   Home, FileText, Shield, Calendar, Pill, FolderOpen, User, Download,
   Users, Stethoscope, FolderTree, UserCog, KeyRound, GraduationCap, BadgeCheck, FlaskConical, TrendingUp,
   HeartPulse, FlaskRound, Store, UserCheck, FileWarning,
-  Package, Boxes, Layers, CreditCard, Activity, Sparkles, Apple,
+  Package, Boxes, Layers, CreditCard, Activity, Sparkles, Apple, ClipboardList,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -22,6 +22,7 @@ export type FeatureKey =
   | "oxygen_saturation"
   | "expediente_digital"
   | "nutricion"
+  | "historial_medico"
   | "kari" | "kari_tokens" | "kari_admin";
 
 export interface FeatureDef {
@@ -47,6 +48,7 @@ export const AVAILABLE_FEATURES: FeatureDef[] = [
   { key: "oxygen_saturation", label: "SpO2", route: "/oxygen-saturation", icon: Activity, group: "principal" },
   { key: "expediente_digital", label: "Expediente Digital", route: "/expediente", icon: FolderOpen, group: "principal" },
   { key: "nutricion", label: "Nutrición", route: "/nutricion", icon: Apple, group: "principal" },
+  { key: "historial_medico", label: "Historial Médico", route: "/expediente?tab=historial", icon: ClipboardList, group: "principal" },
   { key: "perfil", label: "Perfil", route: "/perfil", icon: User, group: "principal" },
   { key: "patient_personnel_manager", label: "Mis accesos", route: "/perfil/accesos", icon: UserCheck, group: "principal" },
   { key: "planes", label: "Planes", route: "/planes", icon: CreditCard, group: "principal" },

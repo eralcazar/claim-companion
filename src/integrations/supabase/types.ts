@@ -1480,6 +1480,171 @@ export type Database = {
         }
         Relationships: []
       }
+      medical_history_allergies: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          notas: string | null
+          patient_id: string
+          reaccion: string | null
+          severidad: string
+          sustancia: string
+          tipo: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          notas?: string | null
+          patient_id: string
+          reaccion?: string | null
+          severidad?: string
+          sustancia: string
+          tipo: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          notas?: string | null
+          patient_id?: string
+          reaccion?: string | null
+          severidad?: string
+          sustancia?: string
+          tipo?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      medical_history_conditions: {
+        Row: {
+          created_at: string
+          created_by: string
+          diagnosticado_en: string | null
+          estado: string
+          id: string
+          nombre: string
+          notas: string | null
+          patient_id: string
+          tipo: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          diagnosticado_en?: string | null
+          estado?: string
+          id?: string
+          nombre: string
+          notas?: string | null
+          patient_id: string
+          tipo: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          diagnosticado_en?: string | null
+          estado?: string
+          id?: string
+          nombre?: string
+          notas?: string | null
+          patient_id?: string
+          tipo?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      medical_history_family: {
+        Row: {
+          condicion: string
+          created_at: string
+          created_by: string
+          edad_diagnostico: number | null
+          id: string
+          notas: string | null
+          parentesco: string
+          patient_id: string
+          updated_at: string
+          vive: boolean
+        }
+        Insert: {
+          condicion: string
+          created_at?: string
+          created_by: string
+          edad_diagnostico?: number | null
+          id?: string
+          notas?: string | null
+          parentesco: string
+          patient_id: string
+          updated_at?: string
+          vive?: boolean
+        }
+        Update: {
+          condicion?: string
+          created_at?: string
+          created_by?: string
+          edad_diagnostico?: number | null
+          id?: string
+          notas?: string | null
+          parentesco?: string
+          patient_id?: string
+          updated_at?: string
+          vive?: boolean
+        }
+        Relationships: []
+      }
+      medical_history_lifestyle: {
+        Row: {
+          alcohol: string
+          alcohol_unidades_semana: number | null
+          created_at: string
+          created_by: string
+          ejercicio: string
+          ejercicio_minutos_semana: number | null
+          id: string
+          notas: string | null
+          patient_id: string
+          tabaco: string
+          tabaco_cantidad_dia: number | null
+          updated_at: string
+          vacunas: Json
+        }
+        Insert: {
+          alcohol?: string
+          alcohol_unidades_semana?: number | null
+          created_at?: string
+          created_by: string
+          ejercicio?: string
+          ejercicio_minutos_semana?: number | null
+          id?: string
+          notas?: string | null
+          patient_id: string
+          tabaco?: string
+          tabaco_cantidad_dia?: number | null
+          updated_at?: string
+          vacunas?: Json
+        }
+        Update: {
+          alcohol?: string
+          alcohol_unidades_semana?: number | null
+          created_at?: string
+          created_by?: string
+          ejercicio?: string
+          ejercicio_minutos_semana?: number | null
+          id?: string
+          notas?: string | null
+          patient_id?: string
+          tabaco?: string
+          tabaco_cantidad_dia?: number | null
+          updated_at?: string
+          vacunas?: Json
+        }
+        Relationships: []
+      }
       medical_records: {
         Row: {
           created_at: string
