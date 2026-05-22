@@ -2963,6 +2963,7 @@ export type Database = {
         | "enfermero"
         | "laboratorio"
         | "farmacia"
+        | "nutricionista"
       appointment_document_category:
         | "receta"
         | "estudio"
@@ -3138,6 +3139,7 @@ export const Constants = {
         "enfermero",
         "laboratorio",
         "farmacia",
+        "nutricionista",
       ],
       appointment_document_category: [
         "receta",
