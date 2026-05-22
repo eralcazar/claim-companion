@@ -153,21 +153,21 @@ export default function Landing() {
         <div className="absolute -top-32 -left-32 h-96 w-96 rounded-full bg-primary/30 blur-3xl" aria-hidden />
         <div className="absolute -bottom-40 -right-32 h-[28rem] w-[28rem] rounded-full bg-accent/30 blur-3xl" aria-hidden />
 
-        <div className="relative mx-auto grid max-w-6xl items-center gap-10 px-4 py-14 lg:grid-cols-2 lg:py-24">
+        <div className="relative mx-auto grid max-w-6xl items-center gap-8 px-4 py-10 sm:py-14 lg:grid-cols-2 lg:py-24">
           <div className="animate-fade-in text-center lg:text-left">
             <span className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
               <Sparkles className="h-3.5 w-3.5" />
               Salud inteligente para tu familia
             </span>
-            <h1 className="mt-4 font-heading text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
+            <h1 className="mt-4 font-heading text-3xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
               Tu salud, <span className="text-primary">en un solo lugar</span>
             </h1>
             <p className="mt-4 text-base text-muted-foreground sm:text-lg">
               CareCentral reúne tu expediente digital, recordatorios, pólizas y reclamos médicos.
               Con Kari, tu asistente IA, todo es más simple.
             </p>
-            <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center lg:justify-start">
-              <Button asChild size="lg" className="h-12 rounded-2xl px-6 text-base shadow-lg">
+            <div className="mt-8 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-center lg:justify-start">
+              <Button asChild size="lg" className="h-12 w-full rounded-2xl px-6 text-base shadow-lg sm:w-auto">
                 <Link to="/login">
                   Iniciar sesión
                   <ArrowRight className="ml-2 h-4 w-4" />
@@ -176,7 +176,7 @@ export default function Landing() {
               <Button
                 size="lg"
                 variant="outline"
-                className="h-12 rounded-2xl px-6 text-base"
+                className="h-12 w-full rounded-2xl px-6 text-base sm:w-auto"
                 onClick={() => scrollToId("pacientes")}
               >
                 Conocer más
@@ -188,7 +188,7 @@ export default function Landing() {
             </div>
           </div>
 
-          <div className="relative mx-auto h-72 w-64 sm:h-96 sm:w-80 lg:h-[28rem] lg:w-96 animate-fade-in">
+          <div className="relative mx-auto h-56 w-52 sm:h-96 sm:w-80 lg:h-[28rem] lg:w-96 animate-fade-in">
             <img
               src={kariAvatar}
               alt="Kari, tu asistente médica de CareCentral"
