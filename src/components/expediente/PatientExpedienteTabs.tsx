@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Pill, FileText, FlaskConical, TrendingUp, Activity, HeartPulse, FolderTree, Map, Thermometer, Droplet, ClipboardList } from "lucide-react";
+import { Pill, FileText, FlaskConical, TrendingUp, Activity, HeartPulse, FolderTree, Map, Thermometer, Droplet, ClipboardList, Scissors, AlertTriangle, History } from "lucide-react";
 import Medications from "@/pages/Medications";
 import Recetas from "@/pages/Recetas";
 import Estudios from "@/pages/Estudios";
@@ -12,6 +12,9 @@ import Glucosa from "@/pages/Glucosa";
 import MedicalRecords from "@/pages/MedicalRecords";
 import { BodyMapEditor } from "@/components/consultorio/BodyMapEditor";
 import { HistorialMedico } from "@/components/historial/HistorialMedico";
+import { SurgeriesPanel } from "@/components/surgeries/SurgeriesPanel";
+import { AlertsPanel } from "@/components/alerts/AlertsPanel";
+import { AuditLogPanel } from "@/components/audit/AuditLogPanel";
 import { useImpersonation } from "@/contexts/ImpersonationContext";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -31,6 +34,11 @@ const TABS_ROW_3 = [
   { value: "temperatura", label: "Temperatura", icon: Thermometer },
   { value: "glucosa", label: "Glucosa", icon: Droplet },
   { value: "historial", label: "Historial", icon: ClipboardList },
+];
+const TABS_ROW_4 = [
+  { value: "alertas", label: "Alertas", icon: AlertTriangle },
+  { value: "cirugias", label: "Cirugías", icon: Scissors },
+  { value: "cambios", label: "Cambios", icon: History },
 ];
 
 interface Props {
@@ -107,6 +115,17 @@ export function PatientExpedienteTabs({ patientId, patientName, defaultTab = "ma
             );
           })}
         </TabsList>
+        <TabsList className="grid grid-cols-3 w-full h-auto gap-1">
+          {TABS_ROW_4.map((t) => {
+            const Icon = t.icon;
+            return (
+              <TabsTrigger key={t.value} value={t.value} className="gap-1.5 flex-col sm:flex-row py-2 text-xs sm:text-sm">
+                <Icon className="h-4 w-4" />
+                <span className="truncate">{t.label}</span>
+              </TabsTrigger>
+            );
+          })}
+        </TabsList>
       </div>
 
       {!ready ? (
@@ -135,6 +154,9 @@ export function PatientExpedienteTabs({ patientId, patientName, defaultTab = "ma
           <TabsContent value="historial" className="mt-4">
             <HistorialMedico patientId={patientId} canEdit />
           </TabsContent>
+          <TabsContent value="alertas" className="mt-4"><AlertsPanel patientId={patientId} /></TabsContent>
+          <TabsContent value="cirugias" className="mt-4"><SurgeriesPanel patientId={patientId} /></TabsContent>
+          <TabsContent value="cambios" className="mt-4"><AuditLogPanel patientId={patientId} /></TabsContent>
         </>
       )}
     </Tabs>
