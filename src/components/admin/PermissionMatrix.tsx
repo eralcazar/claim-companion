@@ -15,6 +15,7 @@ const ROLE_LABEL: Record<AppRoleLite, string> = {
   enfermero: "Enfermero",
   laboratorio: "Laboratorio",
   farmacia: "Farmacia",
+  nutricionista: "Nutricionista",
 };
 
 export function PermissionMatrix({ permissions }: { permissions: RolePermissionRow[] }) {

@@ -25,6 +25,7 @@ const ROLE_LABEL: Record<AppRoleLite, string> = {
   enfermero: "Enfermero",
   laboratorio: "Laboratorio",
   farmacia: "Farmacia",
+  nutricionista: "Nutricionista",
 };
 
 function generatePassword(length = 12) {
