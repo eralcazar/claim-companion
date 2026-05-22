@@ -13,7 +13,7 @@ export default function Login() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (user && !loading) navigate("/", { replace: true });
+    if (user && !loading) navigate("/dashboard", { replace: true });
   }, [user, loading, navigate]);
 
   const handleSignIn = async (provider: "google" | "apple") => {
