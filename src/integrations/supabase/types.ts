@@ -1251,6 +1251,87 @@ export type Database = {
         }
         Relationships: []
       }
+      google_calendar_events: {
+        Row: {
+          google_event_id: string
+          id: string
+          last_synced_at: string
+          source_id: string
+          source_table: string
+          user_id: string
+        }
+        Insert: {
+          google_event_id: string
+          id?: string
+          last_synced_at?: string
+          source_id: string
+          source_table: string
+          user_id: string
+        }
+        Update: {
+          google_event_id?: string
+          id?: string
+          last_synced_at?: string
+          source_id?: string
+          source_table?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      home_visit_requests: {
+        Row: {
+          created_at: string
+          direccion: string
+          doctor_id: string | null
+          estado: string
+          fecha_preferida: string | null
+          id: string
+          lat: number | null
+          lng: number | null
+          motivo: string
+          notas: string | null
+          patient_id: string
+          precio_estimado: number | null
+          requested_by: string
+          updated_at: string
+          urgencia: string
+        }
+        Insert: {
+          created_at?: string
+          direccion: string
+          doctor_id?: string | null
+          estado?: string
+          fecha_preferida?: string | null
+          id?: string
+          lat?: number | null
+          lng?: number | null
+          motivo: string
+          notas?: string | null
+          patient_id: string
+          precio_estimado?: number | null
+          requested_by: string
+          updated_at?: string
+          urgencia?: string
+        }
+        Update: {
+          created_at?: string
+          direccion?: string
+          doctor_id?: string | null
+          estado?: string
+          fecha_preferida?: string | null
+          id?: string
+          lat?: number | null
+          lng?: number | null
+          motivo?: string
+          notas?: string | null
+          patient_id?: string
+          precio_estimado?: number | null
+          requested_by?: string
+          updated_at?: string
+          urgencia?: string
+        }
+        Relationships: []
+      }
       indicadores_estudio: {
         Row: {
           codigo_indicador: string | null
@@ -1963,6 +2044,87 @@ export type Database = {
           },
         ]
       }
+      medico_invoices: {
+        Row: {
+          appointment_id: string | null
+          concepto: string
+          created_at: string
+          doctor_id: string
+          estado: string
+          fecha: string
+          folio: string
+          home_visit_id: string | null
+          id: string
+          iva: number
+          metodo_pago: string | null
+          notas: string | null
+          patient_id: string | null
+          pdf_url: string | null
+          razon_social_receptor: string | null
+          rfc_receptor: string | null
+          subtotal: number
+          total: number
+          updated_at: string
+        }
+        Insert: {
+          appointment_id?: string | null
+          concepto: string
+          created_at?: string
+          doctor_id: string
+          estado?: string
+          fecha?: string
+          folio: string
+          home_visit_id?: string | null
+          id?: string
+          iva?: number
+          metodo_pago?: string | null
+          notas?: string | null
+          patient_id?: string | null
+          pdf_url?: string | null
+          razon_social_receptor?: string | null
+          rfc_receptor?: string | null
+          subtotal?: number
+          total?: number
+          updated_at?: string
+        }
+        Update: {
+          appointment_id?: string | null
+          concepto?: string
+          created_at?: string
+          doctor_id?: string
+          estado?: string
+          fecha?: string
+          folio?: string
+          home_visit_id?: string | null
+          id?: string
+          iva?: number
+          metodo_pago?: string | null
+          notas?: string | null
+          patient_id?: string | null
+          pdf_url?: string | null
+          razon_social_receptor?: string | null
+          rfc_receptor?: string | null
+          subtotal?: number
+          total?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "medico_invoices_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "medico_invoices_home_visit_id_fkey"
+            columns: ["home_visit_id"]
+            isOneToOne: false
+            referencedRelation: "home_visit_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       medicos: {
         Row: {
           cedula_general: string | null
@@ -2049,6 +2211,39 @@ export type Database = {
           link?: string | null
           read_at?: string | null
           title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      nutricionista_profiles: {
+        Row: {
+          bio: string | null
+          cedula: string | null
+          consultorio: string | null
+          created_at: string
+          especialidad: string | null
+          precio_consulta: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          bio?: string | null
+          cedula?: string | null
+          consultorio?: string | null
+          created_at?: string
+          especialidad?: string | null
+          precio_consulta?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          bio?: string | null
+          cedula?: string | null
+          consultorio?: string | null
+          created_at?: string
+          especialidad?: string | null
+          precio_consulta?: number | null
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
@@ -2303,6 +2498,62 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      odontograma_states: {
+        Row: {
+          color: string | null
+          created_at: string
+          created_by: string
+          estado: string
+          id: string
+          notas: string | null
+          patient_id: string
+          pieza: number
+          superficie: string | null
+          superseded_at: string | null
+          superseded_by: string | null
+          updated_at: string
+          vigente: boolean
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          created_by: string
+          estado: string
+          id?: string
+          notas?: string | null
+          patient_id: string
+          pieza: number
+          superficie?: string | null
+          superseded_at?: string | null
+          superseded_by?: string | null
+          updated_at?: string
+          vigente?: boolean
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          created_by?: string
+          estado?: string
+          id?: string
+          notas?: string | null
+          patient_id?: string
+          pieza?: number
+          superficie?: string | null
+          superseded_at?: string | null
+          superseded_by?: string | null
+          updated_at?: string
+          vigente?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "odontograma_states_superseded_by_fkey"
+            columns: ["superseded_by"]
+            isOneToOne: false
+            referencedRelation: "odontograma_states"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       patient_personnel: {
         Row: {
@@ -2653,6 +2904,135 @@ export type Database = {
             columns: ["plan_id"]
             isOneToOne: false
             referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      procedure_recurrences: {
+        Row: {
+          categoria: string
+          created_at: string
+          created_by: string
+          duracion_min: number
+          fecha_fin: string | null
+          fecha_inicio: string
+          hora_inicio: string
+          id: string
+          nombre: string
+          notas: string | null
+          patient_id: string
+          rrule: string
+          ubicacion: string | null
+          updated_at: string
+          vigente: boolean
+        }
+        Insert: {
+          categoria?: string
+          created_at?: string
+          created_by: string
+          duracion_min?: number
+          fecha_fin?: string | null
+          fecha_inicio?: string
+          hora_inicio?: string
+          id?: string
+          nombre: string
+          notas?: string | null
+          patient_id: string
+          rrule: string
+          ubicacion?: string | null
+          updated_at?: string
+          vigente?: boolean
+        }
+        Update: {
+          categoria?: string
+          created_at?: string
+          created_by?: string
+          duracion_min?: number
+          fecha_fin?: string | null
+          fecha_inicio?: string
+          hora_inicio?: string
+          id?: string
+          nombre?: string
+          notas?: string | null
+          patient_id?: string
+          rrule?: string
+          ubicacion?: string | null
+          updated_at?: string
+          vigente?: boolean
+        }
+        Relationships: []
+      }
+      procedure_sessions: {
+        Row: {
+          appointment_id: string | null
+          como_me_fue: string | null
+          complicaciones: string | null
+          created_at: string
+          created_by: string
+          id: string
+          notas: string | null
+          patient_id: string
+          peso_post_kg: number | null
+          peso_pre_kg: number | null
+          presion_post: string | null
+          presion_pre: string | null
+          recurrence_id: string | null
+          scheduled_at: string
+          sintomas: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          appointment_id?: string | null
+          como_me_fue?: string | null
+          complicaciones?: string | null
+          created_at?: string
+          created_by: string
+          id?: string
+          notas?: string | null
+          patient_id: string
+          peso_post_kg?: number | null
+          peso_pre_kg?: number | null
+          presion_post?: string | null
+          presion_pre?: string | null
+          recurrence_id?: string | null
+          scheduled_at: string
+          sintomas?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          appointment_id?: string | null
+          como_me_fue?: string | null
+          complicaciones?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          notas?: string | null
+          patient_id?: string
+          peso_post_kg?: number | null
+          peso_pre_kg?: number | null
+          presion_post?: string | null
+          presion_pre?: string | null
+          recurrence_id?: string | null
+          scheduled_at?: string
+          sintomas?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "procedure_sessions_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "procedure_sessions_recurrence_id_fkey"
+            columns: ["recurrence_id"]
+            isOneToOne: false
+            referencedRelation: "procedure_recurrences"
             referencedColumns: ["id"]
           },
         ]
@@ -3304,6 +3684,42 @@ export type Database = {
         }
         Relationships: []
       }
+      user_google_tokens: {
+        Row: {
+          access_token: string
+          calendar_id: string | null
+          created_at: string
+          expires_at: string | null
+          refresh_token: string | null
+          scope: string | null
+          sync_enabled: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token: string
+          calendar_id?: string | null
+          created_at?: string
+          expires_at?: string | null
+          refresh_token?: string | null
+          scope?: string | null
+          sync_enabled?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token?: string
+          calendar_id?: string | null
+          created_at?: string
+          expires_at?: string | null
+          refresh_token?: string | null
+          scope?: string | null
+          sync_enabled?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -3418,6 +3834,7 @@ export type Database = {
         | "laboratorio"
         | "farmacia"
         | "nutricionista"
+        | "odontologo"
       appointment_document_category:
         | "receta"
         | "estudio"
@@ -3594,6 +4011,7 @@ export const Constants = {
         "laboratorio",
         "farmacia",
         "nutricionista",
+        "odontologo",
       ],
       appointment_document_category: [
         "receta",
