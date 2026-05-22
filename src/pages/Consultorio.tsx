@@ -231,7 +231,7 @@ export default function Consultorio() {
                   patientId={freePatientId}
                   patientName={selected?.patient_name}
                   impersonate={!isSelfView}
-                  canEditBodyMap={!isSelfView}
+                  canEditBodyMap={true}
                 />
               </CardContent>
             </Card>
