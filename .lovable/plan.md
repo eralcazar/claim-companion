@@ -1,31 +1,46 @@
-## Objetivo
-Cuando el usuario entre a `/`, redirigir automáticamente:
-- A `/dashboard` si hay sesión activa
-- A `/login` si no hay sesión
+## Landing pública en `/` para CareCentral
 
-## Estado actual
-- `src/App.tsx` monta `Dashboard` directamente en `/` dentro de `<ProtectedRoute>`.
-- **No existe la ruta `/dashboard`** — hoy el dashboard vive en `/`.
-- `ProtectedRoute` ya redirige a `/login` cuando no hay usuario, pero solo para rutas protegidas.
+Reemplazar el `RootRedirect` actual por una landing pública en español. Usuarios autenticados que entren a `/` serán redirigidos a `/dashboard`; los demás verán la landing.
 
-## Cambios propuestos en `src/App.tsx`
+### Estructura de la landing (`src/pages/Landing.tsx`)
 
-1. Crear un nuevo componente `RootRedirect` (en el mismo archivo o en `src/components/`) que use `useAuth()`:
-   - Mientras `loading` → spinner.
-   - Si `user` → `<Navigate to="/dashboard" replace />`.
-   - Si no → `<Navigate to="/login" replace />`.
+1. **Header sticky** — Logo `CareCentralLogo` + botones "Iniciar sesión" (→ `/login`) y "Conocer más" (scroll a sección features).
+2. **Hero** — Titular "Tu salud, en un solo lugar", subtítulo, avatar de Kari (reusa `kari-avatar.png`), dos CTAs grandes:
+   - **Iniciar sesión** → `/login` (variant primario)
+   - **Conocer más** → scroll suave a `#features`
+   Fondo con `gradient-hero` y blobs (mismo estilo que Login).
+3. **Sección "¿Qué es CareCentral?"** (`#features`) — 3-4 cards con iconos lucide:
+   - Expediente digital familiar
+   - Recordatorios de medicamentos y citas
+   - Reclamos médicos con OCR
+   - Asistente IA Kari
+4. **Sección "Para quién"** — Pacientes, Médicos, Brokers, Farmacias/Laboratorios (badges/cards).
+5. **Sección "Cómo funciona"** — 3 pasos: Regístrate → Conecta tu información → Gestiona tu salud.
+6. **CTA final** — "Comienza gratis con 5 OCR al mes" + botón "Iniciar sesión".
+7. **Footer** — Links a `/legal#terminos`, `/legal#privacidad`, copyright.
 
-2. Reestructurar las rutas:
-   - `/` (pública, fuera de `ProtectedRoute`) → `<RootRedirect />`.
-   - Mover `Dashboard` a `/dashboard` dentro del bloque `<ProtectedRoute><AppLayout/></ProtectedRoute>`.
+### Cambios técnicos
 
-3. Revisar y actualizar enlaces internos que apunten a `/` como "home/dashboard" (sidebar, bottom nav, logo, breadcrumbs, redirecciones post-login en `Login.tsx`) para que apunten a `/dashboard`.
+- **Nuevo**: `src/pages/Landing.tsx` — landing pública, 100% en español, usa tokens del design system (Teal `#14B8A6`, Navy, Cyan), `glass-card`, animaciones `animate-fade-in`.
+- **Modificado**: `src/App.tsx`
+  - Reemplazar `RootRedirect` por `RootRoute`: si `loading` → spinner; si `user` → `<Navigate to="/dashboard" replace />`; si no → `<Landing />`.
+  - Importar `Landing`.
+- **SEO en `index.html`** (verificar y ajustar si falta):
+  - `<title>` < 60 chars con keyword "CareCentral"
+  - `<meta name="description">` < 160 chars
+  - Un solo `<h1>` en la landing
+  - `<link rel="canonical">`
+  - JSON-LD tipo `Organization` / `SoftwareApplication`
 
-## Archivos a tocar
-- `src/App.tsx` — nueva ruta `/dashboard`, `RootRedirect` en `/`.
-- `src/pages/Login.tsx` — cambiar `navigate("/")` por `navigate("/dashboard")`.
-- `src/components/AppSidebar.tsx`, `src/components/BottomNav.tsx` y cualquier `<Link to="/">` que represente "Inicio/Dashboard" → `/dashboard`.
+### Detalles de diseño
 
-## Notas
-- Mantener `ProtectedRoute` sin cambios; ya cubre el resto de rutas privadas.
-- El `replace` en `<Navigate>` evita que `/` quede en el historial del navegador.
+- Mobile-first (bottom-up), responsivo en 1106px+.
+- Reutilizar componentes shadcn `Button`, iconos de `lucide-react`.
+- No reescribir tokens — usar los existentes en `index.css` y `tailwind.config.ts`.
+- Avatar de Kari con burbuja de saludo (similar al Login pero más prominente en hero).
+
+### Archivos a tocar
+
+- `src/pages/Landing.tsx` (nuevo)
+- `src/App.tsx` (reemplazar `RootRedirect` → `RootRoute`)
+- `index.html` (metadatos SEO si faltan)
