@@ -31,7 +31,7 @@ const blankItem = () => ({
   frecuencia: "cada_8h",
   frecuencia_horas: "",
   dias_a_tomar: "",
-  precio_aproximado: "",
+  indefinido: false,
   indicacion: "",
 });
 
@@ -74,9 +74,9 @@ export function RecetaForm({ open, onOpenChange, initial, defaultPatientId, defa
             ...it,
             dosis: it.dosis ?? "",
             cantidad: it.cantidad ?? "",
-            dias_a_tomar: it.dias_a_tomar ?? "",
+              dias_a_tomar: it.dias_a_tomar ?? "",
+              indefinido: it.dias_a_tomar == null,
             frecuencia_horas: it.frecuencia_horas ?? "",
-            precio_aproximado: it.precio_aproximado ?? "",
             marca_comercial: it.marca_comercial ?? "",
             indicacion: it.indicacion ?? "",
           }))
@@ -92,7 +92,7 @@ export function RecetaForm({ open, onOpenChange, initial, defaultPatientId, defa
             frecuencia: initial.frecuencia ?? "cada_8h",
             frecuencia_horas: initial.frecuencia_horas ?? "",
             dias_a_tomar: initial.dias_a_tomar ?? "",
-            precio_aproximado: initial.precio_aproximado ?? "",
+              indefinido: initial.dias_a_tomar == null,
           }];
       setItems(existing);
     } else {
@@ -119,6 +119,11 @@ export function RecetaForm({ open, onOpenChange, initial, defaultPatientId, defa
   });
   const canSubmit = !!form.patient_id && itemsValid;
 
+  const normalizeItem = (it: any) => {
+    const { indefinido, precio_aproximado: _ignore, ...rest } = it;
+    return { ...rest, dias_a_tomar: indefinido ? null : rest.dias_a_tomar, precio_aproximado: null };
+  };
+
   const submit = async () => {
     if (!canSubmit) return;
     const doctorId = isMedico ? user!.id : (defaultDoctorId || form.doctor_id || user!.id);
@@ -131,10 +136,10 @@ export function RecetaForm({ open, onOpenChange, initial, defaultPatientId, defa
       estado: form.estado,
     };
     if (initial?.id) {
-      await update.mutateAsync({ id: initial.id, ...header, items });
+      await update.mutateAsync({ id: initial.id, ...header, items: items.map(normalizeItem) });
     } else {
       header.created_by = user!.id;
-      await create.mutateAsync({ ...header, items });
+      await create.mutateAsync({ ...header, items: items.map(normalizeItem) });
     }
     onOpenChange(false);
   };
@@ -231,11 +236,23 @@ export function RecetaForm({ open, onOpenChange, initial, defaultPatientId, defa
                   )}
                   <div>
                     <Label>Días a tomar</Label>
-                    <Input type="number" value={it.dias_a_tomar} onChange={(e) => setItem(idx, "dias_a_tomar", e.target.value)} />
+                    <Input
+                      type="number"
+                      value={it.indefinido ? "" : it.dias_a_tomar}
+                      disabled={!!it.indefinido}
+                      onChange={(e) => setItem(idx, "dias_a_tomar", e.target.value)}
+                      placeholder={it.indefinido ? "Indefinido" : "Ej: 7"}
+                    />
                   </div>
-                  <div>
-                    <Label>Precio aproximado</Label>
-                    <Input type="number" step="0.01" value={it.precio_aproximado} onChange={(e) => setItem(idx, "precio_aproximado", e.target.value)} />
+                  <div className="flex items-center gap-2 pt-6">
+                    <Switch
+                      checked={!!it.indefinido}
+                      onCheckedChange={(v) => {
+                        setItem(idx, "indefinido", v);
+                        if (v) setItem(idx, "dias_a_tomar", "");
+                      }}
+                    />
+                    <Label>Tomar indefinidamente</Label>
                   </div>
                   <div className="md:col-span-2">
                     <Label>Indicación específica</Label>

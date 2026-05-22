@@ -77,7 +77,7 @@ export default function Recetas() {
       ) : filtered.length === 0 ? (
         <p className="text-muted-foreground py-8 text-center">No hay recetas para mostrar.</p>
       ) : (
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className="flex flex-col gap-3">
           {filtered.map((r) => (
             <RecetaCard key={r.id} receta={r} onEdit={canCreate ? (rr) => { setEditing(rr); setOpen(true); } : undefined} />
           ))}

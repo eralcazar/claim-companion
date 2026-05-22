@@ -113,7 +113,7 @@ export function RecetaCard({ receta, onEdit }: Props) {
               dosis && `— ${dosis}`,
               it.cantidad ? `× ${it.cantidad}` : null,
               `· ${itemFrequency(it)}`,
-              it.dias_a_tomar ? `· ${it.dias_a_tomar} días` : null,
+              it.dias_a_tomar ? `· ${it.dias_a_tomar} días` : `· Indefinido`,
             ].filter(Boolean).join(" ");
             const sched = it.id ? scheduleByItem.get(it.id) : undefined;
             const nextStr = sched
