@@ -252,9 +252,9 @@ export default function Landing() {
                   { label: "SpO₂", value: "98%", unit: "Sat." },
                   { label: "Temp.", value: "36.6°", unit: "C" },
                 ].map((m) => (
-                  <div key={m.label} className="rounded-2xl border border-border/50 bg-card p-3">
+                  <div key={m.label} className="min-w-0 rounded-2xl border border-border/50 bg-card p-3">
                     <p className="text-xs text-muted-foreground">{m.label}</p>
-                    <p className="mt-1 font-heading text-lg font-bold text-foreground">{m.value}</p>
+                    <p className="mt-1 truncate font-heading text-lg font-bold text-foreground">{m.value}</p>
                     <p className="text-[10px] text-muted-foreground">{m.unit}</p>
                   </div>
                 ))}
@@ -299,17 +299,17 @@ export default function Landing() {
                 ].map((r) => (
                   <div
                     key={r.name}
-                    className="flex items-center justify-between rounded-2xl border border-border/50 bg-background/50 p-3"
+                    className="flex items-center justify-between gap-3 rounded-2xl border border-border/50 bg-background/50 p-3"
                   >
-                    <div>
-                      <p className="text-sm font-medium">{r.name}</p>
-                      <p className="text-[11px] text-muted-foreground">{r.policy}</p>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">{r.name}</p>
+                      <p className="truncate text-[11px] text-muted-foreground">{r.policy}</p>
                     </div>
                     <span
                       className={
                         r.tone === "ok"
-                          ? "rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary"
-                          : "rounded-full bg-accent/20 px-2 py-0.5 text-[10px] font-medium text-foreground"
+                          ? "flex-none rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary"
+                          : "flex-none rounded-full bg-accent/20 px-2 py-0.5 text-[10px] font-medium text-foreground"
                       }
                     >
                       {r.status}
