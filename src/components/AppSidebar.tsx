@@ -1,6 +1,7 @@
 import {
   Home, FileText, Calendar, Pill, User, Shield, Users, Stethoscope, FolderOpen, Download, LogOut, FolderTree, UserCog, KeyRound, GraduationCap, BadgeCheck, FlaskConical, TrendingUp, HeartPulse, FlaskRound, Store, UserCheck, FileWarning, Package, Boxes, Layers, CreditCard, Activity, ScrollText, Apple
 } from "lucide-react";
+import { Receipt, Smile, Repeat2 } from "lucide-react";
 import { NavLink as RouterNavLink, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useImpersonation } from "@/contexts/ImpersonationContext";
@@ -25,6 +26,9 @@ const mainItems: Item[] = [
   { title: "Agenda", url: "/agenda", icon: Calendar, feature: "agenda" },
   { title: "Expediente Digital", url: "/expediente", icon: FolderOpen, feature: "expediente_digital" },
   { title: "Nutrición", url: "/nutricion", icon: Apple, feature: "nutricion" },
+  { title: "Procedimientos", url: "/procedimientos", icon: Repeat2, feature: "procedimientos" },
+  { title: "Odontograma", url: "/odontograma", icon: Smile, feature: "odontograma" },
+  { title: "Médico a domicilio", url: "/domicilio", icon: Home, feature: "domicilio" },
   { title: "Pólizas", url: "/polizas", icon: Shield, feature: "polizas" },
   { title: "Formatos", url: "/formatos", icon: Download, feature: "formatos" },
   { title: "Perfil", url: "/perfil", icon: User, feature: "perfil" },
@@ -38,6 +42,7 @@ const doctorItems: Item[] = [
   { title: "Panel Médico", url: "/medico", icon: Stethoscope, feature: "doctor_panel" },
   { title: "Consultorio digital", url: "/consultorio", icon: Stethoscope, feature: "consultorio" },
   { title: "Solicitudes sin informe", url: "/medico/reclamos-sin-informe", icon: FileWarning, feature: "claims_without_report" },
+  { title: "Facturación", url: "/facturacion", icon: Receipt, feature: "facturacion" },
   { title: "Mi Perfil Médico", url: "/medico/perfil", icon: BadgeCheck, feature: "doctor_profile" },
 ];
 
