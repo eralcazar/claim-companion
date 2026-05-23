@@ -18,6 +18,7 @@ const ROLE_LABEL: Record<AppRoleLite, string> = {
   laboratorio: "Laboratorio",
   farmacia: "Farmacia",
   nutricionista: "Nutricionista",
+  odontologo: "Odontólogo",
 };
 
 // Roles clínicos que pueden coexistir con "paciente"
