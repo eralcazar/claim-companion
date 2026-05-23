@@ -4,6 +4,7 @@ import {
   HeartPulse, FlaskRound, Store, UserCheck, FileWarning,
   Package, Boxes, Layers, CreditCard, Activity, Sparkles, Apple, ClipboardList,
 } from "lucide-react";
+import { Receipt, Smile, Repeat2 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 export type FeatureKey =
@@ -23,7 +24,8 @@ export type FeatureKey =
   | "expediente_digital"
   | "nutricion"
   | "historial_medico"
-  | "kari" | "kari_tokens" | "kari_admin";
+  | "kari" | "kari_tokens" | "kari_admin"
+  | "procedimientos" | "odontograma" | "domicilio" | "facturacion";
 
 export interface FeatureDef {
   key: FeatureKey;
@@ -75,7 +77,11 @@ export const AVAILABLE_FEATURES: FeatureDef[] = [
   { key: "kari", label: "Pregúntale a Kari", route: "/kari", icon: Sparkles, group: "principal" },
   { key: "kari_tokens", label: "Tokens de Kari", route: "/kari/tokens", icon: Sparkles, group: "principal" },
   { key: "kari_admin", label: "Uso de Kari (Admin)", route: "/admin/kari-uso", icon: Sparkles, group: "admin" },
+  { key: "procedimientos", label: "Procedimientos", route: "/procedimientos", icon: Repeat2, group: "principal" },
+  { key: "odontograma", label: "Odontograma", route: "/odontograma", icon: Smile, group: "principal" },
+  { key: "domicilio", label: "Médico a domicilio", route: "/domicilio", icon: Home, group: "principal" },
+  { key: "facturacion", label: "Facturación", route: "/facturacion", icon: Receipt, group: "medico" },
 ];
 
-export const ALL_ROLES = ["admin", "broker", "paciente", "medico", "enfermero", "laboratorio", "farmacia", "nutricionista"] as const;
+export const ALL_ROLES = ["admin", "broker", "paciente", "medico", "enfermero", "laboratorio", "farmacia", "nutricionista", "odontologo"] as const;
 export type AppRoleLite = (typeof ALL_ROLES)[number];

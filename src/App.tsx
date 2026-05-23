@@ -56,6 +56,10 @@ import ExpedienteDigital from "@/pages/ExpedienteDigital";
 import Kari from "@/pages/Kari";
 import KariTokens from "@/pages/KariTokens";
 import KariUsageAdmin from "@/pages/admin/KariUsageAdmin";
+import Procedimientos from "@/pages/Procedimientos";
+import Odontograma from "@/pages/Odontograma";
+import Domicilio from "@/pages/Domicilio";
+import Facturacion from "@/pages/Facturacion";
 
 const queryClient = new QueryClient();
 
@@ -132,6 +136,10 @@ const App = () => (
               <Route path="/kari" element={<Kari />} />
               <Route path="/kari/tokens" element={<KariTokens />} />
               <Route path="/admin/kari-uso" element={<KariUsageAdmin />} />
+              <Route path="/procedimientos" element={<Procedimientos />} />
+              <Route path="/odontograma" element={<Odontograma />} />
+              <Route path="/domicilio" element={<Domicilio />} />
+              <Route path="/facturacion" element={<Facturacion />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>

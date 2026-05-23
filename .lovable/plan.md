@@ -1,155 +1,103 @@
+# Plan: Fase 2 + Fase 3 (sin Google Calendar)
 
-# Plan de evoluci贸n CareCentral
+Las tablas ya están creadas en la migración previa. Este plan cubre **toda la UI y lógica** que falta para cerrar ambas fases. Google Calendar queda fuera; en su lugar, exportación `.ics` simple desde citas y sesiones recurrentes.
 
-Es much铆simo trabajo, as铆 que lo dividimos en **6 fases independientes** que se pueden aprobar / implementar una a la vez. Tras aprobar el plan, te pregunto cu谩l fase arrancamos primero (o si lo hacemos todo seguido).
+## Alcance
 
----
+### Fase 2 — Procedimientos recurrentes
+1. **Hook + panel de recurrencias** (`useProcedureRecurrences`, `RecurrencesPanel.tsx`)
+   - Crear/editar/desactivar regla (hemodiálisis 3x/sem, quimio, rehabilitación…)
+   - Selector visual de días (L–D), hora, duración, sede, médico responsable
+   - Generación de RRULE a partir del UI (sin librería: builder propio simple)
+2. **Sesiones individuales** (`useProcedureSessions`, `SessionsList.tsx`, `SessionForm.tsx`)
+   - Listado cronológico de sesiones con badges (programada, completada, cancelada)
+   - Formulario "¿Cómo me fue?": síntomas, peso pre/post, TA pre/post, complicaciones, notas
+   - Materialización automática: al abrir el panel, se crean en BD las próximas 4 semanas a partir de las reglas vigentes (idempotente por `recurrence_id + scheduled_at`)
+3. **Integración con agenda y expediente**
+   - Nueva pestaña **"Procedimientos"** dentro de `PatientExpedienteTabs`
+   - Las sesiones programadas aparecen en la agenda del paciente como bloques distintivos (color por tipo)
+   - Botón "Registrar evolución" en cada sesión vencida sin reporte
+4. **Exportación .ics** (`src/lib/icsExport.ts`)
+   - Botón "Descargar para Google/Apple Calendar" en cada recurrencia y cita
+   - Genera archivo `.ics` con VEVENT + RRULE estándar (cliente, sin edge function)
 
-## Reglas transversales (aplican a todas las fases)
+### Fase 3 — Especialidades y servicios
 
-- **Permisos de edici贸n**: cada registro guarda `created_by`. Solo el creador puede editar/borrar el suyo; los dem谩s profesionales lo ven en modo lectura. Admin override.
-- **Audit log universal**: tabla `audit_logs` (`actor_id, table_name, record_id, action, before, after, at`). Trigger gen茅rico aplicado a TODAS las tablas cl铆nicas (mapa, recetas, estudios, signos, historial, citas, alertas, cirug铆as, procedimientos, nutrici贸n).
-- **Paciente puede ver el log** de su propio expediente (qui茅n y cu谩ndo edit贸).
-- **UI 100% espa帽ol**, paleta Teal/Navy/Cyan, mobile-first.
+5. **Odontograma** (`OdontogramaPanel.tsx`, `OdontogramaSVG.tsx`, `useOdontograma`)
+   - SVG interactivo con 32 piezas FDI (11–48), 5 superficies por pieza (oclusal, mesial, distal, vestibular, lingual)
+   - Click en superficie → menú estados: sano, caries, obturación, corona, ausente, endodoncia, implante, fractura
+   - Historial por pieza (versionado con `is_vigente`, igual que body_annotations)
+   - Leyenda de colores y vista impresión
+6. **Panel Nutricionista** (`NutricionPanel.tsx`)
+   - Métricas: peso, talla, IMC (auto), grasa, agua, peso seco
+   - Tabla "semáforo" de alimentos (verde/amarillo/rojo) usando `food_traffic`
+   - Plan alimenticio simple (texto estructurado) + objetivos
+   - Acceso para rol `nutricionista` y `medico`
+7. **Médico a domicilio** (`HomeVisitRequestForm.tsx`, `HomeVisitsList.tsx`, `useHomeVisits`)
+   - Paciente solicita: dirección (usa `address_lat/lng` si existe), urgencia (baja/media/alta), motivo, ventana horaria preferida
+   - Vista médico: feed de solicitudes pendientes con filtros por zona/urgencia, aceptar/rechazar
+   - Estados: pendiente → aceptada → en_camino → completada / cancelada
+8. **Facturación médica** (`InvoiceForm.tsx`, `InvoicesList.tsx`, `useMedicoInvoices`)
+   - Médico genera factura post-consulta: conceptos (descripción + precio), método de pago, RFC opcional
+   - Folio automático (ya hecho por trigger `gen_invoice_folio`)
+   - PDF descargable (HTML + `window.print()`, sin librería extra)
+   - Estados: borrador → emitida → pagada / cancelada
+   - Paciente ve sus facturas en una pestaña "Facturación" en su expediente
 
----
+### Navegación
+9. **Reorganización del menú lateral por rol activo**
+   - `medico`: Agenda · Pacientes · Recetas · Procedimientos · Domicilio · Facturación · Kari
+   - `odontologo` (nuevo rol): Agenda · Pacientes · Odontograma · Recetas · Facturación
+   - `nutricionista`: Agenda · Pacientes · Nutrición · Kari
+   - `paciente`: Inicio · Expediente · Agenda · Recetas · Domicilio · Facturas · Kari
+   - Sin cambios para `admin`, `broker`, `enfermero`, `farmacia`, `laboratorio`
 
-## FASE 1 鈥� N煤cleo cl铆nico: historial, cirug铆as, alertas, logs
+## Detalles técnicos
 
-### 1.1 Mapa corporal versionado
-- A帽adir a `body_annotations`: `is_vigente boolean default true`, `superseded_by uuid`, `superseded_at timestamptz`.
-- Editar = crear nueva versi贸n y marcar la anterior como no vigente (no se borra).
-- UI: timeline por regi贸n con autor, fecha/hora y badge "Vigente" / "Hist贸rico".
-- Filtros: "Solo vigentes" (default) / "Ver historial completo".
-- El paciente puede agregar y editar **sus propias** anotaciones (ya habilitado); ahora tambi茅n las marca como vigentes/no.
+**Materialización de sesiones (cliente)**
+```ts
+// src/lib/rrule.ts (mini parser propio)
+// Soporta FREQ=WEEKLY/DAILY + BYDAY=MO,WE,FR + INTERVAL
+expandRecurrence(rule, from, to) → Date[]
+```
+Al montar `SessionsList`, expandir cada `procedure_recurrences` vigente del paciente para los próximos 28 días y hacer `upsert` con `onConflict: 'recurrence_id,scheduled_at'`.
 
-### 1.2 Historial de cirug铆as y procedimientos
-- Nueva tabla `surgeries` (`patient_id, fecha, nombre, hospital, cirujano, tipo_anestesia, complicaciones, notas, vigente`).
-- Nueva tabla `procedures_log` para procedimientos puntuales (biopsias, infiltraciones, etc.).
-- Vista en Expediente 鈫� nueva pesta帽a "Cirug铆as e intervenciones".
+**Permisos / RLS** (ya en migración previa)
+- Cada quien edita solo lo propio (`created_by = auth.uid()`), todo el equipo clínico autorizado puede ver vía `has_patient_access`.
+- `audit_logs` ya cubre todas las nuevas tablas.
 
-### 1.3 Panel de alertas m茅dicas
-- Tabla `medical_alerts` (`patient_id, created_by, tipo, severidad: info|warning|critical, mensaje, ref_table, ref_id, activa, expires_at`).
-- Cualquier profesional (medico/enfermero/nutricionista/laboratorio) crea alertas sobre presi贸n, oxigenaci贸n, temperatura, glucosa, estudios OCR/manuales.
-- Auto-alertas: trigger que crea alerta cuando un signo cae fuera de rango.
-- **Panel global de alertas** visible en todos los paneles profesionales (badge en bottom nav + sidebar + drawer dedicado).
-
-### 1.4 Audit logs
-- Tabla `audit_logs` + funci贸n `log_change()` + triggers en todas las tablas cl铆nicas.
-- Pesta帽a "Historial de cambios" en cada secci贸n del expediente.
-
-### 1.5 Recetas 鈥� fixes UX
-- Vista **lista** (en lugar de cards) como default.
-- Checkbox **"Tomar indefinidamente"** 鈫� `dias_a_tomar = null` y badge "Indefinido".
-- **Quitar `precio_aproximado`** del formulario y de la card/lista.
-
----
-
-## FASE 2 鈥� Agenda + procedimientos recurrentes + Google Calendar
-
-### 2.1 Procedimientos recurrentes
-- Citas tipo `procedimiento` con `recurrence_rule` (RRULE simple: diaria/semanal/X veces por semana).
-- Ejemplo: "Hemodi谩lisis Lu/Mi/Vi 9:00".
-- Nueva pesta帽a en expediente: **"Procedimientos recurrentes"** con calendario + lista de sesiones.
-- Cada sesi贸n permite registrar "C贸mo me fue": s铆ntomas, peso pre/post, presi贸n, observaciones (link al mapa corporal).
-
-### 2.2 Sync Google Calendar (per-user OAuth)
-- Tabla `user_google_tokens` (refresh_token cifrado).
-- Edge function `google-calendar-sync` (oauth callback + push de appointments + pull opcional).
-- Apple Calendar 鈫� fase posterior (requiere Sign in with Apple + CalDAV, lo dejamos documentado).
-
----
-
-## FASE 3 鈥� Nuevas especialidades y paneles
-
-### 3.1 Nutricionista
-- Ya existe rol `nutricionista` y `nutricion_panel`. Falta:
-  - Agregar **Perfil de nutricionista** (similar a `MedicoEditor`): especialidad, c茅dula, biograf铆a, foto.
-  - Integrar pesta帽a "Nutrici贸n" dentro del **Consultorio** del m茅dico (no solo en panel propio).
-
-### 3.2 Odontolog铆a
-- Nuevo rol `odontologo` en enum `app_role`.
-- Panel `/odontologia` con: pacientes, agenda, **odontograma** (mapa dental SVG con piezas 11-48, estados: sano/caries/extra铆do/corona/endodoncia).
-- Perfil de odont贸logo.
-- Especialidad "Odontolog铆a" en cat谩logo.
-- Permisos en `role_permissions` y `plan_role_features`.
-
-### 3.3 M茅dico a domicilio
-- Tipo de cita `domicilio` + flag `requires_transport`.
-- Flujo paciente: "Solicitar m茅dico a domicilio" 鈫� selecciona especialidad + direcci贸n + s铆ntomas 鈫� notifica a m茅dicos disponibles.
-- Tabla `home_visit_requests` con estados pendiente/aceptada/en camino/completada.
-
-### 3.4 Facturaci贸n para m茅dicos
-- Tabla `medico_invoices` (cita, monto, RFC paciente, uso CFDI, estado, pdf_url).
-- Por ahora: PDF generado localmente con datos fiscales (no timbrado CFDI real, eso requerir铆a PAC externo 鈥� lo documentamos como integraci贸n futura).
-
----
-
-## FASE 4 鈥� Voz + Kari sugerencias
-
-### 4.1 Control por voz (Web Speech API)
-- Hook `useVoiceInput(lang="es-MX")`.
-- Bot贸n micr贸fono en formularios de: presi贸n, oxigenaci贸n, temperatura, glucosa, estudios.
-- Para estudios: gram谩tica gu铆a "diga: estudio, valor, rango de referencia"; parser regex en cliente.
-
-### 4.2 Kari sugerencias contextuales
-- Edge function `ai-kari-suggestions` que recibe `patient_id` y arma contexto con: padecimientos activos, cirug铆as, procedimientos recurrentes, estudios recientes, alertas.
-- Devuelve sugerencias accionables ("considerar control de creatinina por hemodi谩lisis", "alergia a penicilina activa antes de recetar").
-- Widget "Sugerencias de Kari" en Consultorio y Expediente.
-
----
-
-## FASE 5 鈥� Redise帽o de navegaci贸n por rol
-
-- Auditor铆a actual: sidebar y bottom nav muestran lo mismo para todos seg煤n features. Mejora:
-  - **Sidebar contextual por `active_role`**: secciones agrupadas y priorizadas seg煤n el profesional (M茅dico: Consultorio 鈥� Agenda 鈥� Alertas 鈥� Recetas; Enfermer铆a: Signos 鈥� Alertas 鈥� Pacientes asignados; Nutricionista: Plan alimenticio 鈥� Pacientes 鈥� Sem谩foro; Odont贸logo: Odontograma 鈥� Agenda; Paciente: Inicio 鈥� Expediente 鈥� Agenda 鈥� Kari).
-  - Bottom nav m贸vil con 5 atajos por rol (no fijos).
-  - Breadcrumbs en p谩ginas profundas.
-  - Buscador global (Cmd+K) con pacientes/citas/estudios.
-  - Selector "Cambiar de rol" m谩s prominente cuando el usuario tiene varios roles.
-
----
-
-## FASE 6 鈥� Otras mejoras detectadas que te pueden servir
-
-(propuestas que surgieron al analizar lo que pediste 鈥� decides cu谩les entran)
-
-- **Vacunas** (tabla + carnet digital).
-- **Plan de tratamiento** activo (consolidado: medicamentos + procedimientos + dieta + recordatorios).
-- **Compartir expediente** con QR temporal (urgencias).
-- **Modo offline** para signos vitales (PWA + cola de sync).
-- **Exportar expediente completo a PDF** firmado.
-- **Recordatorios push** para procedimientos recurrentes.
-- **Telemetr铆a de adherencia** (% de medicamentos tomados a tiempo).
-
----
-
-## Detalle t茅cnico resumido
-
-```text
-DB nuevas tablas:
-  surgeries, procedures_log, medical_alerts, audit_logs,
-  user_google_tokens, home_visit_requests, medico_invoices,
-  odontograma_states, nutricionista_profiles
-
-DB modificaciones:
-  body_annotations + (is_vigente, superseded_by, superseded_at)
-  appointments + (recurrence_rule, parent_id, requires_transport)
-  receta_items: precio_aproximado deprecated en UI
-  app_role enum + 'odontologo'
-  role_permissions + plan_role_features: nuevas features
-
-C贸digo:
-  Hook gen茅rico useAuditLog, useVoiceInput
-  Componentes: AlertsDrawer, SurgeryTimeline, OdontogramaSVG,
-    RecurrenceEditor, ProcedureSessionLog, RecetaListView,
-    NutricionistaEditor, KariSuggestionsCard
-  Edge functions: google-calendar-sync, ai-kari-suggestions,
-    medico-invoice-pdf, home-visit-dispatch
-
-OAuth Google Calendar: per-user (no connector compartido).
+**Exportación .ics**
+```ts
+// Sin librería; genera string VCALENDAR válido
+buildICS({ uid, summary, dtstart, duration, rrule? }): Blob
 ```
 
----
+**Odontograma**
+- Estado guardado por `(patient_id, tooth_fdi, surface)` con `is_vigente=true`. Al cambiar, marca el anterior como `superseded_by` el nuevo.
+- Mismo patrón que `body_annotations` para mantener histórico.
 
-驴Aprobamos el plan y arrancamos por la **Fase 1** (n煤cleo cl铆nico + recetas fixes), que es la m谩s cr铆tica y desbloquea las dem谩s?
+**Sin nuevas dependencias.** Todo con React + shadcn + Tailwind existentes.
+
+## Archivos a crear/editar
+
+**Crear (~20):**
+- `src/hooks/`: `useProcedureRecurrences.ts`, `useProcedureSessions.ts`, `useOdontograma.ts`, `useHomeVisits.ts`, `useMedicoInvoices.ts`, `useNutricion.ts`
+- `src/lib/`: `rrule.ts`, `icsExport.ts`
+- `src/components/procedimientos/`: `RecurrencesPanel.tsx`, `RecurrenceForm.tsx`, `SessionsList.tsx`, `SessionForm.tsx`
+- `src/components/odontologia/`: `OdontogramaPanel.tsx`, `OdontogramaSVG.tsx`, `ToothEditor.tsx`
+- `src/components/nutricion/`: `NutricionPanel.tsx`, `FoodTrafficTable.tsx`
+- `src/components/domicilio/`: `HomeVisitRequestForm.tsx`, `HomeVisitsList.tsx`, `HomeVisitCard.tsx`
+- `src/components/facturacion/`: `InvoiceForm.tsx`, `InvoicesList.tsx`, `InvoicePrint.tsx`
+
+**Editar:**
+- `src/components/expediente/PatientExpedienteTabs.tsx` → +Procedimientos, +Odontograma, +Nutrición, +Facturas
+- `src/components/layout/Sidebar.tsx` (o equivalente) → menús por rol activo
+- `src/pages/`: nuevas rutas `/procedimientos`, `/odontograma`, `/nutricion`, `/domicilio`, `/facturacion`
+- `src/App.tsx` → registrar rutas
+
+## Lo que NO entra en esta fase
+- Sync bidireccional con Google/Apple Calendar (se reemplaza con `.ics`)
+- Pagos en línea de facturas (Stripe queda para fase posterior si lo pides)
+- Notificaciones push de sesiones próximas (queda al sistema de recordatorios existente)
+
+¿Apruebo y empiezo a construir?

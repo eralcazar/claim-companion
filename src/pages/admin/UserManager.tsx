@@ -23,6 +23,7 @@ const ROLE_LABEL: Record<AppRoleLite, string> = {
   laboratorio: "Laboratorio",
   farmacia: "Farmacia",
   nutricionista: "Nutricionista",
+  odontologo: "Odontólogo",
 };
 
 export default function UserManager() {
