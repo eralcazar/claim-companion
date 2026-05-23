@@ -4,6 +4,7 @@ import {
   HeartPulse, FlaskRound, Store, UserCheck, FileWarning,
   Package, Boxes, Layers, CreditCard, Activity, Sparkles, Apple, ClipboardList,
 } from "lucide-react";
+import { Home as HomeIcon, Receipt, Smile, Repeat2 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 export type FeatureKey =
@@ -24,6 +25,12 @@ export type FeatureKey =
   | "nutricion"
   | "historial_medico"
   | "kari" | "kari_tokens" | "kari_admin";
+
+export type ExtraFeatureKey =
+  | "procedimientos"
+  | "odontograma"
+  | "domicilio"
+  | "facturacion";
 
 export interface FeatureDef {
   key: FeatureKey;
