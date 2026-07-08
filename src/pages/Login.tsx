@@ -17,10 +17,18 @@ export default function Login() {
   }, [user, loading, navigate]);
 
   const handleSignIn = async (provider: "google" | "apple") => {
-    const result = await lovable.auth.signInWithOAuth(provider);
+    const result = await lovable.auth.signInWithOAuth(provider, {
+      redirect_uri: window.location.origin,
+    });
+
     if (result?.error) {
       toast.error("Error al iniciar sesión. Intente de nuevo.");
+      return;
     }
+
+    if (result?.redirected) return;
+
+    navigate("/dashboard", { replace: true });
   };
 
   if (loading) {
