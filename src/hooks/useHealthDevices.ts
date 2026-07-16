@@ -93,8 +93,9 @@ export function useHealthDevices() {
         "spo2_readings",
         results[1].map((s) => ({
           patient_id: user.id,
+          created_by: user.id,
           spo2: Math.round(s.value),
-          medido_en: s.measured_at,
+          taken_at: s.measured_at,
           source: sourceTag,
           device_name: s.device_name ?? null,
           external_uuid: s.external_uuid,
@@ -108,9 +109,10 @@ export function useHealthDevices() {
           .filter((s) => s.value2)
           .map((s) => ({
             patient_id: user.id,
+            created_by: user.id,
             systolic: Math.round(s.value),
             diastolic: Math.round(s.value2!),
-            medido_en: s.measured_at,
+            taken_at: s.measured_at,
             source: sourceTag,
             device_name: s.device_name ?? null,
             external_uuid: s.external_uuid,
@@ -122,8 +124,9 @@ export function useHealthDevices() {
         "temperature_readings",
         results[3].map((s) => ({
           patient_id: user.id,
-          temperature: s.value,
-          medido_en: s.measured_at,
+          created_by: user.id,
+          temperature_c: s.value,
+          taken_at: s.measured_at,
           source: sourceTag,
           device_name: s.device_name ?? null,
           external_uuid: s.external_uuid,
@@ -135,8 +138,9 @@ export function useHealthDevices() {
         "glucose_readings",
         results[4].map((s) => ({
           patient_id: user.id,
-          glucose_mg_dl: Math.round(s.value),
-          medido_en: s.measured_at,
+          created_by: user.id,
+          glucose_mgdl: Math.round(s.value),
+          taken_at: s.measured_at,
           source: sourceTag,
           device_name: s.device_name ?? null,
           external_uuid: s.external_uuid,
