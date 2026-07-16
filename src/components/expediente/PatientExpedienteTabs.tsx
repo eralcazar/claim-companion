@@ -21,6 +21,8 @@ import { InvoicesPanel } from "@/components/facturacion/InvoicesPanel";
 import { useImpersonation } from "@/contexts/ImpersonationContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { BpPendingReviewPanel } from "@/components/expediente/BpPendingReviewPanel";
+import { PendingReviewsPanel } from "@/components/expediente/PendingReviewsPanel";
+import { BleReportButton } from "@/components/expediente/BleReportButton";
 
 const TABS_ROW_1 = [
   { value: "mapa", label: "Mapa corporal", icon: Map },
