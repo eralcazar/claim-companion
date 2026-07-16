@@ -20,6 +20,7 @@ import { OdontogramaPanel } from "@/components/odontologia/OdontogramaPanel";
 import { InvoicesPanel } from "@/components/facturacion/InvoicesPanel";
 import { useImpersonation } from "@/contexts/ImpersonationContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { BpPendingReviewPanel } from "@/components/expediente/BpPendingReviewPanel";
 
 const TABS_ROW_1 = [
   { value: "mapa", label: "Mapa corporal", icon: Map },
@@ -165,7 +166,10 @@ export function PatientExpedienteTabs({ patientId, patientName, defaultTab = "ma
           <TabsContent value="recetas" className="mt-4"><Recetas /></TabsContent>
           <TabsContent value="estudios" className="mt-4"><Estudios /></TabsContent>
           <TabsContent value="tendencias" className="mt-4"><Tendencias /></TabsContent>
-          <TabsContent value="presion" className="mt-4"><PresionArterial /></TabsContent>
+          <TabsContent value="presion" className="mt-4 space-y-4">
+            <BpPendingReviewPanel patientId={patientId} />
+            <PresionArterial />
+          </TabsContent>
           <TabsContent value="oxigenacion" className="mt-4"><OxygenSaturation /></TabsContent>
           <TabsContent value="registros" className="mt-4"><MedicalRecords /></TabsContent>
           <TabsContent value="temperatura" className="mt-4"><Temperatura /></TabsContent>
