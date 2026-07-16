@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { lovable } from "@/integrations/lovable";
 import { Button } from "@/components/ui/button";
@@ -11,14 +11,20 @@ import kariAvatar from "@/assets/kari-avatar.png";
 export default function Login() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
+  const [params] = useSearchParams();
+  const nextParam = params.get("next");
+  const safeNext = nextParam && nextParam.startsWith("/") && !nextParam.startsWith("//")
+    ? nextParam
+    : "/dashboard";
 
   useEffect(() => {
-    if (user && !loading) navigate("/dashboard", { replace: true });
-  }, [user, loading, navigate]);
+    if (user && !loading) navigate(safeNext, { replace: true });
+  }, [user, loading, navigate, safeNext]);
 
   const handleSignIn = async (provider: "google" | "apple") => {
+    const returnUrl = `${window.location.origin}${safeNext === "/dashboard" ? "" : safeNext}`;
     const result = await lovable.auth.signInWithOAuth(provider, {
-      redirect_uri: window.location.origin,
+      redirect_uri: returnUrl || window.location.origin,
     });
 
     if (result?.error) {
@@ -28,7 +34,7 @@ export default function Login() {
 
     if (result?.redirected) return;
 
-    navigate("/dashboard", { replace: true });
+    navigate(safeNext, { replace: true });
   };
 
   if (loading) {

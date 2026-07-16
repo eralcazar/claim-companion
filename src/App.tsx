@@ -60,6 +60,7 @@ import Procedimientos from "@/pages/Procedimientos";
 import Odontograma from "@/pages/Odontograma";
 import Domicilio from "@/pages/Domicilio";
 import Facturacion from "@/pages/Facturacion";
+import OAuthConsent from "@/pages/OAuthConsent";
 
 const queryClient = new QueryClient();
 
@@ -86,6 +87,7 @@ const App = () => (
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/legal" element={<Legal />} />
+            <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
             <Route path="/" element={<RootRoute />} />
             <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
               <Route path="/dashboard" element={<Dashboard />} />
