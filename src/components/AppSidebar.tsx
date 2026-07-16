@@ -14,6 +14,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Sparkles } from "lucide-react";
 import { Bluetooth } from "lucide-react";
+import { Bell, ShieldAlert } from "lucide-react";
 import { useMyOcrQuota, totalQuota } from "@/hooks/useOcrQuota";
 import { useKariBalance } from "@/hooks/useKariTokens";
 import { Badge } from "@/components/ui/badge";
@@ -72,6 +73,7 @@ const adminItems: Item[] = [
   { title: "Paquetes / Planes", url: "/admin/planes", icon: Layers, feature: "plan_manager" },
   { title: "Uso de Kari", url: "/admin/kari-uso", icon: Sparkles, feature: "kari_admin" },
   { title: "Dispositivos BLE", url: "/admin/ble-devices", icon: Bluetooth, feature: "admin_panel" },
+  { title: "Auditoría MCP", url: "/admin/mcp-audit", icon: ShieldAlert, feature: "admin_panel" },
 ];
 
 export function AppSidebar() {
