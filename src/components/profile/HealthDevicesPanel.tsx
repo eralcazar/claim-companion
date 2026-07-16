@@ -2,11 +2,22 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useHealthDevices } from "@/hooks/useHealthDevices";
-import { Activity, RefreshCw, Smartphone } from "lucide-react";
+import { Activity, RefreshCw, Smartphone, Unlink } from "lucide-react";
 import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 export function HealthDevicesPanel() {
-  const { platform, available, lastSyncedAt, requestPerms, sync } = useHealthDevices();
+  const { platform, available, lastSyncedAt, requestPerms, sync, disconnect } = useHealthDevices();
 
   const isWeb = platform === "web";
 
@@ -22,6 +33,15 @@ export function HealthDevicesPanel() {
       toast.success(`Sincronizado: ${res.total} registros`);
     } catch (err: any) {
       toast.error(err?.message ?? "Error al sincronizar");
+    }
+  };
+
+  const handleDisconnect = async () => {
+    try {
+      const res = await disconnect.mutateAsync();
+      toast.success(`Desvinculado. Se eliminaron ${res.deleted} lecturas.`);
+    } catch (err: any) {
+      toast.error(err?.message ?? "Error al desvincular");
     }
   };
 
@@ -70,6 +90,35 @@ export function HealthDevicesPanel() {
               <p className="text-xs text-muted-foreground">
                 Última sincronización: {new Date(lastSyncedAt).toLocaleString("es-MX")}
               </p>
+            )}
+
+            {lastSyncedAt && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="w-full text-destructive"
+                    disabled={disconnect.isPending}
+                  >
+                    <Unlink className="h-4 w-4 mr-1" />
+                    {disconnect.isPending ? "Eliminando..." : "Desvincular y borrar datos"}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>¿Desvincular dispositivo?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Se eliminarán todas las lecturas sincronizadas desde Apple Health o Health
+                      Connect (frecuencia cardíaca, SpO₂, presión, temperatura, glucosa y
+                      actividad). Tus mediciones ingresadas manualmente no se verán afectadas.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDisconnect}>Desvincular</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             )}
           </>
         )}
