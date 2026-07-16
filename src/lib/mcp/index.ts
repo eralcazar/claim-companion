@@ -1,4 +1,5 @@
 import { auth, defineMcp } from "@lovable.dev/mcp-js";
+import { withAudit } from "./audit";
 import whoami from "./tools/whoami";
 import listRecetas from "./tools/list-recetas";
 import getReceta from "./tools/get-receta";
@@ -29,5 +30,5 @@ export default defineMcp({
     listPharmacyOrders,
     listEstudios,
     getPatientSummary,
-  ],
+  ].map(withAudit),
 });
