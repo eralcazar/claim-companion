@@ -13,6 +13,7 @@ import { ESTADOS_MX, ESTADOS_CIVILES, TIPOS_IDENTIFICACION } from "@/lib/constan
 import { Link } from "react-router-dom";
 import { Pen } from "lucide-react";
 import { ActiveRoleSelector } from "@/components/profile/ActiveRoleSelector";
+import { HealthDevicesPanel } from "@/components/profile/HealthDevicesPanel";
 
 const INITIAL_FORM = {
   first_name: "",
@@ -298,6 +299,8 @@ export default function Profile() {
           <Pen className="h-4 w-4 mr-1" /> Mis firmas electrónicas
         </Link>
       </Button>
+
+      <HealthDevicesPanel />
 
       <Button variant="outline" className="w-full text-destructive" onClick={signOut}>
         Cerrar sesión

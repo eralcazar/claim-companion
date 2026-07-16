@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      activity_readings: {
+        Row: {
+          active_minutes: number | null
+          calories: number | null
+          created_at: string
+          device_name: string | null
+          external_uuid: string | null
+          fecha: string
+          id: string
+          patient_id: string
+          sleep_minutes: number | null
+          source: string | null
+          steps: number | null
+          updated_at: string
+        }
+        Insert: {
+          active_minutes?: number | null
+          calories?: number | null
+          created_at?: string
+          device_name?: string | null
+          external_uuid?: string | null
+          fecha: string
+          id?: string
+          patient_id: string
+          sleep_minutes?: number | null
+          source?: string | null
+          steps?: number | null
+          updated_at?: string
+        }
+        Update: {
+          active_minutes?: number | null
+          calories?: number | null
+          created_at?: string
+          device_name?: string | null
+          external_uuid?: string | null
+          fecha?: string
+          id?: string
+          patient_id?: string
+          sleep_minutes?: number | null
+          source?: string | null
+          steps?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ai_chat_conversations: {
         Row: {
           created_at: string
@@ -468,12 +513,15 @@ export type Database = {
           arm: string | null
           created_at: string
           created_by: string
+          device_name: string | null
           diastolic: number
+          external_uuid: string | null
           id: string
           notes: string | null
           patient_id: string
           position: string | null
           pulse: number | null
+          source: string | null
           systolic: number
           taken_at: string
           updated_at: string
@@ -482,12 +530,15 @@ export type Database = {
           arm?: string | null
           created_at?: string
           created_by: string
+          device_name?: string | null
           diastolic: number
+          external_uuid?: string | null
           id?: string
           notes?: string | null
           patient_id: string
           position?: string | null
           pulse?: number | null
+          source?: string | null
           systolic: number
           taken_at?: string
           updated_at?: string
@@ -496,12 +547,15 @@ export type Database = {
           arm?: string | null
           created_at?: string
           created_by?: string
+          device_name?: string | null
           diastolic?: number
+          external_uuid?: string | null
           id?: string
           notes?: string | null
           patient_id?: string
           position?: string | null
           pulse?: number | null
+          source?: string | null
           systolic?: number
           taken_at?: string
           updated_at?: string
@@ -1216,36 +1270,45 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string
+          device_name: string | null
+          external_uuid: string | null
           glucose_mgdl: number
           hours_since_meal: number | null
           id: string
           measurement_context: string
           notes: string | null
           patient_id: string
+          source: string | null
           taken_at: string
           updated_at: string
         }
         Insert: {
           created_at?: string
           created_by: string
+          device_name?: string | null
+          external_uuid?: string | null
           glucose_mgdl: number
           hours_since_meal?: number | null
           id?: string
           measurement_context?: string
           notes?: string | null
           patient_id: string
+          source?: string | null
           taken_at?: string
           updated_at?: string
         }
         Update: {
           created_at?: string
           created_by?: string
+          device_name?: string | null
+          external_uuid?: string | null
           glucose_mgdl?: number
           hours_since_meal?: number | null
           id?: string
           measurement_context?: string
           notes?: string | null
           patient_id?: string
+          source?: string | null
           taken_at?: string
           updated_at?: string
         }
@@ -1275,6 +1338,48 @@ export type Database = {
           source_id?: string
           source_table?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      heart_rate_readings: {
+        Row: {
+          bpm: number
+          context: string | null
+          created_at: string
+          device_name: string | null
+          external_uuid: string | null
+          id: string
+          measured_at: string
+          notes: string | null
+          patient_id: string
+          source: string | null
+          updated_at: string
+        }
+        Insert: {
+          bpm: number
+          context?: string | null
+          created_at?: string
+          device_name?: string | null
+          external_uuid?: string | null
+          id?: string
+          measured_at?: string
+          notes?: string | null
+          patient_id: string
+          source?: string | null
+          updated_at?: string
+        }
+        Update: {
+          bpm?: number
+          context?: string | null
+          created_at?: string
+          device_name?: string | null
+          external_uuid?: string | null
+          id?: string
+          measured_at?: string
+          notes?: string | null
+          patient_id?: string
+          source?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
@@ -3099,6 +3204,7 @@ export type Database = {
           first_name: string
           full_name: string
           giro_negocio: string | null
+          health_last_synced_at: string | null
           id: string
           interior_number: string | null
           maternal_surname: string
@@ -3141,6 +3247,7 @@ export type Database = {
           first_name?: string
           full_name?: string
           giro_negocio?: string | null
+          health_last_synced_at?: string | null
           id?: string
           interior_number?: string | null
           maternal_surname?: string
@@ -3183,6 +3290,7 @@ export type Database = {
           first_name?: string
           full_name?: string
           giro_negocio?: string | null
+          health_last_synced_at?: string | null
           id?: string
           interior_number?: string | null
           maternal_surname?: string
@@ -3453,10 +3561,13 @@ export type Database = {
           context: string | null
           created_at: string
           created_by: string
+          device_name: string | null
+          external_uuid: string | null
           id: string
           notes: string | null
           patient_id: string
           pulse: number | null
+          source: string | null
           spo2: number
           taken_at: string
           updated_at: string
@@ -3465,10 +3576,13 @@ export type Database = {
           context?: string | null
           created_at?: string
           created_by: string
+          device_name?: string | null
+          external_uuid?: string | null
           id?: string
           notes?: string | null
           patient_id: string
           pulse?: number | null
+          source?: string | null
           spo2: number
           taken_at?: string
           updated_at?: string
@@ -3477,10 +3591,13 @@ export type Database = {
           context?: string | null
           created_at?: string
           created_by?: string
+          device_name?: string | null
+          external_uuid?: string | null
           id?: string
           notes?: string | null
           patient_id?: string
           pulse?: number | null
+          source?: string | null
           spo2?: number
           taken_at?: string
           updated_at?: string
@@ -3650,10 +3767,13 @@ export type Database = {
           context: string | null
           created_at: string
           created_by: string
+          device_name: string | null
+          external_uuid: string | null
           id: string
           method: string | null
           notes: string | null
           patient_id: string
+          source: string | null
           taken_at: string
           temperature_c: number
           updated_at: string
@@ -3662,10 +3782,13 @@ export type Database = {
           context?: string | null
           created_at?: string
           created_by: string
+          device_name?: string | null
+          external_uuid?: string | null
           id?: string
           method?: string | null
           notes?: string | null
           patient_id: string
+          source?: string | null
           taken_at?: string
           temperature_c: number
           updated_at?: string
@@ -3674,10 +3797,13 @@ export type Database = {
           context?: string | null
           created_at?: string
           created_by?: string
+          device_name?: string | null
+          external_uuid?: string | null
           id?: string
           method?: string | null
           notes?: string | null
           patient_id?: string
+          source?: string | null
           taken_at?: string
           temperature_c?: number
           updated_at?: string
