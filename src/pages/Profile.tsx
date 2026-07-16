@@ -13,6 +13,7 @@ import { ESTADOS_MX, ESTADOS_CIVILES, TIPOS_IDENTIFICACION } from "@/lib/constan
 import { Link } from "react-router-dom";
 import { Pen } from "lucide-react";
 import { ActiveRoleSelector } from "@/components/profile/ActiveRoleSelector";
+import { HealthDevicesPanel } from "@/components/profile/HealthDevicesPanel";
 
 const INITIAL_FORM = {
   first_name: "",
