@@ -1,49 +1,72 @@
-# BLE Directo — Implementación completa v1
 
-Arranco con el alcance **mínimo enfocado + consultorio + fallback OCR iOS**, con validación humana para presión y glucosa. Cubre todos los puntos discutidos en una sola entrega.
+# Plan: Ampliación de módulo BLE + Notificaciones + PDF clínico
 
-## Alcance
+Se implementa en 5 bloques que comparten base (tabla `notifications` ya existente y `ble_known_devices` ya sembrada).
 
-- Dispositivos v1: **tensiómetro** y **oxímetro de pulso** (perfiles GATT estándar 0x1810 y 0x1822).
-- Modo paciente (auto-medición) y **modo consultorio** (médico/enfermero mide al paciente activo).
-- Whitelist de dispositivos verificados vs genéricos (badge visual).
-- Lecturas de presión marcadas como **"pendiente de revisión"**; no disparan alertas hasta validarse. Oxímetro entra directo.
-- Reconexión automática usando dispositivos guardados por usuario.
-- Fallback iOS Safari: CTA "Instalar app" + botón "Capturar con foto (OCR)".
+## 1. Notificaciones push (con fallback web)
 
-## Cambios
+- Usar la tabla `notifications` existente como fuente de verdad.
+- Web fallback: `Notification API` + toast Sonner cuando la app esté abierta.
+- Push nativo: `@capacitor/push-notifications` (registro de token FCM/APNs guardado en nueva tabla `user_push_tokens`).
+- Edge function `notify-user` que:
+  - Inserta fila en `notifications`.
+  - Envía push a tokens del usuario si existen.
+- Disparadores:
+  - Trigger DB `on_bp_reading_reviewed` → cuando `requires_review` pasa de true→false, notifica al paciente.
+  - Trigger DB `on_medical_alert_insert` → notifica alerta clínica activa.
+- Hook `useNotifications` con badge en `BottomNav`/`AppSidebar` y panel `/notificaciones`.
 
-### Base de datos
-- Nueva tabla `user_ble_devices` (user_id, device_id, name, service_uuid, is_whitelisted, last_connected_at). RLS por dueño + GRANTs estándar.
-- Añadir columna `requires_review boolean default false` y `reviewed_at`, `reviewed_by` a `blood_pressure_readings` y `glucose_readings`.
-- Whitelist semilla en tabla nueva `ble_known_devices` (name_pattern, vendor, service_uuid, notes) — lectura pública para autenticados.
+## 2. Whitelist de dispositivos BLE (admin)
 
-### Código
-- `src/lib/ble/` — wrapper unificado (Web Bluetooth + `@capacitor-community/bluetooth-le`), parsers GATT para Blood Pressure Measurement (0x2A35) y PLX Continuous Measurement (0x2A5F).
-- `src/hooks/useBleDevices.ts` — escanear, conectar, suscribir notificaciones, guardar lecturas, gestionar dispositivos guardados.
-- `src/components/ble/BleConnectPanel.tsx` — UI en `/perfil` con lista de dispositivos guardados, badge whitelist, botón desvincular.
-- `src/components/consultorio/BleAssistedMeasurement.tsx` — panel embebido en `Consultorio.tsx` para medir al paciente activo (asocia lectura a `patient_id` del contexto).
-- Vista **"Pendientes de revisión"** en el expediente del paciente: lista lecturas con `requires_review=true`, botón Validar/Descartar.
-- Fallback OCR iOS: reutiliza el pipeline existente de OCR (mismos costos de cuota) para foto del display del dispositivo.
+- Nueva página `/admin/ble-devices` (solo rol `admin`).
+- CRUD sobre `ble_known_devices` (agregar, editar, marcar `blocked`, marcar `verified`).
+- Filtros por marca, modelo, tipo de medición, estado.
+- En perfil del usuario (`BleConnectPanel`), mostrar badge:
+  - "Verificado" (verde) si el dispositivo está en whitelist verificado.
+  - "No verificado" (amarillo).
+  - "Bloqueado" (rojo) — impide iniciar sesión de medición.
 
-### Instalación
-- `bun add @capacitor-community/bluetooth-le` y sync nativo.
+## 3. PDF de lecturas BLE validadas por paciente
+
+- Botón "Descargar PDF para aseguradora" en expediente del paciente.
+- Edge function `generate-ble-report-pdf` con `pdf-lib` que compila:
+  - Presión (validadas), Glucosa, SpO2, Temperatura, Frecuencia cardíaca.
+  - Rango de fechas seleccionable.
+  - Encabezado con datos del paciente + logo CareCentral.
+  - Marca "Validado por profesional" en cada renglón.
+- Descarga directa desde el navegador.
+
+## 4. Flujo "pendiente de revisión" para SpO2, temperatura y actividad
+
+- Agregar `requires_review boolean default false`, `reviewed_by uuid`, `reviewed_at timestamptz`, `review_notes text` en:
+  - `spo2_readings`
+  - `temperature_readings`
+  - `activity_readings`
+- Al insertar desde BLE con umbrales anormales (SpO2 < 92, temp > 38 o < 35, actividad = 0 prolongada), marcar `requires_review = true`.
+- Nuevo panel unificado `PendingReviewsPanel` en `PatientExpedienteTabs` que muestra pendientes de las 4 tablas (BP, SpO2, temperatura, actividad) con acciones Validar/Descartar.
+- Hook `useReviewReading` genérico por tipo.
+
+## 5. Desvincular y limpiar por dispositivo BLE
+
+- En `BleConnectPanel`, cada dispositivo tendrá acción "Desvincular y borrar datos":
+  - Elimina lecturas donde `external_uuid = <device_id>` de las 5 tablas clínicas BLE.
+  - Elimina fila de `user_ble_devices`.
+  - Registra evento en `audit_logs`.
+- Confirmación con diálogo destructivo.
 
 ## Detalles técnicos
 
-```text
-Flujo lectura BP:
-[Device] --GATT indicate 0x2A35--> [Parser IEEE-11073 SFLOAT]
-       --> upsert blood_pressure_readings (source='ble', device_name, external_uuid, requires_review=true)
-       --> UI "Pendiente de revisión" al médico
-       --> Validar => requires_review=false, dispara alertas si aplica
-```
+- Migraciones (una sola) para: `user_push_tokens`, columnas de revisión en 3 tablas, triggers `on_bp_reading_reviewed` y `on_medical_alert_insert`, política RLS admin en `ble_known_devices` (update/delete).
+- Edge functions nuevas: `notify-user`, `generate-ble-report-pdf`.
+- Package: `@capacitor/push-notifications` (nativo), `pdf-lib` (edge).
+- No se rompen APIs existentes; `useReviewBpReading` se refactoriza a `useReviewReading(kind)`.
 
-- `external_uuid` = hash(device_id + timestamp del measurement) para idempotencia.
-- Web Bluetooth requiere HTTPS + gesto de usuario; se llama desde onClick.
-- iOS Safari: `navigator.bluetooth` no existe → mostrar fallback.
+## Orden de ejecución
 
-## No incluido en v1
+1. Migración DB (todas las columnas, tabla, triggers, RLS).
+2. Edge functions + secrets si aplican.
+3. Hooks y librería (`ble`, `notifications`, `pdf`).
+4. Páginas y paneles UI.
+5. Verificación con typecheck y prueba manual del flujo revisar → notificación.
 
-- Termómetro, glucosa BLE, báscula, HR standalone (fase 2 cuando validemos pipeline).
-- Emparejamiento BLE en background (requiere nativo puro).
+¿Confirmas para arrancar?
