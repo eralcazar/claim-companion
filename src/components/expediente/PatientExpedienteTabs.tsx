@@ -21,6 +21,8 @@ import { InvoicesPanel } from "@/components/facturacion/InvoicesPanel";
 import { useImpersonation } from "@/contexts/ImpersonationContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { BpPendingReviewPanel } from "@/components/expediente/BpPendingReviewPanel";
+import { PendingReviewsPanel } from "@/components/expediente/PendingReviewsPanel";
+import { BleReportButton } from "@/components/expediente/BleReportButton";
 
 const TABS_ROW_1 = [
   { value: "mapa", label: "Mapa corporal", icon: Map },
@@ -162,7 +164,11 @@ export function PatientExpedienteTabs({ patientId, patientName, defaultTab = "ma
               showQuickRegionAccess
             />
           </TabsContent>
-          <TabsContent value="medicamentos" className="mt-4"><Medications /></TabsContent>
+          <TabsContent value="medicamentos" className="mt-4 space-y-4">
+            <PendingReviewsPanel patientId={patientId} />
+            <BleReportButton patientId={patientId} patientName={patientName} />
+            <Medications />
+          </TabsContent>
           <TabsContent value="recetas" className="mt-4"><Recetas /></TabsContent>
           <TabsContent value="estudios" className="mt-4"><Estudios /></TabsContent>
           <TabsContent value="tendencias" className="mt-4"><Tendencias /></TabsContent>

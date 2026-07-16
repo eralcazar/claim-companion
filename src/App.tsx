@@ -56,6 +56,7 @@ import ExpedienteDigital from "@/pages/ExpedienteDigital";
 import Kari from "@/pages/Kari";
 import KariTokens from "@/pages/KariTokens";
 import KariUsageAdmin from "@/pages/admin/KariUsageAdmin";
+import BleDevicesManager from "@/pages/admin/BleDevicesManager";
 import Procedimientos from "@/pages/Procedimientos";
 import Odontograma from "@/pages/Odontograma";
 import Domicilio from "@/pages/Domicilio";
@@ -138,6 +139,7 @@ const App = () => (
               <Route path="/kari" element={<Kari />} />
               <Route path="/kari/tokens" element={<KariTokens />} />
               <Route path="/admin/kari-uso" element={<KariUsageAdmin />} />
+              <Route path="/admin/ble-devices" element={<BleDevicesManager />} />
               <Route path="/procedimientos" element={<Procedimientos />} />
               <Route path="/odontograma" element={<Odontograma />} />
               <Route path="/domicilio" element={<Domicilio />} />

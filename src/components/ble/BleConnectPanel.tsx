@@ -9,6 +9,7 @@ import {
   useBleSession,
   useForgetBleDevice,
   useSavedBleDevices,
+  useUnlinkBleDevice,
 } from "@/hooks/useBleDevices";
 import { Link } from "react-router-dom";
 
@@ -21,6 +22,7 @@ export function BleConnectPanel() {
   const saved = useSavedBleDevices();
   const forget = useForgetBleDevice();
   const session = useBleSession();
+  const unlink = useUnlinkBleDevice();
 
   const handleConnect = async (service: "blood_pressure" | "pulse_oximeter") => {
     try {
@@ -140,6 +142,24 @@ export function BleConnectPanel() {
                     aria-label="Olvidar dispositivo"
                   >
                     <Trash2 className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-destructive"
+                    disabled={unlink.isPending}
+                    onClick={() => {
+                      if (!confirm("Se eliminarán TODAS las lecturas asociadas a este dispositivo. ¿Continuar?")) return;
+                      unlink.mutate(
+                        { id: d.id, deviceId: d.device_id },
+                        {
+                          onSuccess: () => toast.success("Dispositivo y lecturas eliminados"),
+                          onError: (e: any) => toast.error(e?.message ?? "Error"),
+                        },
+                      );
+                    }}
+                  >
+                    Desvincular y borrar
                   </Button>
                 </li>
               ))}
