@@ -8,6 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Download, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
+import { Navigate } from "react-router-dom";
 
 type McpLog = {
   id: string;
@@ -60,6 +62,9 @@ function toCsv(rows: McpLog[]): string {
 }
 
 export default function McpAuditLog() {
+  const { roles, loading } = useAuth();
+  const isAdmin = roles.includes("admin" as any);
+
   const [from, setFrom] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() - 7);
@@ -70,6 +75,7 @@ export default function McpAuditLog() {
 
   const query = useQuery({
     queryKey: ["mcp_audit", from, to, toolFilter],
+    enabled: isAdmin,
     queryFn: async () => {
       let q = supabase
         .from("mcp_tool_call_logs" as any)
@@ -84,6 +90,21 @@ export default function McpAuditLog() {
       return (data ?? []) as unknown as McpLog[];
     },
   });
+
+  if (loading) return <p className="p-6 text-muted-foreground">Cargando...</p>;
+  if (!isAdmin) {
+    return (
+      <div className="p-6">
+        <Card>
+          <CardContent className="p-6 text-center space-y-2">
+            <ShieldAlert className="h-8 w-8 mx-auto text-destructive" />
+            <p className="font-medium">Acceso restringido</p>
+            <p className="text-sm text-muted-foreground">Solo administradores pueden ver la auditoría MCP.</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   const rows = query.data ?? [];
   const stats = useMemo(() => {
