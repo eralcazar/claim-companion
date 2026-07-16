@@ -508,6 +508,33 @@ export type Database = {
         }
         Relationships: []
       }
+      ble_known_devices: {
+        Row: {
+          created_at: string
+          id: string
+          name_pattern: string
+          notes: string | null
+          service_uuid: string
+          vendor: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name_pattern: string
+          notes?: string | null
+          service_uuid: string
+          vendor?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name_pattern?: string
+          notes?: string | null
+          service_uuid?: string
+          vendor?: string | null
+        }
+        Relationships: []
+      }
       blood_pressure_readings: {
         Row: {
           arm: string | null
@@ -521,6 +548,9 @@ export type Database = {
           patient_id: string
           position: string | null
           pulse: number | null
+          requires_review: boolean
+          reviewed_at: string | null
+          reviewed_by: string | null
           source: string | null
           systolic: number
           taken_at: string
@@ -538,6 +568,9 @@ export type Database = {
           patient_id: string
           position?: string | null
           pulse?: number | null
+          requires_review?: boolean
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           source?: string | null
           systolic: number
           taken_at?: string
@@ -555,6 +588,9 @@ export type Database = {
           patient_id?: string
           position?: string | null
           pulse?: number | null
+          requires_review?: boolean
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           source?: string | null
           systolic?: number
           taken_at?: string
@@ -1278,6 +1314,9 @@ export type Database = {
           measurement_context: string
           notes: string | null
           patient_id: string
+          requires_review: boolean
+          reviewed_at: string | null
+          reviewed_by: string | null
           source: string | null
           taken_at: string
           updated_at: string
@@ -1293,6 +1332,9 @@ export type Database = {
           measurement_context?: string
           notes?: string | null
           patient_id: string
+          requires_review?: boolean
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           source?: string | null
           taken_at?: string
           updated_at?: string
@@ -1308,6 +1350,9 @@ export type Database = {
           measurement_context?: string
           notes?: string | null
           patient_id?: string
+          requires_review?: boolean
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           source?: string | null
           taken_at?: string
           updated_at?: string
@@ -3807,6 +3852,42 @@ export type Database = {
           taken_at?: string
           temperature_c?: number
           updated_at?: string
+        }
+        Relationships: []
+      }
+      user_ble_devices: {
+        Row: {
+          created_at: string
+          device_id: string
+          id: string
+          is_whitelisted: boolean
+          last_connected_at: string | null
+          name: string | null
+          service_uuid: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          device_id: string
+          id?: string
+          is_whitelisted?: boolean
+          last_connected_at?: string | null
+          name?: string | null
+          service_uuid?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          device_id?: string
+          id?: string
+          is_whitelisted?: boolean
+          last_connected_at?: string | null
+          name?: string | null
+          service_uuid?: string | null
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
