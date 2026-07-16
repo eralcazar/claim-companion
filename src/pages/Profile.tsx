@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import { ESTADOS_MX, ESTADOS_CIVILES, TIPOS_IDENTIFICACION } from "@/lib/constants";
 import { Link } from "react-router-dom";
-import { Pen } from "lucide-react";
+import { Pen, Bell } from "lucide-react";
 import { ActiveRoleSelector } from "@/components/profile/ActiveRoleSelector";
 import { HealthDevicesPanel } from "@/components/profile/HealthDevicesPanel";
 import { BleConnectPanel } from "@/components/ble/BleConnectPanel";
@@ -298,6 +298,12 @@ export default function Profile() {
       <Button asChild variant="outline" className="w-full">
         <Link to="/perfil/firmas">
           <Pen className="h-4 w-4 mr-1" /> Mis firmas electrónicas
+        </Link>
+      </Button>
+
+      <Button asChild variant="outline" className="w-full">
+        <Link to="/perfil/notificaciones">
+          <Bell className="h-4 w-4 mr-1" /> Preferencias de notificaciones
         </Link>
       </Button>
 
