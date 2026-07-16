@@ -300,6 +300,8 @@ export default function Profile() {
         </Link>
       </Button>
 
+      <HealthDevicesPanel />
+
       <Button variant="outline" className="w-full text-destructive" onClick={signOut}>
         Cerrar sesión
       </Button>
