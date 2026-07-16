@@ -14,6 +14,7 @@ import { Link } from "react-router-dom";
 import { Pen } from "lucide-react";
 import { ActiveRoleSelector } from "@/components/profile/ActiveRoleSelector";
 import { HealthDevicesPanel } from "@/components/profile/HealthDevicesPanel";
+import { BleConnectPanel } from "@/components/ble/BleConnectPanel";
 
 const INITIAL_FORM = {
   first_name: "",
@@ -301,6 +302,7 @@ export default function Profile() {
       </Button>
 
       <HealthDevicesPanel />
+      <BleConnectPanel />
 
       <Button variant="outline" className="w-full text-destructive" onClick={signOut}>
         Cerrar sesión

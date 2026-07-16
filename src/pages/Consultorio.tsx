@@ -29,6 +29,7 @@ import { EstudioForm } from "@/components/estudios/EstudioForm";
 import { useAssignedPatients } from "@/hooks/usePatientPersonnel";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PatientExpedienteTabs } from "@/components/expediente/PatientExpedienteTabs";
+import { BleAssistedMeasurement } from "@/components/consultorio/BleAssistedMeasurement";
 import { FolderOpen } from "lucide-react";
 
 export default function Consultorio() {
@@ -301,6 +302,8 @@ export default function Consultorio() {
               </Button>
             </CardContent>
           </Card>
+
+          <BleAssistedMeasurement patientId={patientId} patientName={patientName} />
 
           <Card>
             <CardHeader>
