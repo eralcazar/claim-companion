@@ -1,6 +1,11 @@
 import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import {
+  isInQuietHours,
+  notificationCategory,
+  useNotificationPreferences,
+} from "@/hooks/useNotificationPreferences";
 
 /**
  * Notificaciones push (fallback web) + reenvío automático de las notificaciones
@@ -12,6 +17,7 @@ import { useAuth } from "@/contexts/AuthContext";
  */
 export function usePushNotifications() {
   const { user } = useAuth();
+  const { data: prefs } = useNotificationPreferences();
 
   useEffect(() => {
     if (!user?.id) return;
@@ -31,6 +37,10 @@ export function usePushNotifications() {
           if (typeof window === "undefined" || !("Notification" in window)) return;
           if (Notification.permission !== "granted") return;
           if (document.visibilityState === "visible") return; // el toast in-app ya se muestra
+          // Respeta preferencias por categoría y horario de silencio.
+          const category = notificationCategory(n);
+          if (prefs && prefs[category] === false) return;
+          if (isInQuietHours(prefs)) return;
           try {
             new Notification(n.title ?? "CareCentral", {
               body: n.body ?? "",
@@ -47,5 +57,5 @@ export function usePushNotifications() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user?.id]);
+  }, [user?.id, prefs]);
 }
