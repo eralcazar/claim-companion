@@ -57,6 +57,8 @@ import Kari from "@/pages/Kari";
 import KariTokens from "@/pages/KariTokens";
 import KariUsageAdmin from "@/pages/admin/KariUsageAdmin";
 import BleDevicesManager from "@/pages/admin/BleDevicesManager";
+import McpAuditLog from "@/pages/admin/McpAuditLog";
+import NotificationPreferencesPage from "@/pages/NotificationPreferences";
 import Procedimientos from "@/pages/Procedimientos";
 import Odontograma from "@/pages/Odontograma";
 import Domicilio from "@/pages/Domicilio";
@@ -140,6 +142,8 @@ const App = () => (
               <Route path="/kari/tokens" element={<KariTokens />} />
               <Route path="/admin/kari-uso" element={<KariUsageAdmin />} />
               <Route path="/admin/ble-devices" element={<BleDevicesManager />} />
+              <Route path="/admin/mcp-audit" element={<McpAuditLog />} />
+              <Route path="/perfil/notificaciones" element={<NotificationPreferencesPage />} />
               <Route path="/procedimientos" element={<Procedimientos />} />
               <Route path="/odontograma" element={<Odontograma />} />
               <Route path="/domicilio" element={<Domicilio />} />
