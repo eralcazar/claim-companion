@@ -191,11 +191,54 @@ export function useHealthDevices() {
     },
   });
 
+  const disconnectMut = useMutation({
+    mutationFn: async () => {
+      if (!user?.id) throw new Error("No hay sesión");
+      const sources = ["apple_health", "health_connect"];
+      const tables = [
+        "heart_rate_readings",
+        "spo2_readings",
+        "blood_pressure_readings",
+        "temperature_readings",
+        "glucose_readings",
+        "activity_readings",
+      ] as const;
+
+      let deleted = 0;
+      for (const t of tables) {
+        const { error, count } = await supabase
+          .from(t as any)
+          .delete({ count: "exact" })
+          .eq("patient_id", user.id)
+          .in("source", sources)
+          .not("external_uuid", "is", null);
+        if (error) throw error;
+        deleted += count ?? 0;
+      }
+
+      const { error: pErr } = await supabase
+        .from("profiles")
+        .update({ health_last_synced_at: null })
+        .eq("user_id", user.id);
+      if (pErr) throw pErr;
+
+      return { deleted };
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["profile-health"] });
+      qc.invalidateQueries({ queryKey: ["spo2"] });
+      qc.invalidateQueries({ queryKey: ["blood-pressure"] });
+      qc.invalidateQueries({ queryKey: ["glucose"] });
+      qc.invalidateQueries({ queryKey: ["temperature"] });
+    },
+  });
+
   return {
     platform,
     available: availabilityQ.data ?? false,
     lastSyncedAt: profileQ.data?.health_last_synced_at ?? null,
     requestPerms,
     sync: syncMut,
+    disconnect: disconnectMut,
   };
 }
