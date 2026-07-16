@@ -39,18 +39,12 @@ function summarizeParams(input: unknown): Record<string, unknown> {
   return out;
 }
 
-type ToolDescriptor = {
-  name: string;
-  handler: (input: any, ctx: ToolContext) => any;
-  [k: string]: unknown;
-};
-
 /**
  * Wraps a tool descriptor so every invocation is recorded in
  * `mcp_tool_call_logs`. Failures to log are swallowed so audit never breaks a
  * legitimate tool call.
  */
-export function withAudit<T extends ToolDescriptor>(tool: T): T {
+export function withAudit<T extends { name: string; handler: (input: any, ctx: ToolContext) => any }>(tool: T): T {
   const original = tool.handler;
   const wrapped = async (input: any, ctx: ToolContext) => {
     const started = Date.now();
