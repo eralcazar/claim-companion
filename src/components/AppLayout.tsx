@@ -8,9 +8,11 @@ import { NotificationBell } from "@/components/NotificationBell";
 import { CareCentralLogo } from "@/components/brand/CareCentralLogo";
 import { KariFloatingButton } from "@/components/kari/KariFloatingButton";
 import { BrandSplash } from "@/components/brand/BrandSplash";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
 
 export function AppLayout() {
   const isMobile = useIsMobile();
+  usePushNotifications();
 
   return (
     <SidebarProvider>
