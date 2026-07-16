@@ -1796,6 +1796,45 @@ export type Database = {
         }
         Relationships: []
       }
+      mcp_tool_call_logs: {
+        Row: {
+          client_id: string | null
+          created_at: string
+          duration_ms: number | null
+          error: string | null
+          id: string
+          params_summary: Json
+          status: string
+          tool_name: string
+          user_email: string | null
+          user_id: string | null
+        }
+        Insert: {
+          client_id?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          error?: string | null
+          id?: string
+          params_summary?: Json
+          status?: string
+          tool_name: string
+          user_email?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          client_id?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          error?: string | null
+          id?: string
+          params_summary?: Json
+          status?: string
+          tool_name?: string
+          user_email?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       medical_alerts: {
         Row: {
           acknowledged_at: string | null
@@ -2363,6 +2402,42 @@ export type Database = {
           id?: string
           nombre_consultorio?: string | null
           telefono_consultorio?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      notification_preferences: {
+        Row: {
+          clinical_alerts: boolean
+          pending_validated: boolean
+          quiet_hours_enabled: boolean
+          quiet_hours_end: string | null
+          quiet_hours_start: string | null
+          reminders: boolean
+          system_messages: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          clinical_alerts?: boolean
+          pending_validated?: boolean
+          quiet_hours_enabled?: boolean
+          quiet_hours_end?: string | null
+          quiet_hours_start?: string | null
+          reminders?: boolean
+          system_messages?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          clinical_alerts?: boolean
+          pending_validated?: boolean
+          quiet_hours_enabled?: boolean
+          quiet_hours_end?: string | null
+          quiet_hours_start?: string | null
+          reminders?: boolean
+          system_messages?: boolean
           updated_at?: string
           user_id?: string
         }
@@ -3391,6 +3466,39 @@ export type Database = {
           updated_at?: string
           user_id?: string
           vigencia_identificacion?: string | null
+        }
+        Relationships: []
+      }
+      reading_reviews: {
+        Row: {
+          action: string
+          created_at: string
+          id: string
+          notes: string | null
+          patient_id: string
+          reading_id: string
+          reading_kind: string
+          reviewer_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          patient_id: string
+          reading_id: string
+          reading_kind: string
+          reviewer_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          patient_id?: string
+          reading_id?: string
+          reading_kind?: string
+          reviewer_id?: string | null
         }
         Relationships: []
       }
