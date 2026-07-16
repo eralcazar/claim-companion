@@ -1,9 +1,13 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { AlertTriangle } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type RiskItem = {
   kind: string;
@@ -47,16 +51,30 @@ function statusFromReading(r: any): "pendiente" | "revisada" | "mitigada" {
  * rangos de advertencia o críticos, junto con su estado de revisión.
  */
 export function ClinicalRiskPanel({ patientId }: { patientId: string }) {
+  const defaultFrom = useMemo(() => {
+    const d = new Date(); d.setDate(d.getDate() - 30);
+    return d.toISOString().slice(0, 10);
+  }, []);
+  const defaultTo = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const [from, setFrom] = useState(defaultFrom);
+  const [to, setTo] = useState(defaultTo);
+  const [kinds, setKinds] = useState<string[]>(["Presión", "SpO₂", "Temperatura", "Glucosa"]);
+  const [severity, setSeverity] = useState<"all" | "warning" | "critical">("all");
+
+  const toggleKind = (k: string) =>
+    setKinds((prev) => (prev.includes(k) ? prev.filter((x) => x !== k) : [...prev, k]));
+
   const q = useQuery({
-    queryKey: ["clinical_risk", patientId],
+    queryKey: ["clinical_risk", patientId, from, to],
     enabled: !!patientId,
     queryFn: async () => {
-      const since = new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString();
+      const since = `${from}T00:00:00.000Z`;
+      const until = `${to}T23:59:59.999Z`;
       const [bp, spo2, temp, glu] = await Promise.all([
-        supabase.from("blood_pressure_readings" as any).select("*").eq("patient_id", patientId).gte("taken_at", since),
-        supabase.from("spo2_readings" as any).select("*").eq("patient_id", patientId).gte("taken_at", since),
-        supabase.from("temperature_readings" as any).select("*").eq("patient_id", patientId).gte("taken_at", since),
-        supabase.from("glucose_readings" as any).select("*").eq("patient_id", patientId).gte("taken_at", since),
+        supabase.from("blood_pressure_readings" as any).select("*").eq("patient_id", patientId).gte("taken_at", since).lte("taken_at", until),
+        supabase.from("spo2_readings" as any).select("*").eq("patient_id", patientId).gte("taken_at", since).lte("taken_at", until),
+        supabase.from("temperature_readings" as any).select("*").eq("patient_id", patientId).gte("taken_at", since).lte("taken_at", until),
+        supabase.from("glucose_readings" as any).select("*").eq("patient_id", patientId).gte("taken_at", since).lte("taken_at", until),
       ]);
       const items: RiskItem[] = [];
       (bp.data ?? []).forEach((r: any) => {
@@ -79,7 +97,11 @@ export function ClinicalRiskPanel({ patientId }: { patientId: string }) {
     },
   });
 
-  const items = q.data ?? [];
+  const rawItems = q.data ?? [];
+  const items = useMemo(
+    () => rawItems.filter((i) => kinds.includes(i.kind) && (severity === "all" || i.severity === severity)),
+    [rawItems, kinds, severity],
+  );
   const counts = useMemo(() => ({
     critical: items.filter((i) => i.severity === "critical").length,
     warning: items.filter((i) => i.severity === "warning").length,
@@ -90,8 +112,38 @@ export function ClinicalRiskPanel({ patientId }: { patientId: string }) {
     <div className="space-y-3">
       <div className="flex items-center gap-2">
         <AlertTriangle className="h-4 w-4 text-primary" />
-        <h3 className="font-semibold">Lecturas con criterio de riesgo (30 días)</h3>
+        <h3 className="font-semibold">Lecturas con criterio de riesgo</h3>
       </div>
+
+      <Card>
+        <CardContent className="p-3 grid grid-cols-1 md:grid-cols-4 gap-3">
+          <div><Label>Desde</Label><Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></div>
+          <div><Label>Hasta</Label><Input type="date" value={to} onChange={(e) => setTo(e.target.value)} /></div>
+          <div>
+            <Label>Severidad</Label>
+            <Select value={severity} onValueChange={(v) => setSeverity(v as any)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas</SelectItem>
+                <SelectItem value="critical">Sólo críticas</SelectItem>
+                <SelectItem value="warning">Sólo advertencias</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="mb-1 block">Tipos</Label>
+            <div className="flex flex-wrap gap-2">
+              {["Presión", "SpO₂", "Temperatura", "Glucosa"].map((k) => (
+                <label key={k} className="flex items-center gap-1 text-xs cursor-pointer">
+                  <Checkbox checked={kinds.includes(k)} onCheckedChange={() => toggleKind(k)} />
+                  {k}
+                </label>
+              ))}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="flex flex-wrap gap-2 text-xs">
         <Badge variant="destructive">Críticas: {counts.critical}</Badge>
         <Badge>Advertencias: {counts.warning}</Badge>

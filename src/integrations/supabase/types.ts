@@ -2446,27 +2446,36 @@ export type Database = {
       notifications: {
         Row: {
           body: string
+          category: string | null
           created_at: string
+          event_key: string | null
           id: string
           link: string | null
+          push_sent_at: string | null
           read_at: string | null
           title: string
           user_id: string
         }
         Insert: {
           body?: string
+          category?: string | null
           created_at?: string
+          event_key?: string | null
           id?: string
           link?: string | null
+          push_sent_at?: string | null
           read_at?: string | null
           title: string
           user_id: string
         }
         Update: {
           body?: string
+          category?: string | null
           created_at?: string
+          event_key?: string | null
           id?: string
           link?: string | null
+          push_sent_at?: string | null
           read_at?: string | null
           title?: string
           user_id?: string
@@ -4204,6 +4213,10 @@ export type Database = {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      mark_notification_pushed: {
+        Args: { _notification_id: string }
         Returns: boolean
       }
       set_active_role: {
