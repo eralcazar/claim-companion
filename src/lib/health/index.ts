@@ -63,7 +63,7 @@ export async function requestHealthPermissions(): Promise<boolean> {
   try {
     if (typeof plugin.requestHealthPermissions === "function") {
       const res = await plugin.requestHealthPermissions({ permissions: READ_TYPES });
-      return !!res?.permissionsGranted ?? true;
+      return res?.permissionsGranted !== false;
     }
     if (typeof plugin.requestPermissions === "function") {
       await plugin.requestPermissions({ read: READ_TYPES });
