@@ -23,6 +23,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { BpPendingReviewPanel } from "@/components/expediente/BpPendingReviewPanel";
 import { PendingReviewsPanel } from "@/components/expediente/PendingReviewsPanel";
 import { BleReportButton } from "@/components/expediente/BleReportButton";
+import { BleReportCSVButton } from "@/components/expediente/BleReportCSVButton";
+import { ClinicalRiskPanel } from "@/components/expediente/ClinicalRiskPanel";
+import { ReadingReviewHistory } from "@/components/expediente/ReadingReviewHistory";
 
 const TABS_ROW_1 = [
   { value: "mapa", label: "Mapa corporal", icon: Map },
@@ -166,7 +169,11 @@ export function PatientExpedienteTabs({ patientId, patientName, defaultTab = "ma
           </TabsContent>
           <TabsContent value="medicamentos" className="mt-4 space-y-4">
             <PendingReviewsPanel patientId={patientId} />
-            <BleReportButton patientId={patientId} patientName={patientName} />
+            <div className="flex flex-wrap gap-2">
+              <BleReportButton patientId={patientId} patientName={patientName} />
+              <BleReportCSVButton patientId={patientId} patientName={patientName} />
+            </div>
+            <ReadingReviewHistory patientId={patientId} />
             <Medications />
           </TabsContent>
           <TabsContent value="recetas" className="mt-4"><Recetas /></TabsContent>
@@ -183,7 +190,10 @@ export function PatientExpedienteTabs({ patientId, patientName, defaultTab = "ma
           <TabsContent value="historial" className="mt-4">
             <HistorialMedico patientId={patientId} canEdit />
           </TabsContent>
-          <TabsContent value="alertas" className="mt-4"><AlertsPanel patientId={patientId} /></TabsContent>
+          <TabsContent value="alertas" className="mt-4 space-y-6">
+            <AlertsPanel patientId={patientId} />
+            <ClinicalRiskPanel patientId={patientId} />
+          </TabsContent>
           <TabsContent value="cirugias" className="mt-4"><SurgeriesPanel patientId={patientId} /></TabsContent>
           <TabsContent value="cambios" className="mt-4"><AuditLogPanel patientId={patientId} /></TabsContent>
           <TabsContent value="procedimientos" className="mt-4"><RecurrencesPanel patientId={patientId} /></TabsContent>

@@ -5,15 +5,82 @@
 // src/lib/mcp/index.ts
 import { auth, defineMcp } from "npm:@lovable.dev/mcp-js@0.22.2";
 
+// src/lib/mcp/audit.ts
+import { createClient } from "npm:@supabase/supabase-js@^2.103.0";
+function auditClient() {
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!key) return null;
+  return createClient(url, key, {
+    auth: { persistSession: false, autoRefreshToken: false }
+  });
+}
+function summarizeParams(input) {
+  if (!input || typeof input !== "object") return {};
+  const out = {};
+  for (const [k, v] of Object.entries(input)) {
+    if (v == null) {
+      out[k] = { type: "null" };
+    } else if (typeof v === "string") {
+      out[k] = { type: "string", length: v.length };
+    } else if (typeof v === "number" || typeof v === "boolean") {
+      out[k] = { type: typeof v };
+    } else if (Array.isArray(v)) {
+      out[k] = { type: "array", length: v.length };
+    } else {
+      out[k] = { type: "object", keys: Object.keys(v).length };
+    }
+  }
+  return out;
+}
+function withAudit(tool) {
+  const original = tool.handler;
+  const wrapped = async (input, ctx) => {
+    const started = Date.now();
+    let status = "ok";
+    let errorMessage;
+    let result;
+    try {
+      result = await original(input, ctx);
+      const isErr = !!(result && typeof result === "object" && result.isError);
+      if (isErr) status = "error";
+      return result;
+    } catch (e) {
+      status = "error";
+      errorMessage = e?.message ?? String(e);
+      throw e;
+    } finally {
+      const ms = Date.now() - started;
+      try {
+        const sb = auditClient();
+        if (sb) {
+          await sb.from("mcp_tool_call_logs").insert({
+            user_id: ctx.isAuthenticated() ? ctx.getUserId() : null,
+            user_email: ctx.isAuthenticated() ? ctx.getUserEmail() ?? null : null,
+            client_id: ctx.isAuthenticated() ? ctx.getClientId() ?? null : null,
+            tool_name: tool.name,
+            params_summary: summarizeParams(input),
+            status,
+            error: errorMessage ?? null,
+            duration_ms: ms
+          });
+        }
+      } catch {
+      }
+    }
+  };
+  return { ...tool, handler: wrapped };
+}
+
 // src/lib/mcp/tools/whoami.ts
 import { defineTool } from "npm:@lovable.dev/mcp-js@0.22.2";
 
 // src/lib/mcp/supabase.ts
-import { createClient } from "npm:@supabase/supabase-js@^2.103.0";
+import { createClient as createClient2 } from "npm:@supabase/supabase-js@^2.103.0";
 function supabaseForUser(ctx) {
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_PUBLISHABLE_KEY ?? process.env.SUPABASE_ANON_KEY;
-  return createClient(url, key, {
+  return createClient2(url, key, {
     global: { headers: { Authorization: `Bearer ${ctx.getToken()}` } },
     auth: { persistSession: false, autoRefreshToken: false }
   });
@@ -255,7 +322,7 @@ var mcp_default = defineMcp({
     list_pharmacy_orders_default,
     list_estudios_default,
     get_patient_summary_default
-  ]
+  ].map(withAudit)
 });
 
 // lovable-mcp-supabase-entry.ts

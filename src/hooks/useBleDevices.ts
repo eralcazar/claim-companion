@@ -385,6 +385,13 @@ export function useReviewReading() {
       notes?: string;
     }) => {
       const table = KIND_TABLE[kind];
+      // Recuperar patient_id antes de tocar la fila (para el audit trail).
+      const { data: reading } = await supabase
+        .from(table as any)
+        .select("patient_id")
+        .eq("id", id)
+        .maybeSingle();
+      const patientId = (reading as any)?.patient_id ?? null;
       if (action === "discard") {
         const { error } = await supabase.from(table as any).delete().eq("id", id);
         if (error) throw error;
@@ -400,6 +407,16 @@ export function useReviewReading() {
           .eq("id", id);
         if (error) throw error;
       }
+      if (patientId && user?.id) {
+        await supabase.from("reading_reviews" as any).insert({
+          patient_id: patientId,
+          reading_kind: kind,
+          reading_id: id,
+          reviewer_id: user.id,
+          action,
+          notes: notes ?? null,
+        });
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["ble_pending_review"] });
@@ -408,6 +425,7 @@ export function useReviewReading() {
       qc.invalidateQueries({ queryKey: ["spo2_readings"] });
       qc.invalidateQueries({ queryKey: ["temperature_readings"] });
       qc.invalidateQueries({ queryKey: ["activity_readings"] });
+      qc.invalidateQueries({ queryKey: ["reading_reviews"] });
     },
   });
 }
@@ -417,6 +435,12 @@ export function useReviewBpReading() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, action }: { id: string; action: "validate" | "discard" }) => {
+      const { data: reading } = await supabase
+        .from("blood_pressure_readings" as any)
+        .select("patient_id")
+        .eq("id", id)
+        .maybeSingle();
+      const patientId = (reading as any)?.patient_id ?? null;
       if (action === "discard") {
         const { error } = await supabase.from("blood_pressure_readings" as any).delete().eq("id", id);
         if (error) throw error;
@@ -427,10 +451,52 @@ export function useReviewBpReading() {
           .eq("id", id);
         if (error) throw error;
       }
+      if (patientId && user?.id) {
+        await supabase.from("reading_reviews" as any).insert({
+          patient_id: patientId,
+          reading_kind: "blood_pressure",
+          reading_id: id,
+          reviewer_id: user.id,
+          action,
+        });
+      }
     },
     onSuccess: (_res, vars) => {
       qc.invalidateQueries({ queryKey: ["bp_pending_review"] });
       qc.invalidateQueries({ queryKey: ["blood_pressure_readings"] });
+      qc.invalidateQueries({ queryKey: ["reading_reviews"] });
+    },
+  });
+}
+
+export type ReadingReview = {
+  id: string;
+  patient_id: string;
+  reading_kind: PendingReviewKind | "glucose" | "heart_rate";
+  reading_id: string;
+  reviewer_id: string | null;
+  action: "validate" | "discard";
+  notes: string | null;
+  created_at: string;
+};
+
+/**
+ * Historial de auditoría de revisiones de lecturas BLE para un paciente.
+ * Devuelve las validaciones y rechazos más recientes con quién y cuándo.
+ */
+export function useReadingReviewHistory(patientId: string | undefined, limit = 100) {
+  return useQuery({
+    queryKey: ["reading_reviews", patientId, limit],
+    enabled: !!patientId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("reading_reviews" as any)
+        .select("*")
+        .eq("patient_id", patientId!)
+        .order("created_at", { ascending: false })
+        .limit(limit);
+      if (error) throw error;
+      return (data ?? []) as unknown as ReadingReview[];
     },
   });
 }
