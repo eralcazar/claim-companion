@@ -24,6 +24,10 @@ export type Database = {
           fecha: string
           id: string
           patient_id: string
+          requires_review: boolean
+          review_notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
           sleep_minutes: number | null
           source: string | null
           steps: number | null
@@ -38,6 +42,10 @@ export type Database = {
           fecha: string
           id?: string
           patient_id: string
+          requires_review?: boolean
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           sleep_minutes?: number | null
           source?: string | null
           steps?: number | null
@@ -52,6 +60,10 @@ export type Database = {
           fecha?: string
           id?: string
           patient_id?: string
+          requires_review?: boolean
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           sleep_minutes?: number | null
           source?: string | null
           steps?: number | null
@@ -510,28 +522,46 @@ export type Database = {
       }
       ble_known_devices: {
         Row: {
+          blocked: boolean
+          brand: string | null
           created_at: string
           id: string
+          measurement_types: string[]
+          model: string | null
           name_pattern: string
           notes: string | null
           service_uuid: string
+          updated_at: string
           vendor: string | null
+          verified: boolean
         }
         Insert: {
+          blocked?: boolean
+          brand?: string | null
           created_at?: string
           id?: string
+          measurement_types?: string[]
+          model?: string | null
           name_pattern: string
           notes?: string | null
           service_uuid: string
+          updated_at?: string
           vendor?: string | null
+          verified?: boolean
         }
         Update: {
+          blocked?: boolean
+          brand?: string | null
           created_at?: string
           id?: string
+          measurement_types?: string[]
+          model?: string | null
           name_pattern?: string
           notes?: string | null
           service_uuid?: string
+          updated_at?: string
           vendor?: string | null
+          verified?: boolean
         }
         Relationships: []
       }
@@ -549,6 +579,7 @@ export type Database = {
           position: string | null
           pulse: number | null
           requires_review: boolean
+          review_notes: string | null
           reviewed_at: string | null
           reviewed_by: string | null
           source: string | null
@@ -569,6 +600,7 @@ export type Database = {
           position?: string | null
           pulse?: number | null
           requires_review?: boolean
+          review_notes?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           source?: string | null
@@ -589,6 +621,7 @@ export type Database = {
           position?: string | null
           pulse?: number | null
           requires_review?: boolean
+          review_notes?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           source?: string | null
@@ -3612,6 +3645,10 @@ export type Database = {
           notes: string | null
           patient_id: string
           pulse: number | null
+          requires_review: boolean
+          review_notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
           source: string | null
           spo2: number
           taken_at: string
@@ -3627,6 +3664,10 @@ export type Database = {
           notes?: string | null
           patient_id: string
           pulse?: number | null
+          requires_review?: boolean
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           source?: string | null
           spo2: number
           taken_at?: string
@@ -3642,6 +3683,10 @@ export type Database = {
           notes?: string | null
           patient_id?: string
           pulse?: number | null
+          requires_review?: boolean
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           source?: string | null
           spo2?: number
           taken_at?: string
@@ -3818,6 +3863,10 @@ export type Database = {
           method: string | null
           notes: string | null
           patient_id: string
+          requires_review: boolean
+          review_notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
           source: string | null
           taken_at: string
           temperature_c: number
@@ -3833,6 +3882,10 @@ export type Database = {
           method?: string | null
           notes?: string | null
           patient_id: string
+          requires_review?: boolean
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           source?: string | null
           taken_at?: string
           temperature_c: number
@@ -3848,6 +3901,10 @@ export type Database = {
           method?: string | null
           notes?: string | null
           patient_id?: string
+          requires_review?: boolean
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           source?: string | null
           taken_at?: string
           temperature_c?: number
@@ -3922,6 +3979,36 @@ export type Database = {
           refresh_token?: string | null
           scope?: string | null
           sync_enabled?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_push_tokens: {
+        Row: {
+          created_at: string
+          device_label: string | null
+          id: string
+          platform: string
+          token: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          device_label?: string | null
+          id?: string
+          platform: string
+          token: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          device_label?: string | null
+          id?: string
+          platform?: string
+          token?: string
           updated_at?: string
           user_id?: string
         }
