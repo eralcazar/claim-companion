@@ -169,9 +169,6 @@ export function PatientExpedienteTabs({ patientId, patientName, defaultTab = "ma
             <BleReportButton patientId={patientId} patientName={patientName} />
             <Medications />
           </TabsContent>
-          {false && (
-            <TabsContent value="_hidden_meds_fallback" className="mt-4"><Medications /></TabsContent>
-          )}
           <TabsContent value="recetas" className="mt-4"><Recetas /></TabsContent>
           <TabsContent value="estudios" className="mt-4"><Estudios /></TabsContent>
           <TabsContent value="tendencias" className="mt-4"><Tendencias /></TabsContent>
