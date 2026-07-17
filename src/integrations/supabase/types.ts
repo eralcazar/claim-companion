@@ -1367,11 +1367,17 @@ export type Database = {
           horas_ayuno: number | null
           id: string
           indicacion: string | null
+          key_id: string | null
           laboratorio_sugerido: string | null
           observaciones: string | null
           patient_id: string
+          payload_hash: string | null
           preparacion: string | null
+          prev_hash: string | null
           prioridad: Database["public"]["Enums"]["estudio_prioridad"]
+          record_hash: string | null
+          signature: string | null
+          signed_at: string | null
           tipo_estudio: string | null
           updated_at: string
         }
@@ -1387,11 +1393,17 @@ export type Database = {
           horas_ayuno?: number | null
           id?: string
           indicacion?: string | null
+          key_id?: string | null
           laboratorio_sugerido?: string | null
           observaciones?: string | null
           patient_id: string
+          payload_hash?: string | null
           preparacion?: string | null
+          prev_hash?: string | null
           prioridad?: Database["public"]["Enums"]["estudio_prioridad"]
+          record_hash?: string | null
+          signature?: string | null
+          signed_at?: string | null
           tipo_estudio?: string | null
           updated_at?: string
         }
@@ -1407,15 +1419,29 @@ export type Database = {
           horas_ayuno?: number | null
           id?: string
           indicacion?: string | null
+          key_id?: string | null
           laboratorio_sugerido?: string | null
           observaciones?: string | null
           patient_id?: string
+          payload_hash?: string | null
           preparacion?: string | null
+          prev_hash?: string | null
           prioridad?: Database["public"]["Enums"]["estudio_prioridad"]
+          record_hash?: string | null
+          signature?: string | null
+          signed_at?: string | null
           tipo_estudio?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "estudios_solicitados_key_id_fkey"
+            columns: ["key_id"]
+            isOneToOne: false
+            referencedRelation: "integrity_keys"
+            referencedColumns: ["key_id"]
+          },
+        ]
       }
       firmas_usuario: {
         Row: {
@@ -1874,6 +1900,69 @@ export type Database = {
         }
         Relationships: []
       }
+      integrity_daily_roots: {
+        Row: {
+          daily_root: string
+          day: string
+          estudios_tip: string | null
+          medical_records_tip: string | null
+          prev_daily_root: string | null
+          published_at: string
+          published_ref: string | null
+          recetas_tip: string | null
+        }
+        Insert: {
+          daily_root: string
+          day: string
+          estudios_tip?: string | null
+          medical_records_tip?: string | null
+          prev_daily_root?: string | null
+          published_at?: string
+          published_ref?: string | null
+          recetas_tip?: string | null
+        }
+        Update: {
+          daily_root?: string
+          day?: string
+          estudios_tip?: string | null
+          medical_records_tip?: string | null
+          prev_daily_root?: string | null
+          published_at?: string
+          published_ref?: string | null
+          recetas_tip?: string | null
+        }
+        Relationships: []
+      }
+      integrity_keys: {
+        Row: {
+          activated_at: string
+          algorithm: string
+          created_by: string | null
+          key_id: string
+          notes: string | null
+          retired_at: string | null
+          status: string
+        }
+        Insert: {
+          activated_at?: string
+          algorithm?: string
+          created_by?: string | null
+          key_id: string
+          notes?: string | null
+          retired_at?: string | null
+          status?: string
+        }
+        Update: {
+          activated_at?: string
+          algorithm?: string
+          created_by?: string | null
+          key_id?: string
+          notes?: string | null
+          retired_at?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
       mapeo_medicos: {
         Row: {
           columna_origen: string
@@ -2222,8 +2311,14 @@ export type Database = {
           description: string | null
           file_path: string
           id: string
+          key_id: string | null
+          payload_hash: string | null
+          prev_hash: string | null
           record_date: string
+          record_hash: string | null
           record_type: Database["public"]["Enums"]["medical_record_type"]
+          signature: string | null
+          signed_at: string | null
           user_id: string
         }
         Insert: {
@@ -2231,8 +2326,14 @@ export type Database = {
           description?: string | null
           file_path: string
           id?: string
+          key_id?: string | null
+          payload_hash?: string | null
+          prev_hash?: string | null
           record_date?: string
+          record_hash?: string | null
           record_type: Database["public"]["Enums"]["medical_record_type"]
+          signature?: string | null
+          signed_at?: string | null
           user_id: string
         }
         Update: {
@@ -2240,11 +2341,25 @@ export type Database = {
           description?: string | null
           file_path?: string
           id?: string
+          key_id?: string | null
+          payload_hash?: string | null
+          prev_hash?: string | null
           record_date?: string
+          record_hash?: string | null
           record_type?: Database["public"]["Enums"]["medical_record_type"]
+          signature?: string | null
+          signed_at?: string | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "medical_records_key_id_fkey"
+            columns: ["key_id"]
+            isOneToOne: false
+            referencedRelation: "integrity_keys"
+            referencedColumns: ["key_id"]
+          },
+        ]
       }
       medication_schedule: {
         Row: {
@@ -3816,11 +3931,17 @@ export type Database = {
           frecuencia_horas: number | null
           id: string
           indicacion: string | null
+          key_id: string | null
           marca_comercial: string | null
           medicamento_nombre: string | null
           observaciones: string | null
           patient_id: string
+          payload_hash: string | null
           precio_aproximado: number | null
+          prev_hash: string | null
+          record_hash: string | null
+          signature: string | null
+          signed_at: string | null
           unidad_dosis: string | null
           updated_at: string
           via_administracion: string | null
@@ -3839,11 +3960,17 @@ export type Database = {
           frecuencia_horas?: number | null
           id?: string
           indicacion?: string | null
+          key_id?: string | null
           marca_comercial?: string | null
           medicamento_nombre?: string | null
           observaciones?: string | null
           patient_id: string
+          payload_hash?: string | null
           precio_aproximado?: number | null
+          prev_hash?: string | null
+          record_hash?: string | null
+          signature?: string | null
+          signed_at?: string | null
           unidad_dosis?: string | null
           updated_at?: string
           via_administracion?: string | null
@@ -3862,16 +3989,30 @@ export type Database = {
           frecuencia_horas?: number | null
           id?: string
           indicacion?: string | null
+          key_id?: string | null
           marca_comercial?: string | null
           medicamento_nombre?: string | null
           observaciones?: string | null
           patient_id?: string
+          payload_hash?: string | null
           precio_aproximado?: number | null
+          prev_hash?: string | null
+          record_hash?: string | null
+          signature?: string | null
+          signed_at?: string | null
           unidad_dosis?: string | null
           updated_at?: string
           via_administracion?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "recetas_key_id_fkey"
+            columns: ["key_id"]
+            isOneToOne: false
+            referencedRelation: "integrity_keys"
+            referencedColumns: ["key_id"]
+          },
+        ]
       }
       resultados_estudios: {
         Row: {
@@ -4394,6 +4535,7 @@ export type Database = {
         Args: { _months?: number; _plan_id: string; _user_id: string }
         Returns: undefined
       }
+      canonical_json: { Args: { _row: Json }; Returns: string }
       check_kari_monthly_limit: { Args: { _user_id: string }; Returns: Json }
       consume_ai_tokens: {
         Args: { _tokens: number; _user_id: string }
