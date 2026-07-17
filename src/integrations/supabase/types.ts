@@ -1963,6 +1963,117 @@ export type Database = {
         }
         Relationships: []
       }
+      integrity_share_tokens: {
+        Row: {
+          created_at: string
+          created_by: string
+          expires_at: string
+          id: string
+          max_uses: number | null
+          note: string | null
+          patient_id: string
+          record_id: string | null
+          revoked_at: string | null
+          scope: string
+          table_name: string | null
+          token: string
+          uses_count: number
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          expires_at?: string
+          id?: string
+          max_uses?: number | null
+          note?: string | null
+          patient_id: string
+          record_id?: string | null
+          revoked_at?: string | null
+          scope: string
+          table_name?: string | null
+          token?: string
+          uses_count?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          expires_at?: string
+          id?: string
+          max_uses?: number | null
+          note?: string | null
+          patient_id?: string
+          record_id?: string | null
+          revoked_at?: string | null
+          scope?: string
+          table_name?: string | null
+          token?: string
+          uses_count?: number
+        }
+        Relationships: []
+      }
+      integrity_verification_log: {
+        Row: {
+          algorithm_version: string
+          chain_ok: boolean | null
+          created_at: string
+          detail: Json | null
+          has_signature: boolean | null
+          id: string
+          ip: unknown
+          key_id: string | null
+          patient_id: string | null
+          payload_ok: boolean | null
+          record_id: string
+          share_token: string | null
+          signature_ok: boolean | null
+          status: string
+          table_name: string
+          user_agent: string | null
+          verifier_id: string | null
+          verifier_type: string
+        }
+        Insert: {
+          algorithm_version?: string
+          chain_ok?: boolean | null
+          created_at?: string
+          detail?: Json | null
+          has_signature?: boolean | null
+          id?: string
+          ip?: unknown
+          key_id?: string | null
+          patient_id?: string | null
+          payload_ok?: boolean | null
+          record_id: string
+          share_token?: string | null
+          signature_ok?: boolean | null
+          status: string
+          table_name: string
+          user_agent?: string | null
+          verifier_id?: string | null
+          verifier_type: string
+        }
+        Update: {
+          algorithm_version?: string
+          chain_ok?: boolean | null
+          created_at?: string
+          detail?: Json | null
+          has_signature?: boolean | null
+          id?: string
+          ip?: unknown
+          key_id?: string | null
+          patient_id?: string | null
+          payload_ok?: boolean | null
+          record_id?: string
+          share_token?: string | null
+          signature_ok?: boolean | null
+          status?: string
+          table_name?: string
+          user_agent?: string | null
+          verifier_id?: string | null
+          verifier_type?: string
+        }
+        Relationships: []
+      }
       mapeo_medicos: {
         Row: {
           columna_origen: string
