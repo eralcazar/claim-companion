@@ -59,6 +59,8 @@ type SearchParams = {
   specialtySlug?: string;
   soloVideo?: boolean;
   soloDomicilio?: boolean;
+  soloPresencial?: boolean;
+  conDisponibilidad?: boolean;
 };
 
 export function useSearchProfessionals(params: SearchParams) {
@@ -84,6 +86,7 @@ export function useSearchProfessionals(params: SearchParams) {
       }
       if (params.soloVideo) query = query.eq("acepta_video", true);
       if (params.soloDomicilio) query = query.eq("acepta_domicilio", true);
+      if (params.soloPresencial) query = query.eq("acepta_presencial", true);
       if (params.specialtySlug) {
         query = query.eq("professional_specialties.specialty.slug", params.specialtySlug);
       }
@@ -97,6 +100,17 @@ export function useSearchProfessionals(params: SearchParams) {
         result = result.filter((p) =>
           p.professional_locations?.some((l) => l.ciudad?.toLowerCase().includes(c))
         );
+      }
+
+      if (params.conDisponibilidad && result.length > 0) {
+        const ids = result.map((p) => p.id);
+        const { data: avail } = await supabase
+          .from("professional_availability")
+          .select("professional_id")
+          .in("professional_id", ids)
+          .eq("activo", true);
+        const withSlots = new Set((avail ?? []).map((a: any) => a.professional_id));
+        result = result.filter((p) => withSlots.has(p.id));
       }
       return result;
     },
