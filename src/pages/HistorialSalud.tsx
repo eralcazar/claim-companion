@@ -12,6 +12,8 @@ import { HealthDevicesPanel } from "@/components/profile/HealthDevicesPanel";
 import { ManualHeartRateForm } from "@/components/health/ManualHeartRateForm";
 import { HeartRateCsvImporter } from "@/components/health/HeartRateCsvImporter";
 import { UnifiedTimelineChart } from "@/components/health/UnifiedTimelineChart";
+import { HeartRatePdfExport } from "@/components/health/HeartRatePdfExport";
+import { SyncStatusCard } from "@/components/health/SyncStatusCard";
 import {
   KIND_LABEL,
   SOURCE_LABEL,
@@ -134,7 +136,12 @@ export default function HistorialSalud() {
         <div className="space-y-4">
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">Tendencias</CardTitle>
+              <CardTitle className="text-base flex items-center justify-between gap-2">
+                <span>Tendencias</span>
+                {tab === "heart_rate" && (
+                  <HeartRatePdfExport fromISO={fromISO} toISO={toISO} />
+                )}
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <Tabs value={tab} onValueChange={(v) => setTab(v as ReadingKind)}>
@@ -150,7 +157,17 @@ export default function HistorialSalud() {
                 </TabsList>
                 {KINDS.map((k) => (
                   <TabsContent key={k} value={k} className="pt-4">
-                    <UnifiedTimelineChart readings={readings} kind={k} />
+                    <UnifiedTimelineChart
+                      readings={readings}
+                      kind={k}
+                      appointments={appointments as any}
+                      windowHours={24}
+                    />
+                    {appointments.length > 0 && (
+                      <p className="text-[10px] text-muted-foreground mt-2">
+                        Las bandas resaltan ±24h alrededor de cada cita para ver correlaciones.
+                      </p>
+                    )}
                     {sourcesCount.length > 0 && k === tab && (
                       <div className="flex flex-wrap gap-1 mt-3">
                         {sourcesCount.map(([src, n]) => (
@@ -173,6 +190,7 @@ export default function HistorialSalud() {
         </div>
 
         <aside className="space-y-4">
+          <SyncStatusCard totalReadingsInRange={readings.length} />
           <HealthDevicesPanel />
 
           <Card>
