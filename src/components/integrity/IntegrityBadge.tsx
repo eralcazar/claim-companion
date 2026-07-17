@@ -16,6 +16,8 @@ type VerifyResult = {
   signature_ok?: boolean | null;
   key_id?: string;
   signed_at?: string;
+  algorithm_version?: string;
+  record_hash?: string;
 };
 
 async function verify(table: Table, id: string, deep = false): Promise<VerifyResult> {
@@ -73,7 +75,22 @@ export function IntegrityBadge({ table, id, compact }: { table: Table; id: strin
 
   return (
     <div className="flex items-center gap-2">
-      <Badge variant={cfg.variant} className="gap-1">
+      <Badge
+        variant={cfg.variant}
+        className="gap-1"
+        title={
+          r
+            ? [
+                `Tabla: ${table}`,
+                `Registro: ${id}`,
+                r.algorithm_version && `Algoritmo: ${r.algorithm_version}`,
+                r.key_id && `Llave: ${r.key_id}`,
+                r.record_hash && `Hash: ${r.record_hash.slice(0, 16)}…`,
+                r.signed_at && `Firmado: ${r.signed_at}`,
+              ].filter(Boolean).join("\n")
+            : undefined
+        }
+      >
         <Icon className={`h-3 w-3 ${cfg.spin ? "animate-spin" : ""}`} />
         {cfg.label}
       </Badge>
@@ -85,7 +102,10 @@ export function IntegrityBadge({ table, id, compact }: { table: Table; id: strin
       >
         {deep.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : "Verificar firma"}
       </Button>
-      {r?.key_id && <span className="text-xs text-muted-foreground">llave {r.key_id}</span>}
+      {r?.algorithm_version && (
+        <span className="text-xs text-muted-foreground font-mono">{r.algorithm_version}</span>
+      )}
+      {r?.key_id && <span className="text-xs text-muted-foreground">· {r.key_id}</span>}
     </div>
   );
 }
