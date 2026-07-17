@@ -55,6 +55,19 @@ const INITIAL_FORM = {
   telefono_celular: "",
   emergency_contact_name: "",
   emergency_contact_phone: "",
+  // Datos bancarios (reembolsos aseguradora)
+  banco: "",
+  clabe: "",
+  titular_cuenta: "",
+  // Médico tratante frecuente (autofill formatos)
+  medico_tratante_nombre: "",
+  medico_tratante_apellido_p: "",
+  medico_tratante_apellido_m: "",
+  medico_tratante_cedula: "",
+  medico_tratante_cedula_esp: "",
+  medico_tratante_especialidad: "",
+  medico_tratante_telefono: "",
+  medico_tratante_hospital: "",
 };
 
 export default function Profile() {
@@ -108,6 +121,17 @@ export default function Profile() {
         telefono_celular: p.telefono_celular || "",
         emergency_contact_name: p.emergency_contact_name || "",
         emergency_contact_phone: p.emergency_contact_phone || "",
+        banco: p.banco || "",
+        clabe: p.clabe || "",
+        titular_cuenta: p.titular_cuenta || "",
+        medico_tratante_nombre: p.medico_tratante_nombre || "",
+        medico_tratante_apellido_p: p.medico_tratante_apellido_p || "",
+        medico_tratante_apellido_m: p.medico_tratante_apellido_m || "",
+        medico_tratante_cedula: p.medico_tratante_cedula || "",
+        medico_tratante_cedula_esp: p.medico_tratante_cedula_esp || "",
+        medico_tratante_especialidad: p.medico_tratante_especialidad || "",
+        medico_tratante_telefono: p.medico_tratante_telefono || "",
+        medico_tratante_hospital: p.medico_tratante_hospital || "",
       });
     }
   }, [profile]);
@@ -290,6 +314,41 @@ export default function Profile() {
         <CardContent className="space-y-3">
           {renderField("emergency_contact_name", "Nombre")}
           {renderField("emergency_contact_phone", "Teléfono", "tel")}
+        </CardContent>
+      </Card>
+
+      {/* Datos bancarios (reembolsos) */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Datos bancarios para reembolsos</CardTitle>
+          <p className="text-xs text-muted-foreground">
+            Se usan para llenar automáticamente los formatos de reembolso (MetLife, AXA, MAPFRE, etc.)
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {renderField("banco", "Banco")}
+          {renderField("clabe", "CLABE (18 dígitos)")}
+          {renderField("titular_cuenta", "Titular de la cuenta")}
+        </CardContent>
+      </Card>
+
+      {/* Médico tratante frecuente */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Médico tratante frecuente</CardTitle>
+          <p className="text-xs text-muted-foreground">
+            Datos que se precargarán en los formatos de aseguradoras (informe médico, programación, consentimiento).
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {renderField("medico_tratante_nombre", "Nombre(s)")}
+          {renderField("medico_tratante_apellido_p", "Apellido paterno")}
+          {renderField("medico_tratante_apellido_m", "Apellido materno")}
+          {renderField("medico_tratante_especialidad", "Especialidad")}
+          {renderField("medico_tratante_cedula", "Cédula profesional")}
+          {renderField("medico_tratante_cedula_esp", "Cédula de especialidad")}
+          {renderField("medico_tratante_telefono", "Teléfono", "tel")}
+          {renderField("medico_tratante_hospital", "Hospital habitual")}
         </CardContent>
       </Card>
 
