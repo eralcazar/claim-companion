@@ -14,6 +14,8 @@ import { HeartRateCsvImporter } from "@/components/health/HeartRateCsvImporter";
 import { UnifiedTimelineChart } from "@/components/health/UnifiedTimelineChart";
 import { HeartRatePdfExport } from "@/components/health/HeartRatePdfExport";
 import { SyncStatusCard } from "@/components/health/SyncStatusCard";
+import { HrAlertSettingsCard } from "@/components/health/HrAlertSettingsCard";
+import { HrAlertsBanner } from "@/components/health/HrAlertsBanner";
 import {
   KIND_LABEL,
   SOURCE_LABEL,
@@ -134,6 +136,7 @@ export default function HistorialSalud() {
 
       <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
         <div className="space-y-4">
+          <HrAlertsBanner readings={readings} />
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center justify-between gap-2">
@@ -191,6 +194,7 @@ export default function HistorialSalud() {
 
         <aside className="space-y-4">
           <SyncStatusCard totalReadingsInRange={readings.length} />
+          <HrAlertSettingsCard />
           <HealthDevicesPanel />
 
           <Card>
