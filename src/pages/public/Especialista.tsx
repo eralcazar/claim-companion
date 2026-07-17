@@ -133,7 +133,7 @@ export default function Especialista() {
             <CareCentralLogo size={28} withText />
           </Link>
           <Button asChild size="sm" className="rounded-2xl">
-            <Link to="/login">Reservar</Link>
+            <Link to={`/reservar/${pro.slug}`}>Reservar</Link>
           </Button>
         </div>
       </header>
@@ -202,7 +202,7 @@ export default function Especialista() {
 
               <div className="mt-4 flex flex-wrap gap-2">
                 <Button asChild size="lg" className="rounded-2xl">
-                  <Link to="/login">
+                  <Link to={`/reservar/${pro.slug}`}>
                     <Calendar className="mr-2 h-4 w-4" /> Reservar cita
                   </Link>
                 </Button>

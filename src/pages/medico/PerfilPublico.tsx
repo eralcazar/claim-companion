@@ -23,6 +23,7 @@ import {
   useWithdrawProfile,
 } from "@/hooks/useMyProfessionalProfile";
 import { useSpecialties } from "@/hooks/useMarketplace";
+import { AvailabilityEditor } from "@/components/marketplace/AvailabilityEditor";
 
 const TIPOS = [
   { v: "medico", l: "Médico" },
@@ -207,6 +208,7 @@ function ProfileEditor({ profile }: { profile: any }) {
           <TabsTrigger value="datos">Datos</TabsTrigger>
           <TabsTrigger value="especialidades">Especialidades</TabsTrigger>
           <TabsTrigger value="ubicaciones">Ubicaciones</TabsTrigger>
+          <TabsTrigger value="disponibilidad">Disponibilidad</TabsTrigger>
         </TabsList>
 
         <TabsContent value="datos" className="space-y-3">
@@ -270,6 +272,10 @@ function ProfileEditor({ profile }: { profile: any }) {
 
         <TabsContent value="ubicaciones">
           <LocationsEditor profile={profile} />
+        </TabsContent>
+
+        <TabsContent value="disponibilidad">
+          <AvailabilityEditor profile={profile} />
         </TabsContent>
       </Tabs>
     </div>

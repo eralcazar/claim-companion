@@ -78,6 +78,7 @@ import Buscar from "@/pages/public/Buscar";
 import Especialista from "@/pages/public/Especialista";
 import PerfilPublico from "@/pages/medico/PerfilPublico";
 import MarketplaceReview from "@/pages/admin/MarketplaceReview";
+import Reservar from "@/pages/public/Reservar";
 
 const queryClient = new QueryClient();
 
@@ -110,6 +111,7 @@ const App = () => (
             <Route path="/comparador/:sku" element={<PharmacyComparator />} />
             <Route path="/buscar" element={<Buscar />} />
             <Route path="/especialista/:slug" element={<Especialista />} />
+            <Route path="/reservar/:slug" element={<Reservar />} />
             <Route path="/" element={<RootRoute />} />
             <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
               <Route path="/dashboard" element={<Dashboard />} />
