@@ -129,7 +129,7 @@ function CustomerForm({
 }
 
 function PaymentDialog({ customerId, saldo, onClose }: { customerId: string; saldo: number; onClose: () => void }) {
-  const { data: branch } = useActiveBranch();
+  const { active: branch } = useActiveBranch();
   const register = useRegisterPayment();
   const [monto, setMonto] = useState<number>(saldo / 100);
   const [metodo, setMetodo] = useState("efectivo");
@@ -188,7 +188,7 @@ function PaymentDialog({ customerId, saldo, onClose }: { customerId: string; sal
 }
 
 function ChargeDialog({ customerId, diasCredito, onClose }: { customerId: string; diasCredito: number; onClose: () => void }) {
-  const { data: branch } = useActiveBranch();
+  const { active: branch } = useActiveBranch();
   const register = useRegisterCharge();
   const [monto, setMonto] = useState(0);
   const [folio, setFolio] = useState("");
