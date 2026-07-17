@@ -1,102 +1,68 @@
+# Adición al Macro Plan: Marketplace de Especialistas "Mejor que Doctoralia"
 
-# Estado del roadmap CareCentral — qué falta
+Convertir CareCentral en un marketplace público de salud + expediente clínico integrado. Doctoralia solo agenda; nosotros agendamos, monitoreamos, facturamos, dispensamos y damos seguimiento clínico real.
 
-## Ya entregado (resumen)
+## Qué copiamos de Doctoralia
+- Landing pública con buscador central (especialidad + ciudad/CP).
+- Perfiles públicos SEO-friendly de médicos, enfermeros, laboratorios, farmacias.
+- Reseñas verificadas con estrellas.
+- Reserva online sin registro previo (guest booking).
+- Filtros: seguro aceptado, precio, idioma, telemedicina, disponibilidad hoy.
+- Mapa con resultados cercanos.
 
-**Núcleo clínico y legal**
-- Expediente digital, historial médico, cirugías, alertas, odontograma, mapa corporal
-- Módulos de temperatura y glucosa con gráficas
-- Nutrición
-- Consentimientos, derechos ARCO, validadores CURP/RFC (Sprint 1 NOM-024)
-- Cadena de integridad HMAC + llaves + raíces diarias + verificación pública por token + comprobante PDF (Sprint 2 NOM-024)
+## Qué hacemos MEJOR (diferenciadores)
+1. **Reseñas 100% verificadas** — solo pacientes con `appointment.status = completed` pueden reseñar (Doctoralia acepta cualquiera).
+2. **Expediente clínico continuo** — tras la consulta el paciente se lleva su expediente firmado con hash chain (NOM-024). Doctoralia no guarda nada.
+3. **Precio transparente + comparador** — mostrar rango real basado en `pharmacy_prices` y tarifas del profesional; incluir estimación con seguro.
+4. **Kari AI triage** — antes de agendar, Kari sugiere especialidad correcta según síntomas y urgencia.
+5. **Video consulta nativa** — con receta electrónica firmada, estudios solicitados y cobro en un solo flujo.
+6. **Home visit / dispatch** — botón "visita a domicilio" (enfermería, toma de muestras, médico general).
+7. **Integración total** — el mismo perfil vende consultas, recibe pagos con CFDI, factura, entrega recetas a farmacia y sincroniza wearables BLE del paciente.
+8. **Insurance auto-claim** — al terminar la consulta se pre-llena el formato MetLife/GNP automáticamente.
 
-**Dispositivos y monitoreo**
-- Capacitor Health (Apple/Google)
-- BLE directo (BP + oxímetros): wizard de emparejamiento, test de conexión, catálogo, troubleshooting, historial de emparejamientos, settings de reintentos, log de errores
-- Panel de riesgo clínico, revisión de lecturas, CSV export con filtros, preferencias de notificación
+## Nuevo Mega-turno: "Marketplace Público"
 
-**Pipeline aseguradoras (MetLife)**
-- Formularios A/C/D/E con autofill desde perfil y expediente
-- Firmas electrónicas paciente + médico estampadas en PDF
+### Sprint MK-1 · Perfiles públicos + búsqueda
+- Tabla `professional_profiles` (slug, bio, foto, especialidades[], seguros_aceptados[], idiomas[], años_experiencia, cédula_prof, ubicaciones[], precio_base, acepta_video, acepta_domicilio, rating_avg, rating_count).
+- Tabla `professional_locations` (lat/lng, dirección, horarios).
+- Tabla `specialties` catálogo (con sinónimos ES para búsqueda).
+- Rutas públicas: `/buscar`, `/especialista/:slug`, `/especialidad/:slug`, `/ciudad/:slug`.
+- Landing rediseñada con hero-buscador tipo Doctoralia: input especialidad + input ciudad + botón Buscar.
+- SEO: sitemap dinámico, JSON-LD `Physician`/`MedicalBusiness`, meta por perfil.
 
-**Facturación CFDI**
-- `cfdi_config` + `cfdi_stamps` + buckets privados
-- Edge function `cfdi-timbrar` con SW Sapien sandbox + fallback simulador
-- Panel `/admin/facturacion`, badge global "MODO PRUEBAS"
+### Sprint MK-2 · Reserva guest + reseñas
+- Booking sin cuenta (email/tel). Al confirmar se crea `profiles` en modo lite y se envía magic link.
+- `appointment_reviews` (rating 1-5, texto, verified=true solo si appointment completado).
+- Moderación admin de reseñas reportadas.
+- Widget de disponibilidad next-7-days por profesional.
 
-**Farmacia — Sprint 1 completo**
-- `pharmacy_branches`, `pharmacy_lots`, `pharmacy_lot_movements`, `pharmacy_suppliers`
-- FEFO (`sugerir_lotes_fefo`, `apply_lot_movement`)
-- SucursalSelector + LotsManager
+### Sprint MK-3 · Triage Kari + video + pagos
+- `/triage` — chat con Kari que devuelve especialidades sugeridas + urgencia (verde/amarillo/rojo).
+- Video consultation con LiveKit/Daily (edge function para tokens).
+- Checkout Stripe con split: comisión plataforma + payout profesional (Stripe Connect).
+- Post-consulta: receta digital + estudios + factura CFDI + pre-llenado seguro, todo en un solo flujo.
 
-**Farmacia — Sprint 2 parcial**
-- `pharmacy_purchases` + `pharmacy_purchase_items`
-- Folio + consumo de lotes en ventas
+### Sprint MK-4 · Dispatch + mapa
+- `service_requests` (tipo: visita_medica, enfermeria, toma_muestra, farmacia_delivery).
+- Matching por geolocalización + disponibilidad.
+- Tracking en vivo (Mapbox) del profesional/repartidor.
+- Ratings post-servicio.
 
-**MCP / Agentes**: server MCP con herramientas clínicas y farmacia + log de tool calls
+## Detalles técnicos (para el equipo)
 
----
+**Stack añadido:** Mapbox GL, LiveKit (video), Stripe Connect Express, Algolia o `pg_trgm` para búsqueda tolerante a errores.
 
-## Pendiente (en orden de ejecución)
+**RLS clave:**
+- `professional_profiles`: SELECT público solo si `published=true`; UPDATE solo owner.
+- `appointment_reviews`: SELECT público; INSERT solo paciente con cita completada (validar en trigger).
+- `service_requests`: SELECT dueño + profesional asignado + admin.
 
-### Farmacia — cerrar Sprint 2
-- Edge functions `parse-cfdi-xml`, `parse-cfdi-pdf-ocr`, `create-purchase-manual`
-- Wizard `PurchasesManager` con 3 modos (XML/ZIP, PDF/foto celular, manual)
-- Captura obligatoria lote+caducidad por partida
-- Bucket privado `pharmacy-cfdi`
+**SEO/perf:** SSR no aplica (Vite SPA) — usar `react-helmet-async` + prerender de las top 500 URLs vía script build-time hacia `dist/` para Googlebot.
 
-### Sprint 3 — Precios + Trivago competencia
-- Extender `pharmacy_catalog` (costo_promedio, márgenes, IVA, SAT, principio activo)
-- `pharmacy_price_history`, `pharmacy_competitor_prices`, `pharmacy_price_change_requests`
-- Edge `sync-competitor-prices` (Apify), `suggest-price-adjustments` (Kari), trigger de margen mínimo
-- `PricingManager` + comparador público `/farmacia/comparador/:sku`
+**Migración de nav:** nueva sección "Marketplace" en sidebar; landing pública cambia de simple a hero-buscador manteniendo tokens actuales (teal/navy).
 
-### Sprint 4 — POS físico
-- `pos_sessions`, `pos_sales`, `pos_sale_items`, `pos_customers`
-- Edge `pos-timbrar-venta`, `pos-enviar-ticket`
-- UI `/pos` con escáner ZXing, FEFO automático, impresión térmica WebUSB
+## Orden sugerido
+Terminar Mega-turno 2 pendiente (e-commerce farmacia, dispatch, clientes) → luego arrancar Marketplace MK-1. Alternativa: intercalar MK-1 ya porque es el mayor generador de tráfico/usuarios.
 
-### Sprint 5 — E-commerce + surtido de recetas
-- Extender `pharmacy_orders` (origen, entrega, guía, receta_id)
-- `pharmacy_shipping_rates`
-- `ecommerce-checkout`, `validate-prescription-order`
-- `/tienda` público + panel kanban `/farmacia/pedidos`
-
-### Sprint 6 — Despacho + guías
-- `shipments`, `shipping_addresses`
-- `shipping-quote` (Skydropx + Envia comparativa), `shipping-create-label`, webhook tracking
-- Impresión etiqueta 4x6 térmica
-- Secrets: `SKYDROPX_API_KEY`, `ENVIA_API_KEY`
-
-### Sprint 7 — Clientes farmacia + CxC
-- `pharmacy_customers`, `pharmacy_customer_movements`, link a `recetas`
-- Vista 360°, aging CxC, recordatorios Kari (crónicos) por WhatsApp
-
-### Sprint 8 — Pago proveedores + finanzas
-- `pharmacy_supplier_payments`, `pharmacy_expenses`, vista `pharmacy_financial_summary`
-- Edge `facturama-complemento-pago`, `finance-monthly-report`
-- `/farmacia/finanzas`: flujo de caja, aging, top productos, drill-down
-
-### Sprint 9 — MRP
-- `pharmacy_demand_forecast`, `pharmacy_purchase_suggestions`
-- `mrp-calculate` (cron), `mrp-generate-purchase-order` (PDF + email proveedor)
-- `/farmacia/mrp`
-
-### Sprint 10 — Laboratorio a domicilio (Central de Cuidados)
-- `lab_orders`, `lab_partners`
-- `lab-schedule-optimize` (Google Maps), `lab-partner-sync` de resultados
-- `/lab/domicilio` con QR y ruta optimizada
-
-### Transversales pendientes
-- Roles: `farmaceutico`, `admin_farmacia`, `flebotomista`
-- Sprints NOM-024 restantes (3 al 8): CIE-10, semántica FHIR, no-repudio con e.firma SAT, avisos legales, respaldo/retención 5 años, certificación
-- Dependencias npm por instalar cuando toque: `fast-xml-parser`, `@zxing/browser`, `react-to-print`
-- Secrets pendientes: `FACTURAMA_USER/PASSWORD`, `APIFY_TOKEN`, `SKYDROPX_API_KEY`, `ENVIA_API_KEY`, credenciales maquilador
-
----
-
-## Sugerencia de próximo paso
-
-Cerrar **Farmacia Sprint 2** (parser CFDI + wizard de compras) porque desbloquea Sprint 3 (precios/márgenes reales con costo promedio) y alimenta Sprint 8 (finanzas). Es el mayor cuello de botella actual.
-
-¿Arranco por ahí, o prefieres saltar a POS (Sprint 4) para tener venta física demo-able cuanto antes?
+## Pregunta
+¿Arrancamos **MK-1 (perfiles públicos + búsqueda)** ahora, o primero cierro **Mega-turno 2** de farmacia?
