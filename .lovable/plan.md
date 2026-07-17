@@ -1,63 +1,74 @@
-# Mega-turno 2 de Farmacia + Marketplace
 
-Ejecuto en **5 fases** para mantener control de calidad. Cada fase deja algo funcional.
+# Fase Wearables — Historial de Salud Unificado
 
-## Fase 0 — Prerequisitos (necesito de ti)
-- **Twilio** (WhatsApp): API Key SID, API Key Secret y número WhatsApp Business (`whatsapp:+521...`). Si aún no tienes número aprobado, arranco en modo Sandbox de Twilio.
-- **Skydropx**: API key (v1 o v2). Sandbox está OK para pruebas.
-- **Dominio de email**: verifico el estado y, si falta, disparo el asistente de setup.
+Objetivo: consolidar datos de wearables (Apple HealthKit, Health Connect, BLE directo, carga manual) en un panel único de tendencias, integrado con citas y recordatorios.
 
-## Fase 1 — Clientes de Farmacia + CxC
-- Tabla `pharmacy_customers` (RFC, email, tel, límite crédito, días crédito) — ya existe base, la extiendo.
-- Tablas `pharmacy_customer_accounts` (saldo, aging 0-30/31-60/61-90/>90), `pharmacy_customer_payments` (abonos).
-- Trigger que actualiza saldo al facturar POS a crédito y al registrar abono.
-- Vista `/farmacia/clientes`:
-  - Lista con saldo actual + aging semáforo.
-  - Detalle: historial de compras, pagos, botón "Registrar abono", "Estado de cuenta PDF".
+## Alcance (5 entregables)
 
-## Fase 2 — Recordatorios automáticos (WhatsApp + Email)
-- Tabla `reminder_schedules` (pedido/cliente, tipo, fecha_envío, canal, estado).
-- Tabla `reminder_templates` editables por admin (variables: `{nombre}`, `{folio}`, `{saldo}`, `{fecha}`).
-- Edge function `send-reminders` (cron cada 15 min):
-  - Lee CxC vencidas y próximas a vencer (T-3, T-0, T+3, T+7, T+15).
-  - Envía WhatsApp via Twilio Content API + Email via Lovable Emails como respaldo.
-  - Registra en `reminder_send_log` para evitar duplicados.
-- En `/farmacia/pedidos`: botón manual "Enviar recordatorio ahora" (WA/Email) por pedido.
-- Panel `/farmacia/recordatorios`: bandeja de programados/enviados/fallidos.
+### 1. Panel "Historial de Salud" en el expediente
+- Nueva ruta `/historial-salud` (y tab dentro de `PatientExpedienteTabs`).
+- Consolida lecturas de: `heart_rate_readings`, `activity_readings`, `blood_pressure_readings`, `spo2_readings`, `glucose_readings`, `temperature_readings`.
+- Gráficas Recharts con selector de rango (7d / 30d / 90d / custom) y filtro por tipo.
+- Panel lateral que cruza lecturas con `appointments` próximas y `bp_reminder_schedules` / `medication_schedule` — resalta lecturas fuera de rango previas a una cita.
+- Badge por lectura indicando la fuente: `healthkit` / `health_connect` / `ble` / `manual` / `csv`.
 
-## Fase 3 — Surtido FEFO en piso
-- Extensión de `/farmacia/pedidos` con vista "Surtido":
-  - Lista de items con sugerencia FEFO automática (`sugerir_lotes_fefo`).
-  - Escaneo de código de barras (Web Barcode API si disponible, sino input manual).
-  - Verificación cantidad esperada vs. tomada.
-  - Estados: `pendiente_surtido` → `en_surtido` → `surtido` → `empaquetado`.
-  - Firma digital del surtidor + timestamp.
-- Genera `pharmacy_lot_movements` tipo `salida` automáticamente al confirmar.
+### 2. Verificador de compatibilidad de dispositivo BLE
+- Nuevo componente `BleCompatibilityCheck.tsx` dentro de `/dispositivos`.
+- Escaneo corto (5s), inspecciona `services` GATT y compara contra whitelist estándar (Heart Rate `0x180D`, Blood Pressure `0x1810`, Pulse Oximeter `0x1822`, Health Thermometer `0x1809`, Glucose `0x1808`, Battery `0x180F`).
+- Resultado en 3 estados: **Compatible estándar** (servicio GATT reconocido), **Propietario** (solo servicios `0xFEE*` / custom UUID), **Desconocido**.
+- Guarda el resultado en `ble_known_devices` (nueva columna `compatibility_status`).
 
-## Fase 4 — Shipments Skydropx
-- Tabla `shipments` (pedido, paquete, dirección_origen, destino, cotizaciones[], guía_seleccionada, tracking, PDF label).
-- Edge function `skydropx-quote`: cotiza al confirmar dirección → muestra tarifas (DHL, Estafeta, FedEx, Redpack).
-- Edge function `skydropx-create-shipment`: genera guía 4x6 (PDF), guarda tracking.
-- En flujo de despacho: paso "Envío" con selector de tarifa + generar etiqueta.
-- Webhook `skydropx-webhook` para actualizar estatus (en_tránsito, entregado).
+### 3. Carga manual de HR / lecturas
+- Formulario "Registrar lectura manual" en el panel de Historial: BPM, fecha/hora, contexto (reposo/ejercicio/post-cita), notas.
+- Importador CSV con drag-and-drop: columnas `timestamp,bpm,context,notes`; preview de las primeras 10 filas, validación (Zod), commit por lotes de 100.
+- Fuente marcada como `manual` o `csv` en `source` de `heart_rate_readings`.
 
-## Fase 5 — Tienda online `/tienda`
-- Página pública con catálogo (usa `pharmacy_catalog` con flag `publicable_online`).
-- Búsqueda + filtros por categoría, marca.
-- Carrito persistente (localStorage + sync a `cart_sessions` si logueado).
-- Checkout: cliente invitado o login → dirección → cotización Skydropx → método pago (Stripe/Paddle) → confirmación.
-- Genera `pharmacy_orders` tipo `online` con estado `pendiente_pago`.
-- Email de confirmación + WhatsApp con tracking al despachar.
-- Vista `/tienda/pedido/:folio` para seguimiento público con token.
+### 4. Apple HealthKit (Capacitor)
+- Integración con `capacitor-health` (ya instalado) para iOS.
+- Solicitud de permisos: `heart_rate`, `steps`, `active_energy`, `resting_hr`, `sleep`, `blood_oxygen`.
+- Botón "Sincronizar HealthKit" en `HealthDevicesPanel.tsx` — importa últimas 24h / 7d / 30d.
+- Deduplicación por `source_uuid` (nueva columna en `heart_rate_readings` y `activity_readings`).
 
-## Notas técnicas
-- Todas las nuevas tablas con RLS + GRANT a `authenticated` / `service_role` (público de tienda vía RPC específica).
-- Recordatorios respetan `notification_preferences.quiet_hours` del cliente.
-- Skydropx: cotizaciones se cachean 30 min para evitar hits repetidos.
-- Cron `send-reminders`: agendado con pg_cron cada 15 min.
-- CxC aging se calcula on-the-fly con función `pharmacy_customer_aging(_customer_id)` para evitar drift.
+### 5. Health Connect (Android)
+- Mismo hook `useHealthSync` con branch por plataforma (`Capacitor.getPlatform()`).
+- Permisos Android 14+ vía `capacitor-health`.
+- Panel de tendencias reutiliza la misma UI de (1); solo cambia el badge de fuente.
 
-## Orden de ejecución
-Fase 0 (bloqueante) → Fases 1+2 en paralelo → Fase 3 → Fase 4 → Fase 5.
+## Cambios de DB
 
-¿Confirmas y me pasas credenciales de Twilio y Skydropx para arrancar Fase 0?
+```text
+heart_rate_readings         + source_uuid text UNIQUE nullable, source text default 'ble'
+activity_readings           + source_uuid text UNIQUE nullable
+ble_known_devices           + compatibility_status text (standard|proprietary|unknown)
+                            + compatibility_checked_at timestamptz
+                            + gatt_services jsonb
+```
+
+Todos con RLS `auth.uid() = user_id` (siguiendo el patrón existente).
+
+## Cambios de código (resumen)
+
+```text
+src/pages/HistorialSalud.tsx                  NEW  ruta consolidada
+src/components/health/UnifiedTimelineChart.tsx NEW  Recharts multi-serie
+src/components/health/ManualReadingForm.tsx    NEW  formulario + Zod
+src/components/health/CsvImporter.tsx          NEW  drag-drop + preview
+src/components/health/BleCompatibilityCheck.tsx NEW
+src/hooks/useHealthSync.ts                     NEW  HealthKit + Health Connect
+src/hooks/useUnifiedReadings.ts                NEW  agrega 6 tablas por rango
+src/components/dashboard/HealthDevicesPanel.tsx EDIT  botones sync + compat
+src/components/patient/PatientExpedienteTabs.tsx EDIT  nueva pestaña
+src/App.tsx                                    EDIT  ruta /historial-salud
+```
+
+## Fuera de alcance (para no inflar)
+
+- Fitbit OAuth (ya discutido; queda como fase aparte).
+- Oura / Ultrahuman API.
+- Alertas push automáticas por lecturas importadas (se reusa el sistema existente de `notifications`, sin nueva lógica).
+- Cross-device analytics (correlación sueño↔presión) — futuro.
+
+## Verificación
+
+- Build limpio + tsgo.
+- Test manual: registrar 3 lecturas manuales, importar CSV de 20 filas, verificar que aparecen en el timeline unificado con badges correctos, y que el verificador BLE distingue un Wellue O2Ring (estándar) de un smartband genérico (propietario).
