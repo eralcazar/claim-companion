@@ -39,8 +39,8 @@ function escape(v: unknown) {
 
 function toCsv(rows: Row[], columns: string[]): string {
   if (rows.length === 0) return "";
-  const header = ["tipo", ...columns].join(",");
-  const lines = rows.map((r) => ["tipo", ...columns].map((c) => escape(r[c])).join(","));
+  const header = ["tipo", "estado_validacion", ...columns].join(",");
+  const lines = rows.map((r) => ["tipo", "estado_validacion", ...columns].map((c) => escape(r[c])).join(","));
   return [header, ...lines].join("\n");
 }
 
