@@ -288,6 +288,26 @@ export function AppSidebar() {
             </SidebarGroupContent>
           </SidebarGroup>
         )}
+
+        {visibleHelp.length > 0 && (
+          <SidebarGroup>
+            <SidebarGroupLabel>{!collapsed && "Ayuda"}</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {visibleHelp.map((item) => (
+                  <SidebarMenuItem key={item.url}>
+                    <SidebarMenuButton asChild isActive={isActive(item.url)}>
+                      <RouterNavLink to={item.url} className="flex items-center gap-2">
+                        <item.icon className="h-4 w-4" />
+                        {!collapsed && <span>{item.title}</span>}
+                      </RouterNavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
 
       <SidebarFooter>
