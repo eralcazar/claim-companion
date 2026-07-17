@@ -9,6 +9,7 @@ import { CareCentralLogo } from "@/components/brand/CareCentralLogo";
 import { KariFloatingButton } from "@/components/kari/KariFloatingButton";
 import { BrandSplash } from "@/components/brand/BrandSplash";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
+import { PrivacyConsentTracker } from "@/components/legal/PrivacyConsentTracker";
 
 export function AppLayout() {
   const isMobile = useIsMobile();
@@ -17,6 +18,7 @@ export function AppLayout() {
   return (
     <SidebarProvider>
       <BrandSplash />
+      <PrivacyConsentTracker />
       <div className="min-h-screen flex w-full">
         {!isMobile && <AppSidebar />}
 
