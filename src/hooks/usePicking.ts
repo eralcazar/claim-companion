@@ -17,12 +17,9 @@ export async function logPickingAudit(
   const { data: u } = await supabase.auth.getUser();
   const actor_id = u.user?.id;
   if (!actor_id) return;
-  await supabase.from("pharmacy_picking_audit").insert({
-    order_id,
-    actor_id,
-    action,
-    payload: payload ?? null,
-  });
+  await supabase.from("pharmacy_picking_audit").insert([
+    { order_id, actor_id, action, payload: (payload ?? null) as any },
+  ]);
 }
 
 export function useConfirmPicking() {
