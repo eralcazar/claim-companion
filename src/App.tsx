@@ -69,6 +69,10 @@ import DerechosARCO from "@/pages/DerechosARCO";
 import IntegrityDashboard from "@/pages/admin/IntegrityDashboard";
 import CfdiConfigManager from "@/pages/admin/CfdiConfigManager";
 import VerifyShare from "@/pages/public/VerifyShare";
+import PurchasesManager from "@/pages/farmacia/PurchasesManager";
+import PricingManager from "@/pages/farmacia/PricingManager";
+import Pos from "@/pages/Pos";
+import PharmacyComparator from "@/pages/public/PharmacyComparator";
 
 const queryClient = new QueryClient();
 
@@ -97,6 +101,8 @@ const App = () => (
             <Route path="/legal" element={<Legal />} />
             <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
             <Route path="/verificar/:token" element={<VerifyShare />} />
+            <Route path="/comparador" element={<PharmacyComparator />} />
+            <Route path="/comparador/:sku" element={<PharmacyComparator />} />
             <Route path="/" element={<RootRoute />} />
             <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
               <Route path="/dashboard" element={<Dashboard />} />
@@ -138,6 +144,9 @@ const App = () => (
               <Route path="/admin/productos" element={<ProductManager />} />
               <Route path="/admin/planes" element={<PlanManager />} />
               <Route path="/farmacia/inventario" element={<InventoryManager />} />
+              <Route path="/farmacia/compras" element={<PurchasesManager />} />
+              <Route path="/farmacia/precios" element={<PricingManager />} />
+              <Route path="/pos" element={<Pos />} />
               <Route path="/planes" element={<Plans />} />
               <Route path="/suscripcion" element={<Subscription />} />
               <Route path="/oxygen-saturation" element={<OxygenSaturation />} />

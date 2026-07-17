@@ -114,6 +114,13 @@ export default function PharmacyPanel() {
         <Store className="h-6 w-6 text-primary" />Panel Farmacia
       </h1>
 
+      <div className="flex flex-wrap gap-2">
+        <Link to="/pos"><Button size="sm" variant="default">POS</Button></Link>
+        <Link to="/farmacia/compras"><Button size="sm" variant="outline">Compras</Button></Link>
+        <Link to="/farmacia/precios"><Button size="sm" variant="outline">Precios</Button></Link>
+        <Link to="/farmacia/inventario"><Button size="sm" variant="outline">Inventario</Button></Link>
+      </div>
+
       <LowStockWidget />
 
       <Tabs defaultValue="ordenes">
