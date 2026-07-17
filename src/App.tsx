@@ -65,6 +65,7 @@ import Domicilio from "@/pages/Domicilio";
 import Facturacion from "@/pages/Facturacion";
 import OAuthConsent from "@/pages/OAuthConsent";
 import DispositivosCompatibles from "@/pages/DispositivosCompatibles";
+import HistorialSalud from "@/pages/HistorialSalud";
 import DerechosARCO from "@/pages/DerechosARCO";
 import IntegrityDashboard from "@/pages/admin/IntegrityDashboard";
 import CfdiConfigManager from "@/pages/admin/CfdiConfigManager";
@@ -172,6 +173,7 @@ const App = () => (
               <Route path="/admin/mcp-audit" element={<McpAuditLog />} />
               <Route path="/perfil/notificaciones" element={<NotificationPreferencesPage />} />
               <Route path="/dispositivos" element={<DispositivosCompatibles />} />
+              <Route path="/historial-salud" element={<HistorialSalud />} />
               <Route path="/derechos-arco" element={<DerechosARCO />} />
               <Route path="/admin/integridad" element={<IntegrityDashboard />} />
               <Route path="/procedimientos" element={<Procedimientos />} />
