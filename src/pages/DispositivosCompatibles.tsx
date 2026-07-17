@@ -8,6 +8,7 @@ import {
   READING_LABELS,
   type CompatibleReading,
 } from "@/lib/ble/compatibleDevices";
+import { BleCompatibilityCheck } from "@/components/ble/BleCompatibilityCheck";
 
 const FILTERS: { key: CompatibleReading | "all"; label: string }[] = [
   { key: "all", label: "Todos" },
@@ -33,6 +34,8 @@ export default function DispositivosCompatibles() {
           Aquí encuentras opciones probadas y recomendadas por tipo de medición y rango de precio.
         </p>
       </header>
+
+      <BleCompatibilityCheck />
 
       <div className="flex flex-wrap gap-2">
         {FILTERS.map((f) => (
