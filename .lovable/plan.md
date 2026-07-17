@@ -1,74 +1,88 @@
+# Catálogo ampliado de dispositivos y wearables
 
-# Fase Wearables — Historial de Salud Unificado
+Amplío el módulo `/dispositivos-ble` para cubrir no solo BLE directo sino también smartbands/relojes vía Health Connect/HealthKit, con búsqueda, filtros, fichas detalladas y verificación guardada por usuario.
 
-Objetivo: consolidar datos de wearables (Apple HealthKit, Health Connect, BLE directo, carga manual) en un panel único de tendencias, integrado con citas y recordatorios.
+## 1. Expansión del catálogo (`src/lib/ble/compatibleDevices.ts`)
 
-## Alcance (5 entregables)
+Agrego nuevos campos al tipo `CompatibleDevice`:
+- `deviceType`: `oximeter | bp_monitor | thermometer | smartband | smartwatch | ring | scale`
+- `connectionMethod`: `ble_direct | health_connect | healthkit | vendor_app_bridge | not_compatible`
+- `compatibilityStatus`: `verified | probable | community | incompatible`
+- `pairingSteps`: `string[]` (instrucciones paso a paso)
+- `syncSource`: string explicando qué app/API usar
+- `firmwareNote?`: string opcional
 
-### 1. Panel "Historial de Salud" en el expediente
-- Nueva ruta `/historial-salud` (y tab dentro de `PatientExpedienteTabs`).
-- Consolida lecturas de: `heart_rate_readings`, `activity_readings`, `blood_pressure_readings`, `spo2_readings`, `glucose_readings`, `temperature_readings`.
-- Gráficas Recharts con selector de rango (7d / 30d / 90d / custom) y filtro por tipo.
-- Panel lateral que cruza lecturas con `appointments` próximas y `bp_reminder_schedules` / `medication_schedule` — resalta lecturas fuera de rango previas a una cita.
-- Badge por lectura indicando la fuente: `healthkit` / `health_connect` / `ble` / `manual` / `csv`.
+Amplío el catálogo (~20 modelos) incluyendo:
+- **BLE directo (clínicos):** Wellue O2Ring, Omron M7, A&D UA-651BLE, Beurer FT 95, Berry BM2000B, Checkme O2.
+- **Puente Health Connect/HealthKit:** Xiaomi Smart Band 8/9/10, Haylou RS4/Solar Plus, Amazfit Bip 5/GTS 4, Huawei Band 9, Apple Watch SE, Fitbit Charge 6, Google Pixel Watch.
+- **Genéricos incompatibles con advertencia:** Colmi P8, Y68/D20 (marcados como `not_compatible` con explicación clara).
 
-### 2. Verificador de compatibilidad de dispositivo BLE
-- Nuevo componente `BleCompatibilityCheck.tsx` dentro de `/dispositivos`.
-- Escaneo corto (5s), inspecciona `services` GATT y compara contra whitelist estándar (Heart Rate `0x180D`, Blood Pressure `0x1810`, Pulse Oximeter `0x1822`, Health Thermometer `0x1809`, Glucose `0x1808`, Battery `0x180F`).
-- Resultado en 3 estados: **Compatible estándar** (servicio GATT reconocido), **Propietario** (solo servicios `0xFEE*` / custom UUID), **Desconocido**.
-- Guarda el resultado en `ble_known_devices` (nueva columna `compatibility_status`).
+## 2. Renombrar y renovar la página → `src/pages/DispositivosCompatibles.tsx`
 
-### 3. Carga manual de HR / lecturas
-- Formulario "Registrar lectura manual" en el panel de Historial: BPM, fecha/hora, contexto (reposo/ejercicio/post-cita), notas.
-- Importador CSV con drag-and-drop: columnas `timestamp,bpm,context,notes`; preview de las primeras 10 filas, validación (Zod), commit por lotes de 100.
-- Fuente marcada como `manual` o `csv` en `source` de `heart_rate_readings`.
+Cambio el título a "Dispositivos y wearables compatibles". Nuevas secciones:
 
-### 4. Apple HealthKit (Capacitor)
-- Integración con `capacitor-health` (ya instalado) para iOS.
-- Solicitud de permisos: `heart_rate`, `steps`, `active_energy`, `resting_hr`, `sleep`, `blood_oxygen`.
-- Botón "Sincronizar HealthKit" en `HealthDevicesPanel.tsx` — importa últimas 24h / 7d / 30d.
-- Deduplicación por `source_uuid` (nueva columna en `heart_rate_readings` y `activity_readings`).
+- **Barra de búsqueda** por nombre/marca (input con debounce).
+- **Filtros combinables** (chips): Marca, Tipo de dispositivo, Método de conexión, Estado de compatibilidad, Tipo de medición.
+- **Grid de tarjetas** con badges de estado (verde/ámbar/rojo) y método de conexión visible.
+- Cada tarjeta abre un **Sheet/Dialog con ficha completa** (nuevo componente).
 
-### 5. Health Connect (Android)
-- Mismo hook `useHealthSync` con branch por plataforma (`Capacitor.getPlatform()`).
-- Permisos Android 14+ vía `capacitor-health`.
-- Panel de tendencias reutiliza la misma UI de (1); solo cambia el badge de fuente.
+## 3. Nuevo componente `src/components/ble/DeviceDetailSheet.tsx`
 
-## Cambios de DB
+Ficha con:
+- Cabecera: marca, modelo, badges de tipo, conexión, estado.
+- **Instrucciones de emparejamiento** paso a paso (numeradas) según `connectionMethod`.
+- **Fuente de sincronización recomendada** (Web Bluetooth vs Health Connect vs HealthKit vs App del fabricante).
+- Botón "Probar conexión ahora" (redirige al wizard existente si es BLE directo, o abre el panel de Health Devices si es puente).
+- Sección **"Mi verificación"** con formulario y lista de intentos previos del usuario (ver §5).
 
-```text
-heart_rate_readings         + source_uuid text UNIQUE nullable, source text default 'ble'
-activity_readings           + source_uuid text UNIQUE nullable
-ble_known_devices           + compatibility_status text (standard|proprietary|unknown)
-                            + compatibility_checked_at timestamptz
-                            + gatt_services jsonb
+## 4. Nueva tabla `user_device_verifications` (migración)
+
+Guarda el resultado que reporta el usuario por modelo:
+
+```sql
+CREATE TABLE public.user_device_verifications (
+  id uuid PK default gen_random_uuid(),
+  user_id uuid NOT NULL,        -- auth.uid()
+  device_id text NOT NULL,      -- ej. "wellue-o2ring" (id del catálogo)
+  firmware text,
+  app_version text,
+  status text NOT NULL,         -- 'success' | 'partial' | 'failed'
+  connection_method text,       -- copiado del catálogo al momento de la prueba
+  notes text,
+  tested_at timestamptz DEFAULT now(),
+  created_at timestamptz DEFAULT now()
+);
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.user_device_verifications TO authenticated;
+GRANT ALL ON public.user_device_verifications TO service_role;
+ALTER TABLE ... ENABLE RLS;
+-- Policies: cada usuario ve/edita solo sus filas; admin ve todo.
 ```
 
-Todos con RLS `auth.uid() = user_id` (siguiendo el patrón existente).
+Índice en `(user_id, device_id, tested_at desc)`.
 
-## Cambios de código (resumen)
+## 5. Formulario y hook de verificación
 
-```text
-src/pages/HistorialSalud.tsx                  NEW  ruta consolidada
-src/components/health/UnifiedTimelineChart.tsx NEW  Recharts multi-serie
-src/components/health/ManualReadingForm.tsx    NEW  formulario + Zod
-src/components/health/CsvImporter.tsx          NEW  drag-drop + preview
-src/components/health/BleCompatibilityCheck.tsx NEW
-src/hooks/useHealthSync.ts                     NEW  HealthKit + Health Connect
-src/hooks/useUnifiedReadings.ts                NEW  agrega 6 tablas por rango
-src/components/dashboard/HealthDevicesPanel.tsx EDIT  botones sync + compat
-src/components/patient/PatientExpedienteTabs.tsx EDIT  nueva pestaña
-src/App.tsx                                    EDIT  ruta /historial-salud
-```
+- `src/hooks/useDeviceVerifications.ts`: react-query hooks `list(deviceId)`, `create()`, `remove(id)`.
+- `src/components/ble/DeviceVerificationForm.tsx`: campos firmware, versión app, estado (select success/partial/failed), notas. Se monta dentro del `DeviceDetailSheet`.
+- Muestra listado cronológico con badge de estado y opción de borrar.
 
-## Fuera de alcance (para no inflar)
+## 6. Contadores agregados
 
-- Fitbit OAuth (ya discutido; queda como fase aparte).
-- Oura / Ultrahuman API.
-- Alertas push automáticas por lecturas importadas (se reusa el sistema existente de `notifications`, sin nueva lógica).
-- Cross-device analytics (correlación sueño↔presión) — futuro.
+En la vista principal, arriba de la grilla: chip "Verificados por la comunidad: N" (count distinct `device_id` con `status='success'` en `user_device_verifications`, consultado vía RPC o vista pública agregada). *(Opcional; sin PII expuesta.)*
 
-## Verificación
+## Detalles técnicos
 
-- Build limpio + tsgo.
-- Test manual: registrar 3 lecturas manuales, importar CSV de 20 filas, verificar que aparecen en el timeline unificado con badges correctos, y que el verificador BLE distingue un Wellue O2Ring (estándar) de un smartband genérico (propietario).
+- Toda la lógica de filtros/búsqueda es cliente-side sobre el arreglo estático (el catálogo cabe fácilmente en memoria).
+- El `DeviceDetailSheet` usa `Sheet` de shadcn (mobile-friendly, ya presente en el proyecto).
+- El botón "Probar conexión" reutiliza `BlePairingWizard` existente para BLE directo y `HealthDevicesPanel` para puentes.
+- No se toca `HealthDevicesPanel` ni el wizard actual; solo se enlazan.
+- Sin cambios en las tablas de lecturas ni en el flujo de sincronización.
+
+## Archivos afectados
+
+- `src/lib/ble/compatibleDevices.ts` — ampliar tipos + ~15 modelos nuevos.
+- `src/pages/DispositivosCompatibles.tsx` — reescritura con búsqueda/filtros/sheet.
+- `src/components/ble/DeviceDetailSheet.tsx` — nuevo.
+- `src/components/ble/DeviceVerificationForm.tsx` — nuevo.
+- `src/hooks/useDeviceVerifications.ts` — nuevo.
+- Migración: crear `user_device_verifications` con RLS + GRANTs.
