@@ -21,7 +21,7 @@ export type Lot = {
 };
 
 export type LotWithCatalog = Lot & {
-  catalog: { id: string; nombre: string; presentación: string | null; sku: string | null };
+  catalog: { id: string; nombre: string; presentacion: string | null; sku: string | null };
 };
 
 export function useLots(opts: { branchId?: string | null; catalogId?: string; estado?: string } = {}) {
@@ -30,7 +30,7 @@ export function useLots(opts: { branchId?: string | null; catalogId?: string; es
     queryFn: async () => {
       let q = supabase
         .from("pharmacy_lots")
-        .select(`*, catalog:pharmacy_catalog(id,nombre,"presentación",sku)`)
+        .select(`*, catalog:pharmacy_catalog(id,nombre,presentacion,sku)`)
         .order("caducidad", { ascending: true });
       if (opts.branchId) q = q.eq("branch_id", opts.branchId);
       if (opts.catalogId) q = q.eq("catalog_id", opts.catalogId);
