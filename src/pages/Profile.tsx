@@ -310,6 +310,7 @@ export default function Profile() {
 
       <HealthDevicesPanel />
       <BleConnectPanel />
+      <BleTestSettingsCard />
 
       <Button variant="outline" className="w-full text-destructive" onClick={signOut}>
         Cerrar sesión
