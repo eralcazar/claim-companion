@@ -1081,6 +1081,142 @@ export type Database = {
           },
         ]
       }
+      cfdi_config: {
+        Row: {
+          activo: boolean
+          branch_id: string | null
+          codigo_postal: string
+          created_at: string
+          csd_cer_path: string | null
+          csd_key_path: string | null
+          csd_no_certificado: string | null
+          csd_password: string | null
+          csd_vigencia_desde: string | null
+          csd_vigencia_hasta: string | null
+          emisor_type: string
+          folio_inicial: number
+          id: string
+          modo: string
+          owner_id: string
+          pac: string
+          razon_social: string
+          regimen_fiscal: string
+          rfc: string
+          serie: string | null
+          updated_at: string
+        }
+        Insert: {
+          activo?: boolean
+          branch_id?: string | null
+          codigo_postal: string
+          created_at?: string
+          csd_cer_path?: string | null
+          csd_key_path?: string | null
+          csd_no_certificado?: string | null
+          csd_password?: string | null
+          csd_vigencia_desde?: string | null
+          csd_vigencia_hasta?: string | null
+          emisor_type: string
+          folio_inicial?: number
+          id?: string
+          modo?: string
+          owner_id: string
+          pac?: string
+          razon_social: string
+          regimen_fiscal?: string
+          rfc: string
+          serie?: string | null
+          updated_at?: string
+        }
+        Update: {
+          activo?: boolean
+          branch_id?: string | null
+          codigo_postal?: string
+          created_at?: string
+          csd_cer_path?: string | null
+          csd_key_path?: string | null
+          csd_no_certificado?: string | null
+          csd_password?: string | null
+          csd_vigencia_desde?: string | null
+          csd_vigencia_hasta?: string | null
+          emisor_type?: string
+          folio_inicial?: number
+          id?: string
+          modo?: string
+          owner_id?: string
+          pac?: string
+          razon_social?: string
+          regimen_fiscal?: string
+          rfc?: string
+          serie?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cfdi_config_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacy_branches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cfdi_stamps: {
+        Row: {
+          actor_id: string | null
+          created_at: string
+          error: string | null
+          id: string
+          invoice_id: string
+          modo: string
+          ok: boolean
+          pac: string
+          pdf_url: string | null
+          request_summary: Json | null
+          response_summary: Json | null
+          uuid_sat: string | null
+          xml_url: string | null
+        }
+        Insert: {
+          actor_id?: string | null
+          created_at?: string
+          error?: string | null
+          id?: string
+          invoice_id: string
+          modo: string
+          ok: boolean
+          pac: string
+          pdf_url?: string | null
+          request_summary?: Json | null
+          response_summary?: Json | null
+          uuid_sat?: string | null
+          xml_url?: string | null
+        }
+        Update: {
+          actor_id?: string | null
+          created_at?: string
+          error?: string | null
+          id?: string
+          invoice_id?: string
+          modo?: string
+          ok?: boolean
+          pac?: string
+          pdf_url?: string | null
+          request_summary?: Json | null
+          response_summary?: Json | null
+          uuid_sat?: string | null
+          xml_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cfdi_stamps_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "medico_invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       claim_documents: {
         Row: {
           claim_id: string
@@ -2657,66 +2793,123 @@ export type Database = {
       medico_invoices: {
         Row: {
           appointment_id: string | null
+          cadena_original: string | null
           concepto: string
+          condiciones_pago: string | null
+          cp_receptor: string | null
           created_at: string
           doctor_id: string
+          emisor_id: string | null
+          emisor_type: string | null
+          error_timbrado: string | null
           estado: string
           fecha: string
+          fecha_timbrado: string | null
           folio: string
+          forma_pago: string | null
           home_visit_id: string | null
           id: string
           iva: number
           metodo_pago: string | null
+          modo: string | null
+          moneda: string | null
+          no_certificado: string | null
+          no_certificado_sat: string | null
           notas: string | null
           patient_id: string | null
           pdf_url: string | null
           razon_social_receptor: string | null
+          regimen_fiscal_receptor: string | null
           rfc_receptor: string | null
+          sello: string | null
+          sello_sat: string | null
+          serie: string | null
           subtotal: number
           total: number
           updated_at: string
+          uso_cfdi: string | null
+          uuid_sat: string | null
+          xml_url: string | null
         }
         Insert: {
           appointment_id?: string | null
+          cadena_original?: string | null
           concepto: string
+          condiciones_pago?: string | null
+          cp_receptor?: string | null
           created_at?: string
           doctor_id: string
+          emisor_id?: string | null
+          emisor_type?: string | null
+          error_timbrado?: string | null
           estado?: string
           fecha?: string
+          fecha_timbrado?: string | null
           folio: string
+          forma_pago?: string | null
           home_visit_id?: string | null
           id?: string
           iva?: number
           metodo_pago?: string | null
+          modo?: string | null
+          moneda?: string | null
+          no_certificado?: string | null
+          no_certificado_sat?: string | null
           notas?: string | null
           patient_id?: string | null
           pdf_url?: string | null
           razon_social_receptor?: string | null
+          regimen_fiscal_receptor?: string | null
           rfc_receptor?: string | null
+          sello?: string | null
+          sello_sat?: string | null
+          serie?: string | null
           subtotal?: number
           total?: number
           updated_at?: string
+          uso_cfdi?: string | null
+          uuid_sat?: string | null
+          xml_url?: string | null
         }
         Update: {
           appointment_id?: string | null
+          cadena_original?: string | null
           concepto?: string
+          condiciones_pago?: string | null
+          cp_receptor?: string | null
           created_at?: string
           doctor_id?: string
+          emisor_id?: string | null
+          emisor_type?: string | null
+          error_timbrado?: string | null
           estado?: string
           fecha?: string
+          fecha_timbrado?: string | null
           folio?: string
+          forma_pago?: string | null
           home_visit_id?: string | null
           id?: string
           iva?: number
           metodo_pago?: string | null
+          modo?: string | null
+          moneda?: string | null
+          no_certificado?: string | null
+          no_certificado_sat?: string | null
           notas?: string | null
           patient_id?: string | null
           pdf_url?: string | null
           razon_social_receptor?: string | null
+          regimen_fiscal_receptor?: string | null
           rfc_receptor?: string | null
+          sello?: string | null
+          sello_sat?: string | null
+          serie?: string | null
           subtotal?: number
           total?: number
           updated_at?: string
+          uso_cfdi?: string | null
+          uuid_sat?: string | null
+          xml_url?: string | null
         }
         Relationships: [
           {

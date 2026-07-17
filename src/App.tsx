@@ -67,6 +67,7 @@ import OAuthConsent from "@/pages/OAuthConsent";
 import DispositivosCompatibles from "@/pages/DispositivosCompatibles";
 import DerechosARCO from "@/pages/DerechosARCO";
 import IntegrityDashboard from "@/pages/admin/IntegrityDashboard";
+import CfdiConfigManager from "@/pages/admin/CfdiConfigManager";
 import VerifyShare from "@/pages/public/VerifyShare";
 
 const queryClient = new QueryClient();
@@ -156,6 +157,7 @@ const App = () => (
               <Route path="/odontograma" element={<Odontograma />} />
               <Route path="/domicilio" element={<Domicilio />} />
               <Route path="/facturacion" element={<Facturacion />} />
+              <Route path="/admin/facturacion" element={<CfdiConfigManager />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>

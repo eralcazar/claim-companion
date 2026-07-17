@@ -10,6 +10,7 @@ import { KariFloatingButton } from "@/components/kari/KariFloatingButton";
 import { BrandSplash } from "@/components/brand/BrandSplash";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { PrivacyConsentTracker } from "@/components/legal/PrivacyConsentTracker";
+import { CfdiTestModeBanner } from "@/components/facturacion/CfdiModeBadge";
 
 export function AppLayout() {
   const isMobile = useIsMobile();
@@ -44,6 +45,7 @@ export function AppLayout() {
           )}
 
           <ImpersonationBanner />
+          <CfdiTestModeBanner />
 
           <main className={`flex-1 p-4 ${isMobile ? "pb-20" : ""}`}>
             <Outlet />
