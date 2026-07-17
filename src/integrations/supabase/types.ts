@@ -5016,6 +5016,123 @@ export type Database = {
         }
         Relationships: []
       }
+      professional_availability: {
+        Row: {
+          activo: boolean
+          created_at: string
+          end_time: string
+          id: string
+          location_id: string | null
+          modalidad: string
+          professional_id: string
+          slot_minutes: number
+          start_time: string
+          updated_at: string
+          weekday: number
+        }
+        Insert: {
+          activo?: boolean
+          created_at?: string
+          end_time: string
+          id?: string
+          location_id?: string | null
+          modalidad?: string
+          professional_id: string
+          slot_minutes?: number
+          start_time: string
+          updated_at?: string
+          weekday: number
+        }
+        Update: {
+          activo?: boolean
+          created_at?: string
+          end_time?: string
+          id?: string
+          location_id?: string | null
+          modalidad?: string
+          professional_id?: string
+          slot_minutes?: number
+          start_time?: string
+          updated_at?: string
+          weekday?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "professional_availability_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "professional_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "professional_availability_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professional_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      professional_availability_exceptions: {
+        Row: {
+          created_at: string
+          end_time: string | null
+          fecha: string
+          id: string
+          location_id: string | null
+          modalidad: string | null
+          motivo: string | null
+          professional_id: string
+          slot_minutes: number | null
+          start_time: string | null
+          tipo: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          end_time?: string | null
+          fecha: string
+          id?: string
+          location_id?: string | null
+          modalidad?: string | null
+          motivo?: string | null
+          professional_id: string
+          slot_minutes?: number | null
+          start_time?: string | null
+          tipo: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          end_time?: string | null
+          fecha?: string
+          id?: string
+          location_id?: string | null
+          modalidad?: string | null
+          motivo?: string | null
+          professional_id?: string
+          slot_minutes?: number | null
+          start_time?: string | null
+          tipo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "professional_availability_exceptions_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "professional_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "professional_availability_exceptions_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professional_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       professional_locations: {
         Row: {
           activo: boolean
@@ -6188,6 +6305,15 @@ export type Database = {
       get_kari_usage_summary: {
         Args: { _from: string; _to: string }
         Returns: Json
+      }
+      get_professional_slots: {
+        Args: { _from: string; _professional_id: string; _to: string }
+        Returns: {
+          location_id: string
+          modalidad: string
+          slot_end: string
+          slot_start: string
+        }[]
       }
       has_patient_access: {
         Args: { _patient: string; _personnel: string }

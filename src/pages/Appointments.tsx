@@ -21,6 +21,9 @@ import { useDoctors } from "@/hooks/useDoctors";
 import { AddressAutocomplete } from "@/components/appointments/AddressAutocomplete";
 import { AppointmentDetailDialog } from "@/components/appointments/AppointmentDetailDialog";
 import { PatientSelect } from "@/components/appointments/PatientSelect";
+import { ReviewDialog } from "@/components/appointments/ReviewDialog";
+import { useMyAppointmentReviews, useProfessionalByDoctorUserId } from "@/hooks/useAvailability";
+import { Star } from "lucide-react";
 
 type AppointmentType = Database["public"]["Enums"]["appointment_type"];
 
@@ -41,7 +44,9 @@ export default function Appointments() {
   const [open, setOpen] = useState(false);
   const [detail, setDetail] = useState<any | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [reviewing, setReviewing] = useState<{ appointmentId: string; professionalId: string } | null>(null);
   const { data: doctors } = useDoctors();
+  const { data: reviewedIds = [] } = useMyAppointmentReviews();
 
   const isMedico = roles.includes("medico");
 
@@ -465,19 +470,18 @@ export default function Appointments() {
           {past.length > 0 && (
             <div>
               <h2 className="font-heading text-lg font-semibold mb-3 text-muted-foreground">Pasadas</h2>
-              <div className="space-y-3 opacity-60">
+              <div className="space-y-3">
                 {past.map((apt) => (
-                  <Card key={apt.id} className="cursor-pointer hover:bg-accent/30 transition-colors" onClick={() => setDetail(apt)}>
-                    <CardContent className="p-4">
-                      <p className="text-sm font-medium">{typeLabels[apt.appointment_type]}</p>
-                      {isMedico && (apt as any)._patientName && (
-                        <p className="text-xs text-foreground/80">{(apt as any)._patientName}</p>
-                      )}
-                      <p className="text-xs text-muted-foreground">
-                        {format(new Date(apt.appointment_date), "PPP 'a las' p", { locale: es })}
-                      </p>
-                    </CardContent>
-                  </Card>
+                  <PastAppointmentCard
+                    key={apt.id}
+                    apt={apt}
+                    isMedico={isMedico}
+                    effectiveUserId={effectiveUserId}
+                    typeLabel={typeLabels[apt.appointment_type]}
+                    alreadyReviewed={reviewedIds.includes(apt.id)}
+                    onOpenDetail={() => setDetail(apt)}
+                    onReview={(professionalId) => setReviewing({ appointmentId: apt.id, professionalId })}
+                  />
                 ))}
               </div>
             </div>
@@ -494,6 +498,70 @@ export default function Appointments() {
         onEdit={openEdit}
         canEditDoctorObservations={isMedico && detail?.doctor_id === user?.id}
       />
+
+      {reviewing && (
+        <ReviewDialog
+          open={!!reviewing}
+          onOpenChange={(o) => !o && setReviewing(null)}
+          appointmentId={reviewing.appointmentId}
+          professionalId={reviewing.professionalId}
+          onSubmitted={() => setReviewing(null)}
+        />
+      )}
     </div>
+  );
+}
+
+function PastAppointmentCard({
+  apt,
+  isMedico,
+  effectiveUserId,
+  typeLabel,
+  alreadyReviewed,
+  onOpenDetail,
+  onReview,
+}: {
+  apt: any;
+  isMedico: boolean;
+  effectiveUserId: string | undefined;
+  typeLabel: string;
+  alreadyReviewed: boolean;
+  onOpenDetail: () => void;
+  onReview: (professionalId: string) => void;
+}) {
+  const canReview =
+    !isMedico && apt.user_id === effectiveUserId && !!apt.doctor_id && !alreadyReviewed;
+  const { data: pro } = useProfessionalByDoctorUserId(canReview ? apt.doctor_id : undefined);
+
+  return (
+    <Card className="cursor-pointer hover:bg-accent/30 transition-colors" onClick={onOpenDetail}>
+      <CardContent className="p-4 flex items-start justify-between gap-2">
+        <div>
+          <p className="text-sm font-medium">{typeLabel}</p>
+          {isMedico && (apt as any)._patientName && (
+            <p className="text-xs text-foreground/80">{(apt as any)._patientName}</p>
+          )}
+          <p className="text-xs text-muted-foreground">
+            {format(new Date(apt.appointment_date), "PPP 'a las' p", { locale: es })}
+          </p>
+        </div>
+        {canReview && pro?.publicado && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="shrink-0"
+            onClick={(e) => {
+              e.stopPropagation();
+              onReview(pro.id);
+            }}
+          >
+            <Star className="h-3.5 w-3.5 mr-1" /> Calificar
+          </Button>
+        )}
+        {alreadyReviewed && (
+          <span className="text-xs text-muted-foreground shrink-0 mt-1">Reseña enviada</span>
+        )}
+      </CardContent>
+    </Card>
   );
 }
