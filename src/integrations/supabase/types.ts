@@ -6197,6 +6197,45 @@ export type Database = {
         }
         Relationships: []
       }
+      user_device_verifications: {
+        Row: {
+          app_version: string | null
+          connection_method: string | null
+          created_at: string
+          device_id: string
+          firmware: string | null
+          id: string
+          notes: string | null
+          status: string
+          tested_at: string
+          user_id: string
+        }
+        Insert: {
+          app_version?: string | null
+          connection_method?: string | null
+          created_at?: string
+          device_id: string
+          firmware?: string | null
+          id?: string
+          notes?: string | null
+          status: string
+          tested_at?: string
+          user_id: string
+        }
+        Update: {
+          app_version?: string | null
+          connection_method?: string | null
+          created_at?: string
+          device_id?: string
+          firmware?: string | null
+          id?: string
+          notes?: string | null
+          status?: string
+          tested_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_google_tokens: {
         Row: {
           access_token: string
