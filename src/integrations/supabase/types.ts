@@ -520,6 +520,39 @@ export type Database = {
         }
         Relationships: []
       }
+      ble_connection_errors: {
+        Row: {
+          browser_ua: string | null
+          created_at: string
+          error_code: string | null
+          error_message: string
+          external_uuid: string | null
+          id: string
+          patient_id: string
+          service_type: string | null
+        }
+        Insert: {
+          browser_ua?: string | null
+          created_at?: string
+          error_code?: string | null
+          error_message: string
+          external_uuid?: string | null
+          id?: string
+          patient_id: string
+          service_type?: string | null
+        }
+        Update: {
+          browser_ua?: string | null
+          created_at?: string
+          error_code?: string | null
+          error_message?: string
+          external_uuid?: string | null
+          id?: string
+          patient_id?: string
+          service_type?: string | null
+        }
+        Relationships: []
+      }
       ble_known_devices: {
         Row: {
           blocked: boolean
@@ -562,6 +595,36 @@ export type Database = {
           updated_at?: string
           vendor?: string | null
           verified?: boolean
+        }
+        Relationships: []
+      }
+      ble_test_settings: {
+        Row: {
+          created_at: string
+          max_retries: number
+          read_timeout_ms: number
+          retry_delay_ms: number
+          scan_timeout_ms: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          max_retries?: number
+          read_timeout_ms?: number
+          retry_delay_ms?: number
+          scan_timeout_ms?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          max_retries?: number
+          read_timeout_ms?: number
+          retry_delay_ms?: number
+          scan_timeout_ms?: number
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -2821,6 +2884,57 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      patient_ble_pairings: {
+        Row: {
+          created_at: string
+          device_name: string | null
+          external_uuid: string
+          id: string
+          last_connected_at: string | null
+          last_error: string | null
+          last_error_at: string | null
+          last_status: string | null
+          model: string | null
+          paired_at: string
+          patient_id: string
+          service_type: string
+          unpaired_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          device_name?: string | null
+          external_uuid: string
+          id?: string
+          last_connected_at?: string | null
+          last_error?: string | null
+          last_error_at?: string | null
+          last_status?: string | null
+          model?: string | null
+          paired_at?: string
+          patient_id: string
+          service_type: string
+          unpaired_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          device_name?: string | null
+          external_uuid?: string
+          id?: string
+          last_connected_at?: string | null
+          last_error?: string | null
+          last_error_at?: string | null
+          last_status?: string | null
+          model?: string | null
+          paired_at?: string
+          patient_id?: string
+          service_type?: string
+          unpaired_at?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       patient_personnel: {
         Row: {
