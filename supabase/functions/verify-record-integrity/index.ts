@@ -51,11 +51,10 @@ Deno.serve(async (req) => {
     }
 
     const payloadHash = await sha256Hex(canonical(row));
-    const signedAtIso = new Date(row.signed_at).toISOString().replace("Z", "").padEnd(23, "0") + "Z";
-    // Postgres formatted YYYY-MM-DDTHH24:MI:SS.US"Z" — use raw signed_at as returned
-    const signedAtRaw = row.signed_at as string;
-    // Try both formats to be safe
-    const candidates = [signedAtRaw, signedAtIso];
+    // El trigger usa to_char(..., 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') sobre signed_at en UTC
+    const raw = row.signed_at as string;
+    const signedAtFmt = raw.replace("+00:00", "Z").replace(/(\.\d{1,5})Z$/, (_m, p1) => p1.padEnd(7, "0") + "Z");
+    const candidates = [signedAtFmt, raw];
     let recordHash: string | null = null;
     for (const s of candidates) {
       const h = await sha256Hex(row.prev_hash + payloadHash + row.key_id + s);
