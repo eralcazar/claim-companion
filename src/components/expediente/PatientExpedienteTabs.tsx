@@ -27,6 +27,7 @@ import { BleReportCSVButton } from "@/components/expediente/BleReportCSVButton";
 import { BleTestReportButton } from "@/components/expediente/BleTestReportButton";
 import { ClinicalRiskPanel } from "@/components/expediente/ClinicalRiskPanel";
 import { ReadingReviewHistory } from "@/components/expediente/ReadingReviewHistory";
+import { BlePairingHistoryPanel } from "@/components/ble/BlePairingHistoryPanel";
 
 const TABS_ROW_1 = [
   { value: "mapa", label: "Mapa corporal", icon: Map },
@@ -175,6 +176,7 @@ export function PatientExpedienteTabs({ patientId, patientName, defaultTab = "ma
               <BleReportCSVButton patientId={patientId} patientName={patientName} />
               <BleTestReportButton patientId={patientId} patientName={patientName} />
             </div>
+            <BlePairingHistoryPanel patientId={patientId} />
             <ReadingReviewHistory patientId={patientId} />
             <Medications />
           </TabsContent>

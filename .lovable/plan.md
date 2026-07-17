@@ -1,82 +1,47 @@
-# Plan: Mejoras UX y reporting para BLE
+## Objetivo
+Cuatro mejoras para el módulo BLE en el expediente del paciente.
 
-Cinco entregables enfocados en presentación/UX sobre el módulo BLE existente. No cambia la lógica clínica ni el esquema de reviews.
+## 1. Historial de dispositivos BLE emparejados por paciente
+- Nueva tabla `patient_ble_pairings` (patient_id, device_name, model, external_uuid, service_type, paired_at, last_connected_at, last_status, last_error, unpaired_at) con RLS por paciente + roles clínicos.
+- Al emparejar en `BlePairingWizard` y al ejecutar "Probar conexión" en `BleConnectPanel`, hacer upsert por (patient_id, external_uuid) actualizando `last_connected_at`, `last_status` (ok/error) y `last_error`.
+- Nuevo componente `BlePairingHistoryPanel.tsx` en la pestaña BLE del expediente: tabla con modelo/ID, fecha emparejamiento, última conexión, estado (badge ok/error) y detalle de error expandible.
 
-## 1. CSV de lecturas BLE de prueba por paciente
+## 2. Configuración de timeouts y reintentos
+- Nueva tabla `ble_test_settings` (user_id PK, scan_timeout_ms, read_timeout_ms, max_retries, retry_delay_ms) con defaults (8000/8000/2/1500).
+- Hook `useBleTestSettings` con carga/guardado.
+- `useBleConnectionTest` lee la config y aplica retries con backoff.
+- `BlePairingWizard` respeta los mismos valores.
+- Card "Ajustes BLE" en `NotificationPreferences` o nueva sección en `Profile` con sliders/inputs.
 
-Reutilizar el patrón de `BleReportCSVButton.tsx`, pero enfocado a lecturas de **prueba/diagnóstico** (no clínicas validadas).
+## 3. Registro de motivo y detalles del último error
+- Reutilizar `last_error` en `patient_ble_pairings` + nueva tabla `ble_connection_errors` (patient_id, external_uuid, service_type, error_code, error_message, browser_ua, created_at) para historial completo.
+- Insertar registro cada vez que `useBleConnectionTest` falla; guardar mensaje, causa (permisos/timeout/GATT), user agent.
+- Mostrar en `BlePairingHistoryPanel` el último error con botón "Copiar detalles" para compartir con soporte/aseguradora.
 
-- Nueva utilidad `src/lib/exportBleTestCSV.ts`:
-  - Recibe `patientId`, `dateRange`, `types[]`.
-  - Consulta `blood_pressure_readings`, `spo2_readings`, `heart_rate_readings`, `temperature_readings` filtrando por `source = 'ble'`.
-  - Une con `reading_reviews` para incluir `status` (validada / rechazada / mitigada / pendiente).
-  - Columnas: `fecha`, `tipo`, `dispositivo`, `valor`, `unidad`, `estado_validacion`, `revisor`, `observaciones`.
-- Nuevo componente `src/components/expediente/BleTestReportButton.tsx` con diálogo (rango de fechas + tipos), montado en `PatientExpedienteTabs.tsx` junto al botón CSV clínico existente.
-- Permisos: paciente ve solo lo suyo; admin/medico/enfermero/broker según roles ya definidos.
-
-## 2. Botón "Probar conexión"
-
-En `BleConnectPanel.tsx`, junto a cada tipo de servicio:
-
-- Botón **"Probar conexión"** que ejecuta:
-  1. `navigator.bluetooth.requestDevice` con filtros del servicio.
-  2. `gatt.connect()` + lectura de **una** notificación (timeout 8s).
-  3. Desconecta inmediatamente.
-- Muestra `Badge` de estado en línea: `Idle` → `Escaneando…` → `OK ✓ (RSSI/valor recibido)` o `Error: <mensaje>`.
-- Hook `useBleConnectionTest()` con estado (`idle | scanning | reading | success | error`) y último resultado.
-
-## 3. Guía de troubleshooting in-app
-
-Componente `src/components/ble/BleTroubleshootingGuide.tsx`:
-
-- Se renderiza dentro de `BleConnectPanel` cuando `useBleAvailability()` reporta error o cuando la prueba de conexión falla.
-- Contenido por escenario detectado:
-  - Navegador no compatible (iOS Safari, Firefox) → recomendar Chrome/Edge o app móvil.
-  - Bluetooth apagado → pasos SO por SO.
-  - Permisos denegados → cómo re-otorgarlos.
-  - Dispositivo no aparece → modo emparejamiento, distancia, batería, cerrar app fabricante.
-  - GATT error/timeout → reintentar, reset del dispositivo.
-- Acordeón (`Accordion` de shadcn) con pasos numerados y CTA "Reintentar prueba".
-
-## 4. Asistente paso a paso de emparejamiento
-
-Nuevo `src/components/ble/BlePairingWizard.tsx` (Dialog multi-step):
-
-1. **Selecciona tipo de dispositivo** (Tensiómetro / Oxímetro / Termómetro).
-2. **Prepara el dispositivo** (instrucciones + imagen genérica: batería, modo pairing).
-3. **Escanear y elegir** (usa Web Bluetooth device chooser).
-4. **Conexión de prueba** (lee una muestra, muestra valor recibido).
-5. **Confirmación** (nombre amigable + guardar en `user_ble_devices`; marca `verified` si el valor pasó rangos plausibles).
-
-Se lanza desde `BleConnectPanel` (botón "Emparejar dispositivo con asistente") y desde el expediente en la pestaña BLE.
-
-## 5. Catálogo de dispositivos compatibles
-
-Nueva página `src/pages/DispositivosCompatibles.tsx` (ruta `/dispositivos`), enlazada desde el sidebar (sección Ayuda) y desde el wizard como "Ver dispositivos recomendados".
-
-- Fuente: array estático en `src/lib/ble/compatibleDevices.ts` (no requiere tabla).
-- Cada item: nombre, fabricante, tipo de lectura, servicio GATT, tier de precio, notas de compatibilidad, link externo.
-- Ejemplos iniciales: Wellue O2Ring, Omron M7 Intelli IT, Viatom Checkme O2, Berry BM2000B, A&D UA-651BLE, termómetros con Health Thermometer Service.
-- UI: grid de cards con filtro por tipo (SpO₂, BP, Temp, HR) y badge "Probado en CareCentral".
+## 4. CSV con filtros de fecha y estado de validación
+- Refactor de `BleReportCSVButton` (o nuevo `BleReadingsCsvExportDialog`) para incluir:
+  - Rango de fechas (from/to).
+  - Multi-select de tipos de lectura (BP, SpO2, temp, glucosa, HR, actividad).
+  - Multi-select de estado: pendiente / validada / rechazada / mitigada.
+  - Columnas personalizables (ya existe).
+- Query respeta filtros y arma CSV por paciente activo.
+- Botón visible en pestaña BLE del expediente.
 
 ## Detalles técnicos
+- Migración crea las 3 tablas con GRANTs (`authenticated`, `service_role`), triggers `update_updated_at_column`, RLS con `has_patient_access` para pairings/errores.
+- `ble_test_settings` scoped a `auth.uid()`.
+- Actualizar `src/lib/ble/index.ts` para aceptar `{ scanTimeoutMs, readTimeoutMs }` en helpers.
+- No romper `BleConnectPanel` actual: los nuevos componentes se añaden como cards adicionales.
 
-- Sin migraciones de BD — todo se apoya en tablas y hooks existentes (`useBleSession`, `useSavedBleDevices`, `user_ble_devices`, `*_readings`, `reading_reviews`).
-- Reusar helpers de `src/lib/ble/index.ts` para parseo; añadir `testRead(serviceType)` que retorna la primera muestra parseada.
-- Sin cambios en edge functions ni en MCP.
-- Rutas nuevas registradas en `src/App.tsx`; entrada de sidebar en `src/components/AppSidebar.tsx`.
-
-## Archivos nuevos
-- `src/lib/exportBleTestCSV.ts`
-- `src/lib/ble/compatibleDevices.ts`
-- `src/components/expediente/BleTestReportButton.tsx`
-- `src/components/ble/BleTroubleshootingGuide.tsx`
-- `src/components/ble/BlePairingWizard.tsx`
-- `src/hooks/useBleConnectionTest.ts`
-- `src/pages/DispositivosCompatibles.tsx`
-
-## Archivos modificados
-- `src/components/ble/BleConnectPanel.tsx` — botón probar conexión + guía + CTA wizard.
-- `src/components/expediente/PatientExpedienteTabs.tsx` — botón CSV de prueba + entrada al wizard.
-- `src/lib/ble/index.ts` — helper `testRead()`.
-- `src/App.tsx`, `src/components/AppSidebar.tsx` — ruta y enlace a catálogo.
+## Archivos principales
+- Migración SQL (3 tablas + policies + grants).
+- `src/hooks/useBleTestSettings.ts` (nuevo).
+- `src/hooks/useBlePairings.ts` (nuevo).
+- `src/hooks/useBleConnectionTest.ts` (actualizar retries/timeouts + logging).
+- `src/components/ble/BlePairingHistoryPanel.tsx` (nuevo).
+- `src/components/ble/BleTestSettingsCard.tsx` (nuevo).
+- `src/components/ble/BleConnectPanel.tsx` (integrar historial + upsert on test).
+- `src/components/ble/BlePairingWizard.tsx` (upsert pairing + respetar settings).
+- `src/components/expediente/BleReadingsCsvExportDialog.tsx` (nuevo) o extender `BleReportCSVButton.tsx`.
+- `src/components/expediente/PatientExpedienteTabs.tsx` (montar historial + CSV).
+- `src/pages/Profile.tsx` (montar `BleTestSettingsCard`).
