@@ -13,6 +13,9 @@ export const formC: FormDefinition = {
     first_name: "profile.first_name",
     sex: "profile.sex",
     date_of_birth: "profile.date_of_birth",
+    clabe: "profile.clabe",
+    bank: "profile.banco",
+    account_owner: "profile.titular_cuenta",
   },
   sections: [
     {
