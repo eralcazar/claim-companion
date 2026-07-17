@@ -120,12 +120,19 @@ export default function DoctorPanel() {
           <Stethoscope className="h-6 w-6 text-primary" />
           Panel Médico
         </h1>
-        <Button asChild size="sm" variant="default">
-          <Link to="/consultorio">
-            <Stethoscope className="h-4 w-4 mr-1" />
-            Consultorio digital
-          </Link>
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button asChild size="sm" variant="outline">
+            <Link to="/medico/perfil-publico">
+              Mi perfil público
+            </Link>
+          </Button>
+          <Button asChild size="sm" variant="default">
+            <Link to="/consultorio">
+              <Stethoscope className="h-4 w-4 mr-1" />
+              Consultorio digital
+            </Link>
+          </Button>
+        </div>
       </div>
 
       <Tabs defaultValue="agenda">
