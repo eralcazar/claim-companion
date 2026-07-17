@@ -65,7 +65,7 @@ export function useRecordConsent() {
         accepted: input.accepted ?? true,
         signature_data_url: input.signature_data_url ?? null,
         user_agent: typeof navigator !== "undefined" ? navigator.userAgent : null,
-        metadata: input.metadata ?? {},
+        metadata: (input.metadata ?? {}) as any,
       };
       const { data, error } = await supabase
         .from("consents")
