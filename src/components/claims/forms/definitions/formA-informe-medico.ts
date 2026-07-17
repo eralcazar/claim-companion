@@ -12,6 +12,12 @@ export const formA: FormDefinition = {
     first_name: "profile.first_name",
     sex: "profile.sex",
     date_of_birth: "profile.date_of_birth",
+    med_paternal: "profile.medico_tratante_apellido_p",
+    med_maternal: "profile.medico_tratante_apellido_m",
+    med_first_name: "profile.medico_tratante_nombre",
+    med_specialty: "profile.medico_tratante_especialidad",
+    med_license: "profile.medico_tratante_cedula",
+    med_specialty_license: "profile.medico_tratante_cedula_esp",
   },
   sections: [
     {
