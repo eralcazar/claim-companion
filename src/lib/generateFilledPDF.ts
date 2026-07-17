@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { fillPDF } from "./pdfFiller";
+import { fillPDF, drawImages, type ImageOverlay } from "./pdfFiller";
 import { formCoordinates, type FormCoordinatesKey } from "./formCoordinates";
 
 const CHECK = "X";
@@ -23,6 +23,7 @@ export async function generateFilledPDF(
     page1Fields?: any[];
     page2Fields?: any[];
     page3Fields?: any[];
+    signatures?: Array<{ key: string; page: number; x: number; y: number; width: number; height: number }>;
   };
   const pdfBytes = await getPDFFromStorage(config.storagePath);
   const allFields = [
@@ -35,7 +36,21 @@ export async function generateFilledPDF(
     ...field,
     value: formData[field.key] ?? "",
   }));
-  return fillPDF(pdfBytes, fieldsWithValues);
+  const withText = await fillPDF(pdfBytes, fieldsWithValues);
+  // Estampar firmas (imágenes) si el formato las define y hay dataURL en overlay.
+  const sigs = config.signatures || [];
+  const images: ImageOverlay[] = sigs
+    .map((s) => ({
+      page: s.page,
+      x: s.x,
+      y: s.y,
+      width: s.width,
+      height: s.height,
+      dataUrl: formData[s.key] || "",
+    }))
+    .filter((i) => i.dataUrl && i.dataUrl.startsWith("data:image"));
+  if (images.length === 0) return withText;
+  return drawImages(withText, images);
 }
 
 export function downloadPDF(pdfBytes: Uint8Array, filename: string) {
