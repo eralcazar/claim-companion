@@ -181,7 +181,7 @@ export function LotsManager() {
                 <SelectTrigger><SelectValue placeholder="Elige producto" /></SelectTrigger>
                 <SelectContent>
                   {catalog.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{c.nombre} {c.presentación ? `· ${c.presentación}` : ""}</SelectItem>
+                    <SelectItem key={c.id} value={c.id}>{c.nombre} {c.presentacion ? `· ${c.presentacion}` : ""}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
