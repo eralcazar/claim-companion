@@ -35,7 +35,7 @@ export function HeartRatePdfExport({ fromISO, toISO }: Props) {
           .order("measured_at", { ascending: true }),
         supabase
           .from("appointments")
-          .select("title, appointment_date, doctor_name_manual, location, status")
+          .select("id, title, appointment_date, doctor_name_manual, location, status")
           .eq("user_id", patientId)
           .gte("appointment_date", fromISO)
           .lte("appointment_date", toISO)
