@@ -5,10 +5,16 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { RefreshCw, ShieldCheck } from "lucide-react";
+import { RefreshCw, ShieldCheck, Download } from "lucide-react";
+import { useState } from "react";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function IntegrityDashboard() {
   const qc = useQueryClient();
+  const [logFrom, setLogFrom] = useState(() => format(new Date(Date.now() - 7 * 86400_000), "yyyy-MM-dd"));
+  const [logTo, setLogTo] = useState(() => format(new Date(), "yyyy-MM-dd"));
+  const [logTable, setLogTable] = useState<string>("all");
 
   const { data: keys } = useQuery({
     queryKey: ["integrity-keys"],
@@ -29,6 +35,44 @@ export default function IntegrityDashboard() {
       return data ?? [];
     },
   });
+
+  const { data: verifLog } = useQuery({
+    queryKey: ["integrity-verif-log", logFrom, logTo, logTable],
+    queryFn: async () => {
+      let q = supabase
+        .from("integrity_verification_log")
+        .select("*")
+        .gte("created_at", `${logFrom}T00:00:00Z`)
+        .lte("created_at", `${logTo}T23:59:59Z`)
+        .order("created_at", { ascending: false })
+        .limit(500);
+      if (logTable !== "all") q = q.eq("table_name", logTable);
+      const { data } = await q;
+      return data ?? [];
+    },
+  });
+
+  const exportCsv = () => {
+    const rows = verifLog ?? [];
+    const cols = [
+      "created_at","verifier_type","verifier_id","table_name","record_id","patient_id",
+      "status","payload_ok","chain_ok","signature_ok","has_signature","key_id",
+      "algorithm_version","share_token","ip","user_agent",
+    ];
+    const esc = (v: any) => {
+      if (v == null) return "";
+      const s = String(v).replace(/"/g, '""');
+      return /[",\n]/.test(s) ? `"${s}"` : s;
+    };
+    const csv = [cols.join(","), ...rows.map((r: any) => cols.map((c) => esc(r[c])).join(","))].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `bitacora-verificaciones-${logFrom}_a_${logTo}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   const { data: pending } = useQuery({
     queryKey: ["integrity-pending"],
@@ -115,6 +159,69 @@ export default function IntegrityDashboard() {
             </div>
           ))}
           {!roots?.length && <div className="text-muted-foreground">Sin raíces publicadas todavía</div>}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <span>Bitácora de verificaciones</span>
+            <Button variant="outline" size="sm" onClick={exportCsv} disabled={!verifLog?.length}>
+              <Download className="h-4 w-4 mr-1" /> Exportar CSV
+            </Button>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <div>
+              <label className="text-xs text-muted-foreground">Desde</label>
+              <Input type="date" value={logFrom} onChange={(e) => setLogFrom(e.target.value)} />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground">Hasta</label>
+              <Input type="date" value={logTo} onChange={(e) => setLogTo(e.target.value)} />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground">Tabla</label>
+              <Select value={logTable} onValueChange={setLogTable}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas</SelectItem>
+                  <SelectItem value="medical_records">medical_records</SelectItem>
+                  <SelectItem value="recetas">recetas</SelectItem>
+                  <SelectItem value="estudios_solicitados">estudios_solicitados</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="text-xs text-muted-foreground">Total mostrado: {verifLog?.length ?? 0} (máx 500)</div>
+          <div className="max-h-96 overflow-auto text-xs">
+            <table className="w-full">
+              <thead className="text-muted-foreground text-left sticky top-0 bg-background">
+                <tr>
+                  <th className="py-1 pr-2">Fecha</th>
+                  <th className="py-1 pr-2">Quién</th>
+                  <th className="py-1 pr-2">Tabla</th>
+                  <th className="py-1 pr-2">Estado</th>
+                  <th className="py-1 pr-2">Firma</th>
+                  <th className="py-1 pr-2">Algoritmo</th>
+                </tr>
+              </thead>
+              <tbody>
+                {verifLog?.map((r: any) => (
+                  <tr key={r.id} className="border-b">
+                    <td className="py-1 pr-2 whitespace-nowrap">{format(new Date(r.created_at), "yyyy-MM-dd HH:mm")}</td>
+                    <td className="py-1 pr-2">{r.verifier_type}</td>
+                    <td className="py-1 pr-2">{r.table_name}</td>
+                    <td className="py-1 pr-2">{r.status}</td>
+                    <td className="py-1 pr-2">{r.signature_ok === null ? "—" : r.signature_ok ? "ok" : "falla"}</td>
+                    <td className="py-1 pr-2 font-mono">{r.algorithm_version}</td>
+                  </tr>
+                ))}
+                {!verifLog?.length && <tr><td colSpan={6} className="text-center text-muted-foreground py-4">Sin verificaciones en el rango</td></tr>}
+              </tbody>
+            </table>
+          </div>
         </CardContent>
       </Card>
     </div>
