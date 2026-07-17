@@ -454,6 +454,54 @@ export type Database = {
         }
         Relationships: []
       }
+      arco_requests: {
+        Row: {
+          admin_notes: string | null
+          contact_email: string
+          contact_phone: string | null
+          created_at: string
+          description: string
+          id: string
+          identity_document_path: string | null
+          request_type: string
+          responded_at: string | null
+          responded_by: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          contact_email: string
+          contact_phone?: string | null
+          created_at?: string
+          description: string
+          id?: string
+          identity_document_path?: string | null
+          request_type: string
+          responded_at?: string | null
+          responded_by?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          admin_notes?: string | null
+          contact_email?: string
+          contact_phone?: string | null
+          created_at?: string
+          description?: string
+          id?: string
+          identity_document_path?: string | null
+          request_type?: string
+          responded_at?: string | null
+          responded_by?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       aseguradoras: {
         Row: {
           activa: boolean
@@ -1189,6 +1237,57 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      consents: {
+        Row: {
+          accepted: boolean
+          consent_type: string
+          created_at: string
+          id: string
+          ip_address: string | null
+          metadata: Json | null
+          patient_id: string
+          revoked_at: string | null
+          signature_data_url: string | null
+          signature_pdf_path: string | null
+          updated_at: string
+          user_agent: string | null
+          user_id: string
+          version: string
+        }
+        Insert: {
+          accepted?: boolean
+          consent_type: string
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          patient_id: string
+          revoked_at?: string | null
+          signature_data_url?: string | null
+          signature_pdf_path?: string | null
+          updated_at?: string
+          user_agent?: string | null
+          user_id: string
+          version: string
+        }
+        Update: {
+          accepted?: boolean
+          consent_type?: string
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          patient_id?: string
+          revoked_at?: string | null
+          signature_data_url?: string | null
+          signature_pdf_path?: string | null
+          updated_at?: string
+          user_agent?: string | null
+          user_id?: string
+          version?: string
+        }
+        Relationships: []
       }
       especialidades: {
         Row: {
@@ -3492,6 +3591,8 @@ export type Database = {
           paternal_surname: string
           phone: string | null
           postal_code: string | null
+          privacy_accepted_at: string | null
+          privacy_version: string | null
           relationship_to_titular: string | null
           rfc: string | null
           sex: string | null
@@ -3499,6 +3600,8 @@ export type Database = {
           street: string | null
           street_number: string | null
           telefono_celular: string | null
+          terms_accepted_at: string | null
+          terms_version: string | null
           tipo_identificacion: string | null
           updated_at: string
           user_id: string
@@ -3535,6 +3638,8 @@ export type Database = {
           paternal_surname?: string
           phone?: string | null
           postal_code?: string | null
+          privacy_accepted_at?: string | null
+          privacy_version?: string | null
           relationship_to_titular?: string | null
           rfc?: string | null
           sex?: string | null
@@ -3542,6 +3647,8 @@ export type Database = {
           street?: string | null
           street_number?: string | null
           telefono_celular?: string | null
+          terms_accepted_at?: string | null
+          terms_version?: string | null
           tipo_identificacion?: string | null
           updated_at?: string
           user_id: string
@@ -3578,6 +3685,8 @@ export type Database = {
           paternal_surname?: string
           phone?: string | null
           postal_code?: string | null
+          privacy_accepted_at?: string | null
+          privacy_version?: string | null
           relationship_to_titular?: string | null
           rfc?: string | null
           sex?: string | null
@@ -3585,6 +3694,8 @@ export type Database = {
           street?: string | null
           street_number?: string | null
           telefono_celular?: string | null
+          terms_accepted_at?: string | null
+          terms_version?: string | null
           tipo_identificacion?: string | null
           updated_at?: string
           user_id?: string
