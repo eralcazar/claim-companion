@@ -100,8 +100,25 @@ export async function runClaimPipeline(input: PipelineInput): Promise<PipelineRe
         await markError(msg);
         throw new Error(msg);
       }
+      // Fallback: si el usuario seleccionó firma guardada y el wizard NO
+      // capturó una firma inline, usarla como firma del paciente/afectado/titular.
+      let dataWithFirma = data;
+      if (firmaId) {
+        const { data: f } = await supabase
+          .from("firmas_usuario" as any)
+          .select("imagen_base64")
+          .eq("id", firmaId)
+          .maybeSingle();
+        const dataUrl = (f as any)?.imagen_base64 || null;
+        if (dataUrl) {
+          dataWithFirma = { ...data };
+          for (const k of ["firma_afectado", "firma_titular", "firma_paciente"]) {
+            if (!dataWithFirma[k]) dataWithFirma[k] = dataUrl;
+          }
+        }
+      }
       const overlay = buildOverlayData({
-        data, profile, policy, insurer: insurerNorm, tramite: formatId,
+        data: dataWithFirma, profile, policy, insurer: insurerNorm, tramite: formatId,
       });
       pdfBytes = await generateFilledPDF(formKey, overlay);
     }

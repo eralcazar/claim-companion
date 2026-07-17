@@ -11,6 +11,10 @@ export const formE: FormDefinition = {
     maternal_surname: "profile.maternal_surname",
     first_name: "profile.first_name",
     policy_number: "policy.policy_number",
+    med_nombre: "profile.medico_tratante_nombre",
+    med_cedula: "profile.medico_tratante_cedula",
+    med_especialidad: "profile.medico_tratante_especialidad",
+    hospital: "profile.medico_tratante_hospital",
   },
   sections: [
     {

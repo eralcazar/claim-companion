@@ -13,6 +13,9 @@ export const formC: FormDefinition = {
     first_name: "profile.first_name",
     sex: "profile.sex",
     date_of_birth: "profile.date_of_birth",
+    clabe: "profile.clabe",
+    bank: "profile.banco",
+    account_owner: "profile.titular_cuenta",
   },
   sections: [
     {
@@ -139,6 +142,16 @@ export const formC: FormDefinition = {
           showWhen: (d) => d.ben_tipo && d.ben_tipo !== "asegurado" },
         { name: "ben_ocupacion", label: "Ocupación / Profesión / Giro del negocio", type: "text",
           showWhen: (d) => d.ben_tipo && d.ben_tipo !== "asegurado" },
+      ],
+    },
+    {
+      id: "cuenta_bancaria",
+      title: "Cuenta bancaria para depósito",
+      fields: [
+        { name: "bank", label: "Banco", type: "text", required: true },
+        { name: "clabe", label: "CLABE (18 dígitos)", type: "clabe", required: true },
+        { name: "account_owner", label: "Titular de la cuenta", type: "text", required: true,
+          helper: "Debe coincidir con el titular o beneficiario del pago." },
       ],
     },
     {

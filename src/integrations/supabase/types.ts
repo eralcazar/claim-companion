@@ -4347,10 +4347,12 @@ export type Database = {
         Row: {
           active_role: Database["public"]["Enums"]["app_role"] | null
           address: string | null
+          banco: string | null
           birth_country: string | null
           birth_state: string | null
           cargo_pep: string | null
           certificate_number: string | null
+          clabe: string | null
           country: string | null
           created_at: string
           curp: string | null
@@ -4367,6 +4369,14 @@ export type Database = {
           id: string
           interior_number: string | null
           maternal_surname: string
+          medico_tratante_apellido_m: string | null
+          medico_tratante_apellido_p: string | null
+          medico_tratante_cedula: string | null
+          medico_tratante_cedula_esp: string | null
+          medico_tratante_especialidad: string | null
+          medico_tratante_hospital: string | null
+          medico_tratante_nombre: string | null
+          medico_tratante_telefono: string | null
           municipality: string | null
           nationality: string | null
           neighborhood: string | null
@@ -4387,6 +4397,7 @@ export type Database = {
           terms_accepted_at: string | null
           terms_version: string | null
           tipo_identificacion: string | null
+          titular_cuenta: string | null
           updated_at: string
           user_id: string
           vigencia_identificacion: string | null
@@ -4394,10 +4405,12 @@ export type Database = {
         Insert: {
           active_role?: Database["public"]["Enums"]["app_role"] | null
           address?: string | null
+          banco?: string | null
           birth_country?: string | null
           birth_state?: string | null
           cargo_pep?: string | null
           certificate_number?: string | null
+          clabe?: string | null
           country?: string | null
           created_at?: string
           curp?: string | null
@@ -4414,6 +4427,14 @@ export type Database = {
           id?: string
           interior_number?: string | null
           maternal_surname?: string
+          medico_tratante_apellido_m?: string | null
+          medico_tratante_apellido_p?: string | null
+          medico_tratante_cedula?: string | null
+          medico_tratante_cedula_esp?: string | null
+          medico_tratante_especialidad?: string | null
+          medico_tratante_hospital?: string | null
+          medico_tratante_nombre?: string | null
+          medico_tratante_telefono?: string | null
           municipality?: string | null
           nationality?: string | null
           neighborhood?: string | null
@@ -4434,6 +4455,7 @@ export type Database = {
           terms_accepted_at?: string | null
           terms_version?: string | null
           tipo_identificacion?: string | null
+          titular_cuenta?: string | null
           updated_at?: string
           user_id: string
           vigencia_identificacion?: string | null
@@ -4441,10 +4463,12 @@ export type Database = {
         Update: {
           active_role?: Database["public"]["Enums"]["app_role"] | null
           address?: string | null
+          banco?: string | null
           birth_country?: string | null
           birth_state?: string | null
           cargo_pep?: string | null
           certificate_number?: string | null
+          clabe?: string | null
           country?: string | null
           created_at?: string
           curp?: string | null
@@ -4461,6 +4485,14 @@ export type Database = {
           id?: string
           interior_number?: string | null
           maternal_surname?: string
+          medico_tratante_apellido_m?: string | null
+          medico_tratante_apellido_p?: string | null
+          medico_tratante_cedula?: string | null
+          medico_tratante_cedula_esp?: string | null
+          medico_tratante_especialidad?: string | null
+          medico_tratante_hospital?: string | null
+          medico_tratante_nombre?: string | null
+          medico_tratante_telefono?: string | null
           municipality?: string | null
           nationality?: string | null
           neighborhood?: string | null
@@ -4481,6 +4513,7 @@ export type Database = {
           terms_accepted_at?: string | null
           terms_version?: string | null
           tipo_identificacion?: string | null
+          titular_cuenta?: string | null
           updated_at?: string
           user_id?: string
           vigencia_identificacion?: string | null

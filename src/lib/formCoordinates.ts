@@ -11,12 +11,24 @@ export interface CoordField {
   maxWidth?: number;
 }
 
+export interface SignatureCoord {
+  /** Key en overlay data cuyo valor sea un dataURL (image/png) */
+  key: string;
+  page: number;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 export interface FormCoordinates {
   storagePath: string;
   fields: CoordField[];
   page1Fields?: CoordField[];
   page2Fields?: CoordField[];
   page3Fields?: CoordField[];
+  /** Firmas (imágenes) a estampar en el PDF */
+  signatures?: SignatureCoord[];
 }
 
 export const formCoordinates = {
@@ -241,11 +253,22 @@ export const formCoordinates = {
       { key: "apellido_materno", page: 0, x: 245, y: 685, fontSize: 8 },
       { key: "nombres", page: 0, x: 400, y: 685, fontSize: 8 },
       { key: "diagnostico", page: 0, x: 90, y: 660, fontSize: 8, maxWidth: 440 },
+      { key: "nombre_contratante", page: 0, x: 90, y: 730, fontSize: 8, maxWidth: 320 },
+      { key: "edad", page: 0, x: 90, y: 630, fontSize: 8 },
+      { key: "check_sexo_m", page: 0, x: 147, y: 630, fontSize: 8 },
+      { key: "check_sexo_f", page: 0, x: 182, y: 630, fontSize: 8 },
+      { key: "fecha_nac_dia", page: 0, x: 260, y: 630, fontSize: 8 },
+      { key: "fecha_nac_mes", page: 0, x: 295, y: 630, fontSize: 8 },
+      { key: "fecha_nac_año", page: 0, x: 325, y: 630, fontSize: 8 },
       { key: "total_reclamado", page: 0, x: 430, y: 580, fontSize: 8 },
       { key: "clabe", page: 0, x: 90, y: 540, fontSize: 8 },
       { key: "banco", page: 0, x: 360, y: 540, fontSize: 8 },
       { key: "titular_cuenta", page: 0, x: 90, y: 520, fontSize: 8, maxWidth: 440 },
       { key: "lugar_fecha", page: 0, x: 90, y: 120, fontSize: 8 },
+    ],
+    signatures: [
+      { key: "firma_afectado", page: 0, x: 90,  y: 80, width: 160, height: 45 },
+      { key: "firma_titular",  page: 0, x: 340, y: 80, width: 160, height: 45 },
     ],
   },
 
@@ -410,6 +433,17 @@ export const formCoordinates = {
       { key: "nombres", page: 0, x: 400, y: 698, fontSize: 8 },
       { key: "diagnostico", page: 0, x: 90, y: 660, fontSize: 8, maxWidth: 440 },
       { key: "tratamiento", page: 0, x: 90, y: 600, fontSize: 8, maxWidth: 440 },
+      { key: "edad", page: 0, x: 300, y: 720, fontSize: 8 },
+      { key: "historia_clinica", page: 0, x: 90, y: 540, fontSize: 8, maxWidth: 440 },
+      { key: "med1_nombres", page: 0, x: 90, y: 300, fontSize: 8 },
+      { key: "med1_apellido_pat", page: 0, x: 260, y: 300, fontSize: 8 },
+      { key: "med1_apellido_mat", page: 0, x: 400, y: 300, fontSize: 8 },
+      { key: "med1_cedula_prof", page: 0, x: 90, y: 280, fontSize: 8 },
+      { key: "med1_especialidad", page: 0, x: 300, y: 280, fontSize: 8 },
+      { key: "lugar_fecha", page: 0, x: 90, y: 120, fontSize: 8 },
+    ],
+    signatures: [
+      { key: "firma_medico", page: 0, x: 340, y: 80, width: 180, height: 45 },
     ],
   },
   METLIFE_programacion_servicios: {
@@ -419,6 +453,19 @@ export const formCoordinates = {
       { key: "nombre_completo", page: 0, x: 90, y: 698, fontSize: 8, maxWidth: 440 },
       { key: "diagnostico", page: 0, x: 90, y: 660, fontSize: 8, maxWidth: 440 },
       { key: "fecha_programacion", page: 0, x: 90, y: 600, fontSize: 8 },
+      { key: "tipo_servicio", page: 0, x: 90, y: 570, fontSize: 8 },
+      { key: "especialidad", page: 0, x: 300, y: 570, fontSize: 8 },
+      { key: "hospital_preferido", page: 0, x: 90, y: 540, fontSize: 8, maxWidth: 300 },
+      { key: "med_solicitante", page: 0, x: 90, y: 510, fontSize: 8 },
+      { key: "med_cedula", page: 0, x: 300, y: 510, fontSize: 8 },
+      { key: "med_tel", page: 0, x: 440, y: 510, fontSize: 8 },
+      { key: "urgencia", page: 0, x: 90, y: 480, fontSize: 8 },
+      { key: "descripcion", page: 0, x: 90, y: 440, fontSize: 8, maxWidth: 440 },
+      { key: "lugar_fecha", page: 0, x: 90, y: 120, fontSize: 8 },
+    ],
+    signatures: [
+      { key: "firma_afectado", page: 0, x: 90,  y: 80, width: 160, height: 45 },
+      { key: "firma_medico",   page: 0, x: 340, y: 80, width: 160, height: 45 },
     ],
   },
   METLIFE_consentimiento_informado: {
@@ -427,6 +474,18 @@ export const formCoordinates = {
       { key: "nombre_completo", page: 0, x: 90, y: 700, fontSize: 8, maxWidth: 440 },
       { key: "numero_poliza", page: 0, x: 90, y: 670, fontSize: 8 },
       { key: "lugar_fecha", page: 0, x: 90, y: 120, fontSize: 8 },
+      { key: "procedimiento", page: 0, x: 90, y: 640, fontSize: 8, maxWidth: 440 },
+      { key: "hospital", page: 0, x: 90, y: 610, fontSize: 8, maxWidth: 440 },
+      { key: "fecha_programada", page: 0, x: 90, y: 580, fontSize: 8 },
+      { key: "med1_nombres", page: 0, x: 90, y: 550, fontSize: 8 },
+      { key: "med1_cedula_prof", page: 0, x: 300, y: 550, fontSize: 8 },
+      { key: "med1_especialidad", page: 0, x: 440, y: 550, fontSize: 8 },
+      { key: "riesgos", page: 0, x: 90, y: 500, fontSize: 8, maxWidth: 440 },
+      { key: "alternativas", page: 0, x: 90, y: 400, fontSize: 8, maxWidth: 440 },
+    ],
+    signatures: [
+      { key: "firma_paciente", page: 0, x: 90,  y: 80, width: 160, height: 45 },
+      { key: "firma_medico",   page: 0, x: 340, y: 80, width: 160, height: 45 },
     ],
   },
   PLAN_SEGURO_informe_medico: {
