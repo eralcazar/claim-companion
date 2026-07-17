@@ -3633,6 +3633,53 @@ export type Database = {
           },
         ]
       }
+      pharmacy_competitor_prices: {
+        Row: {
+          captured_at: string
+          catalog_id: string
+          competidor: string
+          created_at: string
+          disponibilidad: string | null
+          fuente: string
+          id: string
+          precio_centavos: number
+          updated_at: string
+          url: string | null
+        }
+        Insert: {
+          captured_at?: string
+          catalog_id: string
+          competidor: string
+          created_at?: string
+          disponibilidad?: string | null
+          fuente?: string
+          id?: string
+          precio_centavos: number
+          updated_at?: string
+          url?: string | null
+        }
+        Update: {
+          captured_at?: string
+          catalog_id?: string
+          competidor?: string
+          created_at?: string
+          disponibilidad?: string | null
+          fuente?: string
+          id?: string
+          precio_centavos?: number
+          updated_at?: string
+          url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pharmacy_competitor_prices_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacy_catalog"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pharmacy_inventory: {
         Row: {
           catalog_id: string
@@ -4087,6 +4134,97 @@ export type Database = {
           },
         ]
       }
+      pharmacy_price_change_requests: {
+        Row: {
+          catalog_id: string
+          created_at: string
+          estado: string
+          id: string
+          notas_revision: string | null
+          precio_actual_centavos: number
+          precio_propuesto_centavos: number
+          razon: string | null
+          requested_by: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          updated_at: string
+        }
+        Insert: {
+          catalog_id: string
+          created_at?: string
+          estado?: string
+          id?: string
+          notas_revision?: string | null
+          precio_actual_centavos: number
+          precio_propuesto_centavos: number
+          razon?: string | null
+          requested_by?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          updated_at?: string
+        }
+        Update: {
+          catalog_id?: string
+          created_at?: string
+          estado?: string
+          id?: string
+          notas_revision?: string | null
+          precio_actual_centavos?: number
+          precio_propuesto_centavos?: number
+          razon?: string | null
+          requested_by?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pharmacy_price_change_requests_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacy_catalog"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pharmacy_price_history: {
+        Row: {
+          catalog_id: string
+          changed_by: string | null
+          created_at: string
+          id: string
+          motivo: string | null
+          precio_anterior_centavos: number
+          precio_nuevo_centavos: number
+        }
+        Insert: {
+          catalog_id: string
+          changed_by?: string | null
+          created_at?: string
+          id?: string
+          motivo?: string | null
+          precio_anterior_centavos: number
+          precio_nuevo_centavos: number
+        }
+        Update: {
+          catalog_id?: string
+          changed_by?: string | null
+          created_at?: string
+          id?: string
+          motivo?: string | null
+          precio_anterior_centavos?: number
+          precio_nuevo_centavos?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pharmacy_price_history_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacy_catalog"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pharmacy_purchase_items: {
         Row: {
           caducidad: string | null
@@ -4361,6 +4499,119 @@ export type Database = {
             columns: ["plan_id"]
             isOneToOne: false
             referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pos_customers: {
+        Row: {
+          cp: string | null
+          created_at: string
+          created_by: string | null
+          email: string | null
+          id: string
+          nombre: string
+          regimen_fiscal: string | null
+          rfc: string | null
+          telefono: string | null
+          updated_at: string
+          uso_cfdi: string | null
+        }
+        Insert: {
+          cp?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          id?: string
+          nombre: string
+          regimen_fiscal?: string | null
+          rfc?: string | null
+          telefono?: string | null
+          updated_at?: string
+          uso_cfdi?: string | null
+        }
+        Update: {
+          cp?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          id?: string
+          nombre?: string
+          regimen_fiscal?: string | null
+          rfc?: string | null
+          telefono?: string | null
+          updated_at?: string
+          uso_cfdi?: string | null
+        }
+        Relationships: []
+      }
+      pos_sessions: {
+        Row: {
+          abierta_at: string
+          arqueo_diferencia_centavos: number | null
+          branch_id: string
+          cajero_id: string
+          cerrada_at: string | null
+          created_at: string
+          estado: string
+          fondo_final_centavos: number | null
+          fondo_inicial_centavos: number
+          id: string
+          notas_apertura: string | null
+          notas_cierre: string | null
+          num_ventas: number
+          total_ventas_centavos: number
+          updated_at: string
+          ventas_efectivo_centavos: number
+          ventas_tarjeta_centavos: number
+          ventas_transferencia_centavos: number
+        }
+        Insert: {
+          abierta_at?: string
+          arqueo_diferencia_centavos?: number | null
+          branch_id: string
+          cajero_id: string
+          cerrada_at?: string | null
+          created_at?: string
+          estado?: string
+          fondo_final_centavos?: number | null
+          fondo_inicial_centavos?: number
+          id?: string
+          notas_apertura?: string | null
+          notas_cierre?: string | null
+          num_ventas?: number
+          total_ventas_centavos?: number
+          updated_at?: string
+          ventas_efectivo_centavos?: number
+          ventas_tarjeta_centavos?: number
+          ventas_transferencia_centavos?: number
+        }
+        Update: {
+          abierta_at?: string
+          arqueo_diferencia_centavos?: number | null
+          branch_id?: string
+          cajero_id?: string
+          cerrada_at?: string | null
+          created_at?: string
+          estado?: string
+          fondo_final_centavos?: number | null
+          fondo_inicial_centavos?: number
+          id?: string
+          notas_apertura?: string | null
+          notas_cierre?: string | null
+          num_ventas?: number
+          total_ventas_centavos?: number
+          updated_at?: string
+          ventas_efectivo_centavos?: number
+          ventas_tarjeta_centavos?: number
+          ventas_transferencia_centavos?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pos_sessions_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacy_branches"
             referencedColumns: ["id"]
           },
         ]
@@ -5504,6 +5755,14 @@ export type Database = {
         Args: { _branch_id: string; _catalog_id: string }
         Returns: number
       }
+      pos_close_session: {
+        Args: { _fondo_final: number; _notas?: string; _session_id: string }
+        Returns: Json
+      }
+      pos_open_session: {
+        Args: { _branch_id: string; _fondo_inicial?: number; _notas?: string }
+        Returns: string
+      }
       set_active_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -5550,6 +5809,9 @@ export type Database = {
         | "farmacia"
         | "nutricionista"
         | "odontologo"
+        | "farmaceutico"
+        | "admin_farmacia"
+        | "flebotomista"
       appointment_document_category:
         | "receta"
         | "estudio"
@@ -5727,6 +5989,9 @@ export const Constants = {
         "farmacia",
         "nutricionista",
         "odontologo",
+        "farmaceutico",
+        "admin_farmacia",
+        "flebotomista",
       ],
       appointment_document_category: [
         "receta",
