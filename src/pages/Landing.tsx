@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Sheet,
   SheetContent,
@@ -25,10 +26,13 @@ import {
   HeartPulse,
   Stethoscope,
   FileCheck2,
+  Search,
+  MapPin,
 } from "lucide-react";
 import kariAvatar from "@/assets/kari-avatar.png";
 
 const navLinks = [
+  { id: "buscar", label: "Buscar especialistas", href: "/buscar" },
   { id: "pacientes", label: "Pacientes" },
   { id: "brokers", label: "Brokers" },
   { id: "como-funciona", label: "Cómo funciona" },
@@ -68,6 +72,17 @@ function scrollToId(id: string) {
 
 export default function Landing() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [q, setQ] = useState("");
+  const [ciudad, setCiudad] = useState("");
+  const navigate = useNavigate();
+
+  const submitSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    const p = new URLSearchParams();
+    if (q.trim()) p.set("q", q.trim());
+    if (ciudad.trim()) p.set("ciudad", ciudad.trim());
+    navigate(`/buscar${p.toString() ? `?${p.toString()}` : ""}`);
+  };
 
   const handleNavClick = (id: string) => {
     setMenuOpen(false);
@@ -90,13 +105,23 @@ export default function Landing() {
           {/* Desktop nav */}
           <nav className="hidden items-center gap-1 md:flex">
             {navLinks.map((l) => (
-              <button
-                key={l.id}
-                onClick={() => scrollToId(l.id)}
-                className="rounded-xl px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-              >
-                {l.label}
-              </button>
+              l.href ? (
+                <Link
+                  key={l.id}
+                  to={l.href}
+                  className="rounded-xl px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                >
+                  {l.label}
+                </Link>
+              ) : (
+                <button
+                  key={l.id}
+                  onClick={() => scrollToId(l.id)}
+                  className="rounded-xl px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                >
+                  {l.label}
+                </button>
+              )
             ))}
             <Button asChild className="ml-2 rounded-2xl">
               <Link to="/login">Iniciar sesión</Link>
@@ -127,13 +152,24 @@ export default function Landing() {
                 </SheetHeader>
                 <nav className="mt-6 flex flex-col gap-1">
                   {navLinks.map((l) => (
-                    <button
-                      key={l.id}
-                      onClick={() => handleNavClick(l.id)}
-                      className="rounded-2xl px-3 py-3 text-left text-base font-medium text-foreground transition-colors hover:bg-muted"
-                    >
-                      {l.label}
-                    </button>
+                    l.href ? (
+                      <Link
+                        key={l.id}
+                        to={l.href}
+                        onClick={() => setMenuOpen(false)}
+                        className="rounded-2xl px-3 py-3 text-base font-medium text-foreground transition-colors hover:bg-muted"
+                      >
+                        {l.label}
+                      </Link>
+                    ) : (
+                      <button
+                        key={l.id}
+                        onClick={() => handleNavClick(l.id)}
+                        className="rounded-2xl px-3 py-3 text-left text-base font-medium text-foreground transition-colors hover:bg-muted"
+                      >
+                        {l.label}
+                      </button>
+                    )
                   ))}
                 </nav>
                 <Button asChild className="mt-6 h-12 w-full rounded-2xl">
@@ -182,6 +218,38 @@ export default function Landing() {
                 Conocer más
               </Button>
             </div>
+
+            {/* Buscador de especialistas */}
+            <form
+              onSubmit={submitSearch}
+              className="mt-8 grid gap-2 rounded-3xl border border-border/60 bg-card/90 p-3 shadow-xl backdrop-blur sm:grid-cols-[1.4fr_1fr_auto]"
+            >
+              <div className="relative">
+                <Stethoscope className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="¿Qué especialista buscas?"
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                  className="h-12 rounded-2xl pl-9"
+                />
+              </div>
+              <div className="relative">
+                <MapPin className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Ciudad"
+                  value={ciudad}
+                  onChange={(e) => setCiudad(e.target.value)}
+                  className="h-12 rounded-2xl pl-9"
+                />
+              </div>
+              <Button type="submit" size="lg" className="h-12 rounded-2xl px-6">
+                <Search className="mr-2 h-4 w-4" /> Buscar
+              </Button>
+            </form>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Médicos verificados · Reseñas 100% reales · Precio transparente
+            </p>
+
             <div className="mt-6 flex items-center justify-center gap-2 text-xs text-muted-foreground lg:justify-start">
               <ShieldCheck className="h-4 w-4 text-primary" />
               Datos cifrados · Comienza gratis con 5 OCR al mes

@@ -391,6 +391,71 @@ export type Database = {
           },
         ]
       }
+      appointment_reviews: {
+        Row: {
+          appointment_id: string
+          claridad: number | null
+          comentario: string | null
+          created_at: string
+          id: string
+          patient_id: string
+          professional_id: string
+          publicada: boolean
+          puntualidad: number | null
+          rating: number
+          reportada: boolean
+          respuesta_at: string | null
+          respuesta_profesional: string | null
+          trato: number | null
+          updated_at: string
+          verificada: boolean
+        }
+        Insert: {
+          appointment_id: string
+          claridad?: number | null
+          comentario?: string | null
+          created_at?: string
+          id?: string
+          patient_id: string
+          professional_id: string
+          publicada?: boolean
+          puntualidad?: number | null
+          rating: number
+          reportada?: boolean
+          respuesta_at?: string | null
+          respuesta_profesional?: string | null
+          trato?: number | null
+          updated_at?: string
+          verificada?: boolean
+        }
+        Update: {
+          appointment_id?: string
+          claridad?: number | null
+          comentario?: string | null
+          created_at?: string
+          id?: string
+          patient_id?: string
+          professional_id?: string
+          publicada?: boolean
+          puntualidad?: number | null
+          rating?: number
+          reportada?: boolean
+          respuesta_at?: string | null
+          respuesta_profesional?: string | null
+          trato?: number | null
+          updated_at?: string
+          verificada?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointment_reviews_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professional_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       appointments: {
         Row: {
           address: string | null
@@ -4787,6 +4852,194 @@ export type Database = {
         }
         Relationships: []
       }
+      professional_locations: {
+        Row: {
+          activo: boolean
+          ciudad: string
+          cp: string | null
+          created_at: string
+          direccion: string
+          es_principal: boolean
+          estado: string | null
+          horarios: Json | null
+          id: string
+          lat: number | null
+          lng: number | null
+          nombre: string
+          pais: string
+          professional_id: string
+          telefono: string | null
+          updated_at: string
+        }
+        Insert: {
+          activo?: boolean
+          ciudad: string
+          cp?: string | null
+          created_at?: string
+          direccion: string
+          es_principal?: boolean
+          estado?: string | null
+          horarios?: Json | null
+          id?: string
+          lat?: number | null
+          lng?: number | null
+          nombre: string
+          pais?: string
+          professional_id: string
+          telefono?: string | null
+          updated_at?: string
+        }
+        Update: {
+          activo?: boolean
+          ciudad?: string
+          cp?: string | null
+          created_at?: string
+          direccion?: string
+          es_principal?: boolean
+          estado?: string | null
+          horarios?: Json | null
+          id?: string
+          lat?: number | null
+          lng?: number | null
+          nombre?: string
+          pais?: string
+          professional_id?: string
+          telefono?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "professional_locations_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professional_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      professional_profiles: {
+        Row: {
+          acepta_domicilio: boolean
+          acepta_presencial: boolean
+          acepta_video: boolean
+          anos_experiencia: number | null
+          bio: string | null
+          cedula_profesional: string | null
+          created_at: string
+          display_name: string
+          foto_url: string | null
+          id: string
+          idiomas: string[] | null
+          precio_consulta_centavos: number | null
+          precio_moneda: string
+          publicado: boolean
+          rating_avg: number
+          rating_count: number
+          seguros_aceptados: string[] | null
+          slug: string
+          telefono_publico: string | null
+          tipo: string
+          titulo: string | null
+          updated_at: string
+          user_id: string
+          verificado: boolean
+          vistas: number
+          website: string | null
+          whatsapp_publico: string | null
+        }
+        Insert: {
+          acepta_domicilio?: boolean
+          acepta_presencial?: boolean
+          acepta_video?: boolean
+          anos_experiencia?: number | null
+          bio?: string | null
+          cedula_profesional?: string | null
+          created_at?: string
+          display_name: string
+          foto_url?: string | null
+          id?: string
+          idiomas?: string[] | null
+          precio_consulta_centavos?: number | null
+          precio_moneda?: string
+          publicado?: boolean
+          rating_avg?: number
+          rating_count?: number
+          seguros_aceptados?: string[] | null
+          slug: string
+          telefono_publico?: string | null
+          tipo?: string
+          titulo?: string | null
+          updated_at?: string
+          user_id: string
+          verificado?: boolean
+          vistas?: number
+          website?: string | null
+          whatsapp_publico?: string | null
+        }
+        Update: {
+          acepta_domicilio?: boolean
+          acepta_presencial?: boolean
+          acepta_video?: boolean
+          anos_experiencia?: number | null
+          bio?: string | null
+          cedula_profesional?: string | null
+          created_at?: string
+          display_name?: string
+          foto_url?: string | null
+          id?: string
+          idiomas?: string[] | null
+          precio_consulta_centavos?: number | null
+          precio_moneda?: string
+          publicado?: boolean
+          rating_avg?: number
+          rating_count?: number
+          seguros_aceptados?: string[] | null
+          slug?: string
+          telefono_publico?: string | null
+          tipo?: string
+          titulo?: string | null
+          updated_at?: string
+          user_id?: string
+          verificado?: boolean
+          vistas?: number
+          website?: string | null
+          whatsapp_publico?: string | null
+        }
+        Relationships: []
+      }
+      professional_specialties: {
+        Row: {
+          es_principal: boolean
+          professional_id: string
+          specialty_id: string
+        }
+        Insert: {
+          es_principal?: boolean
+          professional_id: string
+          specialty_id: string
+        }
+        Update: {
+          es_principal?: boolean
+          professional_id?: string
+          specialty_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "professional_specialties_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professional_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "professional_specialties_specialty_id_fkey"
+            columns: ["specialty_id"]
+            isOneToOne: false
+            referencedRelation: "specialties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           active_role: Database["public"]["Enums"]["app_role"] | null
@@ -5262,6 +5515,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      specialties: {
+        Row: {
+          activo: boolean
+          created_at: string
+          descripcion: string | null
+          icono: string | null
+          id: string
+          nombre: string
+          nombre_plural: string | null
+          sinonimos: string[] | null
+          slug: string
+        }
+        Insert: {
+          activo?: boolean
+          created_at?: string
+          descripcion?: string | null
+          icono?: string | null
+          id?: string
+          nombre: string
+          nombre_plural?: string | null
+          sinonimos?: string[] | null
+          slug: string
+        }
+        Update: {
+          activo?: boolean
+          created_at?: string
+          descripcion?: string | null
+          icono?: string | null
+          id?: string
+          nombre?: string
+          nombre_plural?: string | null
+          sinonimos?: string[] | null
+          slug?: string
+        }
+        Relationships: []
       }
       spo2_readings: {
         Row: {
@@ -5770,6 +6059,8 @@ export type Database = {
         }
         Returns: undefined
       }
+      show_limit: { Args: never; Returns: number }
+      show_trgm: { Args: { "": string }; Returns: string[] }
       sugerir_lotes_fefo: {
         Args: { _branch_id: string; _cantidad: number; _catalog_id: string }
         Returns: {
