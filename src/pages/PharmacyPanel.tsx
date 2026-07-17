@@ -6,6 +6,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CatalogManager } from "@/components/pharmacy/CatalogManager";
+import { LotsManager } from "@/components/pharmacy/LotsManager";
+import { CalendarClock } from "lucide-react";
 import { usePharmacyOrders, useMarkFulfilled } from "@/hooks/usePharmacy";
 import { useLowStock } from "@/hooks/useInventory";
 import { PaymentTestModeBanner } from "@/components/PaymentTestModeBanner";
@@ -115,8 +117,9 @@ export default function PharmacyPanel() {
       <LowStockWidget />
 
       <Tabs defaultValue="ordenes">
-        <TabsList>
+        <TabsList className="flex-wrap h-auto">
           <TabsTrigger value="ordenes"><Package className="h-4 w-4 mr-1" />Órdenes</TabsTrigger>
+          <TabsTrigger value="lotes"><CalendarClock className="h-4 w-4 mr-1" />Lotes</TabsTrigger>
           <TabsTrigger value="catalogo"><ListChecks className="h-4 w-4 mr-1" />Catálogo</TabsTrigger>
           <TabsTrigger value="pacientes">Pacientes</TabsTrigger>
         </TabsList>
@@ -136,6 +139,10 @@ export default function PharmacyPanel() {
 
         <TabsContent value="catalogo">
           <CatalogManager />
+        </TabsContent>
+
+        <TabsContent value="lotes">
+          <LotsManager />
         </TabsContent>
 
         <TabsContent value="pacientes">
