@@ -36,6 +36,10 @@ const mainItems: Item[] = [
   { title: "Perfil", url: "/perfil", icon: User, feature: "perfil" },
 ];
 
+const helpItems: Item[] = [
+  { title: "Dispositivos BLE compatibles", url: "/dispositivos", icon: Bluetooth, feature: "perfil" },
+];
+
 const brokerItems: Item[] = [
   { title: "Panel Broker", url: "/broker", icon: Users, feature: "broker_panel" },
 ];
@@ -98,6 +102,7 @@ export function AppSidebar() {
   const visibleLab = labItems.filter((i) => can(i.feature));
   const visiblePharmacy = pharmacyItems.filter((i) => can(i.feature));
   const visibleAdmin = adminItems.filter((i) => can(i.feature));
+  const visibleHelp = helpItems.filter((i) => can(i.feature));
 
   // Acceso del paciente a su propio consultorio digital (solo lectura del mapa corporal).
   const patientConsultorioId = actingAsPatientId ?? user?.id;
@@ -270,6 +275,26 @@ export function AppSidebar() {
             <SidebarGroupContent>
               <SidebarMenu>
                 {(roles.includes("admin") ? adminItems : visibleAdmin).map((item) => (
+                  <SidebarMenuItem key={item.url}>
+                    <SidebarMenuButton asChild isActive={isActive(item.url)}>
+                      <RouterNavLink to={item.url} className="flex items-center gap-2">
+                        <item.icon className="h-4 w-4" />
+                        {!collapsed && <span>{item.title}</span>}
+                      </RouterNavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        {visibleHelp.length > 0 && (
+          <SidebarGroup>
+            <SidebarGroupLabel>{!collapsed && "Ayuda"}</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {visibleHelp.map((item) => (
                   <SidebarMenuItem key={item.url}>
                     <SidebarMenuButton asChild isActive={isActive(item.url)}>
                       <RouterNavLink to={item.url} className="flex items-center gap-2">

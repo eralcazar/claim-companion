@@ -24,6 +24,7 @@ import { BpPendingReviewPanel } from "@/components/expediente/BpPendingReviewPan
 import { PendingReviewsPanel } from "@/components/expediente/PendingReviewsPanel";
 import { BleReportButton } from "@/components/expediente/BleReportButton";
 import { BleReportCSVButton } from "@/components/expediente/BleReportCSVButton";
+import { BleTestReportButton } from "@/components/expediente/BleTestReportButton";
 import { ClinicalRiskPanel } from "@/components/expediente/ClinicalRiskPanel";
 import { ReadingReviewHistory } from "@/components/expediente/ReadingReviewHistory";
 
@@ -172,6 +173,7 @@ export function PatientExpedienteTabs({ patientId, patientName, defaultTab = "ma
             <div className="flex flex-wrap gap-2">
               <BleReportButton patientId={patientId} patientName={patientName} />
               <BleReportCSVButton patientId={patientId} patientName={patientName} />
+              <BleTestReportButton patientId={patientId} patientName={patientName} />
             </div>
             <ReadingReviewHistory patientId={patientId} />
             <Medications />
