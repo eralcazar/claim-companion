@@ -26,6 +26,7 @@ import {
 } from "@/lib/ble/compatibleDevices";
 import { BleCompatibilityCheck } from "@/components/ble/BleCompatibilityCheck";
 import { DeviceDetailSheet } from "@/components/ble/DeviceDetailSheet";
+import { MyVerificationsSection } from "@/components/ble/MyVerificationsSection";
 
 const TONE_CLASS: Record<string, string> = {
   success: "bg-emerald-500/15 text-emerald-700 border-emerald-500/30",
@@ -215,6 +216,8 @@ export default function DispositivosCompatibles() {
         open={!!selected}
         onOpenChange={(o) => !o && setSelected(null)}
       />
+
+      <MyVerificationsSection />
     </div>
   );
 }
