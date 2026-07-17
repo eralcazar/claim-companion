@@ -1,18 +1,20 @@
 import { Link } from "react-router-dom";
 import { useAssignedPatients } from "@/hooks/usePatientPersonnel";
 import { Card, CardContent } from "@/components/ui/card";
-import { Store, ChevronRight, Package, CheckCircle2, ListChecks } from "lucide-react";
+import { Store, ChevronRight, Package, ListChecks, ClipboardList } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CatalogManager } from "@/components/pharmacy/CatalogManager";
 import { LotsManager } from "@/components/pharmacy/LotsManager";
 import { CalendarClock } from "lucide-react";
-import { usePharmacyOrders, useMarkFulfilled } from "@/hooks/usePharmacy";
+import { usePharmacyOrders } from "@/hooks/usePharmacy";
 import { useLowStock } from "@/hooks/useInventory";
 import { PaymentTestModeBanner } from "@/components/PaymentTestModeBanner";
 import { useAuth } from "@/contexts/AuthContext";
 import { AlertTriangle, Boxes } from "lucide-react";
+import { useState } from "react";
+import { PickingDialog } from "@/components/pharmacy/PickingDialog";
 
 function LowStockWidget() {
   const lowStock = useLowStock();
@@ -44,7 +46,7 @@ function LowStockWidget() {
 
 function OrderList({ status }: { status: "pagada" | "surtida" | "pendiente_pago" }) {
   const { data: orders = [], isLoading } = usePharmacyOrders({ status });
-  const fulfill = useMarkFulfilled();
+  const [pickingOrder, setPickingOrder] = useState<any | null>(null);
 
   if (isLoading) return <div className="flex justify-center p-8"><div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" /></div>;
   if (orders.length === 0) return <Card><CardContent className="p-8 text-center text-muted-foreground">Sin órdenes.</CardContent></Card>;
@@ -69,13 +71,18 @@ function OrderList({ status }: { status: "pagada" | "surtida" | "pendiente_pago"
               ))}
             </ul>
             {status === "pagada" && (
-              <Button size="sm" onClick={() => fulfill.mutate(o.id)}>
-                <CheckCircle2 className="h-4 w-4 mr-1" />Marcar como surtida
+              <Button size="sm" onClick={() => setPickingOrder(o)}>
+                <ClipboardList className="h-4 w-4 mr-1" />Iniciar surtido
               </Button>
             )}
           </CardContent>
         </Card>
       ))}
+      <PickingDialog
+        open={!!pickingOrder}
+        onOpenChange={(v) => !v && setPickingOrder(null)}
+        order={pickingOrder}
+      />
     </div>
   );
 }
