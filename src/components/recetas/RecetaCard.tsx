@@ -9,6 +9,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useActiveSchedules, useStartTakingMedication, useStopTakingMedication } from "@/hooks/useMedicationSchedule";
+import { IntegrityBadge } from "@/components/integrity/IntegrityBadge";
 
 const FREQ_LABEL: Record<string, string> = {
   cada_4h: "c/4h", cada_6h: "c/6h", cada_8h: "c/8h", cada_12h: "c/12h",
@@ -105,6 +106,7 @@ export function RecetaCard({ receta, onEdit }: Props) {
           </div>
           <Badge variant={ESTADO_VARIANT[receta.estado] ?? "secondary"}>{receta.estado}</Badge>
         </div>
+        <IntegrityBadge table="recetas" id={receta.id} compact />
         <ul className="text-sm space-y-1">
           {visible.map((it, i) => {
             const dosis = [it.dosis, it.unidad_dosis].filter(Boolean).join(" ");
