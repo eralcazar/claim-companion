@@ -11,12 +11,24 @@ export interface CoordField {
   maxWidth?: number;
 }
 
+export interface SignatureCoord {
+  /** Key en overlay data cuyo valor sea un dataURL (image/png) */
+  key: string;
+  page: number;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 export interface FormCoordinates {
   storagePath: string;
   fields: CoordField[];
   page1Fields?: CoordField[];
   page2Fields?: CoordField[];
   page3Fields?: CoordField[];
+  /** Firmas (imágenes) a estampar en el PDF */
+  signatures?: SignatureCoord[];
 }
 
 export const formCoordinates = {
