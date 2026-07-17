@@ -5091,14 +5091,19 @@ export type Database = {
           cedula_profesional: string | null
           created_at: string
           display_name: string
+          enviado_revision_at: string | null
+          estado_publicacion: string
           foto_url: string | null
           id: string
           idiomas: string[] | null
+          motivo_rechazo: string | null
           precio_consulta_centavos: number | null
           precio_moneda: string
           publicado: boolean
           rating_avg: number
           rating_count: number
+          revisado_at: string | null
+          revisado_por: string | null
           seguros_aceptados: string[] | null
           slug: string
           telefono_publico: string | null
@@ -5120,14 +5125,19 @@ export type Database = {
           cedula_profesional?: string | null
           created_at?: string
           display_name: string
+          enviado_revision_at?: string | null
+          estado_publicacion?: string
           foto_url?: string | null
           id?: string
           idiomas?: string[] | null
+          motivo_rechazo?: string | null
           precio_consulta_centavos?: number | null
           precio_moneda?: string
           publicado?: boolean
           rating_avg?: number
           rating_count?: number
+          revisado_at?: string | null
+          revisado_por?: string | null
           seguros_aceptados?: string[] | null
           slug: string
           telefono_publico?: string | null
@@ -5149,14 +5159,19 @@ export type Database = {
           cedula_profesional?: string | null
           created_at?: string
           display_name?: string
+          enviado_revision_at?: string | null
+          estado_publicacion?: string
           foto_url?: string | null
           id?: string
           idiomas?: string[] | null
+          motivo_rechazo?: string | null
           precio_consulta_centavos?: number | null
           precio_moneda?: string
           publicado?: boolean
           rating_avg?: number
           rating_count?: number
+          revisado_at?: string | null
+          revisado_por?: string | null
           seguros_aceptados?: string[] | null
           slug?: string
           telefono_publico?: string | null
