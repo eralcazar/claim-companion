@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { maybeNotifyOutOfRange } from "./useHrAlerts";
 
 export type HrContext = "reposo" | "ejercicio" | "post_cita" | "otro";
 
@@ -65,10 +66,17 @@ export function useCreateHeartRate() {
         device_name: row.device_name ?? null,
       });
       if (error) throw error;
+      await maybeNotifyOutOfRange({
+        userId: user.id,
+        bpm: row.bpm,
+        measured_at: row.measured_at,
+        source: row.source ?? "manual",
+      });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["heart_rate_readings"] });
       qc.invalidateQueries({ queryKey: ["unified-readings"] });
+      qc.invalidateQueries({ queryKey: ["notifications"] });
     },
   });
 }
