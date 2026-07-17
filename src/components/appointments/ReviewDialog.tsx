@@ -9,7 +9,7 @@ import { useSubmitReview } from "@/hooks/useAvailability";
 function Stars({
   value,
   onChange,
-  size = 6,
+  size = 24,
 }: {
   value: number;
   onChange: (v: number) => void;
@@ -20,9 +20,8 @@ function Stars({
       {[1, 2, 3, 4, 5].map((i) => (
         <button key={i} type="button" onClick={() => onChange(i)} className="p-0.5">
           <Star
-            className={`h-${size} w-${size} ${
-              i <= value ? "fill-primary text-primary" : "text-muted-foreground/40"
-            }`}
+            style={{ width: size, height: size }}
+            className={i <= value ? "fill-primary text-primary" : "text-muted-foreground/40"}
           />
         </button>
       ))}
@@ -64,15 +63,15 @@ export function ReviewDialog({
           <div className="grid grid-cols-3 gap-3">
             <div>
               <Label className="text-xs">Puntualidad</Label>
-              <Stars value={puntualidad} onChange={setPuntualidad} size={4} />
+              <Stars value={puntualidad} onChange={setPuntualidad} size={18} />
             </div>
             <div>
               <Label className="text-xs">Trato</Label>
-              <Stars value={trato} onChange={setTrato} size={4} />
+              <Stars value={trato} onChange={setTrato} size={18} />
             </div>
             <div>
               <Label className="text-xs">Claridad</Label>
-              <Stars value={claridad} onChange={setClaridad} size={4} />
+              <Stars value={claridad} onChange={setClaridad} size={18} />
             </div>
           </div>
           <div>
