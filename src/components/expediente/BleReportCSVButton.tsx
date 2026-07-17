@@ -142,10 +142,10 @@ export function BleReportCSVButton({ patientId, patientName }: { patientId: stri
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" className="gap-2"><Download className="h-4 w-4" />Exportar CSV validado</Button>
+        <Button variant="outline" className="gap-2"><Download className="h-4 w-4" />Exportar CSV de lecturas</Button>
       </DialogTrigger>
       <DialogContent className="max-w-2xl">
-        <DialogHeader><DialogTitle>Exportar lecturas validadas</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>Exportar lecturas BLE</DialogTitle></DialogHeader>
 
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
