@@ -145,6 +145,16 @@ export const formC: FormDefinition = {
       ],
     },
     {
+      id: "cuenta_bancaria",
+      title: "Cuenta bancaria para depósito",
+      fields: [
+        { name: "bank", label: "Banco", type: "text", required: true },
+        { name: "clabe", label: "CLABE (18 dígitos)", type: "clabe", required: true },
+        { name: "account_owner", label: "Titular de la cuenta", type: "text", required: true,
+          helper: "Debe coincidir con el titular o beneficiario del pago." },
+      ],
+    },
+    {
       id: "autorizaciones",
       title: "Autorizaciones",
       fields: [
