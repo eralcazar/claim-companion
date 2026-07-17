@@ -14,6 +14,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useQueryClient } from "@tanstack/react-query";
 import { useBleConnectionTest } from "@/hooks/useBleConnectionTest";
 import type { BleService } from "@/lib/ble";
+import { useUpsertBlePairing } from "@/hooks/useBlePairings";
 
 type Step = 1 | 2 | 3 | 4;
 
@@ -21,14 +22,16 @@ type Step = 1 | 2 | 3 | 4;
  * Asistente paso a paso para emparejar un dispositivo BLE:
  * 1) tipo → 2) preparar → 3) escanear + prueba → 4) confirmar y guardar.
  */
-export function BlePairingWizard({ trigger }: { trigger?: React.ReactNode }) {
+export function BlePairingWizard({ trigger, patientId }: { trigger?: React.ReactNode; patientId?: string }) {
   const { user } = useAuth();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<Step>(1);
   const [service, setService] = useState<BleService | null>(null);
   const [nickname, setNickname] = useState("");
-  const { status, result, test, reset } = useBleConnectionTest();
+  const effectivePatient = patientId ?? user?.id ?? null;
+  const { status, result, test, reset } = useBleConnectionTest({ patientId: effectivePatient });
+  const upsertPairing = useUpsertBlePairing();
 
   const close = () => {
     setOpen(false);
@@ -63,6 +66,17 @@ export function BlePairingWizard({ trigger }: { trigger?: React.ReactNode }) {
         { onConflict: "user_id,device_id" },
       );
       if (error) throw error;
+      if (effectivePatient) {
+        try {
+          await upsertPairing.mutateAsync({
+            patient_id: effectivePatient,
+            external_uuid: result.deviceId,
+            device_name: nickname || result.deviceName || null,
+            service_type: service,
+            last_status: "ok",
+          });
+        } catch { /* noop */ }
+      }
       qc.invalidateQueries({ queryKey: ["user_ble_devices"] });
       toast.success("Dispositivo emparejado y guardado");
       close();
