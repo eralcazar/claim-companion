@@ -30,25 +30,27 @@ export default function VerifyShare() {
   useEffect(() => {
     (async () => {
       if (!token) return;
-      const { data, error } = await supabase
-        .from("integrity_share_tokens")
-        .select("scope, patient_id, table_name, record_id, expires_at, revoked_at, uses_count, max_uses")
-        .eq("token", token)
-        .maybeSingle();
-      if (error || !data) setError("Token no encontrado. El emisor puede haberlo revocado.");
-      else setInfo(data as TokenInfo);
+      const { data, error } = await supabase.functions.invoke("verify-record-integrity", {
+        body: { share_token: token, info_only: true },
+      });
+      if (error || !data?.info) setError("Token no encontrado. El emisor puede haberlo revocado.");
+      else setInfo(data.info as TokenInfo);
       setLoading(false);
     })();
   }, [token]);
 
   const verify = async () => {
     if (!info || !token) return;
+    if (info.scope === "patient_daily") {
+      setError("Este enlace es de expediente diario. Descarga el PDF para ver la cadena verificable.");
+      return;
+    }
     setVerifying(true);
     try {
       const { data, error } = await supabase.functions.invoke("verify-record-integrity", {
         body: {
-          table: info.table_name ?? "medical_records",
-          id: info.record_id ?? info.patient_id,
+          table: info.table_name,
+          id: info.record_id,
           share_token: token,
         },
       });
@@ -117,10 +119,12 @@ export default function VerifyShare() {
                   Usos: {info.uses_count}{info.max_uses ? ` / ${info.max_uses}` : ""}
                 </div>
                 <div className="flex gap-2 pt-2">
-                  <Button onClick={verify} disabled={!usable || verifying}>
-                    {verifying ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <ShieldCheck className="h-4 w-4 mr-1" />}
-                    Verificar firma
-                  </Button>
+                  {info.scope === "record" && (
+                    <Button onClick={verify} disabled={!usable || verifying}>
+                      {verifying ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <ShieldCheck className="h-4 w-4 mr-1" />}
+                      Verificar firma
+                    </Button>
+                  )}
                   <Button variant="outline" onClick={downloadPdf} disabled={!usable || pdfLoading}>
                     {pdfLoading ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Download className="h-4 w-4 mr-1" />}
                     Descargar comprobante PDF
