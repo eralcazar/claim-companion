@@ -4605,6 +4605,10 @@ export type Database = {
         Args: { _feature: string; _user_id: string }
         Returns: boolean
       }
+      verify_record_hash: {
+        Args: { _id: string; _table: string }
+        Returns: Json
+      }
     }
     Enums: {
       app_role:
