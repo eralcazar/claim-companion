@@ -1,68 +1,63 @@
-# Adición al Macro Plan: Marketplace de Especialistas "Mejor que Doctoralia"
+# Mega-turno 2 de Farmacia + Marketplace
 
-Convertir CareCentral en un marketplace público de salud + expediente clínico integrado. Doctoralia solo agenda; nosotros agendamos, monitoreamos, facturamos, dispensamos y damos seguimiento clínico real.
+Ejecuto en **5 fases** para mantener control de calidad. Cada fase deja algo funcional.
 
-## Qué copiamos de Doctoralia
-- Landing pública con buscador central (especialidad + ciudad/CP).
-- Perfiles públicos SEO-friendly de médicos, enfermeros, laboratorios, farmacias.
-- Reseñas verificadas con estrellas.
-- Reserva online sin registro previo (guest booking).
-- Filtros: seguro aceptado, precio, idioma, telemedicina, disponibilidad hoy.
-- Mapa con resultados cercanos.
+## Fase 0 — Prerequisitos (necesito de ti)
+- **Twilio** (WhatsApp): API Key SID, API Key Secret y número WhatsApp Business (`whatsapp:+521...`). Si aún no tienes número aprobado, arranco en modo Sandbox de Twilio.
+- **Skydropx**: API key (v1 o v2). Sandbox está OK para pruebas.
+- **Dominio de email**: verifico el estado y, si falta, disparo el asistente de setup.
 
-## Qué hacemos MEJOR (diferenciadores)
-1. **Reseñas 100% verificadas** — solo pacientes con `appointment.status = completed` pueden reseñar (Doctoralia acepta cualquiera).
-2. **Expediente clínico continuo** — tras la consulta el paciente se lleva su expediente firmado con hash chain (NOM-024). Doctoralia no guarda nada.
-3. **Precio transparente + comparador** — mostrar rango real basado en `pharmacy_prices` y tarifas del profesional; incluir estimación con seguro.
-4. **Kari AI triage** — antes de agendar, Kari sugiere especialidad correcta según síntomas y urgencia.
-5. **Video consulta nativa** — con receta electrónica firmada, estudios solicitados y cobro en un solo flujo.
-6. **Home visit / dispatch** — botón "visita a domicilio" (enfermería, toma de muestras, médico general).
-7. **Integración total** — el mismo perfil vende consultas, recibe pagos con CFDI, factura, entrega recetas a farmacia y sincroniza wearables BLE del paciente.
-8. **Insurance auto-claim** — al terminar la consulta se pre-llena el formato MetLife/GNP automáticamente.
+## Fase 1 — Clientes de Farmacia + CxC
+- Tabla `pharmacy_customers` (RFC, email, tel, límite crédito, días crédito) — ya existe base, la extiendo.
+- Tablas `pharmacy_customer_accounts` (saldo, aging 0-30/31-60/61-90/>90), `pharmacy_customer_payments` (abonos).
+- Trigger que actualiza saldo al facturar POS a crédito y al registrar abono.
+- Vista `/farmacia/clientes`:
+  - Lista con saldo actual + aging semáforo.
+  - Detalle: historial de compras, pagos, botón "Registrar abono", "Estado de cuenta PDF".
 
-## Nuevo Mega-turno: "Marketplace Público"
+## Fase 2 — Recordatorios automáticos (WhatsApp + Email)
+- Tabla `reminder_schedules` (pedido/cliente, tipo, fecha_envío, canal, estado).
+- Tabla `reminder_templates` editables por admin (variables: `{nombre}`, `{folio}`, `{saldo}`, `{fecha}`).
+- Edge function `send-reminders` (cron cada 15 min):
+  - Lee CxC vencidas y próximas a vencer (T-3, T-0, T+3, T+7, T+15).
+  - Envía WhatsApp via Twilio Content API + Email via Lovable Emails como respaldo.
+  - Registra en `reminder_send_log` para evitar duplicados.
+- En `/farmacia/pedidos`: botón manual "Enviar recordatorio ahora" (WA/Email) por pedido.
+- Panel `/farmacia/recordatorios`: bandeja de programados/enviados/fallidos.
 
-### Sprint MK-1 · Perfiles públicos + búsqueda
-- Tabla `professional_profiles` (slug, bio, foto, especialidades[], seguros_aceptados[], idiomas[], años_experiencia, cédula_prof, ubicaciones[], precio_base, acepta_video, acepta_domicilio, rating_avg, rating_count).
-- Tabla `professional_locations` (lat/lng, dirección, horarios).
-- Tabla `specialties` catálogo (con sinónimos ES para búsqueda).
-- Rutas públicas: `/buscar`, `/especialista/:slug`, `/especialidad/:slug`, `/ciudad/:slug`.
-- Landing rediseñada con hero-buscador tipo Doctoralia: input especialidad + input ciudad + botón Buscar.
-- SEO: sitemap dinámico, JSON-LD `Physician`/`MedicalBusiness`, meta por perfil.
+## Fase 3 — Surtido FEFO en piso
+- Extensión de `/farmacia/pedidos` con vista "Surtido":
+  - Lista de items con sugerencia FEFO automática (`sugerir_lotes_fefo`).
+  - Escaneo de código de barras (Web Barcode API si disponible, sino input manual).
+  - Verificación cantidad esperada vs. tomada.
+  - Estados: `pendiente_surtido` → `en_surtido` → `surtido` → `empaquetado`.
+  - Firma digital del surtidor + timestamp.
+- Genera `pharmacy_lot_movements` tipo `salida` automáticamente al confirmar.
 
-### Sprint MK-2 · Reserva guest + reseñas
-- Booking sin cuenta (email/tel). Al confirmar se crea `profiles` en modo lite y se envía magic link.
-- `appointment_reviews` (rating 1-5, texto, verified=true solo si appointment completado).
-- Moderación admin de reseñas reportadas.
-- Widget de disponibilidad next-7-days por profesional.
+## Fase 4 — Shipments Skydropx
+- Tabla `shipments` (pedido, paquete, dirección_origen, destino, cotizaciones[], guía_seleccionada, tracking, PDF label).
+- Edge function `skydropx-quote`: cotiza al confirmar dirección → muestra tarifas (DHL, Estafeta, FedEx, Redpack).
+- Edge function `skydropx-create-shipment`: genera guía 4x6 (PDF), guarda tracking.
+- En flujo de despacho: paso "Envío" con selector de tarifa + generar etiqueta.
+- Webhook `skydropx-webhook` para actualizar estatus (en_tránsito, entregado).
 
-### Sprint MK-3 · Triage Kari + video + pagos
-- `/triage` — chat con Kari que devuelve especialidades sugeridas + urgencia (verde/amarillo/rojo).
-- Video consultation con LiveKit/Daily (edge function para tokens).
-- Checkout Stripe con split: comisión plataforma + payout profesional (Stripe Connect).
-- Post-consulta: receta digital + estudios + factura CFDI + pre-llenado seguro, todo en un solo flujo.
+## Fase 5 — Tienda online `/tienda`
+- Página pública con catálogo (usa `pharmacy_catalog` con flag `publicable_online`).
+- Búsqueda + filtros por categoría, marca.
+- Carrito persistente (localStorage + sync a `cart_sessions` si logueado).
+- Checkout: cliente invitado o login → dirección → cotización Skydropx → método pago (Stripe/Paddle) → confirmación.
+- Genera `pharmacy_orders` tipo `online` con estado `pendiente_pago`.
+- Email de confirmación + WhatsApp con tracking al despachar.
+- Vista `/tienda/pedido/:folio` para seguimiento público con token.
 
-### Sprint MK-4 · Dispatch + mapa
-- `service_requests` (tipo: visita_medica, enfermeria, toma_muestra, farmacia_delivery).
-- Matching por geolocalización + disponibilidad.
-- Tracking en vivo (Mapbox) del profesional/repartidor.
-- Ratings post-servicio.
+## Notas técnicas
+- Todas las nuevas tablas con RLS + GRANT a `authenticated` / `service_role` (público de tienda vía RPC específica).
+- Recordatorios respetan `notification_preferences.quiet_hours` del cliente.
+- Skydropx: cotizaciones se cachean 30 min para evitar hits repetidos.
+- Cron `send-reminders`: agendado con pg_cron cada 15 min.
+- CxC aging se calcula on-the-fly con función `pharmacy_customer_aging(_customer_id)` para evitar drift.
 
-## Detalles técnicos (para el equipo)
+## Orden de ejecución
+Fase 0 (bloqueante) → Fases 1+2 en paralelo → Fase 3 → Fase 4 → Fase 5.
 
-**Stack añadido:** Mapbox GL, LiveKit (video), Stripe Connect Express, Algolia o `pg_trgm` para búsqueda tolerante a errores.
-
-**RLS clave:**
-- `professional_profiles`: SELECT público solo si `published=true`; UPDATE solo owner.
-- `appointment_reviews`: SELECT público; INSERT solo paciente con cita completada (validar en trigger).
-- `service_requests`: SELECT dueño + profesional asignado + admin.
-
-**SEO/perf:** SSR no aplica (Vite SPA) — usar `react-helmet-async` + prerender de las top 500 URLs vía script build-time hacia `dist/` para Googlebot.
-
-**Migración de nav:** nueva sección "Marketplace" en sidebar; landing pública cambia de simple a hero-buscador manteniendo tokens actuales (teal/navy).
-
-## Orden sugerido
-Terminar Mega-turno 2 pendiente (e-commerce farmacia, dispatch, clientes) → luego arrancar Marketplace MK-1. Alternativa: intercalar MK-1 ya porque es el mayor generador de tráfico/usuarios.
-
-## Pregunta
-¿Arrancamos **MK-1 (perfiles públicos + búsqueda)** ahora, o primero cierro **Mega-turno 2** de farmacia?
+¿Confirmas y me pasas credenciales de Twilio y Skydropx para arrancar Fase 0?
