@@ -15,6 +15,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { AlertTriangle, Boxes } from "lucide-react";
 import { useState } from "react";
 import { PickingDialog } from "@/components/pharmacy/PickingDialog";
+import { useRevertPicking } from "@/hooks/usePicking";
 
 function LowStockWidget() {
   const lowStock = useLowStock();
@@ -47,6 +48,9 @@ function LowStockWidget() {
 function OrderList({ status }: { status: "pagada" | "surtida" | "pendiente_pago" }) {
   const { data: orders = [], isLoading } = usePharmacyOrders({ status });
   const [pickingOrder, setPickingOrder] = useState<any | null>(null);
+  const { roles } = useAuth();
+  const canPick = roles.includes("admin") || roles.includes("farmacia");
+  const revert = useRevertPicking();
 
   if (isLoading) return <div className="flex justify-center p-8"><div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" /></div>;
   if (orders.length === 0) return <Card><CardContent className="p-8 text-center text-muted-foreground">Sin órdenes.</CardContent></Card>;
@@ -71,8 +75,22 @@ function OrderList({ status }: { status: "pagada" | "surtida" | "pendiente_pago"
               ))}
             </ul>
             {status === "pagada" && (
-              <Button size="sm" onClick={() => setPickingOrder(o)}>
+              <Button size="sm" onClick={() => setPickingOrder(o)} disabled={!canPick} title={!canPick ? "Requiere rol farmacia o admin" : ""}>
                 <ClipboardList className="h-4 w-4 mr-1" />Iniciar surtido
+              </Button>
+            )}
+            {status === "surtida" && canPick && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={async () => {
+                  const motivo = window.prompt("Motivo de la reversión del surtido:");
+                  if (!motivo || !motivo.trim()) return;
+                  await revert.mutateAsync({ order_id: o.id, motivo: motivo.trim() });
+                }}
+                disabled={revert.isPending}
+              >
+                Revertir surtido
               </Button>
             )}
           </CardContent>
