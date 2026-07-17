@@ -21,7 +21,9 @@ async function hmacSha256Hex(secret: string, message: string): Promise<string> {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
-    const { table, id, share_token } = await req.json();
+    const { table: reqTable, id: reqId, share_token, info_only } = await req.json();
+    let table = reqTable;
+    let id = reqId;
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
     // Resolve verifier identity + type + authorization
@@ -64,11 +66,32 @@ Deno.serve(async (req) => {
         .select("*")
         .eq("token", share_token)
         .maybeSingle();
-      if (!tok || tok.revoked_at || new Date(tok.expires_at) < new Date()) {
-        return new Response(JSON.stringify({ valid: false, error: "invalid_or_expired_token" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      if (!tok) {
+        return new Response(JSON.stringify({ valid: false, error: "invalid_token" }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
-      if (tok.max_uses != null && tok.uses_count >= tok.max_uses) {
-        return new Response(JSON.stringify({ valid: false, error: "token_exhausted" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      const expired = new Date(tok.expires_at) < new Date();
+      const revoked = !!tok.revoked_at;
+      const exhausted = tok.max_uses != null && tok.uses_count >= tok.max_uses;
+      if (info_only) {
+        return new Response(JSON.stringify({
+          info: {
+            scope: tok.scope, patient_id: tok.patient_id, table_name: tok.table_name,
+            record_id: tok.record_id, expires_at: tok.expires_at, revoked_at: tok.revoked_at,
+            uses_count: tok.uses_count, max_uses: tok.max_uses,
+          },
+          usable: !expired && !revoked && !exhausted,
+        }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      if (revoked || expired || exhausted) {
+        return new Response(JSON.stringify({ valid: false, error: revoked ? "revoked" : expired ? "expired" : "exhausted" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      // Auto-resolve table/id from token when not supplied
+      if (!table || !id) {
+        if (tok.scope === "record" && tok.table_name && tok.record_id) {
+          table = tok.table_name; id = tok.record_id;
+        } else {
+          return new Response(JSON.stringify({ valid: false, error: "table_and_id_required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
       }
       const patientCol = table === "medical_records" ? "user_id" : "patient_id";
       const { data: recRow } = await supabase.from(table).select(`${patientCol}`).eq("id", id).maybeSingle();
