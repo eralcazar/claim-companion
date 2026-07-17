@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Bluetooth, Camera, HeartPulse, Activity, Trash2, Info } from "lucide-react";
+import { Bluetooth, Camera, HeartPulse, Activity, Trash2, Info, PlugZap, CheckCircle2, XCircle, Loader2, LifeBuoy, ListChecks } from "lucide-react";
 import { toast } from "sonner";
 import {
   useBleAvailability,
@@ -12,6 +12,10 @@ import {
   useUnlinkBleDevice,
 } from "@/hooks/useBleDevices";
 import { Link } from "react-router-dom";
+import { useState } from "react";
+import { useBleConnectionTest } from "@/hooks/useBleConnectionTest";
+import { BleTroubleshootingGuide } from "./BleTroubleshootingGuide";
+import { BlePairingWizard } from "./BlePairingWizard";
 
 /**
  * Panel público en /perfil para conectar tensiómetros y oxímetros BLE.
@@ -23,6 +27,8 @@ export function BleConnectPanel() {
   const forget = useForgetBleDevice();
   const session = useBleSession();
   const unlink = useUnlinkBleDevice();
+  const conn = useBleConnectionTest();
+  const [showGuide, setShowGuide] = useState(false);
 
   const handleConnect = async (service: "blood_pressure" | "pulse_oximeter") => {
     try {
@@ -86,6 +92,75 @@ export function BleConnectPanel() {
               <Activity className="h-4 w-4 mr-2" /> Oxímetro
             </Button>
           </div>
+        )}
+
+        {available && (
+          <div className="rounded-lg border border-border p-3 space-y-3">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <PlugZap className="h-4 w-4 text-primary" /> Probar conexión rápida
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  disabled={conn.status === "scanning" || conn.status === "reading"}
+                  onClick={() => conn.test("blood_pressure")}
+                >
+                  <HeartPulse className="h-3 w-3 mr-1" /> Tensiómetro
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  disabled={conn.status === "scanning" || conn.status === "reading"}
+                  onClick={() => conn.test("pulse_oximeter")}
+                >
+                  <Activity className="h-3 w-3 mr-1" /> Oxímetro
+                </Button>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 text-sm">
+              {conn.status === "idle" && (
+                <Badge variant="outline">Sin ejecutar</Badge>
+              )}
+              {(conn.status === "scanning" || conn.status === "reading") && (
+                <Badge variant="secondary" className="gap-1">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  {conn.status === "scanning" ? "Escaneando…" : "Leyendo muestra…"}
+                </Badge>
+              )}
+              {conn.status === "success" && conn.result && (
+                <Badge variant="secondary" className="gap-1">
+                  <CheckCircle2 className="h-3 w-3 text-primary" />
+                  OK · {conn.result.deviceName ?? "dispositivo"} · {conn.result.sample}
+                </Badge>
+              )}
+              {conn.status === "error" && conn.result && (
+                <Badge variant="destructive" className="gap-1">
+                  <XCircle className="h-3 w-3" /> {conn.result.error}
+                </Badge>
+              )}
+            </div>
+          </div>
+        )}
+
+        <div className="flex flex-wrap gap-2">
+          <BlePairingWizard />
+          <Button variant="ghost" size="sm" onClick={() => setShowGuide((s) => !s)}>
+            <LifeBuoy className="h-4 w-4 mr-1" />
+            {showGuide ? "Ocultar guía" : "Solución de problemas"}
+          </Button>
+          <Button asChild variant="ghost" size="sm">
+            <Link to="/dispositivos">
+              <ListChecks className="h-4 w-4 mr-1" /> Dispositivos compatibles
+            </Link>
+          </Button>
+        </div>
+
+        {(showGuide || conn.status === "error") && (
+          <BleTroubleshootingGuide
+            lastError={conn.status === "error" ? conn.result?.error ?? null : null}
+          />
         )}
 
         {session.connected && (
