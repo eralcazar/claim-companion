@@ -71,6 +71,7 @@ import CfdiConfigManager from "@/pages/admin/CfdiConfigManager";
 import VerifyShare from "@/pages/public/VerifyShare";
 import PurchasesManager from "@/pages/farmacia/PurchasesManager";
 import PricingManager from "@/pages/farmacia/PricingManager";
+import CustomersManager from "@/pages/farmacia/CustomersManager";
 import Pos from "@/pages/Pos";
 import PharmacyComparator from "@/pages/public/PharmacyComparator";
 import Buscar from "@/pages/public/Buscar";
@@ -150,6 +151,7 @@ const App = () => (
               <Route path="/farmacia/inventario" element={<InventoryManager />} />
               <Route path="/farmacia/compras" element={<PurchasesManager />} />
               <Route path="/farmacia/precios" element={<PricingManager />} />
+              <Route path="/farmacia/clientes" element={<CustomersManager />} />
               <Route path="/pos" element={<Pos />} />
               <Route path="/planes" element={<Plans />} />
               <Route path="/suscripcion" element={<Subscription />} />
