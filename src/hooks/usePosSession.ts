@@ -210,7 +210,6 @@ export function useCreatePosSale() {
           costo_unitario_centavos: l.costo_unitario_centavos,
           nombre_snapshot: l.nombre,
           presentacion_snapshot: l.presentacion ?? null,
-          codigo_sat: l.codigo_sat ?? null,
         };
       });
       const { error: itemsErr } = await supabase
