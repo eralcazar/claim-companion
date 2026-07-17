@@ -37,6 +37,7 @@ const mainItems: Item[] = [
 ];
 
 const helpItems: Item[] = [
+  { title: "Historial de salud", url: "/historial-salud", icon: Activity, feature: "perfil" },
   { title: "Dispositivos BLE compatibles", url: "/dispositivos", icon: Bluetooth, feature: "perfil" },
 ];
 
