@@ -106,7 +106,7 @@ export function RecetaCard({ receta, onEdit }: Props) {
           </div>
           <Badge variant={ESTADO_VARIANT[receta.estado] ?? "secondary"}>{receta.estado}</Badge>
         </div>
-        <IntegrityBadge table="recetas" id={receta.id} compact />
+        <IntegrityBadge table="recetas" id={receta.id} />
         <ul className="text-sm space-y-1">
           {visible.map((it, i) => {
             const dosis = [it.dosis, it.unidad_dosis].filter(Boolean).join(" ");
