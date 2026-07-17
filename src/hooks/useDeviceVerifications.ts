@@ -78,6 +78,7 @@ export function useCreateDeviceVerification() {
     },
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: ["user_device_verifications", vars.device_id] });
+      qc.invalidateQueries({ queryKey: ["user_device_verifications", "mine"] });
     },
   });
 }
@@ -94,6 +95,7 @@ export function useDeleteDeviceVerification() {
     },
     onSuccess: (_d, vars) => {
       qc.invalidateQueries({ queryKey: ["user_device_verifications", vars.device_id] });
+      qc.invalidateQueries({ queryKey: ["user_device_verifications", "mine"] });
     },
   });
 }
