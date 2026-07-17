@@ -4339,6 +4339,41 @@ export type Database = {
           },
         ]
       }
+      pharmacy_picking_audit: {
+        Row: {
+          action: string
+          actor_id: string
+          created_at: string
+          id: string
+          order_id: string
+          payload: Json | null
+        }
+        Insert: {
+          action: string
+          actor_id: string
+          created_at?: string
+          id?: string
+          order_id: string
+          payload?: Json | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string
+          created_at?: string
+          id?: string
+          order_id?: string
+          payload?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pharmacy_picking_audit_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacy_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pharmacy_price_change_requests: {
         Row: {
           catalog_id: string
