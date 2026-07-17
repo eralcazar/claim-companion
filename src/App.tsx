@@ -66,6 +66,7 @@ import Facturacion from "@/pages/Facturacion";
 import OAuthConsent from "@/pages/OAuthConsent";
 import DispositivosCompatibles from "@/pages/DispositivosCompatibles";
 import DerechosARCO from "@/pages/DerechosARCO";
+import IntegrityDashboard from "@/pages/admin/IntegrityDashboard";
 
 const queryClient = new QueryClient();
 
@@ -148,6 +149,7 @@ const App = () => (
               <Route path="/perfil/notificaciones" element={<NotificationPreferencesPage />} />
               <Route path="/dispositivos" element={<DispositivosCompatibles />} />
               <Route path="/derechos-arco" element={<DerechosARCO />} />
+              <Route path="/admin/integridad" element={<IntegrityDashboard />} />
               <Route path="/procedimientos" element={<Procedimientos />} />
               <Route path="/odontograma" element={<Odontograma />} />
               <Route path="/domicilio" element={<Domicilio />} />

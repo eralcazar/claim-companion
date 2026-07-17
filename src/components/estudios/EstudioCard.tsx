@@ -9,6 +9,7 @@ import { ResultadosManager } from "./ResultadosManager";
 import { supabase } from "@/integrations/supabase/client";
 import { generateEstudioPDF } from "./estudioPdf";
 import { toast } from "sonner";
+import { IntegrityBadge } from "@/components/integrity/IntegrityBadge";
 
 const ESTADO_VARIANT: Record<string, any> = { solicitado: "default", en_proceso: "secondary", completado: "outline", cancelado: "destructive" };
 const PRIO_VARIANT: Record<string, any> = { baja: "secondary", normal: "outline", urgente: "destructive" };
@@ -104,6 +105,7 @@ export function EstudioCard({ estudio, onEdit }: Props) {
             <Badge variant={PRIO_VARIANT[maxPrio] ?? "outline"} className="text-xs">{maxPrio}</Badge>
           </div>
         </div>
+        <IntegrityBadge table="estudios_solicitados" id={estudio.id} compact />
         <ul className="text-sm space-y-0.5 pl-1">
           {visible.map((it, i) => (
             <li key={i} className="flex items-start gap-1">
