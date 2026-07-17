@@ -1,4 +1,6 @@
 import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import {
   Sheet,
   SheetContent,
@@ -8,7 +10,15 @@ import {
 } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ExternalLink, Bluetooth, Smartphone, Apple, Ban, Zap } from "lucide-react";
+import {
+  ExternalLink,
+  Bluetooth,
+  Smartphone,
+  Apple,
+  Ban,
+  Zap,
+  RefreshCw,
+} from "lucide-react";
 import {
   type CompatibleDevice,
   CONNECTION_LABELS,
@@ -18,6 +28,8 @@ import {
   STATUS_TONE,
 } from "@/lib/ble/compatibleDevices";
 import { DeviceVerificationForm } from "./DeviceVerificationForm";
+import { useHealthDevices } from "@/hooks/useHealthDevices";
+import { useCreateDeviceVerification } from "@/hooks/useDeviceVerifications";
 
 const TONE_CLASS: Record<string, string> = {
   success: "bg-emerald-500/15 text-emerald-700 border-emerald-500/30",
@@ -43,10 +55,75 @@ export function DeviceDetailSheet({
   open: boolean;
   onOpenChange: (o: boolean) => void;
 }) {
+  const navigate = useNavigate();
+  const { sync, available, requestPerms, platform } = useHealthDevices();
+  const logVerification = useCreateDeviceVerification();
   if (!device) return null;
   const tone = TONE_CLASS[STATUS_TONE[device.compatibilityStatus]];
   const isBle = device.connectionMethod === "ble_direct";
   const isIncompat = device.connectionMethod === "not_compatible";
+  const isHc = device.connectionMethod === "health_connect";
+  const isHk = device.connectionMethod === "healthkit";
+  const isBridge = device.connectionMethod === "vendor_app_bridge";
+
+  const handleSyncNow = async () => {
+    if (isBle) {
+      // Web Bluetooth: just log the attempt and route to the test UI
+      try {
+        await logVerification.mutateAsync({
+          device_id: device.id,
+          status: "partial",
+          connection_method: "ble_direct",
+          notes: "Intento de sincronización iniciado desde la ficha",
+        });
+      } catch {
+        /* ignore */
+      }
+      toast.info("Abriendo herramienta de conexión BLE…");
+      onOpenChange(false);
+      navigate("/dispositivos-ble#probar");
+      return;
+    }
+    if (isHc || isHk || isBridge) {
+      if (!available) {
+        toast.error("Health Connect / HealthKit no disponible en este dispositivo");
+        return;
+      }
+      try {
+        await requestPerms.mutateAsync();
+      } catch {
+        /* permission dialog handled by native layer */
+      }
+      try {
+        const res = await sync.mutateAsync();
+        toast.success(
+          `Sincronización completada: ${res.total} lecturas importadas.`,
+        );
+        try {
+          await logVerification.mutateAsync({
+            device_id: device.id,
+            status: res.total > 0 ? "success" : "partial",
+            connection_method: isHc ? "health_connect" : isHk ? "healthkit" : "vendor_app_bridge",
+            notes: `Sync manual (${platform}) · ${res.total} registros`,
+          });
+        } catch {
+          /* ignore */
+        }
+      } catch (e: any) {
+        toast.error(e?.message ?? "No fue posible sincronizar");
+        try {
+          await logVerification.mutateAsync({
+            device_id: device.id,
+            status: "failed",
+            connection_method: isHc ? "health_connect" : isHk ? "healthkit" : "vendor_app_bridge",
+            notes: `Error de sync: ${e?.message ?? "desconocido"}`,
+          });
+        } catch {
+          /* ignore */
+        }
+      }
+    }
+  };
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -119,6 +196,20 @@ export function DeviceDetailSheet({
             {!isIncompat && !isBle && (
               <Button asChild size="sm">
                 <Link to="/perfil#wearables">Sincronizar wearables</Link>
+              </Button>
+            )}
+            {!isIncompat && (
+              <Button
+                size="sm"
+                variant="secondary"
+                className="gap-1"
+                onClick={handleSyncNow}
+                disabled={sync.isPending || requestPerms.isPending}
+              >
+                <RefreshCw
+                  className={`h-3.5 w-3.5 ${sync.isPending ? "animate-spin" : ""}`}
+                />
+                Sincronizar ahora
               </Button>
             )}
             {device.url && (
