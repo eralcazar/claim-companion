@@ -3291,19 +3291,86 @@ export type Database = {
         }
         Relationships: []
       }
+      pharmacy_branches: {
+        Row: {
+          activo: boolean
+          ciudad: string | null
+          codigo: string | null
+          cp: string | null
+          cp_expedicion: string | null
+          created_at: string
+          direccion: string | null
+          es_principal: boolean
+          estado: string | null
+          id: string
+          nombre: string
+          razon_social_emisor: string | null
+          regimen_fiscal: string | null
+          rfc_emisor: string | null
+          telefono: string | null
+          updated_at: string
+        }
+        Insert: {
+          activo?: boolean
+          ciudad?: string | null
+          codigo?: string | null
+          cp?: string | null
+          cp_expedicion?: string | null
+          created_at?: string
+          direccion?: string | null
+          es_principal?: boolean
+          estado?: string | null
+          id?: string
+          nombre: string
+          razon_social_emisor?: string | null
+          regimen_fiscal?: string | null
+          rfc_emisor?: string | null
+          telefono?: string | null
+          updated_at?: string
+        }
+        Update: {
+          activo?: boolean
+          ciudad?: string | null
+          codigo?: string | null
+          cp?: string | null
+          cp_expedicion?: string | null
+          created_at?: string
+          direccion?: string | null
+          es_principal?: boolean
+          estado?: string | null
+          id?: string
+          nombre?: string
+          razon_social_emisor?: string | null
+          regimen_fiscal?: string | null
+          rfc_emisor?: string | null
+          telefono?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       pharmacy_catalog: {
         Row: {
           activo: boolean
+          branch_id_default: string | null
           categoria: string | null
+          codigo_barras: string | null
+          codigo_sat: string | null
+          costo_promedio_centavos: number
           created_at: string
           descripcion: string | null
           descripcion_larga: string | null
+          ecommerce_visible: boolean
           id: string
           imagen_url: string | null
+          iva_pct: number
+          margen_minimo_pct: number | null
+          margen_objetivo_pct: number | null
           moneda: string
           nombre: string
           precio_centavos: number
           presentacion: string | null
+          principio_activo: string | null
+          requiere_receta: boolean
           sku: string | null
           stripe_price_id: string | null
           stripe_product_id: string | null
@@ -3311,16 +3378,26 @@ export type Database = {
         }
         Insert: {
           activo?: boolean
+          branch_id_default?: string | null
           categoria?: string | null
+          codigo_barras?: string | null
+          codigo_sat?: string | null
+          costo_promedio_centavos?: number
           created_at?: string
           descripcion?: string | null
           descripcion_larga?: string | null
+          ecommerce_visible?: boolean
           id?: string
           imagen_url?: string | null
+          iva_pct?: number
+          margen_minimo_pct?: number | null
+          margen_objetivo_pct?: number | null
           moneda?: string
           nombre: string
           precio_centavos: number
           presentacion?: string | null
+          principio_activo?: string | null
+          requiere_receta?: boolean
           sku?: string | null
           stripe_price_id?: string | null
           stripe_product_id?: string | null
@@ -3328,22 +3405,40 @@ export type Database = {
         }
         Update: {
           activo?: boolean
+          branch_id_default?: string | null
           categoria?: string | null
+          codigo_barras?: string | null
+          codigo_sat?: string | null
+          costo_promedio_centavos?: number
           created_at?: string
           descripcion?: string | null
           descripcion_larga?: string | null
+          ecommerce_visible?: boolean
           id?: string
           imagen_url?: string | null
+          iva_pct?: number
+          margen_minimo_pct?: number | null
+          margen_objetivo_pct?: number | null
           moneda?: string
           nombre?: string
           precio_centavos?: number
           presentacion?: string | null
+          principio_activo?: string | null
+          requiere_receta?: boolean
           sku?: string | null
           stripe_price_id?: string | null
           stripe_product_id?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "pharmacy_catalog_branch_id_default_fkey"
+            columns: ["branch_id_default"]
+            isOneToOne: false
+            referencedRelation: "pharmacy_branches"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       pharmacy_inventory: {
         Row: {
@@ -3382,36 +3477,49 @@ export type Database = {
       }
       pharmacy_inventory_movements: {
         Row: {
+          branch_id: string | null
           cantidad: number
           catalog_id: string
           created_at: string
           created_by: string
           id: string
+          lot_id: string | null
           motivo: string | null
           order_id: string | null
           tipo: Database["public"]["Enums"]["inventory_movement_type"]
         }
         Insert: {
+          branch_id?: string | null
           cantidad: number
           catalog_id: string
           created_at?: string
           created_by: string
           id?: string
+          lot_id?: string | null
           motivo?: string | null
           order_id?: string | null
           tipo: Database["public"]["Enums"]["inventory_movement_type"]
         }
         Update: {
+          branch_id?: string | null
           cantidad?: number
           catalog_id?: string
           created_at?: string
           created_by?: string
           id?: string
+          lot_id?: string | null
           motivo?: string | null
           order_id?: string | null
           tipo?: Database["public"]["Enums"]["inventory_movement_type"]
         }
         Relationships: [
+          {
+            foreignKeyName: "pharmacy_inventory_movements_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacy_branches"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "pharmacy_inventory_movements_catalog_id_fkey"
             columns: ["catalog_id"]
@@ -3420,10 +3528,166 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "pharmacy_inventory_movements_lot_id_fkey"
+            columns: ["lot_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacy_lots"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "pharmacy_inventory_movements_order_id_fkey"
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "pharmacy_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pharmacy_lot_movements: {
+        Row: {
+          branch_id: string
+          cantidad: number
+          catalog_id: string
+          costo_unitario_centavos: number | null
+          created_at: string
+          created_by: string | null
+          id: string
+          lot_id: string
+          motivo: string | null
+          referencia_id: string | null
+          referencia_tipo: string | null
+          tipo: string
+        }
+        Insert: {
+          branch_id: string
+          cantidad: number
+          catalog_id: string
+          costo_unitario_centavos?: number | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          lot_id: string
+          motivo?: string | null
+          referencia_id?: string | null
+          referencia_tipo?: string | null
+          tipo: string
+        }
+        Update: {
+          branch_id?: string
+          cantidad?: number
+          catalog_id?: string
+          costo_unitario_centavos?: number | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          lot_id?: string
+          motivo?: string | null
+          referencia_id?: string | null
+          referencia_tipo?: string | null
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pharmacy_lot_movements_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacy_branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pharmacy_lot_movements_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacy_catalog"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pharmacy_lot_movements_lot_id_fkey"
+            columns: ["lot_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacy_lots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pharmacy_lots: {
+        Row: {
+          branch_id: string
+          caducidad: string
+          cantidad_actual: number
+          cantidad_inicial: number
+          catalog_id: string
+          costo_unitario_centavos: number
+          created_at: string
+          created_by: string | null
+          estado: string
+          fecha_ingreso: string
+          id: string
+          lote: string
+          notas: string | null
+          proveedor_id: string | null
+          purchase_id: string | null
+          ubicacion: string | null
+          updated_at: string
+        }
+        Insert: {
+          branch_id: string
+          caducidad: string
+          cantidad_actual: number
+          cantidad_inicial: number
+          catalog_id: string
+          costo_unitario_centavos?: number
+          created_at?: string
+          created_by?: string | null
+          estado?: string
+          fecha_ingreso?: string
+          id?: string
+          lote: string
+          notas?: string | null
+          proveedor_id?: string | null
+          purchase_id?: string | null
+          ubicacion?: string | null
+          updated_at?: string
+        }
+        Update: {
+          branch_id?: string
+          caducidad?: string
+          cantidad_actual?: number
+          cantidad_inicial?: number
+          catalog_id?: string
+          costo_unitario_centavos?: number
+          created_at?: string
+          created_by?: string | null
+          estado?: string
+          fecha_ingreso?: string
+          id?: string
+          lote?: string
+          notas?: string | null
+          proveedor_id?: string | null
+          purchase_id?: string | null
+          ubicacion?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pharmacy_lots_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacy_branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pharmacy_lots_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacy_catalog"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pharmacy_lots_proveedor_id_fkey"
+            columns: ["proveedor_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacy_suppliers"
             referencedColumns: ["id"]
           },
         ]
@@ -3546,6 +3810,57 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      pharmacy_suppliers: {
+        Row: {
+          activo: boolean
+          calificacion: number | null
+          contacto_email: string | null
+          contacto_nombre: string | null
+          contacto_telefono: string | null
+          created_at: string
+          dias_credito: number
+          id: string
+          nombre_comercial: string | null
+          notas: string | null
+          razon_social: string
+          rfc: string | null
+          saldo_centavos: number
+          updated_at: string
+        }
+        Insert: {
+          activo?: boolean
+          calificacion?: number | null
+          contacto_email?: string | null
+          contacto_nombre?: string | null
+          contacto_telefono?: string | null
+          created_at?: string
+          dias_credito?: number
+          id?: string
+          nombre_comercial?: string | null
+          notas?: string | null
+          razon_social: string
+          rfc?: string | null
+          saldo_centavos?: number
+          updated_at?: string
+        }
+        Update: {
+          activo?: boolean
+          calificacion?: number | null
+          contacto_email?: string | null
+          contacto_nombre?: string | null
+          contacto_telefono?: string | null
+          created_at?: string
+          dias_credito?: number
+          id?: string
+          nombre_comercial?: string | null
+          notas?: string | null
+          razon_social?: string
+          rfc?: string | null
+          saldo_centavos?: number
+          updated_at?: string
+        }
+        Relationships: []
       }
       plan_features: {
         Row: {
@@ -4697,12 +5012,42 @@ export type Database = {
         Args: { _notification_id: string }
         Returns: boolean
       }
+      pharmacy_lots_rotation_alerts: {
+        Args: { _branch_id?: string }
+        Returns: {
+          alerta: string
+          branch_id: string
+          caducidad: string
+          cantidad_actual: number
+          catalog_id: string
+          dias_a_caducar: number
+          lot_id: string
+          lote: string
+          producto_nombre: string
+          severidad: string
+        }[]
+      }
+      pharmacy_stock_disponible: {
+        Args: { _branch_id: string; _catalog_id: string }
+        Returns: number
+      }
       set_active_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
         Returns: undefined
+      }
+      sugerir_lotes_fefo: {
+        Args: { _branch_id: string; _cantidad: number; _catalog_id: string }
+        Returns: {
+          caducidad: string
+          cantidad_a_tomar: number
+          cantidad_disponible: number
+          costo_unitario_centavos: number
+          lot_id: string
+          lote: string
+        }[]
       }
       sync_subscription_ocr_quota: {
         Args: { _user_id: string }
