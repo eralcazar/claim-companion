@@ -166,6 +166,23 @@ export function BleReportCSVButton({ patientId, patientName }: { patientId: stri
           </div>
 
           <div>
+            <Label className="mb-2 block">Estado de validación</Label>
+            <div className="grid grid-cols-2 gap-2">
+              {([
+                { key: "pending", label: "Pendiente" },
+                { key: "validated", label: "Validada" },
+                { key: "mitigated", label: "Mitigada" },
+                { key: "discarded", label: "Rechazada" },
+              ] as const).map((s) => (
+                <label key={s.key} className="flex items-center gap-2 text-sm cursor-pointer">
+                  <Checkbox checked={statuses.includes(s.key)} onCheckedChange={() => toggleStatus(s.key)} />
+                  {s.label}
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div>
             <Label className="mb-2 block">Columnas a incluir</Label>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-48 overflow-y-auto">
               {ALL_COLS.map((c) => (
