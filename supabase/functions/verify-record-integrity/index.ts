@@ -5,6 +5,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const ALGORITHM_VERSION = "v1-sha256-hmac";
+
 function keyEnvName(keyId: string) {
   return `INTEGRITY_KEY_${keyId.replace(/-/g, "_")}`;
 }
@@ -19,15 +21,99 @@ async function hmacSha256Hex(secret: string, message: string): Promise<string> {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
-    const { table, id } = await req.json();
+    const { table: reqTable, id: reqId, share_token, info_only } = await req.json();
+    let table = reqTable;
+    let id = reqId;
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+
+    // Resolve verifier identity + type + authorization
+    const authHeader = req.headers.get("Authorization") ?? "";
+    let verifierId: string | null = null;
+    let verifierType: "owner" | "broker" | "clinician" | "admin" | "public" | "system" = "public";
+    let patientId: string | null = null;
+    let shareTokenId: string | null = null;
+
+    if (authHeader && !share_token) {
+      const userClient = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_ANON_KEY")!,
+        { global: { headers: { Authorization: authHeader } } },
+      );
+      const { data: { user } } = await userClient.auth.getUser();
+      if (!user) {
+        return new Response(JSON.stringify({ valid: false, error: "unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      verifierId = user.id;
+      const { data: isAdmin } = await supabase.rpc("has_role", { _user_id: user.id, _role: "admin" });
+      verifierType = isAdmin ? "admin" : "owner";
+
+      // Fetch patient_id column value to check access
+      const patientCol = table === "medical_records" ? "user_id" : "patient_id";
+      const { data: recRow } = await supabase.from(table).select(`${patientCol}`).eq("id", id).maybeSingle();
+      patientId = (recRow as any)?.[patientCol] ?? null;
+
+      if (!isAdmin && patientId && patientId !== user.id) {
+        const { data: access } = await supabase.rpc("has_patient_access", { _personnel: user.id, _patient: patientId });
+        if (!access) {
+          return new Response(JSON.stringify({ valid: false, error: "forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+        verifierType = "clinician";
+      }
+    } else if (share_token) {
+      // Public path via share token
+      const { data: tok } = await supabase
+        .from("integrity_share_tokens")
+        .select("*")
+        .eq("token", share_token)
+        .maybeSingle();
+      if (!tok) {
+        return new Response(JSON.stringify({ valid: false, error: "invalid_token" }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      const expired = new Date(tok.expires_at) < new Date();
+      const revoked = !!tok.revoked_at;
+      const exhausted = tok.max_uses != null && tok.uses_count >= tok.max_uses;
+      if (info_only) {
+        return new Response(JSON.stringify({
+          info: {
+            scope: tok.scope, patient_id: tok.patient_id, table_name: tok.table_name,
+            record_id: tok.record_id, expires_at: tok.expires_at, revoked_at: tok.revoked_at,
+            uses_count: tok.uses_count, max_uses: tok.max_uses,
+          },
+          usable: !expired && !revoked && !exhausted,
+        }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      if (revoked || expired || exhausted) {
+        return new Response(JSON.stringify({ valid: false, error: revoked ? "revoked" : expired ? "expired" : "exhausted" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      // Auto-resolve table/id from token when not supplied
+      if (!table || !id) {
+        if (tok.scope === "record" && tok.table_name && tok.record_id) {
+          table = tok.table_name; id = tok.record_id;
+        } else {
+          return new Response(JSON.stringify({ valid: false, error: "table_and_id_required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+      }
+      const patientCol = table === "medical_records" ? "user_id" : "patient_id";
+      const { data: recRow } = await supabase.from(table).select(`${patientCol}`).eq("id", id).maybeSingle();
+      patientId = (recRow as any)?.[patientCol] ?? null;
+      const okScope = tok.scope === "patient_daily"
+        ? tok.patient_id === patientId
+        : (tok.table_name === table && tok.record_id === id);
+      if (!okScope) {
+        return new Response(JSON.stringify({ valid: false, error: "token_scope_mismatch" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      shareTokenId = tok.token;
+      verifierType = "public";
+      await supabase.from("integrity_share_tokens").update({ uses_count: tok.uses_count + 1 }).eq("id", tok.id);
+    } else {
+      return new Response(JSON.stringify({ valid: false, error: "unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
 
     const { data: rpc, error } = await supabase.rpc("verify_record_hash", { _table: table, _id: id });
     if (error) {
       return new Response(JSON.stringify({ valid: false, error: error.message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Verificar firma HMAC si existe
     let signature_ok: boolean | null = null;
     if (rpc?.has_signature && rpc?.key_id && rpc?.record_hash) {
       const { data: row } = await supabase.from(table).select("signature").eq("id", id).maybeSingle();
@@ -38,7 +124,28 @@ Deno.serve(async (req) => {
       }
     }
 
-    return new Response(JSON.stringify({ ...rpc, signature_ok }), {
+    // Log verification (best-effort)
+    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || null;
+    const ua = req.headers.get("user-agent") || null;
+    await supabase.from("integrity_verification_log").insert({
+      verifier_id: verifierId,
+      verifier_type: verifierType,
+      table_name: table,
+      record_id: id,
+      patient_id: patientId,
+      status: (rpc as any)?.status ?? "unknown",
+      payload_ok: (rpc as any)?.payload_ok ?? null,
+      chain_ok: (rpc as any)?.chain_ok ?? null,
+      signature_ok,
+      has_signature: (rpc as any)?.has_signature ?? null,
+      key_id: (rpc as any)?.key_id ?? null,
+      algorithm_version: ALGORITHM_VERSION,
+      share_token: shareTokenId,
+      ip,
+      user_agent: ua,
+    });
+
+    return new Response(JSON.stringify({ ...rpc, signature_ok, algorithm_version: ALGORITHM_VERSION }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {

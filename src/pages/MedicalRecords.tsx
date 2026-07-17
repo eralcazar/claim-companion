@@ -148,7 +148,7 @@ export default function MedicalRecords() {
                     <p className="text-xs text-muted-foreground">
                       {format(new Date(rec.record_date), "PP", { locale: es })}
                     </p>
-                    <div className="mt-1"><IntegrityBadge table="medical_records" id={rec.id} compact /></div>
+                    <div className="mt-1"><IntegrityBadge table="medical_records" id={rec.id} /></div>
                   </div>
                 </div>
                 <Button variant="ghost" size="icon" onClick={() => deleteMutation.mutate({ id: rec.id, file_path: rec.file_path })}>

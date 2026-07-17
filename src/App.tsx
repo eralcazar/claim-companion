@@ -67,6 +67,7 @@ import OAuthConsent from "@/pages/OAuthConsent";
 import DispositivosCompatibles from "@/pages/DispositivosCompatibles";
 import DerechosARCO from "@/pages/DerechosARCO";
 import IntegrityDashboard from "@/pages/admin/IntegrityDashboard";
+import VerifyShare from "@/pages/public/VerifyShare";
 
 const queryClient = new QueryClient();
 
@@ -94,6 +95,7 @@ const App = () => (
             <Route path="/login" element={<Login />} />
             <Route path="/legal" element={<Legal />} />
             <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
+            <Route path="/verificar/:token" element={<VerifyShare />} />
             <Route path="/" element={<RootRoute />} />
             <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
               <Route path="/dashboard" element={<Dashboard />} />

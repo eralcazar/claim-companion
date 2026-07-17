@@ -9,19 +9,47 @@ const corsHeaders = {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
-    const { patient_id } = await req.json();
-    if (!patient_id) return new Response("patient_id required", { status: 400, headers: corsHeaders });
-
-    const authHeader = req.headers.get("Authorization") ?? "";
-    const supabaseUser = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
-      { global: { headers: { Authorization: authHeader } } }
-    );
-    const { data: { user } } = await supabaseUser.auth.getUser();
-    if (!user) return new Response("unauthorized", { status: 401, headers: corsHeaders });
-
+    const { patient_id: reqPatientId, share_token } = await req.json();
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+
+    let patient_id = reqPatientId as string | undefined;
+    let verifier_type: "owner" | "clinician" | "admin" | "public" = "public";
+    let verifier_id: string | null = null;
+    let public_share_url: string | null = null;
+
+    if (share_token) {
+      const { data: tok } = await supabase.from("integrity_share_tokens").select("*").eq("token", share_token).maybeSingle();
+      if (!tok || tok.revoked_at || new Date(tok.expires_at) < new Date()) {
+        return new Response("invalid_or_expired_token", { status: 403, headers: corsHeaders });
+      }
+      if (tok.max_uses != null && tok.uses_count >= tok.max_uses) {
+        return new Response("token_exhausted", { status: 403, headers: corsHeaders });
+      }
+      patient_id = tok.patient_id;
+      await supabase.from("integrity_share_tokens").update({ uses_count: tok.uses_count + 1 }).eq("id", tok.id);
+      public_share_url = share_token;
+    } else {
+      const authHeader = req.headers.get("Authorization") ?? "";
+      const supabaseUser = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_ANON_KEY")!,
+        { global: { headers: { Authorization: authHeader } } },
+      );
+      const { data: { user } } = await supabaseUser.auth.getUser();
+      if (!user) return new Response("unauthorized", { status: 401, headers: corsHeaders });
+      if (!patient_id) return new Response("patient_id required", { status: 400, headers: corsHeaders });
+      verifier_id = user.id;
+      const { data: isAdmin } = await supabase.rpc("has_role", { _user_id: user.id, _role: "admin" });
+      if (isAdmin) verifier_type = "admin";
+      else if (patient_id === user.id) verifier_type = "owner";
+      else {
+        const { data: access } = await supabase.rpc("has_patient_access", { _personnel: user.id, _patient: patient_id });
+        if (!access) return new Response("forbidden", { status: 403, headers: corsHeaders });
+        verifier_type = "clinician";
+      }
+    }
+
+    if (!patient_id) return new Response("patient_id required", { status: 400, headers: corsHeaders });
 
     // Fetch patient records tip-list per table
     const rowsByTable: Record<string, any[]> = {};
@@ -64,6 +92,9 @@ Deno.serve(async (req) => {
 
     line("Comprobante de integridad clínica", { size: 16, bold: true });
     line(`CareCentral · Emitido: ${new Date().toISOString()} UTC`, { size: 9 });
+    line(`Emitido a: ${verifier_type}${verifier_id ? " (" + verifier_id + ")" : ""}`, { size: 8 });
+    if (public_share_url) line(`Token público: ${public_share_url}`, { size: 8 });
+    line("Verifica en línea: usa el identificador del token en /verificar/{token}", { size: 8 });
     y -= 8;
     line("Raíz de integridad diaria (más reciente)", { size: 12, bold: true });
     line(`Día: ${root?.day ?? "—"}`);
@@ -84,6 +115,21 @@ Deno.serve(async (req) => {
 
     line("Este documento acredita que los registros clínicos del paciente forman parte de una cadena SHA-256", { size: 8 });
     line("verificable en la plataforma CareCentral. Cualquier alteración posterior romperá la cadena y podrá detectarse.", { size: 8 });
+
+    // Audit log entry
+    await supabase.from("integrity_verification_log").insert({
+      verifier_id,
+      verifier_type,
+      table_name: "medical_records",
+      record_id: patient_id, // for daily certificate we log the patient id as scope
+      patient_id,
+      status: "certificate_issued",
+      algorithm_version: "v1-sha256-hmac",
+      share_token: public_share_url,
+      ip: req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null,
+      user_agent: req.headers.get("user-agent") ?? null,
+      detail: { root_day: root?.day ?? null, root: root?.daily_root ?? null },
+    });
 
     const bytes = await pdf.save();
     return new Response(bytes, {

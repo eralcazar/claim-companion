@@ -105,7 +105,7 @@ export function EstudioCard({ estudio, onEdit }: Props) {
             <Badge variant={PRIO_VARIANT[maxPrio] ?? "outline"} className="text-xs">{maxPrio}</Badge>
           </div>
         </div>
-        <IntegrityBadge table="estudios_solicitados" id={estudio.id} compact />
+        <IntegrityBadge table="estudios_solicitados" id={estudio.id} />
         <ul className="text-sm space-y-0.5 pl-1">
           {visible.map((it, i) => (
             <li key={i} className="flex items-start gap-1">
