@@ -1,72 +1,82 @@
+# Plan: Mejoras UX y reporting para BLE
 
-# Plan: Ampliación de módulo BLE + Notificaciones + PDF clínico
+Cinco entregables enfocados en presentación/UX sobre el módulo BLE existente. No cambia la lógica clínica ni el esquema de reviews.
 
-Se implementa en 5 bloques que comparten base (tabla `notifications` ya existente y `ble_known_devices` ya sembrada).
+## 1. CSV de lecturas BLE de prueba por paciente
 
-## 1. Notificaciones push (con fallback web)
+Reutilizar el patrón de `BleReportCSVButton.tsx`, pero enfocado a lecturas de **prueba/diagnóstico** (no clínicas validadas).
 
-- Usar la tabla `notifications` existente como fuente de verdad.
-- Web fallback: `Notification API` + toast Sonner cuando la app esté abierta.
-- Push nativo: `@capacitor/push-notifications` (registro de token FCM/APNs guardado en nueva tabla `user_push_tokens`).
-- Edge function `notify-user` que:
-  - Inserta fila en `notifications`.
-  - Envía push a tokens del usuario si existen.
-- Disparadores:
-  - Trigger DB `on_bp_reading_reviewed` → cuando `requires_review` pasa de true→false, notifica al paciente.
-  - Trigger DB `on_medical_alert_insert` → notifica alerta clínica activa.
-- Hook `useNotifications` con badge en `BottomNav`/`AppSidebar` y panel `/notificaciones`.
+- Nueva utilidad `src/lib/exportBleTestCSV.ts`:
+  - Recibe `patientId`, `dateRange`, `types[]`.
+  - Consulta `blood_pressure_readings`, `spo2_readings`, `heart_rate_readings`, `temperature_readings` filtrando por `source = 'ble'`.
+  - Une con `reading_reviews` para incluir `status` (validada / rechazada / mitigada / pendiente).
+  - Columnas: `fecha`, `tipo`, `dispositivo`, `valor`, `unidad`, `estado_validacion`, `revisor`, `observaciones`.
+- Nuevo componente `src/components/expediente/BleTestReportButton.tsx` con diálogo (rango de fechas + tipos), montado en `PatientExpedienteTabs.tsx` junto al botón CSV clínico existente.
+- Permisos: paciente ve solo lo suyo; admin/medico/enfermero/broker según roles ya definidos.
 
-## 2. Whitelist de dispositivos BLE (admin)
+## 2. Botón "Probar conexión"
 
-- Nueva página `/admin/ble-devices` (solo rol `admin`).
-- CRUD sobre `ble_known_devices` (agregar, editar, marcar `blocked`, marcar `verified`).
-- Filtros por marca, modelo, tipo de medición, estado.
-- En perfil del usuario (`BleConnectPanel`), mostrar badge:
-  - "Verificado" (verde) si el dispositivo está en whitelist verificado.
-  - "No verificado" (amarillo).
-  - "Bloqueado" (rojo) — impide iniciar sesión de medición.
+En `BleConnectPanel.tsx`, junto a cada tipo de servicio:
 
-## 3. PDF de lecturas BLE validadas por paciente
+- Botón **"Probar conexión"** que ejecuta:
+  1. `navigator.bluetooth.requestDevice` con filtros del servicio.
+  2. `gatt.connect()` + lectura de **una** notificación (timeout 8s).
+  3. Desconecta inmediatamente.
+- Muestra `Badge` de estado en línea: `Idle` → `Escaneando…` → `OK ✓ (RSSI/valor recibido)` o `Error: <mensaje>`.
+- Hook `useBleConnectionTest()` con estado (`idle | scanning | reading | success | error`) y último resultado.
 
-- Botón "Descargar PDF para aseguradora" en expediente del paciente.
-- Edge function `generate-ble-report-pdf` con `pdf-lib` que compila:
-  - Presión (validadas), Glucosa, SpO2, Temperatura, Frecuencia cardíaca.
-  - Rango de fechas seleccionable.
-  - Encabezado con datos del paciente + logo CareCentral.
-  - Marca "Validado por profesional" en cada renglón.
-- Descarga directa desde el navegador.
+## 3. Guía de troubleshooting in-app
 
-## 4. Flujo "pendiente de revisión" para SpO2, temperatura y actividad
+Componente `src/components/ble/BleTroubleshootingGuide.tsx`:
 
-- Agregar `requires_review boolean default false`, `reviewed_by uuid`, `reviewed_at timestamptz`, `review_notes text` en:
-  - `spo2_readings`
-  - `temperature_readings`
-  - `activity_readings`
-- Al insertar desde BLE con umbrales anormales (SpO2 < 92, temp > 38 o < 35, actividad = 0 prolongada), marcar `requires_review = true`.
-- Nuevo panel unificado `PendingReviewsPanel` en `PatientExpedienteTabs` que muestra pendientes de las 4 tablas (BP, SpO2, temperatura, actividad) con acciones Validar/Descartar.
-- Hook `useReviewReading` genérico por tipo.
+- Se renderiza dentro de `BleConnectPanel` cuando `useBleAvailability()` reporta error o cuando la prueba de conexión falla.
+- Contenido por escenario detectado:
+  - Navegador no compatible (iOS Safari, Firefox) → recomendar Chrome/Edge o app móvil.
+  - Bluetooth apagado → pasos SO por SO.
+  - Permisos denegados → cómo re-otorgarlos.
+  - Dispositivo no aparece → modo emparejamiento, distancia, batería, cerrar app fabricante.
+  - GATT error/timeout → reintentar, reset del dispositivo.
+- Acordeón (`Accordion` de shadcn) con pasos numerados y CTA "Reintentar prueba".
 
-## 5. Desvincular y limpiar por dispositivo BLE
+## 4. Asistente paso a paso de emparejamiento
 
-- En `BleConnectPanel`, cada dispositivo tendrá acción "Desvincular y borrar datos":
-  - Elimina lecturas donde `external_uuid = <device_id>` de las 5 tablas clínicas BLE.
-  - Elimina fila de `user_ble_devices`.
-  - Registra evento en `audit_logs`.
-- Confirmación con diálogo destructivo.
+Nuevo `src/components/ble/BlePairingWizard.tsx` (Dialog multi-step):
+
+1. **Selecciona tipo de dispositivo** (Tensiómetro / Oxímetro / Termómetro).
+2. **Prepara el dispositivo** (instrucciones + imagen genérica: batería, modo pairing).
+3. **Escanear y elegir** (usa Web Bluetooth device chooser).
+4. **Conexión de prueba** (lee una muestra, muestra valor recibido).
+5. **Confirmación** (nombre amigable + guardar en `user_ble_devices`; marca `verified` si el valor pasó rangos plausibles).
+
+Se lanza desde `BleConnectPanel` (botón "Emparejar dispositivo con asistente") y desde el expediente en la pestaña BLE.
+
+## 5. Catálogo de dispositivos compatibles
+
+Nueva página `src/pages/DispositivosCompatibles.tsx` (ruta `/dispositivos`), enlazada desde el sidebar (sección Ayuda) y desde el wizard como "Ver dispositivos recomendados".
+
+- Fuente: array estático en `src/lib/ble/compatibleDevices.ts` (no requiere tabla).
+- Cada item: nombre, fabricante, tipo de lectura, servicio GATT, tier de precio, notas de compatibilidad, link externo.
+- Ejemplos iniciales: Wellue O2Ring, Omron M7 Intelli IT, Viatom Checkme O2, Berry BM2000B, A&D UA-651BLE, termómetros con Health Thermometer Service.
+- UI: grid de cards con filtro por tipo (SpO₂, BP, Temp, HR) y badge "Probado en CareCentral".
 
 ## Detalles técnicos
 
-- Migraciones (una sola) para: `user_push_tokens`, columnas de revisión en 3 tablas, triggers `on_bp_reading_reviewed` y `on_medical_alert_insert`, política RLS admin en `ble_known_devices` (update/delete).
-- Edge functions nuevas: `notify-user`, `generate-ble-report-pdf`.
-- Package: `@capacitor/push-notifications` (nativo), `pdf-lib` (edge).
-- No se rompen APIs existentes; `useReviewBpReading` se refactoriza a `useReviewReading(kind)`.
+- Sin migraciones de BD — todo se apoya en tablas y hooks existentes (`useBleSession`, `useSavedBleDevices`, `user_ble_devices`, `*_readings`, `reading_reviews`).
+- Reusar helpers de `src/lib/ble/index.ts` para parseo; añadir `testRead(serviceType)` que retorna la primera muestra parseada.
+- Sin cambios en edge functions ni en MCP.
+- Rutas nuevas registradas en `src/App.tsx`; entrada de sidebar en `src/components/AppSidebar.tsx`.
 
-## Orden de ejecución
+## Archivos nuevos
+- `src/lib/exportBleTestCSV.ts`
+- `src/lib/ble/compatibleDevices.ts`
+- `src/components/expediente/BleTestReportButton.tsx`
+- `src/components/ble/BleTroubleshootingGuide.tsx`
+- `src/components/ble/BlePairingWizard.tsx`
+- `src/hooks/useBleConnectionTest.ts`
+- `src/pages/DispositivosCompatibles.tsx`
 
-1. Migración DB (todas las columnas, tabla, triggers, RLS).
-2. Edge functions + secrets si aplican.
-3. Hooks y librería (`ble`, `notifications`, `pdf`).
-4. Páginas y paneles UI.
-5. Verificación con typecheck y prueba manual del flujo revisar → notificación.
-
-¿Confirmas para arrancar?
+## Archivos modificados
+- `src/components/ble/BleConnectPanel.tsx` — botón probar conexión + guía + CTA wizard.
+- `src/components/expediente/PatientExpedienteTabs.tsx` — botón CSV de prueba + entrada al wizard.
+- `src/lib/ble/index.ts` — helper `testRead()`.
+- `src/App.tsx`, `src/components/AppSidebar.tsx` — ruta y enlace a catálogo.
