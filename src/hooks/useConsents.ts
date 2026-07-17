@@ -69,7 +69,7 @@ export function useRecordConsent() {
       };
       const { data, error } = await supabase
         .from("consents")
-        .insert(payload)
+        .insert([payload])
         .select("*")
         .single();
       if (error) throw error;
