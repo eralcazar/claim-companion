@@ -1904,6 +1904,36 @@ export type Database = {
         }
         Relationships: []
       }
+      hr_alert_settings: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          max_bpm: number
+          min_bpm: number
+          notify_in_app: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          max_bpm?: number
+          min_bpm?: number
+          notify_in_app?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          max_bpm?: number
+          min_bpm?: number
+          notify_in_app?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       indicadores_estudio: {
         Row: {
           codigo_indicador: string | null
