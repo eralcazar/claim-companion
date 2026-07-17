@@ -76,6 +76,8 @@ import Pos from "@/pages/Pos";
 import PharmacyComparator from "@/pages/public/PharmacyComparator";
 import Buscar from "@/pages/public/Buscar";
 import Especialista from "@/pages/public/Especialista";
+import PerfilPublico from "@/pages/medico/PerfilPublico";
+import MarketplaceReview from "@/pages/admin/MarketplaceReview";
 
 const queryClient = new QueryClient();
 
