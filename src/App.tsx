@@ -147,6 +147,8 @@ const App = () => (
               <Route path="/admin/especialidades" element={<EspecialidadesCatalog />} />
               <Route path="/admin/medicos" element={<MedicosManager />} />
               <Route path="/medico/perfil" element={<DoctorProfile />} />
+              <Route path="/medico/perfil-publico" element={<PerfilPublico />} />
+              <Route path="/admin/marketplace" element={<MarketplaceReview />} />
               <Route path="/checkout/return" element={<CheckoutReturn />} />
               <Route path="/admin/productos" element={<ProductManager />} />
               <Route path="/admin/planes" element={<PlanManager />} />
