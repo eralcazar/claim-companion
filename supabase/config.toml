@@ -17,3 +17,8 @@ verify_jwt = false
 
 [functions.payments-webhook]
 verify_jwt = false
+[functions.verify-record-integrity]
+verify_jwt = false
+
+[functions.integrity-certificate-pdf]
+verify_jwt = false
