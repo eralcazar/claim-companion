@@ -50,9 +50,9 @@ export function HeartRatePdfExport({ fromISO, toISO }: Props) {
       if (hrRes.error) throw hrRes.error;
       if (apptRes.error) throw apptRes.error;
 
-      const hr = hrRes.data ?? [];
-      const appts = apptRes.data ?? [];
-      const prof = profRes.data ?? null;
+      const hr = (hrRes.data ?? []) as any[];
+      const appts = (apptRes.data ?? []) as any[];
+      const prof = (profRes.data ?? null) as any;
 
       const doc = new jsPDF({ unit: "pt", format: "a4" });
       const pageW = doc.internal.pageSize.getWidth();
