@@ -9,6 +9,7 @@ import { RefreshCw, ShieldCheck, Download } from "lucide-react";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Ban } from "lucide-react";
 
 export default function IntegrityDashboard() {
   const qc = useQueryClient();
@@ -50,6 +51,30 @@ export default function IntegrityDashboard() {
       const { data } = await q;
       return data ?? [];
     },
+  });
+
+  const { data: tokens, refetch: refetchTokens } = useQuery({
+    queryKey: ["integrity-share-tokens"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("integrity_share_tokens")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(200);
+      return data ?? [];
+    },
+  });
+
+  const revokeToken = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("integrity_share_tokens")
+        .update({ revoked_at: new Date().toISOString() })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => { toast.success("Token revocado"); refetchTokens(); },
+    onError: (e: any) => toast.error(e.message || "Error revocando"),
   });
 
   const exportCsv = () => {
@@ -219,6 +244,54 @@ export default function IntegrityDashboard() {
                   </tr>
                 ))}
                 {!verifLog?.length && <tr><td colSpan={6} className="text-center text-muted-foreground py-4">Sin verificaciones en el rango</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader><CardTitle>Enlaces públicos de verificación</CardTitle></CardHeader>
+        <CardContent>
+          <div className="text-xs text-muted-foreground mb-2">Total: {tokens?.length ?? 0} (últimos 200)</div>
+          <div className="max-h-96 overflow-auto text-xs">
+            <table className="w-full">
+              <thead className="text-muted-foreground text-left sticky top-0 bg-background">
+                <tr>
+                  <th className="py-1 pr-2">Emitido</th>
+                  <th className="py-1 pr-2">Alcance</th>
+                  <th className="py-1 pr-2">Expira</th>
+                  <th className="py-1 pr-2">Usos</th>
+                  <th className="py-1 pr-2">Estado</th>
+                  <th className="py-1 pr-2"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {tokens?.map((t: any) => {
+                  const expired = new Date(t.expires_at) < new Date();
+                  const exhausted = t.max_uses != null && t.uses_count >= t.max_uses;
+                  const revoked = !!t.revoked_at;
+                  const state = revoked ? "revocado" : expired ? "expirado" : exhausted ? "agotado" : "vigente";
+                  return (
+                    <tr key={t.id} className="border-b">
+                      <td className="py-1 pr-2 whitespace-nowrap">{format(new Date(t.created_at), "yyyy-MM-dd HH:mm")}</td>
+                      <td className="py-1 pr-2">{t.scope}{t.table_name ? ` · ${t.table_name}` : ""}</td>
+                      <td className="py-1 pr-2 whitespace-nowrap">{format(new Date(t.expires_at), "yyyy-MM-dd HH:mm")}</td>
+                      <td className="py-1 pr-2">{t.uses_count}{t.max_uses ? ` / ${t.max_uses}` : ""}</td>
+                      <td className="py-1 pr-2">
+                        <Badge variant={state === "vigente" ? "default" : "secondary"}>{state}</Badge>
+                      </td>
+                      <td className="py-1 pr-2 text-right">
+                        {!revoked && (
+                          <Button size="sm" variant="ghost" onClick={() => revokeToken.mutate(t.id)} disabled={revokeToken.isPending}>
+                            <Ban className="h-3 w-3 mr-1" /> Revocar
+                          </Button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+                {!tokens?.length && <tr><td colSpan={6} className="text-center text-muted-foreground py-4">Sin tokens emitidos</td></tr>}
               </tbody>
             </table>
           </div>
