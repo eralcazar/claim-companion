@@ -36,6 +36,10 @@ const mainItems: Item[] = [
   { title: "Perfil", url: "/perfil", icon: User, feature: "perfil" },
 ];
 
+const helpItems: Item[] = [
+  { title: "Dispositivos BLE compatibles", url: "/dispositivos", icon: Bluetooth, feature: "perfil" },
+];
+
 const brokerItems: Item[] = [
   { title: "Panel Broker", url: "/broker", icon: Users, feature: "broker_panel" },
 ];
@@ -98,6 +102,7 @@ export function AppSidebar() {
   const visibleLab = labItems.filter((i) => can(i.feature));
   const visiblePharmacy = pharmacyItems.filter((i) => can(i.feature));
   const visibleAdmin = adminItems.filter((i) => can(i.feature));
+  const visibleHelp = helpItems.filter((i) => can(i.feature));
 
   // Acceso del paciente a su propio consultorio digital (solo lectura del mapa corporal).
   const patientConsultorioId = actingAsPatientId ?? user?.id;
