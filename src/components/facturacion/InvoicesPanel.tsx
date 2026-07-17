@@ -7,8 +7,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Printer, Trash2, Receipt } from "lucide-react";
+import { Plus, Printer, Trash2, Receipt, FileCode2, FileText, Zap } from "lucide-react";
 import { useMedicoInvoices, useUpsertInvoice, useDeleteInvoice } from "@/hooks/useMedicoInvoices";
+import { useTimbrarInvoice, downloadCfdiFile } from "@/hooks/useCfdi";
+import { CfdiModeBadge } from "@/components/facturacion/CfdiModeBadge";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
@@ -18,12 +20,16 @@ export function InvoicesPanel({ mode, userId }: Props) {
   const { data: invoices = [] } = useMedicoInvoices(mode === "medico" ? { doctorId: userId } : { patientId: userId });
   const upsert = useUpsertInvoice();
   const del = useDeleteInvoice();
+  const timbrar = useTimbrarInvoice();
   const [open, setOpen] = useState(false);
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-heading font-semibold flex items-center gap-2"><Receipt className="h-5 w-5" />Facturación</h3>
+        <div className="flex items-center gap-2">
+          <h3 className="text-lg font-heading font-semibold flex items-center gap-2"><Receipt className="h-5 w-5" />Facturación</h3>
+          <CfdiModeBadge compact />
+        </div>
         {mode === "medico" && (
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild><Button size="sm"><Plus className="h-4 w-4 mr-2" />Nueva factura</Button></DialogTrigger>
@@ -45,10 +51,30 @@ export function InvoicesPanel({ mode, userId }: Props) {
                     {format(new Date(inv.fecha), "d MMM yyyy", { locale: es })} · {inv.concepto}
                   </div>
                   <div className="text-sm font-semibold mt-1">${Number(inv.total).toFixed(2)} MXN</div>
+                  {inv.uuid_sat && (
+                    <div className="text-[10px] text-muted-foreground font-mono mt-1">
+                      UUID {inv.uuid_sat} {inv.modo && <span className="ml-1 uppercase">· {inv.modo}</span>}
+                    </div>
+                  )}
                 </div>
                 <div className="flex flex-col items-end gap-2">
                   <Badge variant={inv.estado === "pagada" ? "default" : inv.estado === "cancelada" ? "destructive" : "secondary"}>{inv.estado}</Badge>
                   <div className="flex gap-1">
+                    {mode === "medico" && !inv.uuid_sat && (
+                      <Button size="icon" variant="ghost" title="Timbrar" onClick={() => timbrar.mutate(inv.id)} disabled={timbrar.isPending}>
+                        <Zap className="h-4 w-4" />
+                      </Button>
+                    )}
+                    {inv.xml_url && (
+                      <Button size="icon" variant="ghost" title="Descargar XML" onClick={() => downloadCfdiFile(inv.xml_url, `${inv.folio || inv.uuid_sat}.xml`)}>
+                        <FileCode2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                    {inv.pdf_url && (
+                      <Button size="icon" variant="ghost" title="Descargar PDF timbrado" onClick={() => downloadCfdiFile(inv.pdf_url, `${inv.folio || inv.uuid_sat}.pdf`)}>
+                        <FileText className="h-4 w-4" />
+                      </Button>
+                    )}
                     <Button size="icon" variant="ghost" onClick={() => printInvoice(inv)}><Printer className="h-4 w-4" /></Button>
                     {mode === "medico" && (
                       <Button size="icon" variant="ghost" onClick={() => del.mutate(inv.id)}><Trash2 className="h-4 w-4" /></Button>
