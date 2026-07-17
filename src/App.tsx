@@ -65,6 +65,7 @@ import Domicilio from "@/pages/Domicilio";
 import Facturacion from "@/pages/Facturacion";
 import OAuthConsent from "@/pages/OAuthConsent";
 import DispositivosCompatibles from "@/pages/DispositivosCompatibles";
+import DerechosARCO from "@/pages/DerechosARCO";
 
 const queryClient = new QueryClient();
 
