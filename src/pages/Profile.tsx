@@ -15,6 +15,7 @@ import { Pen, Bell } from "lucide-react";
 import { ActiveRoleSelector } from "@/components/profile/ActiveRoleSelector";
 import { HealthDevicesPanel } from "@/components/profile/HealthDevicesPanel";
 import { BleConnectPanel } from "@/components/ble/BleConnectPanel";
+import { BleTestSettingsCard } from "@/components/ble/BleTestSettingsCard";
 
 const INITIAL_FORM = {
   first_name: "",
