@@ -68,6 +68,7 @@ export function BleReportCSVButton({ patientId, patientName }: { patientId: stri
   const [to, setTo] = useState(defaultTo);
   const [selectedKinds, setSelectedKinds] = useState<TableKey[]>(KINDS.map((k) => k.key));
   const [selectedCols, setSelectedCols] = useState<string[]>(["taken_at", "systolic", "diastolic", "spo2", "temperature_c", "glucose_mg_dl", "bpm", "source"]);
+  const [statuses, setStatuses] = useState<Array<"pending" | "validated" | "discarded" | "mitigated">>(["validated"]);
 
   if (!isAllowed) return null;
 
@@ -75,23 +76,50 @@ export function BleReportCSVButton({ patientId, patientName }: { patientId: stri
     setSelectedKinds((prev) => (prev.includes(k) ? prev.filter((x) => x !== k) : [...prev, k]));
   const toggleCol = (c: string) =>
     setSelectedCols((prev) => (prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]));
+  const toggleStatus = (s: "pending" | "validated" | "discarded" | "mitigated") =>
+    setStatuses((prev) => (prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]));
 
   const handleDownload = async () => {
     if (selectedKinds.length === 0) return toast.error("Selecciona al menos un tipo de lectura");
     if (selectedCols.length === 0) return toast.error("Selecciona al menos una columna");
+    if (statuses.length === 0) return toast.error("Selecciona al menos un estado de validación");
     if (from > to) return toast.error("El rango de fechas es inválido");
     setLoading(true);
     try {
       const fromIso = `${from}T00:00:00.000Z`;
       const toIso = `${to}T23:59:59.999Z`;
       const all: Row[] = [];
+      // Cargar revisiones para determinar mitigado/rechazado
+      let reviewMap: Record<string, "discarded" | "mitigated" | "validated"> = {};
+      if (statuses.some((s) => s !== "pending")) {
+        const { data: revs } = await supabase
+          .from("reading_reviews" as any)
+          .select("reading_kind, reading_id, action, notes")
+          .eq("patient_id", patientId);
+        (revs ?? []).forEach((r: any) => {
+          const key = `${r.reading_kind}:${r.reading_id}`;
+          reviewMap[key] = r.action === "discard"
+            ? "discarded"
+            : (r.notes && String(r.notes).trim().length > 0 ? "mitigated" : "validated");
+        });
+      }
       for (const kind of selectedKinds) {
         const dateField = kind === "activity_readings" ? "fecha" : "taken_at";
-        let q = supabase.from(kind as any).select("*").eq("patient_id", patientId).eq("requires_review", false);
+        let q = supabase.from(kind as any).select("*").eq("patient_id", patientId);
         q = q.gte(dateField, fromIso).lte(dateField, toIso);
         const { data, error } = await q.order(dateField, { ascending: false });
         if (error) continue;
-        (data ?? []).forEach((r: any) => all.push({ tipo: kind.replace("_readings", ""), ...r }));
+        const shortKind = kind.replace("_readings", "");
+        (data ?? []).forEach((r: any) => {
+          const key = `${shortKind}:${r.id}`;
+          const reviewStatus = reviewMap[key];
+          let status: "pending" | "validated" | "discarded" | "mitigated";
+          if (reviewStatus) status = reviewStatus;
+          else if (r.requires_review) status = "pending";
+          else status = "validated";
+          if (!statuses.includes(status)) return;
+          all.push({ tipo: shortKind, estado_validacion: status, ...r });
+        });
       }
       if (all.length === 0) { toast.info("Sin lecturas en el período seleccionado"); return; }
       const blob = new Blob([toCsv(all, selectedCols)], { type: "text/csv;charset=utf-8" });
