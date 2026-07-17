@@ -64,6 +64,7 @@ import Odontograma from "@/pages/Odontograma";
 import Domicilio from "@/pages/Domicilio";
 import Facturacion from "@/pages/Facturacion";
 import OAuthConsent from "@/pages/OAuthConsent";
+import DispositivosCompatibles from "@/pages/DispositivosCompatibles";
 
 const queryClient = new QueryClient();
 
@@ -144,6 +145,7 @@ const App = () => (
               <Route path="/admin/ble-devices" element={<BleDevicesManager />} />
               <Route path="/admin/mcp-audit" element={<McpAuditLog />} />
               <Route path="/perfil/notificaciones" element={<NotificationPreferencesPage />} />
+              <Route path="/dispositivos" element={<DispositivosCompatibles />} />
               <Route path="/procedimientos" element={<Procedimientos />} />
               <Route path="/odontograma" element={<Odontograma />} />
               <Route path="/domicilio" element={<Domicilio />} />
