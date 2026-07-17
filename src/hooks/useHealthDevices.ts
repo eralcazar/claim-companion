@@ -188,6 +188,9 @@ export function useHealthDevices() {
       qc.invalidateQueries({ queryKey: ["blood-pressure"] });
       qc.invalidateQueries({ queryKey: ["glucose"] });
       qc.invalidateQueries({ queryKey: ["temperature"] });
+      qc.invalidateQueries({ queryKey: ["heart_rate_readings"] });
+      qc.invalidateQueries({ queryKey: ["unified-readings"] });
+      qc.invalidateQueries({ queryKey: ["historial-salud-appointments"] });
     },
   });
 
@@ -230,6 +233,8 @@ export function useHealthDevices() {
       qc.invalidateQueries({ queryKey: ["blood-pressure"] });
       qc.invalidateQueries({ queryKey: ["glucose"] });
       qc.invalidateQueries({ queryKey: ["temperature"] });
+      qc.invalidateQueries({ queryKey: ["heart_rate_readings"] });
+      qc.invalidateQueries({ queryKey: ["unified-readings"] });
     },
   });
 
