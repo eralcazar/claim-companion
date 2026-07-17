@@ -3745,6 +3745,146 @@ export type Database = {
           },
         ]
       }
+      pharmacy_customer_charges: {
+        Row: {
+          branch_id: string | null
+          created_at: string
+          created_by: string | null
+          customer_id: string
+          fecha: string
+          folio: string | null
+          id: string
+          monto_centavos: number
+          notas: string | null
+          order_id: string | null
+          saldo_centavos: number
+          updated_at: string
+          vence_el: string
+        }
+        Insert: {
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id: string
+          fecha?: string
+          folio?: string | null
+          id?: string
+          monto_centavos: number
+          notas?: string | null
+          order_id?: string | null
+          saldo_centavos: number
+          updated_at?: string
+          vence_el: string
+        }
+        Update: {
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string
+          fecha?: string
+          folio?: string | null
+          id?: string
+          monto_centavos?: number
+          notas?: string | null
+          order_id?: string | null
+          saldo_centavos?: number
+          updated_at?: string
+          vence_el?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pharmacy_customer_charges_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacy_branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pharmacy_customer_charges_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "pos_customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pharmacy_customer_charges_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacy_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pharmacy_customer_payments: {
+        Row: {
+          branch_id: string | null
+          charge_id: string | null
+          created_at: string
+          created_by: string | null
+          customer_id: string
+          fecha: string
+          folio: string | null
+          id: string
+          metodo: string
+          monto_centavos: number
+          notas: string | null
+          referencia: string | null
+          updated_at: string
+        }
+        Insert: {
+          branch_id?: string | null
+          charge_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id: string
+          fecha?: string
+          folio?: string | null
+          id?: string
+          metodo?: string
+          monto_centavos: number
+          notas?: string | null
+          referencia?: string | null
+          updated_at?: string
+        }
+        Update: {
+          branch_id?: string | null
+          charge_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string
+          fecha?: string
+          folio?: string | null
+          id?: string
+          metodo?: string
+          monto_centavos?: number
+          notas?: string | null
+          referencia?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pharmacy_customer_payments_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacy_branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pharmacy_customer_payments_charge_id_fkey"
+            columns: ["charge_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacy_customer_charges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pharmacy_customer_payments_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "pos_customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pharmacy_inventory: {
         Row: {
           catalog_id: string
@@ -4570,40 +4710,64 @@ export type Database = {
       }
       pos_customers: {
         Row: {
+          activo: boolean
+          ciudad: string | null
           cp: string | null
           created_at: string
           created_by: string | null
+          dias_credito: number
+          direccion: string | null
           email: string | null
+          estado: string | null
           id: string
+          limite_credito_centavos: number
           nombre: string
+          notas: string | null
           regimen_fiscal: string | null
           rfc: string | null
+          saldo_centavos: number
           telefono: string | null
           updated_at: string
           uso_cfdi: string | null
         }
         Insert: {
+          activo?: boolean
+          ciudad?: string | null
           cp?: string | null
           created_at?: string
           created_by?: string | null
+          dias_credito?: number
+          direccion?: string | null
           email?: string | null
+          estado?: string | null
           id?: string
+          limite_credito_centavos?: number
           nombre: string
+          notas?: string | null
           regimen_fiscal?: string | null
           rfc?: string | null
+          saldo_centavos?: number
           telefono?: string | null
           updated_at?: string
           uso_cfdi?: string | null
         }
         Update: {
+          activo?: boolean
+          ciudad?: string | null
           cp?: string | null
           created_at?: string
           created_by?: string | null
+          dias_credito?: number
+          direccion?: string | null
           email?: string | null
+          estado?: string | null
           id?: string
+          limite_credito_centavos?: number
           nombre?: string
+          notas?: string | null
           regimen_fiscal?: string | null
           rfc?: string | null
+          saldo_centavos?: number
           telefono?: string | null
           updated_at?: string
           uso_cfdi?: string | null
@@ -6024,6 +6188,18 @@ export type Database = {
       mark_notification_pushed: {
         Args: { _notification_id: string }
         Returns: boolean
+      }
+      pharmacy_customer_aging: {
+        Args: { _customer_id: string }
+        Returns: {
+          bucket_0_30: number
+          bucket_31_60: number
+          bucket_61_90: number
+          bucket_90_plus: number
+          proximo_vence: string
+          total: number
+          vencido: number
+        }[]
       }
       pharmacy_lots_rotation_alerts: {
         Args: { _branch_id?: string }

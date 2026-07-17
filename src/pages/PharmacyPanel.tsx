@@ -119,6 +119,7 @@ export default function PharmacyPanel() {
         <Link to="/farmacia/compras"><Button size="sm" variant="outline">Compras</Button></Link>
         <Link to="/farmacia/precios"><Button size="sm" variant="outline">Precios</Button></Link>
         <Link to="/farmacia/inventario"><Button size="sm" variant="outline">Inventario</Button></Link>
+        <Link to="/farmacia/clientes"><Button size="sm" variant="outline">Clientes / CxC</Button></Link>
       </div>
 
       <LowStockWidget />
