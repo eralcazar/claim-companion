@@ -1,240 +1,102 @@
 
-# Suite Farmacia CareCentral — Plan de Ejecución (10 sprints)
+# Estado del roadmap CareCentral — qué falta
 
-Respuestas registradas:
-1. **Paquetería**: cotizamos con Skydropx y Envia.com (comparativa por envío)
-2. **PAC**: Facturama para timbrado CFDI 4.0 (ventas POS, complementos de pago, ingresos)
-3. **POS**: impresión térmica web (WebUSB/Web-Print) + fallback PDF/email/WhatsApp
-4. **Apify free**: sí, la cuenta free ($5 USD/mes en créditos) funciona para arrancar — alcanza ~50-150 corridas de scrapers ligeros/mes. Suficiente para actualizar precios de 200-500 SKU 1-2x/día. Si crece el catálogo migramos a plan pago ($49/mes).
-5. **Laboratorio**: convenio existente, arrancamos con esa integración
-6. **Multi-sucursal**: sí, esquema con `sucursal_id` desde día 1 (farmacia principal + Central de Cuidados)
+## Ya entregado (resumen)
 
-Vas a la farmacia — ejecuto los 10 sprints en el siguiente turno sin detenerme. Este plan es la brújula.
+**Núcleo clínico y legal**
+- Expediente digital, historial médico, cirugías, alertas, odontograma, mapa corporal
+- Módulos de temperatura y glucosa con gráficas
+- Nutrición
+- Consentimientos, derechos ARCO, validadores CURP/RFC (Sprint 1 NOM-024)
+- Cadena de integridad HMAC + llaves + raíces diarias + verificación pública por token + comprobante PDF (Sprint 2 NOM-024)
 
----
+**Dispositivos y monitoreo**
+- Capacitor Health (Apple/Google)
+- BLE directo (BP + oxímetros): wizard de emparejamiento, test de conexión, catálogo, troubleshooting, historial de emparejamientos, settings de reintentos, log de errores
+- Panel de riesgo clínico, revisión de lecturas, CSV export con filtros, preferencias de notificación
 
-## Sprint 1 · Fundamento: sucursales, lotes, caducidades y FEFO
+**Pipeline aseguradoras (MetLife)**
+- Formularios A/C/D/E con autofill desde perfil y expediente
+- Firmas electrónicas paciente + médico estampadas en PDF
 
-**Tablas nuevas**
-- `pharmacy_branches` (sucursales): nombre, direccion, rfc_emisor, telefono, activo
-- `pharmacy_lots`: catalog_id, branch_id, lote, caducidad, cantidad_inicial/actual, costo_unitario_centavos, proveedor_id, compra_id, estado (activo/agotado/vencido/bloqueado)
-- `pharmacy_lot_movements`: lot_id, tipo, cantidad, motivo, referencia, created_by
+**Facturación CFDI**
+- `cfdi_config` + `cfdi_stamps` + buckets privados
+- Edge function `cfdi-timbrar` con SW Sapien sandbox + fallback simulador
+- Panel `/admin/facturacion`, badge global "MODO PRUEBAS"
 
-**Reglas**
-- Trigger bloquea salidas de lotes vencidos o negativos
-- Función `sugerir_lotes_fefo(catalog_id, branch_id, cantidad)` → ordena por caducidad ascendente
-- `pharmacy_inventory.stock_actual` pasa a vista calculada por sucursal
-- Grants: `authenticated` (RLS por rol), `service_role` (edge functions)
+**Farmacia — Sprint 1 completo**
+- `pharmacy_branches`, `pharmacy_lots`, `pharmacy_lot_movements`, `pharmacy_suppliers`
+- FEFO (`sugerir_lotes_fefo`, `apply_lot_movement`)
+- SucursalSelector + LotsManager
 
-**UI**
-- `SucursalSelector.tsx` global (header farmacia)
-- `LotsManager.tsx`: timeline con colores por caducidad (verde/amarillo/naranja/rojo/gris)
-- Alertas de rotación: próximos a vencer, sin movimiento >90d, sobrestock, ruptura
+**Farmacia — Sprint 2 parcial**
+- `pharmacy_purchases` + `pharmacy_purchase_items`
+- Folio + consumo de lotes en ventas
 
----
-
-## Sprint 2 · Compras con CFDI (compu + celular) y manuales
-
-**Tablas**
-- `pharmacy_suppliers`: rfc, razón_social, contacto, días_crédito, saldo, calificación
-- `pharmacy_purchases`: supplier_id, folio, fecha, subtotal/iva/total, status, tipo_origen (manual/cfdi_xml/cfdi_pdf), cfdi_uuid, xml_url, pdf_url
-- `pharmacy_purchase_items`: descripción_cfdi, cantidad, precio_unit, **lote, caducidad, iva_pct** (obligatorios al confirmar)
-
-**Edge functions**
-- `parse-cfdi-xml`: extrae emisor/conceptos/UUID, mapea proveedor por RFC, sugiere match a catálogo (fuzzy + código SAT + código de barras)
-- `parse-cfdi-pdf-ocr`: OCR de PDF/foto celular → UUID → consulta Facturama para XML oficial
-- `create-purchase-manual`: compra sin factura, marca "pendiente CFDI" para adjuntar después
-
-**UI**
-- `PurchasesManager.tsx` con wizard 3 modos: **CFDI XML/ZIP**, **CFDI PDF/foto (celular con `capture="environment"`)**, **Manual**
-- Mapeo de conceptos con "crear producto inline"
-- Captura obligatoria de **lote + caducidad por partida** antes de confirmar
-- Bucket `pharmacy-cfdi` (privado)
+**MCP / Agentes**: server MCP con herramientas clínicas y farmacia + log de tool calls
 
 ---
 
-## Sprint 3 · Precios, márgenes y Trivago de medicamentos (competencia)
+## Pendiente (en orden de ejecución)
 
-**Tablas**
-- Extender `pharmacy_catalog`: costo_promedio, margen_minimo_pct, margen_objetivo_pct, precio_publico, precio_mayoreo, iva_pct, codigo_sat, codigo_barras, principio_activo, requiere_receta
-- `pharmacy_price_history`: precio_anterior/nuevo, motivo, aprobado_por
-- `pharmacy_competitor_prices`: competidor (farmacias_ahorro/similares/san_pablo/farmalisto/benavides/amazon), precio, url, disponibilidad, fuente (apify/manual)
-- `pharmacy_price_change_requests`: precio_actual/propuesto, razón, estado (pendiente/aprobado/rechazado)
+### Farmacia — cerrar Sprint 2
+- Edge functions `parse-cfdi-xml`, `parse-cfdi-pdf-ocr`, `create-purchase-manual`
+- Wizard `PurchasesManager` con 3 modos (XML/ZIP, PDF/foto celular, manual)
+- Captura obligatoria lote+caducidad por partida
+- Bucket privado `pharmacy-cfdi`
 
-**Edge functions**
-- `sync-competitor-prices` (cron 12h, Apify free): actors comunitarios de farmacias MX
-- `suggest-price-adjustments` (Kari, 150 tokens): analiza costo+competencia+margen mínimo → propone ajustes
-- Trigger `validate-price-margin`: impide guardar precio bajo margen mínimo salvo override admin
+### Sprint 3 — Precios + Trivago competencia
+- Extender `pharmacy_catalog` (costo_promedio, márgenes, IVA, SAT, principio activo)
+- `pharmacy_price_history`, `pharmacy_competitor_prices`, `pharmacy_price_change_requests`
+- Edge `sync-competitor-prices` (Apify), `suggest-price-adjustments` (Kari), trigger de margen mínimo
+- `PricingManager` + comparador público `/farmacia/comparador/:sku`
 
-**UI**
-- `PricingManager.tsx`: tabla con costo, precio, margen actual/mínimo, mejor competidor, sugerencia Kari, botón "Solicitar cambio"
-- Comparador público `/farmacia/comparador/:sku` (tipo Trivago) para pacientes
+### Sprint 4 — POS físico
+- `pos_sessions`, `pos_sales`, `pos_sale_items`, `pos_customers`
+- Edge `pos-timbrar-venta`, `pos-enviar-ticket`
+- UI `/pos` con escáner ZXing, FEFO automático, impresión térmica WebUSB
 
----
+### Sprint 5 — E-commerce + surtido de recetas
+- Extender `pharmacy_orders` (origen, entrega, guía, receta_id)
+- `pharmacy_shipping_rates`
+- `ecommerce-checkout`, `validate-prescription-order`
+- `/tienda` público + panel kanban `/farmacia/pedidos`
 
-## Sprint 4 · POS (Punto de Venta) físico
+### Sprint 6 — Despacho + guías
+- `shipments`, `shipping_addresses`
+- `shipping-quote` (Skydropx + Envia comparativa), `shipping-create-label`, webhook tracking
+- Impresión etiqueta 4x6 térmica
+- Secrets: `SKYDROPX_API_KEY`, `ENVIA_API_KEY`
 
-**Tablas**
-- `pos_sessions`: cajero_id, sucursal_id, apertura/cierre, fondo_inicial, arqueo
-- `pos_sales`: folio, cajero_id, cliente_id, sucursal_id, totales, método_pago, timbrada, cfdi_uuid, ticket_url
-- `pos_sale_items`: catalog_id, lot_id (FEFO auto), cantidad, precio, descuento, iva
-- `pos_customers`: nombre, teléfono, RFC opcional, uso_cfdi
+### Sprint 7 — Clientes farmacia + CxC
+- `pharmacy_customers`, `pharmacy_customer_movements`, link a `recetas`
+- Vista 360°, aging CxC, recordatorios Kari (crónicos) por WhatsApp
 
-**Edge function**
-- `pos-timbrar-venta`: llama Facturama para timbrar CFDI 4.0 Ingreso (si cliente pidió factura)
-- `pos-enviar-ticket`: WhatsApp/email con ticket PDF
+### Sprint 8 — Pago proveedores + finanzas
+- `pharmacy_supplier_payments`, `pharmacy_expenses`, vista `pharmacy_financial_summary`
+- Edge `facturama-complemento-pago`, `finance-monthly-report`
+- `/farmacia/finanzas`: flujo de caja, aging, top productos, drill-down
 
-**UI `/pos`** (interfaz tablet, muy simple)
-- Izq: escáner código de barras (`@zxing/browser` + WebUSB) + búsqueda rápida
-- Centro: carrito con FEFO **automático** (usuario NO elige lote)
-- Der: total grande, método pago, botón "Cobrar"
-- Cliente rápido (nombre+tel), toggle "¿Factura?" → RFC/uso CFDI
-- Impresión térmica 58/80mm vía WebUSB + fallback PDF
-- Apertura/cierre de caja con arqueo automático
+### Sprint 9 — MRP
+- `pharmacy_demand_forecast`, `pharmacy_purchase_suggestions`
+- `mrp-calculate` (cron), `mrp-generate-purchase-order` (PDF + email proveedor)
+- `/farmacia/mrp`
 
----
+### Sprint 10 — Laboratorio a domicilio (Central de Cuidados)
+- `lab_orders`, `lab_partners`
+- `lab-schedule-optimize` (Google Maps), `lab-partner-sync` de resultados
+- `/lab/domicilio` con QR y ruta optimizada
 
-## Sprint 5 · E‑commerce + surtido de recetas CareCentral
-
-**Tablas**
-- Extender `pharmacy_orders`: origen (pos/ecommerce/receta_carecentral/marketplace), tipo_entrega, dirección, paquetería, guía_tracking, costo_envío, receta_id, requiere_validación_farmacéutico
-- `pharmacy_shipping_rates`: paquetería, zona, peso_max, precio, tiempo_entrega
-
-**Edge functions**
-- `ecommerce-checkout`: reserva lotes FEFO, cobra Stripe, dispara despacho
-- `validate-prescription-order`: si el producto es controlado → verifica `receta_id` CareCentral o exige subir imagen para validación
-
-**UI**
-- `/tienda` público: catálogo, carrito, checkout (usa cuenta CareCentral si existe)
-- Gate "requiere receta" con subida o vinculación
-- Panel farmacia `/farmacia/pedidos`: kanban (nuevos → preparación → listos → enviados → entregados)
-
----
-
-## Sprint 6 · Despacho + impresión de guías
-
-**Tablas**
-- `shipments`: order_id, paquetería, servicio, guía, tracking_url, costo, peso, dimensiones, etiqueta_pdf_url, estado, eventos_jsonb
-- `shipping_addresses`: cliente, calle, cp, ciudad, estado, referencias, lat, lng
-
-**Edge functions**
-- `shipping-quote`: cotiza en Skydropx + Envia.com simultáneo, devuelve comparativa (paquetería, servicio, precio, días)
-- `shipping-create-label`: crea guía en la elegida, guarda PDF etiqueta 4x6 térmica en storage
-- `shipping-track-webhook`: eventos → actualiza estado y notifica cliente
-
-**UI `/farmacia/despacho`**
-- Cola de listos → cotizar → comparativa Skydropx vs Envia → elegir → generar guía → **imprimir etiqueta 4x6** (WebUSB térmica) → marcar enviado
-- Tracking en vista cliente CareCentral
-
-**Secrets**: `SKYDROPX_API_KEY`, `ENVIA_API_KEY` (los pediré al arrancar sprint 6)
+### Transversales pendientes
+- Roles: `farmaceutico`, `admin_farmacia`, `flebotomista`
+- Sprints NOM-024 restantes (3 al 8): CIE-10, semántica FHIR, no-repudio con e.firma SAT, avisos legales, respaldo/retención 5 años, certificación
+- Dependencias npm por instalar cuando toque: `fast-xml-parser`, `@zxing/browser`, `react-to-print`
+- Secrets pendientes: `FACTURAMA_USER/PASSWORD`, `APIFY_TOKEN`, `SKYDROPX_API_KEY`, `ENVIA_API_KEY`, credenciales maquilador
 
 ---
 
-## Sprint 7 · Clientes y Cuentas por Cobrar
+## Sugerencia de próximo paso
 
-**Tablas**
-- `pharmacy_customers`: nombre, teléfono, email, rfc, uso_cfdi, direcciones[], límite_crédito, saldo, días_crédito, tipo (contado/crédito/mayoreo)
-- `pharmacy_customer_movements`: tipo (venta/pago/nota_crédito), monto, referencia, saldo_después
-- Link `pharmacy_customer_prescriptions` con `recetas` y ventas históricas
+Cerrar **Farmacia Sprint 2** (parser CFDI + wizard de compras) porque desbloquea Sprint 3 (precios/márgenes reales con costo promedio) y alimenta Sprint 8 (finanzas). Es el mayor cuello de botella actual.
 
-**UI `CustomersManager.tsx`**
-- Vista 360°: compras, recetas, saldo, medicamentos crónicos
-- Alertas Kari: "Cliente X debe reposicionar Losartán (última compra 28d, tratamiento crónico)" → WhatsApp automático (50 tokens)
-- Aging CxC (0-30/30-60/60-90/>90)
-
----
-
-## Sprint 8 · Pagos a proveedores + Finanzas farmacia
-
-**Tablas**
-- `pharmacy_supplier_payments`: método, comprobante_url, complemento_pago_cfdi_uuid
-- `pharmacy_expenses`: categoría (renta/luz/nómina/otros), monto, cfdi_uuid, comprobante_url
-- Vista materializada `pharmacy_financial_summary`
-
-**Edge functions**
-- `facturama-complemento-pago`: genera complemento CFDI al pagar factura de proveedor
-- `finance-monthly-report` (Kari, 800 tokens): reporte mensual con recomendaciones
-
-**UI `/farmacia/finanzas`**
-- Flujo de caja proyectado (CxC - CxP)
-- Aging pagos a proveedor + alertas "vence en X días"
-- Top 10 productos por utilidad/rotación/margen
-- Drill-down por producto/proveedor/categoría/sucursal
-- Botón "Pagar" → registra + comprobante + complemento CFDI automático
-
----
-
-## Sprint 9 · MRP — sugerencias de compra inteligentes
-
-**Tablas**
-- `pharmacy_demand_forecast`: catalog_id, sucursal_id, período, demanda_estimada, algoritmo
-- `pharmacy_purchase_suggestions`: cantidad, proveedor_sugerido, razón, prioridad, costo_estimado, estado
-
-**Edge functions**
-- `mrp-calculate` (cron diario): consume histórico 90d, considera stock/mínimo/lead time/estacionalidad → prioriza rupturas > próximas a agotar > óptimo; elige proveedor por mejor precio+tiempo+calificación
-- `mrp-generate-purchase-order`: convierte aprobadas en OC PDF, envía por email al proveedor
-
-**UI `/farmacia/mrp`**
-- Sugerencias agrupadas por proveedor con "Aprobar todas" / editar → genera OC PDF → envío proveedor
-
----
-
-## Sprint 10 · Central de Cuidados: laboratorio a domicilio
-
-**Tablas**
-- `lab_orders`: paciente_id, estudios[], dirección, fecha_hora_toma, flebotomista_id, maquilador_id, status (solicitado/agendado/tomado/en_análisis/reportado/entregado), costo, precio_venta, cfdi_uuid
-- `lab_partners`: nombre_maquilador, api_endpoint, credenciales_ref, catálogo_pruebas
-
-**Edge functions**
-- `lab-schedule-optimize`: agenda + ruta optimizada del flebotomista (Google Maps API)
-- `lab-partner-sync`: recibe resultados del maquilador y los sube a `resultados_estudios` de CareCentral
-
-**UI**
-- `/lab/domicilio`: agenda + ruta + captura muestras con etiquetas QR
-- Resultados llegan al expediente automáticamente
-- Facturación 1-click desde la orden
-
----
-
-## Elementos transversales
-
-**Roles nuevos**
-- `farmaceutico` (POS, valida recetas, no ve finanzas)
-- `admin_farmacia` (todo + finanzas + compras + precios)
-- `flebotomista` (solo su ruta y capturas)
-
-**RLS**: policies por rol + `sucursal_id`. GRANT en cada CREATE TABLE (`authenticated` + `service_role`).
-
-**Kari (motor de tokens)**
-- MRP: 200 tokens · Análisis competitivo: 150 · Reporte mensual: 800 · Recordatorio cliente crónico: 50/mensaje
-
-**Dependencias npm**
-- `fast-xml-parser` (CFDI), `@zxing/browser` (código de barras POS), `react-to-print` + WebUSB (impresión térmica)
-
-**Secrets a solicitar por sprint**
-- Sprint 2: `FACTURAMA_USER`, `FACTURAMA_PASSWORD` (consulta SAT + timbrado)
-- Sprint 3: `APIFY_TOKEN` (cuenta free existente)
-- Sprint 4: reutiliza Facturama
-- Sprint 6: `SKYDROPX_API_KEY`, `ENVIA_API_KEY`
-- Sprint 10: credenciales del maquilador
-
----
-
-## Orden de ejecución (arranca al aprobar este plan)
-
-```
-Sprint 1  →  lotes + FEFO + sucursales
-Sprint 2  →  compras + CFDI (XML/PDF/foto/manual)
-Sprint 3  →  precios + competencia + Trivago
-Sprint 4  →  POS + impresión térmica
-Sprint 5  →  e-commerce + surtido recetas
-Sprint 6  →  despacho + guías (Skydropx + Envia)
-Sprint 7  →  clientes + CxC + Kari recordatorios
-Sprint 8  →  pago proveedores + finanzas + complementos CFDI
-Sprint 9  →  MRP + OC automáticas
-Sprint 10 →  laboratorio a domicilio
-```
-
-Cada sprint cierra con: migración aprobada, edge functions desplegadas, UI verificada, entrada en Landing/Marketing actualizada.
-
-**Aprobá este plan y arranco Sprint 1 en el próximo turno — no me detengo hasta terminar los 10.**
+¿Arranco por ahí, o prefieres saltar a POS (Sprint 4) para tener venta física demo-able cuanto antes?
