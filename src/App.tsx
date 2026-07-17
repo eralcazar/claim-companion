@@ -73,6 +73,8 @@ import PurchasesManager from "@/pages/farmacia/PurchasesManager";
 import PricingManager from "@/pages/farmacia/PricingManager";
 import Pos from "@/pages/Pos";
 import PharmacyComparator from "@/pages/public/PharmacyComparator";
+import Buscar from "@/pages/public/Buscar";
+import Especialista from "@/pages/public/Especialista";
 
 const queryClient = new QueryClient();
 
@@ -103,6 +105,8 @@ const App = () => (
             <Route path="/verificar/:token" element={<VerifyShare />} />
             <Route path="/comparador" element={<PharmacyComparator />} />
             <Route path="/comparador/:sku" element={<PharmacyComparator />} />
+            <Route path="/buscar" element={<Buscar />} />
+            <Route path="/especialista/:slug" element={<Especialista />} />
             <Route path="/" element={<RootRoute />} />
             <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
               <Route path="/dashboard" element={<Dashboard />} />
