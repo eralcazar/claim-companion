@@ -76,6 +76,8 @@ import Pos from "@/pages/Pos";
 import PharmacyComparator from "@/pages/public/PharmacyComparator";
 import Buscar from "@/pages/public/Buscar";
 import Especialista from "@/pages/public/Especialista";
+import PerfilPublico from "@/pages/medico/PerfilPublico";
+import MarketplaceReview from "@/pages/admin/MarketplaceReview";
 
 const queryClient = new QueryClient();
 
@@ -145,6 +147,8 @@ const App = () => (
               <Route path="/admin/especialidades" element={<EspecialidadesCatalog />} />
               <Route path="/admin/medicos" element={<MedicosManager />} />
               <Route path="/medico/perfil" element={<DoctorProfile />} />
+              <Route path="/medico/perfil-publico" element={<PerfilPublico />} />
+              <Route path="/admin/marketplace" element={<MarketplaceReview />} />
               <Route path="/checkout/return" element={<CheckoutReturn />} />
               <Route path="/admin/productos" element={<ProductManager />} />
               <Route path="/admin/planes" element={<PlanManager />} />
