@@ -16,6 +16,7 @@ import { ActiveRoleSelector } from "@/components/profile/ActiveRoleSelector";
 import { HealthDevicesPanel } from "@/components/profile/HealthDevicesPanel";
 import { BleConnectPanel } from "@/components/ble/BleConnectPanel";
 import { BleTestSettingsCard } from "@/components/ble/BleTestSettingsCard";
+import { IntegrityCertificateCard } from "@/components/integrity/IntegrityCertificateCard";
 
 const INITIAL_FORM = {
   first_name: "",
@@ -317,6 +318,7 @@ export default function Profile() {
       <HealthDevicesPanel />
       <BleConnectPanel />
       <BleTestSettingsCard />
+      <IntegrityCertificateCard />
 
       <Button variant="outline" className="w-full text-destructive" onClick={signOut}>
         Cerrar sesión
