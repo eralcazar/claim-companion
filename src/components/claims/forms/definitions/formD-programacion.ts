@@ -10,6 +10,11 @@ export const formD: FormDefinition = {
     first_name: "profile.first_name",
     policy_number: "policy.policy_number",
     numero_certificado: "policy.numero_certificado",
+    med_solicitante: "profile.medico_tratante_nombre",
+    med_cedula: "profile.medico_tratante_cedula",
+    med_tel: "profile.medico_tratante_telefono",
+    hospital_preferido: "profile.medico_tratante_hospital",
+    especialidad: "profile.medico_tratante_especialidad",
   },
   sections: [
     {
