@@ -32,6 +32,25 @@ export function useDeviceVerifications(deviceId: string | null | undefined) {
   });
 }
 
+export function useMyDeviceVerifications() {
+  return useQuery({
+    queryKey: ["user_device_verifications", "mine"],
+    queryFn: async (): Promise<DeviceVerification[]> => {
+      const { data: userData } = await supabase.auth.getUser();
+      const uid = userData.user?.id;
+      if (!uid) return [];
+      const { data, error } = await supabase
+        .from("user_device_verifications" as any)
+        .select("*")
+        .eq("user_id", uid)
+        .order("tested_at", { ascending: false })
+        .limit(500);
+      if (error) throw error;
+      return (data as any) ?? [];
+    },
+  });
+}
+
 export type CreateDeviceVerificationInput = {
   device_id: string;
   status: DeviceVerificationStatus;
