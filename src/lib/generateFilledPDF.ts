@@ -296,9 +296,40 @@ export function buildOverlayData(ctx: OverlayContext): Record<string, string> {
   set("ben_justificacion", data.ben_justificacion);
 
   // Banco / pago
-  set("clabe", data.clabe);
-  set("banco", data.bank || data.banco);
-  set("titular_cuenta", data.account_owner || data.titular_cuenta);
+  set("clabe", data.clabe || profile.clabe);
+  set("banco", data.bank || data.banco || profile.banco);
+  set("titular_cuenta", data.account_owner || data.titular_cuenta || profile.titular_cuenta || out["nombre_contratante"]);
+
+  // Nombre completo (para formatos que lo requieren en una sola línea)
+  const nombreCompleto = [profile.first_name, profile.paternal_surname, profile.maternal_surname]
+    .filter(Boolean).join(" ").trim() || profile.full_name || "";
+  set("nombre_completo", data.nombre_completo || nombreCompleto);
+
+  // Fecha programada / de servicio (formatos D/E MetLife)
+  set("fecha_programacion", data.fecha_programada || data.fecha_solicitada || data.fecha_programacion || "");
+
+  // Médico tratante — precarga desde perfil si el wizard no capturó
+  if (!data.med_first_name && !data.med_nombre) {
+    set("med1_apellido_pat", out["med1_apellido_pat"] || profile.medico_tratante_apellido_p);
+    set("med1_apellido_mat", out["med1_apellido_mat"] || profile.medico_tratante_apellido_m);
+    set("med1_nombres", out["med1_nombres"] || profile.medico_tratante_nombre);
+    set("med1_especialidad", out["med1_especialidad"] || profile.medico_tratante_especialidad);
+    set("med1_cedula_prof", out["med1_cedula_prof"] || profile.medico_tratante_cedula);
+    set("med1_cedula_esp", out["med1_cedula_esp"] || profile.medico_tratante_cedula_esp);
+  }
+  // Alias directos que usan varios formatos MetLife
+  set("med_solicitante", data.med_solicitante
+    || [profile.medico_tratante_nombre, profile.medico_tratante_apellido_p, profile.medico_tratante_apellido_m].filter(Boolean).join(" "));
+  set("med_cedula", data.med_cedula || profile.medico_tratante_cedula);
+  set("med_tel", data.med_tel || profile.medico_tratante_telefono);
+  set("hospital", data.hospital || profile.medico_tratante_hospital);
+
+  // Firmas del wizard (dataURL) — pasan tal cual, drawImages las estampa.
+  for (const k of [
+    "firma_afectado", "firma_titular", "firma_paciente", "firma_medico", "med_signature",
+  ]) {
+    if (data[k]) set(k, data[k]);
+  }
 
   // Banorte: informe del reclamante
   set("nombre_reclamante", data.reclamante_nombre);
