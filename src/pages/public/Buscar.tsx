@@ -18,6 +18,8 @@ import {
   ShieldCheck,
   ArrowLeft,
   Stethoscope,
+  Building2,
+  CalendarCheck,
 } from "lucide-react";
 import { useSearchProfessionals, useSpecialties } from "@/hooks/useMarketplace";
 
@@ -41,6 +43,8 @@ export default function Buscar() {
   const [specialtySlug, setSpecialtySlug] = useState(initialSpec);
   const [soloVideo, setSoloVideo] = useState(false);
   const [soloDomicilio, setSoloDomicilio] = useState(false);
+  const [soloPresencial, setSoloPresencial] = useState(false);
+  const [conDisponibilidad, setConDisponibilidad] = useState(false);
 
   const { data: specialties = [] } = useSpecialties();
   const { data: results = [], isLoading } = useSearchProfessionals({
@@ -49,6 +53,8 @@ export default function Buscar() {
     specialtySlug: specialtySlug || undefined,
     soloVideo,
     soloDomicilio,
+    soloPresencial,
+    conDisponibilidad,
   });
 
   const totalLabel = useMemo(() => {
@@ -181,6 +187,18 @@ export default function Buscar() {
               <Switch id="domi" checked={soloDomicilio} onCheckedChange={setSoloDomicilio} />
               <Label htmlFor="domi" className="cursor-pointer">
                 <Home className="mr-1 inline h-3.5 w-3.5" /> A domicilio
+              </Label>
+            </div>
+            <div className="flex items-center gap-2">
+              <Switch id="pres" checked={soloPresencial} onCheckedChange={setSoloPresencial} />
+              <Label htmlFor="pres" className="cursor-pointer">
+                <Building2 className="mr-1 inline h-3.5 w-3.5" /> Presencial
+              </Label>
+            </div>
+            <div className="flex items-center gap-2">
+              <Switch id="disp" checked={conDisponibilidad} onCheckedChange={setConDisponibilidad} />
+              <Label htmlFor="disp" className="cursor-pointer">
+                <CalendarCheck className="mr-1 inline h-3.5 w-3.5" /> Con disponibilidad
               </Label>
             </div>
           </div>
