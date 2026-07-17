@@ -3696,8 +3696,13 @@ export type Database = {
         Row: {
           cantidad: number
           catalog_id: string | null
+          codigo_sat: string | null
+          costo_unitario_centavos: number
           created_at: string
           id: string
+          iva_pct: number
+          lote_id: string | null
+          margen_aplicado_pct: number | null
           nombre_snapshot: string
           order_id: string
           precio_unitario_centavos: number
@@ -3707,8 +3712,13 @@ export type Database = {
         Insert: {
           cantidad?: number
           catalog_id?: string | null
+          codigo_sat?: string | null
+          costo_unitario_centavos?: number
           created_at?: string
           id?: string
+          iva_pct?: number
+          lote_id?: string | null
+          margen_aplicado_pct?: number | null
           nombre_snapshot: string
           order_id: string
           precio_unitario_centavos: number
@@ -3718,8 +3728,13 @@ export type Database = {
         Update: {
           cantidad?: number
           catalog_id?: string | null
+          codigo_sat?: string | null
+          costo_unitario_centavos?: number
           created_at?: string
           id?: string
+          iva_pct?: number
+          lote_id?: string | null
+          margen_aplicado_pct?: number | null
           nombre_snapshot?: string
           order_id?: string
           precio_unitario_centavos?: number
@@ -3735,6 +3750,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "pharmacy_order_items_lote_id_fkey"
+            columns: ["lote_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacy_lots"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "pharmacy_order_items_order_id_fkey"
             columns: ["order_id"]
             isOneToOne: false
@@ -3745,68 +3767,289 @@ export type Database = {
       }
       pharmacy_orders: {
         Row: {
+          branch_id: string | null
+          cfdi_pdf_path: string | null
+          cfdi_timbrado_at: string | null
+          cfdi_uuid: string | null
+          cfdi_xml_path: string | null
+          cliente_cp: string | null
+          cliente_email: string | null
+          cliente_nombre: string | null
+          cliente_rfc: string | null
           created_at: string
           created_by: string
+          descuento_centavos: number
           environment: string
+          folio: string | null
+          forma_pago: string | null
           fulfilled_at: string | null
           fulfilled_by: string | null
           id: string
+          iva_centavos: number
+          metodo_pago: string | null
           moneda: string
           notas: string | null
           paid_at: string | null
           patient_id: string
           receta_id: string | null
+          regimen_fiscal_receptor: string | null
+          requiere_cfdi: boolean
           status: Database["public"]["Enums"]["pharmacy_order_status"]
           stripe_payment_intent_id: string | null
           stripe_session_id: string | null
           subtotal_centavos: number
+          tipo: string
           total_centavos: number
           updated_at: string
+          uso_cfdi: string | null
         }
         Insert: {
+          branch_id?: string | null
+          cfdi_pdf_path?: string | null
+          cfdi_timbrado_at?: string | null
+          cfdi_uuid?: string | null
+          cfdi_xml_path?: string | null
+          cliente_cp?: string | null
+          cliente_email?: string | null
+          cliente_nombre?: string | null
+          cliente_rfc?: string | null
           created_at?: string
           created_by: string
+          descuento_centavos?: number
           environment?: string
+          folio?: string | null
+          forma_pago?: string | null
           fulfilled_at?: string | null
           fulfilled_by?: string | null
           id?: string
+          iva_centavos?: number
+          metodo_pago?: string | null
           moneda?: string
           notas?: string | null
           paid_at?: string | null
           patient_id: string
           receta_id?: string | null
+          regimen_fiscal_receptor?: string | null
+          requiere_cfdi?: boolean
           status?: Database["public"]["Enums"]["pharmacy_order_status"]
           stripe_payment_intent_id?: string | null
           stripe_session_id?: string | null
           subtotal_centavos?: number
+          tipo?: string
           total_centavos?: number
           updated_at?: string
+          uso_cfdi?: string | null
         }
         Update: {
+          branch_id?: string | null
+          cfdi_pdf_path?: string | null
+          cfdi_timbrado_at?: string | null
+          cfdi_uuid?: string | null
+          cfdi_xml_path?: string | null
+          cliente_cp?: string | null
+          cliente_email?: string | null
+          cliente_nombre?: string | null
+          cliente_rfc?: string | null
           created_at?: string
           created_by?: string
+          descuento_centavos?: number
           environment?: string
+          folio?: string | null
+          forma_pago?: string | null
           fulfilled_at?: string | null
           fulfilled_by?: string | null
           id?: string
+          iva_centavos?: number
+          metodo_pago?: string | null
           moneda?: string
           notas?: string | null
           paid_at?: string | null
           patient_id?: string
           receta_id?: string | null
+          regimen_fiscal_receptor?: string | null
+          requiere_cfdi?: boolean
           status?: Database["public"]["Enums"]["pharmacy_order_status"]
           stripe_payment_intent_id?: string | null
           stripe_session_id?: string | null
           subtotal_centavos?: number
+          tipo?: string
           total_centavos?: number
           updated_at?: string
+          uso_cfdi?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "pharmacy_orders_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacy_branches"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "pharmacy_orders_receta_id_fkey"
             columns: ["receta_id"]
             isOneToOne: false
             referencedRelation: "recetas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pharmacy_purchase_items: {
+        Row: {
+          caducidad: string | null
+          cantidad: number
+          catalog_id: string | null
+          clave_sat: string | null
+          costo_unitario_centavos: number
+          created_at: string
+          descripcion: string
+          id: string
+          iva_pct: number
+          lot_id: string | null
+          lote: string | null
+          purchase_id: string
+          subtotal_centavos: number
+          ubicacion: string | null
+        }
+        Insert: {
+          caducidad?: string | null
+          cantidad: number
+          catalog_id?: string | null
+          clave_sat?: string | null
+          costo_unitario_centavos: number
+          created_at?: string
+          descripcion: string
+          id?: string
+          iva_pct?: number
+          lot_id?: string | null
+          lote?: string | null
+          purchase_id: string
+          subtotal_centavos?: number
+          ubicacion?: string | null
+        }
+        Update: {
+          caducidad?: string | null
+          cantidad?: number
+          catalog_id?: string | null
+          clave_sat?: string | null
+          costo_unitario_centavos?: number
+          created_at?: string
+          descripcion?: string
+          id?: string
+          iva_pct?: number
+          lot_id?: string | null
+          lote?: string | null
+          purchase_id?: string
+          subtotal_centavos?: number
+          ubicacion?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pharmacy_purchase_items_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacy_catalog"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pharmacy_purchase_items_lot_id_fkey"
+            columns: ["lot_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacy_lots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pharmacy_purchase_items_purchase_id_fkey"
+            columns: ["purchase_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacy_purchases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pharmacy_purchases: {
+        Row: {
+          aplicada_at: string | null
+          branch_id: string
+          cfdi_pdf_path: string | null
+          cfdi_uuid: string | null
+          cfdi_xml_path: string | null
+          created_at: string
+          created_by: string | null
+          estado: string
+          fecha: string
+          folio: string | null
+          fuente: string
+          id: string
+          iva_centavos: number
+          moneda: string
+          notas: string | null
+          subtotal_centavos: number
+          supplier_id: string | null
+          supplier_nombre: string
+          supplier_rfc: string | null
+          total_centavos: number
+          updated_at: string
+        }
+        Insert: {
+          aplicada_at?: string | null
+          branch_id: string
+          cfdi_pdf_path?: string | null
+          cfdi_uuid?: string | null
+          cfdi_xml_path?: string | null
+          created_at?: string
+          created_by?: string | null
+          estado?: string
+          fecha?: string
+          folio?: string | null
+          fuente?: string
+          id?: string
+          iva_centavos?: number
+          moneda?: string
+          notas?: string | null
+          subtotal_centavos?: number
+          supplier_id?: string | null
+          supplier_nombre: string
+          supplier_rfc?: string | null
+          total_centavos?: number
+          updated_at?: string
+        }
+        Update: {
+          aplicada_at?: string | null
+          branch_id?: string
+          cfdi_pdf_path?: string | null
+          cfdi_uuid?: string | null
+          cfdi_xml_path?: string | null
+          created_at?: string
+          created_by?: string | null
+          estado?: string
+          fecha?: string
+          folio?: string | null
+          fuente?: string
+          id?: string
+          iva_centavos?: number
+          moneda?: string
+          notas?: string | null
+          subtotal_centavos?: number
+          supplier_id?: string | null
+          supplier_nombre?: string
+          supplier_rfc?: string | null
+          total_centavos?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pharmacy_purchases_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacy_branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pharmacy_purchases_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacy_suppliers"
             referencedColumns: ["id"]
           },
         ]
@@ -4972,6 +5215,10 @@ export type Database = {
         Returns: Json
       }
       gen_folio: { Args: { _code: string; _insurer: string }; Returns: string }
+      gen_pharmacy_folio: {
+        Args: { _branch: string; _prefix: string }
+        Returns: string
+      }
       get_kari_usage_by_user: {
         Args: { _from: string; _limit?: number; _offset?: number; _to: string }
         Returns: {
