@@ -147,6 +147,7 @@ const App = () => (
               <Route path="/admin/mcp-audit" element={<McpAuditLog />} />
               <Route path="/perfil/notificaciones" element={<NotificationPreferencesPage />} />
               <Route path="/dispositivos" element={<DispositivosCompatibles />} />
+              <Route path="/derechos-arco" element={<DerechosARCO />} />
               <Route path="/procedimientos" element={<Procedimientos />} />
               <Route path="/odontograma" element={<Odontograma />} />
               <Route path="/domicilio" element={<Domicilio />} />
