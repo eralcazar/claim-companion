@@ -493,3 +493,21 @@ export default function Claims() {
     </div>
   );
 }
+
+function ShareClaimButton({ claimId, title }: { claimId: string; title?: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
+        <Share2 className="h-3 w-3 mr-1" /> Compartir
+      </Button>
+      <ShareLinkDialog
+        open={open}
+        onOpenChange={setOpen}
+        resourceType="claim"
+        resourceId={claimId}
+        title={title || "Solicitud"}
+      />
+    </>
+  );
+}
