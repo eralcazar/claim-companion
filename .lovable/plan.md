@@ -1,88 +1,58 @@
-# Catálogo ampliado de dispositivos y wearables
+# Mejorar navegación y completar catálogo de especialidades
 
-Amplío el módulo `/dispositivos-ble` para cubrir no solo BLE directo sino también smartbands/relojes vía Health Connect/HealthKit, con búsqueda, filtros, fichas detalladas y verificación guardada por usuario.
+## Estado actual detectado
 
-## 1. Expansión del catálogo (`src/lib/ble/compatibleDevices.ts`)
+**Especialidades cargadas en BD (17):** Anestesiología, Cardiología, Cirugía General, Dermatología, Ginecología, Medicina General, Medicina Interna, Neurología, Oftalmología, Oncología, Otorrinolaringología, Pediatría, Psiquiatría, Radiología, Traumatología, Traumatología y Ortopedia, Urología.
+→ Faltan varias comunes en México y hay un duplicado ("Traumatología" vs "Traumatología y Ortopedia").
 
-Agrego nuevos campos al tipo `CompatibleDevice`:
-- `deviceType`: `oximeter | bp_monitor | thermometer | smartband | smartwatch | ring | scale`
-- `connectionMethod`: `ble_direct | health_connect | healthkit | vendor_app_bridge | not_compatible`
-- `compatibilityStatus`: `verified | probable | community | incompatible`
-- `pairingSteps`: `string[]` (instrucciones paso a paso)
-- `syncSource`: string explicando qué app/API usar
-- `firmwareNote?`: string opcional
+**Sidebar (`AppSidebar.tsx`):**
+- Grupo "Principal" con 11 items en una sola lista larga.
+- Módulos de mediciones (Presión, Glucosa, SpO₂, Temperatura, Tendencias) NO están en el sidebar — sólo accesibles desde el Expediente.
+- "Historial de salud" y "Dispositivos BLE" perdidos en un grupo "Ayuda" al final.
+- Sin sub-agrupación visual → cuesta escanear.
 
-Amplío el catálogo (~20 modelos) incluyendo:
-- **BLE directo (clínicos):** Wellue O2Ring, Omron M7, A&D UA-651BLE, Beurer FT 95, Berry BM2000B, Checkme O2.
-- **Puente Health Connect/HealthKit:** Xiaomi Smart Band 8/9/10, Haylou RS4/Solar Plus, Amazfit Bip 5/GTS 4, Huawei Band 9, Apple Watch SE, Fitbit Charge 6, Google Pixel Watch.
-- **Genéricos incompatibles con advertencia:** Colmi P8, Y68/D20 (marcados como `not_compatible` con explicación clara).
+**Bottom nav móvil (`BottomNav.tsx`):**
+- Sólo 4 destinos (Inicio, Solicitudes, Agenda, Perfil) + FAB Kari.
+- Sin acceso rápido a Expediente ni Salud.
 
-## 2. Renombrar y renovar la página → `src/pages/DispositivosCompatibles.tsx`
+## Cambios propuestos
 
-Cambio el título a "Dispositivos y wearables compatibles". Nuevas secciones:
+### 1. Reorganizar sidebar por dominios
+Reagrupar `mainItems` en secciones con etiqueta:
 
-- **Barra de búsqueda** por nombre/marca (input con debounce).
-- **Filtros combinables** (chips): Marca, Tipo de dispositivo, Método de conexión, Estado de compatibilidad, Tipo de medición.
-- **Grid de tarjetas** con badges de estado (verde/ámbar/rojo) y método de conexión visible.
-- Cada tarjeta abre un **Sheet/Dialog con ficha completa** (nuevo componente).
+- **Inicio**: Panel de Paciente
+- **Salud** *(nuevo grupo)*: Expediente Digital, Historial de salud, Presión arterial, Glucosa, SpO₂, Temperatura, Tendencias, Nutrición, Historial médico
+- **Atención**: Agenda, Médico a domicilio, Procedimientos, Odontograma
+- **Seguros**: Solicitudes, Pólizas, Formatos, Facturación *(para roles aplicables)*
+- **Dispositivos**: Dispositivos BLE compatibles
+- **Cuenta**: Perfil, Mis accesos
 
-## 3. Nuevo componente `src/components/ble/DeviceDetailSheet.tsx`
+Mantener grupos por rol existentes (Broker, Médico, Enfermería, Laboratorio, Farmacia, Admin) y el footer (Kari, Planes, Suscripción, OCR, Legal, Salir) sin cambios.
 
-Ficha con:
-- Cabecera: marca, modelo, badges de tipo, conexión, estado.
-- **Instrucciones de emparejamiento** paso a paso (numeradas) según `connectionMethod`.
-- **Fuente de sincronización recomendada** (Web Bluetooth vs Health Connect vs HealthKit vs App del fabricante).
-- Botón "Probar conexión ahora" (redirige al wizard existente si es BLE directo, o abre el panel de Health Devices si es puente).
-- Sección **"Mi verificación"** con formulario y lista de intentos previos del usuario (ver §5).
+Agregar entradas a `mainItems` (o nuevo `saludItems`) para las rutas ya existentes: `/presion`, `/glucosa` (verificar ruta real), `/oxygen-saturation`, `/temperatura`, `/tendencias`, `/historial-salud` con sus feature keys correspondientes.
 
-## 4. Nueva tabla `user_device_verifications` (migración)
+### 2. Bottom nav móvil más útil
+Cambiar de 4 a 5 tabs (2 izq + FAB + 2 der):
+- Inicio · Expediente · **Kari (FAB)** · Agenda · Perfil
 
-Guarda el resultado que reporta el usuario por modelo:
+Mover Solicitudes a un menú "Más" accesible desde Perfil o al header, ya que en móvil el usuario paciente entra más a su expediente que a solicitudes.
 
-```sql
-CREATE TABLE public.user_device_verifications (
-  id uuid PK default gen_random_uuid(),
-  user_id uuid NOT NULL,        -- auth.uid()
-  device_id text NOT NULL,      -- ej. "wellue-o2ring" (id del catálogo)
-  firmware text,
-  app_version text,
-  status text NOT NULL,         -- 'success' | 'partial' | 'failed'
-  connection_method text,       -- copiado del catálogo al momento de la prueba
-  notes text,
-  tested_at timestamptz DEFAULT now(),
-  created_at timestamptz DEFAULT now()
-);
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.user_device_verifications TO authenticated;
-GRANT ALL ON public.user_device_verifications TO service_role;
-ALTER TABLE ... ENABLE RLS;
--- Policies: cada usuario ve/edita solo sus filas; admin ve todo.
-```
+### 3. Ampliar catálogo de especialidades
+Migración `INSERT ... ON CONFLICT DO NOTHING` para agregar las faltantes comunes en México y eliminar el duplicado:
 
-Índice en `(user_id, device_id, tested_at desc)`.
+Agregar: Alergología e Inmunología, Angiología, Cirugía Cardiovascular, Cirugía Plástica y Reconstructiva, Cirugía Pediátrica, Endocrinología, Gastroenterología, Geriatría, Hematología, Infectología, Medicina del Deporte, Medicina Familiar, Medicina del Trabajo, Nefrología, Neonatología, Neumología, Neurocirugía, Nutriología Clínica, Odontología, Ortopedia (unificar con Traumatología), Patología, Psicología Clínica, Reumatología, Terapia Física y Rehabilitación, Urgencias Médicas.
 
-## 5. Formulario y hook de verificación
-
-- `src/hooks/useDeviceVerifications.ts`: react-query hooks `list(deviceId)`, `create()`, `remove(id)`.
-- `src/components/ble/DeviceVerificationForm.tsx`: campos firmware, versión app, estado (select success/partial/failed), notas. Se monta dentro del `DeviceDetailSheet`.
-- Muestra listado cronológico con badge de estado y opción de borrar.
-
-## 6. Contadores agregados
-
-En la vista principal, arriba de la grilla: chip "Verificados por la comunidad: N" (count distinct `device_id` con `status='success'` en `user_device_verifications`, consultado vía RPC o vista pública agregada). *(Opcional; sin PII expuesta.)*
+Consolidar "Traumatología" + "Traumatología y Ortopedia" → dejar sólo **"Traumatología y Ortopedia"** (borrar duplicado si no está referenciado; si lo está, hacer UPDATE de referencias antes).
 
 ## Detalles técnicos
 
-- Toda la lógica de filtros/búsqueda es cliente-side sobre el arreglo estático (el catálogo cabe fácilmente en memoria).
-- El `DeviceDetailSheet` usa `Sheet` de shadcn (mobile-friendly, ya presente en el proyecto).
-- El botón "Probar conexión" reutiliza `BlePairingWizard` existente para BLE directo y `HealthDevicesPanel` para puentes.
-- No se toca `HealthDevicesPanel` ni el wizard actual; solo se enlazan.
-- Sin cambios en las tablas de lecturas ni en el flujo de sincronización.
+- Archivos a tocar: `src/components/AppSidebar.tsx`, `src/components/BottomNav.tsx`.
+- Nuevas feature keys si hace falta en `src/lib/features.ts` (`presion_arterial`, `oxygen_saturation`, `tendencias` ya existen).
+- Migración SQL: `INSERT INTO especialidades (nombre, activa) VALUES (...) ON CONFLICT (nombre) DO NOTHING;` + limpieza del duplicado con validación previa de FKs en `medico_especialidades` / `professional_specialties`.
+- Sin cambios de RLS ni de lógica de negocio.
 
-## Archivos afectados
+## Preguntas para confirmar antes de implementar
 
-- `src/lib/ble/compatibleDevices.ts` — ampliar tipos + ~15 modelos nuevos.
-- `src/pages/DispositivosCompatibles.tsx` — reescritura con búsqueda/filtros/sheet.
-- `src/components/ble/DeviceDetailSheet.tsx` — nuevo.
-- `src/components/ble/DeviceVerificationForm.tsx` — nuevo.
-- `src/hooks/useDeviceVerifications.ts` — nuevo.
-- Migración: crear `user_device_verifications` con RLS + GRANTs.
+1. ¿Apruebas el nuevo agrupamiento del sidebar (Inicio / Salud / Atención / Seguros / Dispositivos / Cuenta)?
+2. ¿Ok cambiar el bottom nav móvil a **Inicio · Expediente · Kari · Agenda · Perfil** (quitando Solicitudes de la barra inferior)?
+3. ¿Ok con la lista ampliada de especialidades y consolidar el duplicado de Traumatología?
