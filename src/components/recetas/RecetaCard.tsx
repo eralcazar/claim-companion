@@ -1,7 +1,9 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Pill, Download, Pencil, Trash2, Ban, BellRing, Square } from "lucide-react";
+import { Pill, Download, Pencil, Trash2, Ban, BellRing, Square, Share2 } from "lucide-react";
+import { useState } from "react";
+import { ShareLinkDialog } from "@/components/share/ShareLinkDialog";
 import { CartBuilder } from "@/components/pharmacy/CartBuilder";
 import { useDeleteReceta, useUpdateReceta } from "@/hooks/useRecetas";
 import { generateRecetaPDF } from "./recetaPdf";
@@ -48,6 +50,7 @@ function getItems(receta: any): any[] {
 }
 
 export function RecetaCard({ receta, onEdit }: Props) {
+  const [shareOpen, setShareOpen] = useState(false);
   const { user, roles } = useAuth();
   const del = useDeleteReceta();
   const upd = useUpdateReceta();
