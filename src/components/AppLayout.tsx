@@ -20,6 +20,12 @@ export function AppLayout() {
     <SidebarProvider>
       <BrandSplash />
       <PrivacyConsentTracker />
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:rounded-md focus:bg-primary focus:px-3 focus:py-2 focus:text-primary-foreground focus:shadow-lg"
+      >
+        Saltar al contenido principal
+      </a>
       <div className="min-h-screen flex w-full">
         {!isMobile && <AppSidebar />}
 
@@ -47,7 +53,7 @@ export function AppLayout() {
           <ImpersonationBanner />
           <CfdiTestModeBanner />
 
-          <main className={`flex-1 p-4 ${isMobile ? "pb-20" : ""}`}>
+          <main id="main-content" tabIndex={-1} className={`flex-1 p-4 focus:outline-none ${isMobile ? "pb-20" : ""}`}>
             <Outlet />
           </main>
         </div>
