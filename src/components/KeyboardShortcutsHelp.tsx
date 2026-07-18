@@ -1,7 +1,8 @@
+import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Keyboard } from "lucide-react";
-import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
+import { SHORTCUT_HELP_EVENT, toggleShortcutHelp } from "@/hooks/useKeyboardShortcuts";
 
 function Kbd({ children }: { children: React.ReactNode }) {
   return (
@@ -12,7 +13,16 @@ function Kbd({ children }: { children: React.ReactNode }) {
 }
 
 export function KeyboardShortcutsHelp() {
-  const { helpOpen, setHelpOpen } = useKeyboardShortcuts();
+  const [helpOpen, setHelpOpen] = useState(false);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<{ open?: boolean }>).detail;
+      setHelpOpen((v) => (typeof detail?.open === "boolean" ? detail.open : !v));
+    };
+    window.addEventListener(SHORTCUT_HELP_EVENT, handler);
+    return () => window.removeEventListener(SHORTCUT_HELP_EVENT, handler);
+  }, []);
 
   const rows: Array<[React.ReactNode, string]> = [
     [<><Kbd>/</Kbd></>, "Enfocar la búsqueda"],
@@ -29,7 +39,7 @@ export function KeyboardShortcutsHelp() {
         variant="ghost"
         size="icon"
         aria-label="Ver atajos de teclado"
-        onClick={() => setHelpOpen(true)}
+        onClick={() => toggleShortcutHelp(true)}
         className="hidden md:inline-flex"
       >
         <Keyboard className="h-4 w-4" />
