@@ -11,10 +11,13 @@ import { BrandSplash } from "@/components/brand/BrandSplash";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { PrivacyConsentTracker } from "@/components/legal/PrivacyConsentTracker";
 import { CfdiTestModeBanner } from "@/components/facturacion/CfdiModeBadge";
+import { KeyboardShortcutsHelp } from "@/components/KeyboardShortcutsHelp";
+import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 
 export function AppLayout() {
   const isMobile = useIsMobile();
   usePushNotifications();
+  useKeyboardShortcuts();
 
   return (
     <SidebarProvider>
@@ -35,7 +38,8 @@ export function AppLayout() {
               <SidebarTrigger />
               <div className="h-6 w-px bg-border" />
               <CareCentralLogo size={52} withText />
-              <div className="ml-auto">
+              <div className="ml-auto flex items-center gap-1">
+                <KeyboardShortcutsHelp />
                 <NotificationBell />
               </div>
             </header>

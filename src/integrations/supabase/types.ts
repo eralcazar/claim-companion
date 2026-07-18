@@ -1490,6 +1490,48 @@ export type Database = {
         }
         Relationships: []
       }
+      especialidad_busquedas: {
+        Row: {
+          area: string | null
+          created_at: string
+          id: string
+          last_used_at: string
+          nombre: string
+          only_favs: boolean
+          pais: string | null
+          q: string | null
+          sector: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          area?: string | null
+          created_at?: string
+          id?: string
+          last_used_at?: string
+          nombre: string
+          only_favs?: boolean
+          pais?: string | null
+          q?: string | null
+          sector?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          area?: string | null
+          created_at?: string
+          id?: string
+          last_used_at?: string
+          nombre?: string
+          only_favs?: boolean
+          pais?: string | null
+          q?: string | null
+          sector?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       especialidad_favoritos: {
         Row: {
           created_at: string
