@@ -14,6 +14,8 @@ export type SavedSearch = {
   only_favs: boolean;
   last_used_at: string;
   created_at: string;
+  pinned: boolean;
+  sort_order: number;
 };
 
 export function toSearchParamsString(s: Pick<SavedSearch, "q" | "area" | "pais" | "sector" | "only_favs">) {
@@ -36,6 +38,8 @@ export function useSavedSearches() {
       const { data, error } = await supabase
         .from("especialidad_busquedas" as any)
         .select("*")
+        .order("pinned", { ascending: false })
+        .order("sort_order", { ascending: true })
         .order("last_used_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as unknown as SavedSearch[];
@@ -47,7 +51,7 @@ export function useSaveSearch() {
   const { user } = useAuth();
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (payload: Omit<SavedSearch, "id" | "user_id" | "created_at" | "last_used_at">) => {
+    mutationFn: async (payload: Omit<SavedSearch, "id" | "user_id" | "created_at" | "last_used_at" | "pinned" | "sort_order"> & { pinned?: boolean; sort_order?: number }) => {
       if (!user) throw new Error("No auth");
       const { error } = await supabase.from("especialidad_busquedas" as any).upsert(
         {
@@ -96,5 +100,53 @@ export function useDeleteSavedSearch() {
       qc.invalidateQueries({ queryKey: ["saved-searches"] });
       toast.success("Búsqueda eliminada");
     },
+  });
+}
+
+export function useRenameSavedSearch() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, nombre }: { id: string; nombre: string }) => {
+      const trimmed = nombre.trim();
+      if (!trimmed) throw new Error("El nombre no puede estar vacío");
+      const { error } = await supabase
+        .from("especialidad_busquedas" as any)
+        .update({ nombre: trimmed })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["saved-searches"] });
+      toast.success("Búsqueda renombrada");
+    },
+    onError: (e: any) => toast.error(e.message ?? "No se pudo renombrar"),
+  });
+}
+
+export function useTogglePinSavedSearch() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, pinned }: { id: string; pinned: boolean }) => {
+      const { error } = await supabase
+        .from("especialidad_busquedas" as any)
+        .update({ pinned })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["saved-searches"] }),
+  });
+}
+
+export function useReorderSavedSearches() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (orderedIds: string[]) => {
+      await Promise.all(
+        orderedIds.map((id, idx) =>
+          supabase.from("especialidad_busquedas" as any).update({ sort_order: idx }).eq("id", id),
+        ),
+      );
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["saved-searches"] }),
   });
 }
