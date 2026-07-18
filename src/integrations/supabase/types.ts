@@ -1504,6 +1504,7 @@ export type Database = {
           pinned: boolean
           q: string | null
           sector: string | null
+          sort_order: number
           updated_at: string
           user_id: string
         }
@@ -1520,6 +1521,7 @@ export type Database = {
           pinned?: boolean
           q?: string | null
           sector?: string | null
+          sort_order?: number
           updated_at?: string
           user_id: string
         }
@@ -1536,6 +1538,7 @@ export type Database = {
           pinned?: boolean
           q?: string | null
           sector?: string | null
+          sort_order?: number
           updated_at?: string
           user_id?: string
         }
