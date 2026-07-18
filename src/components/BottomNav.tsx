@@ -13,10 +13,11 @@ const sideTabs = [
 export function BottomNav() {
   return (
     <nav
+      aria-label="Navegación principal"
       className="fixed bottom-0 left-0 right-0 z-50 border-t border-sidebar-border bg-sidebar/95 backdrop-blur supports-[backdrop-filter]:bg-sidebar/85 md:hidden"
       style={{ boxShadow: "0 -4px 20px -8px hsl(var(--primary) / 0.25)" }}
     >
-      <div className="relative flex h-16 items-end justify-around px-2 pb-1">
+      <div className="relative flex h-16 items-end justify-around px-2 pb-[max(0.25rem,env(safe-area-inset-bottom))]">
         {/* Tabs izquierda */}
         {sideTabs.slice(0, 2).map(({ to, icon: Icon, label, end }) => (
           <NavTab key={to} to={to} end={end} icon={Icon} label={label} />
@@ -76,9 +77,10 @@ function NavTab({
     <NavLink
       to={to}
       end={end}
+      aria-label={label}
       className={({ isActive }) =>
         cn(
-          "relative flex flex-1 max-w-[80px] flex-col items-center gap-0.5 px-2 py-1 text-[11px] transition-colors",
+          "relative flex flex-1 max-w-[80px] min-h-11 flex-col items-center justify-end gap-0.5 px-2 py-1 text-[11px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-md",
           isActive
             ? "text-primary font-semibold"
             : "text-sidebar-foreground/70 hover:text-sidebar-foreground",
@@ -86,13 +88,13 @@ function NavTab({
       }
     >
       {({ isActive }) => (
-        <>
+        <span aria-current={isActive ? "page" : undefined} className="contents">
           {isActive && (
-            <span className="absolute -top-px left-1/2 h-[2px] w-8 -translate-x-1/2 rounded-full bg-primary" />
+            <span aria-hidden="true" className="absolute -top-px left-1/2 h-[2px] w-8 -translate-x-1/2 rounded-full bg-primary" />
           )}
-          <Icon className="h-5 w-5" />
+          <Icon className="h-5 w-5" aria-hidden="true" />
           <span>{label}</span>
-        </>
+        </span>
       )}
     </NavLink>
   );

@@ -1490,24 +1490,59 @@ export type Database = {
         }
         Relationships: []
       }
+      especialidad_favoritos: {
+        Row: {
+          created_at: string
+          especialidad_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          especialidad_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          especialidad_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "especialidad_favoritos_especialidad_id_fkey"
+            columns: ["especialidad_id"]
+            isOneToOne: false
+            referencedRelation: "especialidades"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       especialidades: {
         Row: {
           activa: boolean
+          area: string | null
           created_at: string
           id: string
           nombre: string
+          pais: string
+          sector: string | null
         }
         Insert: {
           activa?: boolean
+          area?: string | null
           created_at?: string
           id?: string
           nombre: string
+          pais?: string
+          sector?: string | null
         }
         Update: {
           activa?: boolean
+          area?: string | null
           created_at?: string
           id?: string
           nombre?: string
+          pais?: string
+          sector?: string | null
         }
         Relationships: []
       }
