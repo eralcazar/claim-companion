@@ -60,7 +60,7 @@ export default function ShareView() {
           </div>
         )}
 
-        {!loading && result && !result.ok && (
+        {!loading && result && result.ok === false && (
           <Card className="border-destructive/30">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-destructive">
@@ -69,7 +69,7 @@ export default function ShareView() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-muted-foreground">{errorLabels[result.error] ?? "No se pudo cargar el enlace."}</p>
+              <p className="text-muted-foreground">{errorLabels[(result as any).error] ?? "No se pudo cargar el enlace."}</p>
               <Button asChild className="mt-4">
                 <Link to="/">Ir a CareCentral</Link>
               </Button>
