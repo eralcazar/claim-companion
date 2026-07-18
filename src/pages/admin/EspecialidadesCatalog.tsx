@@ -39,7 +39,16 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, Trash2, Save, Search, Star, Link as LinkIcon, X } from "lucide-react";
+import { Plus, Trash2, Save, Search, Star, Link as LinkIcon, X, Bookmark } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { useSaveSearch } from "@/hooks/useSavedSearches";
 import { toast } from "sonner";
 
 export default function EspecialidadesCatalog() {
@@ -58,6 +67,9 @@ export default function EspecialidadesCatalog() {
   const sector = searchParams.get("sector") ?? "todos";
   const onlyFavs = searchParams.get("favs") === "1";
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const [saveOpen, setSaveOpen] = useState(false);
+  const [saveName, setSaveName] = useState("");
+  const saveSearch = useSaveSearch();
 
   const updateParam = (key: string, value: string, defaultVal: string) => {
     const next = new URLSearchParams(searchParams);
@@ -164,6 +176,7 @@ export default function EspecialidadesCatalog() {
             <Input
               ref={searchInputRef}
               aria-label="Buscar especialidad"
+              data-search-input
               className="pl-8"
               placeholder="Buscar especialidad…"
               value={query}
@@ -209,6 +222,18 @@ export default function EspecialidadesCatalog() {
             )}
             <Button variant="outline" size="sm" onClick={shareFilters} aria-label="Copiar enlace con los filtros aplicados">
               <LinkIcon className="h-3.5 w-3.5" /> Compartir
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setSaveName(query || (area !== "todas" ? area : "Mi búsqueda"));
+                setSaveOpen(true);
+              }}
+              disabled={!hasActiveFilters}
+              aria-label="Guardar esta búsqueda en mi cuenta"
+            >
+              <Bookmark className="h-3.5 w-3.5" /> Guardar
             </Button>
             <span
               className="text-xs text-muted-foreground"
@@ -299,6 +324,49 @@ export default function EspecialidadesCatalog() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={saveOpen} onOpenChange={setSaveOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Guardar búsqueda</DialogTitle>
+            <DialogDescription>
+              Aparecerá en Inicio como “Continuar con mi búsqueda”.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <label htmlFor="save-name" className="text-sm font-medium">Nombre</label>
+            <Input
+              id="save-name"
+              value={saveName}
+              onChange={(e) => setSaveName(e.target.value)}
+              placeholder="Ej. Cardiología CDMX privado"
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && saveName.trim()) {
+                  saveSearch.mutate(
+                    { nombre: saveName.trim(), q: query, area, pais, sector, only_favs: onlyFavs },
+                    { onSuccess: () => setSaveOpen(false) },
+                  );
+                }
+              }}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setSaveOpen(false)}>Cancelar</Button>
+            <Button
+              disabled={!saveName.trim() || saveSearch.isPending}
+              onClick={() =>
+                saveSearch.mutate(
+                  { nombre: saveName.trim(), q: query, area, pais, sector, only_favs: onlyFavs },
+                  { onSuccess: () => setSaveOpen(false) },
+                )
+              }
+            >
+              Guardar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
