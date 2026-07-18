@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 
 function isTypingTarget(el: EventTarget | null) {
@@ -6,6 +6,11 @@ function isTypingTarget(el: EventTarget | null) {
   const tag = el.tagName;
   if (el.isContentEditable) return true;
   return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
+}
+
+export const SHORTCUT_HELP_EVENT = "carecentral:toggle-shortcut-help";
+export function toggleShortcutHelp(open?: boolean) {
+  window.dispatchEvent(new CustomEvent(SHORTCUT_HELP_EVENT, { detail: { open } }));
 }
 
 /**
@@ -18,8 +23,6 @@ function isTypingTarget(el: EventTarget | null) {
  */
 export function useKeyboardShortcuts() {
   const navigate = useNavigate();
-  const [gPressed, setGPressed] = useState(false);
-  const [helpOpen, setHelpOpen] = useState(false);
 
   const focusSearch = useCallback(() => {
     const el =
@@ -35,6 +38,7 @@ export function useKeyboardShortcuts() {
 
   useEffect(() => {
     let gTimer: number | undefined;
+    let gPressed = false;
 
     const onKey = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
@@ -42,7 +46,7 @@ export function useKeyboardShortcuts() {
 
       if (e.key === "?" && !typing) {
         e.preventDefault();
-        setHelpOpen((v) => !v);
+        toggleShortcutHelp();
         return;
       }
 
@@ -56,23 +60,23 @@ export function useKeyboardShortcuts() {
       }
 
       if (e.key === "Escape") {
-        setGPressed(false);
+        gPressed = false;
         return;
       }
 
       if (!typing && e.key.toLowerCase() === "g") {
-        setGPressed(true);
+        gPressed = true;
         window.clearTimeout(gTimer);
-        gTimer = window.setTimeout(() => setGPressed(false), 1200);
+        gTimer = window.setTimeout(() => { gPressed = false; }, 1200);
         return;
       }
 
       if (gPressed && !typing) {
         const k = e.key.toLowerCase();
-        if (k === "c") { e.preventDefault(); navigate("/admin/especialidades"); setGPressed(false); }
-        else if (k === "h") { e.preventDefault(); navigate("/dashboard"); setGPressed(false); }
-        else if (k === "s") { e.preventDefault(); navigate("/historial-salud"); setGPressed(false); }
-        else setGPressed(false);
+        if (k === "c") { e.preventDefault(); navigate("/admin/especialidades"); gPressed = false; }
+        else if (k === "h") { e.preventDefault(); navigate("/dashboard"); gPressed = false; }
+        else if (k === "s") { e.preventDefault(); navigate("/historial-salud"); gPressed = false; }
+        else gPressed = false;
       }
     };
 
@@ -81,7 +85,5 @@ export function useKeyboardShortcuts() {
       window.removeEventListener("keydown", onKey);
       window.clearTimeout(gTimer);
     };
-  }, [gPressed, navigate, focusSearch]);
-
-  return { helpOpen, setHelpOpen };
+  }, [navigate, focusSearch]);
 }
