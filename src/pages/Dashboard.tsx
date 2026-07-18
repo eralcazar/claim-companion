@@ -7,6 +7,7 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { ContinueSearchCard } from "@/components/dashboard/ContinueSearchCard";
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -112,6 +113,8 @@ export default function Dashboard() {
         <Stethoscope className="mr-2 h-5 w-5" />
         Mi Consultorio digital
       </Button>
+
+      <ContinueSearchCard />
 
       {/* Blood pressure quick card */}
       <Card
