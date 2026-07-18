@@ -70,6 +70,7 @@ import DerechosARCO from "@/pages/DerechosARCO";
 import IntegrityDashboard from "@/pages/admin/IntegrityDashboard";
 import CfdiConfigManager from "@/pages/admin/CfdiConfigManager";
 import VerifyShare from "@/pages/public/VerifyShare";
+import ShareView from "@/pages/public/ShareView";
 import PurchasesManager from "@/pages/farmacia/PurchasesManager";
 import PricingManager from "@/pages/farmacia/PricingManager";
 import CustomersManager from "@/pages/farmacia/CustomersManager";
