@@ -354,7 +354,7 @@ export default function Claims() {
                     <Button variant="outline" size="sm" onClick={() => handleDownloadOriginalPDF(claim)}>
                       <FileDown className="h-3 w-3 mr-1" /> Formato
                     </Button>
-                    <ShareClaimButton claimId={claim.id} title={claim.insurer} />
+                    <ShareClaimButton claimId={claim.id} title={claim.insurance_policies?.insurer_name} />
                     <Button
                       variant="outline"
                       size="sm"
