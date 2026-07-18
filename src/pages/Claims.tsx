@@ -6,7 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useNavigate } from "react-router-dom";
-import { Plus, FileText, FileDown, Download, Pencil, FileEdit, Trash2, FileCheck } from "lucide-react";
+import { Plus, FileText, FileDown, Download, Pencil, FileEdit, Trash2, FileCheck, Share2 } from "lucide-react";
+import { useState } from "react";
+import { ShareLinkDialog } from "@/components/share/ShareLinkDialog";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { toast } from "sonner";
@@ -352,6 +354,7 @@ export default function Claims() {
                     <Button variant="outline" size="sm" onClick={() => handleDownloadOriginalPDF(claim)}>
                       <FileDown className="h-3 w-3 mr-1" /> Formato
                     </Button>
+                    <ShareClaimButton claimId={claim.id} title={(claim as any).insurance_policies?.company} />
                     <Button
                       variant="outline"
                       size="sm"
@@ -488,5 +491,23 @@ export default function Claims() {
         </TabsContent>
       </Tabs>
     </div>
+  );
+}
+
+function ShareClaimButton({ claimId, title }: { claimId: string; title?: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
+        <Share2 className="h-3 w-3 mr-1" /> Compartir
+      </Button>
+      <ShareLinkDialog
+        open={open}
+        onOpenChange={setOpen}
+        resourceType="claim"
+        resourceId={claimId}
+        title={title || "Solicitud"}
+      />
+    </>
   );
 }

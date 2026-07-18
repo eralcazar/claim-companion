@@ -1,7 +1,9 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Pill, Download, Pencil, Trash2, Ban, BellRing, Square } from "lucide-react";
+import { Pill, Download, Pencil, Trash2, Ban, BellRing, Square, Share2 } from "lucide-react";
+import { useState } from "react";
+import { ShareLinkDialog } from "@/components/share/ShareLinkDialog";
 import { CartBuilder } from "@/components/pharmacy/CartBuilder";
 import { useDeleteReceta, useUpdateReceta } from "@/hooks/useRecetas";
 import { generateRecetaPDF } from "./recetaPdf";
@@ -48,6 +50,7 @@ function getItems(receta: any): any[] {
 }
 
 export function RecetaCard({ receta, onEdit }: Props) {
+  const [shareOpen, setShareOpen] = useState(false);
   const { user, roles } = useAuth();
   const del = useDeleteReceta();
   const upd = useUpdateReceta();
@@ -164,6 +167,9 @@ export function RecetaCard({ receta, onEdit }: Props) {
         {receta.indicacion && <div className="text-xs text-muted-foreground line-clamp-2">{receta.indicacion}</div>}
         <div className="flex flex-wrap gap-2 pt-2">
           <Button size="sm" variant="outline" onClick={downloadPdf}><Download className="h-3.5 w-3.5 mr-1" />PDF</Button>
+          <Button size="sm" variant="outline" onClick={() => setShareOpen(true)}>
+            <Share2 className="h-3.5 w-3.5 mr-1" />Compartir
+          </Button>
           {canEdit && onEdit && (
             <Button size="sm" variant="outline" onClick={() => onEdit(receta)}><Pencil className="h-3.5 w-3.5 mr-1" />Editar</Button>
           )}
@@ -180,6 +186,13 @@ export function RecetaCard({ receta, onEdit }: Props) {
           )}
         </div>
       </CardContent>
+      <ShareLinkDialog
+        open={shareOpen}
+        onOpenChange={setShareOpen}
+        resourceType="receta"
+        resourceId={receta.id}
+        title={receta.folio || "Receta médica"}
+      />
     </Card>
   );
 }

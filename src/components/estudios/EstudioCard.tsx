@@ -2,7 +2,8 @@ import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { FlaskConical, Pencil, Trash2, FileText, Ban, ChevronDown, ChevronUp, Download, Loader2 } from "lucide-react";
+import { FlaskConical, Pencil, Trash2, FileText, Ban, ChevronDown, ChevronUp, Download, Loader2, Share2 } from "lucide-react";
+import { ShareLinkDialog } from "@/components/share/ShareLinkDialog";
 import { useDeleteEstudio, useUpdateEstudio } from "@/hooks/useEstudios";
 import { useAuth } from "@/contexts/AuthContext";
 import { ResultadosManager } from "./ResultadosManager";
@@ -42,6 +43,7 @@ export function EstudioCard({ estudio, onEdit }: Props) {
   const canEdit = isAdmin || estudio.doctor_id === user?.id || estudio.created_by === user?.id;
   const [open, setOpen] = useState(false);
   const [loadingPdf, setLoadingPdf] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const items = getItems(estudio);
   const visible = items.slice(0, 3);
   const more = items.length - visible.length;
@@ -135,6 +137,9 @@ export function EstudioCard({ estudio, onEdit }: Props) {
             <FileText className="h-3.5 w-3.5 mr-1" />Resultados
             {open ? <ChevronUp className="h-3.5 w-3.5 ml-1" /> : <ChevronDown className="h-3.5 w-3.5 ml-1" />}
           </Button>
+          <Button size="sm" variant="outline" onClick={() => setShareOpen(true)}>
+            <Share2 className="h-3.5 w-3.5 mr-1" />Compartir
+          </Button>
           {canEdit && onEdit && (
             <Button size="sm" variant="outline" onClick={() => onEdit(estudio)}><Pencil className="h-3.5 w-3.5 mr-1" />Editar</Button>
           )}
@@ -153,6 +158,13 @@ export function EstudioCard({ estudio, onEdit }: Props) {
           </div>
         )}
       </CardContent>
+      <ShareLinkDialog
+        open={shareOpen}
+        onOpenChange={setShareOpen}
+        resourceType="estudio"
+        resourceId={estudio.id}
+        title={estudio.folio || "Estudio"}
+      />
     </Card>
   );
 }

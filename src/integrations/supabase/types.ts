@@ -1497,8 +1497,11 @@ export type Database = {
           id: string
           last_used_at: string
           nombre: string
+          nombre_custom: string | null
           only_favs: boolean
+          orden: number
           pais: string | null
+          pinned: boolean
           q: string | null
           sector: string | null
           updated_at: string
@@ -1510,8 +1513,11 @@ export type Database = {
           id?: string
           last_used_at?: string
           nombre: string
+          nombre_custom?: string | null
           only_favs?: boolean
+          orden?: number
           pais?: string | null
+          pinned?: boolean
           q?: string | null
           sector?: string | null
           updated_at?: string
@@ -1523,8 +1529,11 @@ export type Database = {
           id?: string
           last_used_at?: string
           nombre?: string
+          nombre_custom?: string | null
           only_favs?: boolean
+          orden?: number
           pais?: string | null
+          pinned?: boolean
           q?: string | null
           sector?: string | null
           updated_at?: string
@@ -5954,6 +5963,51 @@ export type Database = {
           },
         ]
       }
+      share_links: {
+        Row: {
+          created_at: string
+          expires_at: string | null
+          id: string
+          last_viewed_at: string | null
+          note: string | null
+          owner_id: string
+          resource_id: string
+          resource_type: Database["public"]["Enums"]["share_resource_type"]
+          revoked_at: string | null
+          token: string
+          updated_at: string
+          view_count: number
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          last_viewed_at?: string | null
+          note?: string | null
+          owner_id: string
+          resource_id: string
+          resource_type: Database["public"]["Enums"]["share_resource_type"]
+          revoked_at?: string | null
+          token?: string
+          updated_at?: string
+          view_count?: number
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          last_viewed_at?: string | null
+          note?: string | null
+          owner_id?: string
+          resource_id?: string
+          resource_type?: Database["public"]["Enums"]["share_resource_type"]
+          revoked_at?: string | null
+          token?: string
+          updated_at?: string
+          view_count?: number
+        }
+        Relationships: []
+      }
       specialties: {
         Row: {
           activo: boolean
@@ -6550,6 +6604,7 @@ export type Database = {
         Args: { _branch_id: string; _fondo_inicial?: number; _notas?: string }
         Returns: string
       }
+      resolve_share_token: { Args: { _token: string }; Returns: Json }
       set_active_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -6641,6 +6696,12 @@ export type Database = {
         | "cada_48h"
         | "semanal"
         | "otro"
+      share_resource_type:
+        | "appointment"
+        | "receta"
+        | "estudio"
+        | "claim"
+        | "format"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -6825,6 +6886,13 @@ export const Constants = {
         "cada_48h",
         "semanal",
         "otro",
+      ],
+      share_resource_type: [
+        "appointment",
+        "receta",
+        "estudio",
+        "claim",
+        "format",
       ],
     },
   },

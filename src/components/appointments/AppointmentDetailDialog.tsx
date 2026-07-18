@@ -18,6 +18,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { AppointmentDocuments } from "./AppointmentDocuments";
 import { useState, useEffect } from "react";
+import { Share2 } from "lucide-react";
+import { ShareLinkDialog } from "@/components/share/ShareLinkDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -48,6 +50,7 @@ const reminderLabel = (m?: number | null) => {
 export function AppointmentDetailDialog({ appointment, patientName, open, onOpenChange, onEdit, canEdit, canEditDoctorObservations }: Props) {
   const qc = useQueryClient();
   const [obs, setObs] = useState<string>(appointment?.doctor_observations ?? "");
+  const [shareOpen, setShareOpen] = useState(false);
   useEffect(() => {
     setObs(appointment?.doctor_observations ?? "");
   }, [appointment?.id, appointment?.doctor_observations]);
@@ -90,6 +93,9 @@ export function AppointmentDetailDialog({ appointment, patientName, open, onOpen
                 <Pencil className="h-4 w-4 mr-1" /> Editar
               </Button>
             )}
+            <Button variant="outline" size="sm" onClick={() => setShareOpen(true)}>
+              <Share2 className="h-4 w-4 mr-1" /> Compartir
+            </Button>
           </div>
         </DialogHeader>
 
@@ -200,6 +206,13 @@ export function AppointmentDetailDialog({ appointment, patientName, open, onOpen
           </TabsContent>
         </Tabs>
       </DialogContent>
+      <ShareLinkDialog
+        open={shareOpen}
+        onOpenChange={setShareOpen}
+        resourceType="appointment"
+        resourceId={a.id}
+        title={typeLabels[a.appointment_type] ?? a.appointment_type}
+      />
     </Dialog>
   );
 }
