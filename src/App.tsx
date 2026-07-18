@@ -109,6 +109,7 @@ const App = () => (
             <Route path="/legal" element={<Legal />} />
             <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
             <Route path="/verificar/:token" element={<VerifyShare />} />
+            <Route path="/s/:token" element={<ShareView />} />
             <Route path="/comparador" element={<PharmacyComparator />} />
             <Route path="/comparador/:sku" element={<PharmacyComparator />} />
             <Route path="/buscar" element={<Buscar />} />
