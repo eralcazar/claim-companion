@@ -60,8 +60,10 @@ export function ShareLinkDialog({ open, onOpenChange, resourceType, resourceId, 
 
   const shareWhatsApp = (token: string) => {
     const url = buildShareUrl(token);
-    const msg = whatsappMessage?.(url) ??
-      `Te comparto ${resourceLabels[resourceType].toLowerCase()}${title ? `: ${title}` : ""}\n${url}\n\nAccede al portal de CareCentral para ver los detalles. Regístrate gratis para acceder a tu expediente médico completo.`;
+    const msg =
+      whatsappMessage?.(url) ??
+      // Fallback: mensaje genérico si el llamador no personalizó
+      `📎 *${resourceLabels[resourceType]} — CareCentral*${title ? `\n${title}` : ""}\n\n🔗 ${url}\n\nRegístrate gratis en CareCentral para acceder a tu expediente médico completo.`;
     window.open(buildWhatsAppUrl(msg), "_blank", "noopener");
   };
 

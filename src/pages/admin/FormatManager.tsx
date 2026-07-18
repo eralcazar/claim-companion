@@ -28,7 +28,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { FolderTree, Save } from "lucide-react";
+import { FolderTree, Save, Share2 } from "lucide-react";
+import { ShareLinkDialog } from "@/components/share/ShareLinkDialog";
+import { buildWhatsAppMessage } from "@/lib/shareMessages";
 
 export default function FormatManager() {
   const { roles } = useAuth();
@@ -105,13 +107,34 @@ function FormDetail({
   const { data: secciones = [] } = useSecciones(formulario.id);
   const { data: aseguradoras } = useAseguradoras();
   const aseguradora = aseguradoras?.find((a) => a.id === formulario.aseguradora_id);
+  const [shareOpen, setShareOpen] = useState(false);
 
   return (
     <>
-      <FormHeader
-        formulario={formulario}
-        aseguradora={aseguradora}
-        totalCampos={campos.length}
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex-1 min-w-0">
+          <FormHeader
+            formulario={formulario}
+            aseguradora={aseguradora}
+            totalCampos={campos.length}
+          />
+        </div>
+        <Button variant="outline" size="sm" onClick={() => setShareOpen(true)} aria-label="Compartir formato">
+          <Share2 className="h-4 w-4 mr-1" /> Compartir
+        </Button>
+      </div>
+      <ShareLinkDialog
+        open={shareOpen}
+        onOpenChange={setShareOpen}
+        resourceType="format"
+        resourceId={formulario.id}
+        title={formulario.nombre_display}
+        whatsappMessage={(url) =>
+          buildWhatsAppMessage("format", url, {
+            title: formulario.nombre_display,
+            insurer: aseguradora?.nombre ?? aseguradoraNombre,
+          })
+        }
       />
       <Tabs defaultValue="campos">
         <TabsList>
