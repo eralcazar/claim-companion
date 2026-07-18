@@ -24,21 +24,38 @@ type Item = { title: string; url: string; icon: typeof Home; feature: FeatureKey
 
 const mainItems: Item[] = [
   { title: "Panel de Paciente", url: "/dashboard", icon: Home, feature: "inicio" },
-  { title: "Solicitudes", url: "/reclamos", icon: FileText, feature: "reclamos" },
-  { title: "Agenda", url: "/agenda", icon: Calendar, feature: "agenda" },
-  { title: "Expediente Digital", url: "/expediente", icon: FolderOpen, feature: "expediente_digital" },
-  { title: "Nutrición", url: "/nutricion", icon: Apple, feature: "nutricion" },
-  { title: "Procedimientos", url: "/procedimientos", icon: Repeat2, feature: "procedimientos" },
-  { title: "Odontograma", url: "/odontograma", icon: Smile, feature: "odontograma" },
-  { title: "Médico a domicilio", url: "/domicilio", icon: Home, feature: "domicilio" },
-  { title: "Pólizas", url: "/polizas", icon: Shield, feature: "polizas" },
-  { title: "Formatos", url: "/formatos", icon: Download, feature: "formatos" },
-  { title: "Perfil", url: "/perfil", icon: User, feature: "perfil" },
 ];
 
-const helpItems: Item[] = [
+const saludItems: Item[] = [
+  { title: "Expediente Digital", url: "/expediente", icon: FolderOpen, feature: "expediente_digital" },
   { title: "Historial de salud", url: "/historial-salud", icon: Activity, feature: "perfil" },
-  { title: "Dispositivos BLE compatibles", url: "/dispositivos", icon: Bluetooth, feature: "perfil" },
+  { title: "Presión arterial", url: "/presion", icon: Activity, feature: "presion_arterial" },
+  { title: "Glucosa", url: "/glucosa", icon: Activity, feature: "expediente_digital" },
+  { title: "SpO₂", url: "/oxygen-saturation", icon: Activity, feature: "oxygen_saturation" },
+  { title: "Temperatura", url: "/temperatura", icon: Activity, feature: "expediente_digital" },
+  { title: "Tendencias", url: "/tendencias", icon: TrendingUp, feature: "tendencias" },
+  { title: "Nutrición", url: "/nutricion", icon: Apple, feature: "nutricion" },
+];
+
+const atencionItems: Item[] = [
+  { title: "Agenda", url: "/agenda", icon: Calendar, feature: "agenda" },
+  { title: "Médico a domicilio", url: "/domicilio", icon: Home, feature: "domicilio" },
+  { title: "Procedimientos", url: "/procedimientos", icon: Repeat2, feature: "procedimientos" },
+  { title: "Odontograma", url: "/odontograma", icon: Smile, feature: "odontograma" },
+];
+
+const segurosItems: Item[] = [
+  { title: "Solicitudes", url: "/reclamos", icon: FileText, feature: "reclamos" },
+  { title: "Pólizas", url: "/polizas", icon: Shield, feature: "polizas" },
+  { title: "Formatos", url: "/formatos", icon: Download, feature: "formatos" },
+];
+
+const dispositivosItems: Item[] = [
+  { title: "Dispositivos BLE", url: "/dispositivos", icon: Bluetooth, feature: "perfil" },
+];
+
+const cuentaItems: Item[] = [
+  { title: "Perfil", url: "/perfil", icon: User, feature: "perfil" },
 ];
 
 const brokerItems: Item[] = [
@@ -104,7 +121,11 @@ export function AppSidebar() {
   const visibleLab = labItems.filter((i) => can(i.feature));
   const visiblePharmacy = pharmacyItems.filter((i) => can(i.feature));
   const visibleAdmin = adminItems.filter((i) => can(i.feature));
-  const visibleHelp = helpItems.filter((i) => can(i.feature));
+  const visibleSalud = saludItems.filter((i) => can(i.feature));
+  const visibleAtencion = atencionItems.filter((i) => can(i.feature));
+  const visibleSeguros = segurosItems.filter((i) => can(i.feature));
+  const visibleDispositivos = dispositivosItems.filter((i) => can(i.feature));
+  const visibleCuenta = cuentaItems.filter((i) => can(i.feature));
 
   // Acceso del paciente a su propio consultorio digital (solo lectura del mapa corporal).
   const patientConsultorioId = actingAsPatientId ?? user?.id;
@@ -141,7 +162,7 @@ export function AppSidebar() {
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>{!collapsed && "Principal"}</SidebarGroupLabel>
+          <SidebarGroupLabel>{!collapsed && "Inicio"}</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {visibleMain.map((item) => (
@@ -170,6 +191,66 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {visibleSalud.length > 0 && (
+          <SidebarGroup>
+            <SidebarGroupLabel>{!collapsed && "Salud"}</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {visibleSalud.map((item) => (
+                  <SidebarMenuItem key={item.url}>
+                    <SidebarMenuButton asChild isActive={isActive(item.url)}>
+                      <RouterNavLink to={item.url} className="flex items-center gap-2">
+                        <item.icon className="h-4 w-4" />
+                        {!collapsed && <span>{item.title}</span>}
+                      </RouterNavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        {visibleAtencion.length > 0 && (
+          <SidebarGroup>
+            <SidebarGroupLabel>{!collapsed && "Atención"}</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {visibleAtencion.map((item) => (
+                  <SidebarMenuItem key={item.url}>
+                    <SidebarMenuButton asChild isActive={isActive(item.url)}>
+                      <RouterNavLink to={item.url} className="flex items-center gap-2">
+                        <item.icon className="h-4 w-4" />
+                        {!collapsed && <span>{item.title}</span>}
+                      </RouterNavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        {visibleSeguros.length > 0 && (
+          <SidebarGroup>
+            <SidebarGroupLabel>{!collapsed && "Seguros"}</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {visibleSeguros.map((item) => (
+                  <SidebarMenuItem key={item.url}>
+                    <SidebarMenuButton asChild isActive={isActive(item.url)}>
+                      <RouterNavLink to={item.url} className="flex items-center gap-2">
+                        <item.icon className="h-4 w-4" />
+                        {!collapsed && <span>{item.title}</span>}
+                      </RouterNavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
 
         {visibleBroker.length > 0 && (
           <SidebarGroup>
@@ -291,12 +372,32 @@ export function AppSidebar() {
           </SidebarGroup>
         )}
 
-        {visibleHelp.length > 0 && (
+        {visibleDispositivos.length > 0 && (
           <SidebarGroup>
-            <SidebarGroupLabel>{!collapsed && "Ayuda"}</SidebarGroupLabel>
+            <SidebarGroupLabel>{!collapsed && "Dispositivos"}</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {visibleHelp.map((item) => (
+                {visibleDispositivos.map((item) => (
+                  <SidebarMenuItem key={item.url}>
+                    <SidebarMenuButton asChild isActive={isActive(item.url)}>
+                      <RouterNavLink to={item.url} className="flex items-center gap-2">
+                        <item.icon className="h-4 w-4" />
+                        {!collapsed && <span>{item.title}</span>}
+                      </RouterNavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        {visibleCuenta.length > 0 && (
+          <SidebarGroup>
+            <SidebarGroupLabel>{!collapsed && "Cuenta"}</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {visibleCuenta.map((item) => (
                   <SidebarMenuItem key={item.url}>
                     <SidebarMenuButton asChild isActive={isActive(item.url)}>
                       <RouterNavLink to={item.url} className="flex items-center gap-2">
