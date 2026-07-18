@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { Navigate } from "react-router-dom";
+import { useMemo, useRef, useState } from "react";
+import { Navigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   useEspecialidades,
@@ -39,7 +39,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, Trash2, Save, Search, Star } from "lucide-react";
+import { Plus, Trash2, Save, Search, Star, Link as LinkIcon, X } from "lucide-react";
+import { toast } from "sonner";
 
 export default function EspecialidadesCatalog() {
   const { roles } = useAuth();
@@ -50,11 +51,43 @@ export default function EspecialidadesCatalog() {
   const del = useDeleteEspecialidad();
   const [newName, setNewName] = useState("");
   const [toDelete, setToDelete] = useState<string | null>(null);
-  const [query, setQuery] = useState("");
-  const [area, setArea] = useState<string>("todas");
-  const [pais, setPais] = useState<string>("todos");
-  const [sector, setSector] = useState<string>("todos");
-  const [onlyFavs, setOnlyFavs] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const query = searchParams.get("q") ?? "";
+  const area = searchParams.get("area") ?? "todas";
+  const pais = searchParams.get("pais") ?? "todos";
+  const sector = searchParams.get("sector") ?? "todos";
+  const onlyFavs = searchParams.get("favs") === "1";
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const updateParam = (key: string, value: string, defaultVal: string) => {
+    const next = new URLSearchParams(searchParams);
+    if (!value || value === defaultVal) next.delete(key);
+    else next.set(key, value);
+    setSearchParams(next, { replace: true });
+  };
+  const setQuery = (v: string) => updateParam("q", v, "");
+  const setArea = (v: string) => updateParam("area", v, "todas");
+  const setPais = (v: string) => updateParam("pais", v, "todos");
+  const setSector = (v: string) => updateParam("sector", v, "todos");
+  const setOnlyFavs = (v: boolean) => updateParam("favs", v ? "1" : "", "");
+
+  const hasActiveFilters =
+    !!query || area !== "todas" || pais !== "todos" || sector !== "todos" || onlyFavs;
+
+  const clearFilters = () => {
+    setSearchParams(new URLSearchParams(), { replace: true });
+    requestAnimationFrame(() => searchInputRef.current?.focus());
+  };
+
+  const shareFilters = async () => {
+    const url = window.location.href;
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success("Enlace copiado con los filtros actuales");
+    } catch {
+      toast.error("No se pudo copiar el enlace");
+    }
+  };
 
   if (!roles.includes("admin")) return <Navigate to="/" replace />;
 
@@ -129,11 +162,18 @@ export default function EspecialidadesCatalog() {
           <div className="relative md:col-span-2">
             <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" aria-hidden="true" />
             <Input
+              ref={searchInputRef}
               aria-label="Buscar especialidad"
               className="pl-8"
               placeholder="Buscar especialidad…"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape" && query) {
+                  e.preventDefault();
+                  setQuery("");
+                }
+              }}
             />
           </div>
           <Select value={area} onValueChange={setArea}>
@@ -161,7 +201,23 @@ export default function EspecialidadesCatalog() {
         <div className="flex items-center gap-2">
           <Switch id="only-favs" checked={onlyFavs} onCheckedChange={setOnlyFavs} />
           <label htmlFor="only-favs" className="text-sm cursor-pointer">Solo favoritas</label>
-          <span className="ml-auto text-xs text-muted-foreground">Mostrando {filtered.length} de {especialidades.length}</span>
+          <div className="ml-auto flex items-center gap-2">
+            {hasActiveFilters && (
+              <Button variant="ghost" size="sm" onClick={clearFilters} aria-label="Limpiar todos los filtros">
+                <X className="h-3.5 w-3.5" /> Limpiar
+              </Button>
+            )}
+            <Button variant="outline" size="sm" onClick={shareFilters} aria-label="Copiar enlace con los filtros aplicados">
+              <LinkIcon className="h-3.5 w-3.5" /> Compartir
+            </Button>
+            <span
+              className="text-xs text-muted-foreground"
+              role="status"
+              aria-live="polite"
+            >
+              Mostrando {filtered.length} de {especialidades.length}
+            </span>
+          </div>
         </div>
 
         <Table>
@@ -177,8 +233,33 @@ export default function EspecialidadesCatalog() {
           <TableBody>
             {filtered.length === 0 && (
               <TableRow>
-                <TableCell colSpan={5} className="text-center text-muted-foreground">
-                  Sin coincidencias.
+                <TableCell colSpan={5} className="py-8">
+                  <div className="flex flex-col items-center gap-2 text-center" role="status">
+                    <p className="text-sm font-medium">
+                      {onlyFavs && (favoritos?.size ?? 0) === 0
+                        ? "Aún no tienes especialidades favoritas"
+                        : "Sin coincidencias"}
+                    </p>
+                    <p className="text-xs text-muted-foreground max-w-sm">
+                      {onlyFavs && (favoritos?.size ?? 0) === 0
+                        ? "Marca la ⭐ en cualquier especialidad para verla aquí y que aparezca primero en tus dispositivos."
+                        : "Prueba con otro término, quita algún filtro o limpia todo para ver el catálogo completo."}
+                    </p>
+                    <div className="flex gap-2 pt-1">
+                      {hasActiveFilters && (
+                        <Button size="sm" variant="outline" onClick={clearFilters}>
+                          Limpiar filtros
+                        </Button>
+                      )}
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => searchInputRef.current?.focus()}
+                      >
+                        Volver a buscar
+                      </Button>
+                    </div>
+                  </div>
                 </TableCell>
               </TableRow>
             )}
