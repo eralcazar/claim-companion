@@ -1,11 +1,11 @@
-import { Home, FileText, Calendar, User } from "lucide-react";
+import { Home, FolderOpen, Calendar, User } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import kariAvatar from "@/assets/kari-avatar.png";
 
 const sideTabs = [
   { to: "/dashboard", icon: Home, label: "Inicio", end: true },
-  { to: "/reclamos", icon: FileText, label: "Solicitudes", end: false },
+  { to: "/expediente", icon: FolderOpen, label: "Expediente", end: false },
   { to: "/agenda", icon: Calendar, label: "Agenda", end: false },
   { to: "/perfil", icon: User, label: "Perfil", end: false },
 ];
