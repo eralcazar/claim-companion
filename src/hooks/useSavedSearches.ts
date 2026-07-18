@@ -51,7 +51,7 @@ export function useSaveSearch() {
   const { user } = useAuth();
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (payload: Omit<SavedSearch, "id" | "user_id" | "created_at" | "last_used_at">) => {
+    mutationFn: async (payload: Omit<SavedSearch, "id" | "user_id" | "created_at" | "last_used_at" | "pinned" | "sort_order"> & { pinned?: boolean; sort_order?: number }) => {
       if (!user) throw new Error("No auth");
       const { error } = await supabase.from("especialidad_busquedas" as any).upsert(
         {
