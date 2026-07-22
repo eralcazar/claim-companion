@@ -42,7 +42,7 @@ export function useDoctorSuggestions(params: {
 
       const availSet = new Set((avail ?? []).map((a: any) => a.professional_id));
       const areasByOwner = new Map<string, any[]>();
-      for (const a of areas ?? []) {
+      for (const a of (areas ?? []) as any[]) {
         if (!a.owner_id) continue;
         const arr = areasByOwner.get(a.owner_id) ?? [];
         arr.push(a);
