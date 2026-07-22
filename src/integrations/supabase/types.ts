@@ -4127,6 +4127,30 @@ export type Database = {
         }
         Relationships: []
       }
+      medlineplus_url_state: {
+        Row: {
+          active: boolean
+          last_hash: string | null
+          last_seen_at: string
+          last_title: string | null
+          url: string
+        }
+        Insert: {
+          active?: boolean
+          last_hash?: string | null
+          last_seen_at?: string
+          last_title?: string | null
+          url: string
+        }
+        Update: {
+          active?: boolean
+          last_hash?: string | null
+          last_seen_at?: string
+          last_title?: string | null
+          url?: string
+        }
+        Relationships: []
+      }
       notification_preferences: {
         Row: {
           clinical_alerts: boolean
