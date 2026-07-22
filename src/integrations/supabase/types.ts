@@ -2164,6 +2164,168 @@ export type Database = {
           },
         ]
       }
+      exercise_catalog: {
+        Row: {
+          category: string
+          created_at: string
+          created_by: string | null
+          environment: string
+          equipment: string | null
+          icon: string | null
+          id: string
+          is_public: boolean
+          metric_type: string
+          muscle_group: string | null
+          name: string
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          created_by?: string | null
+          environment: string
+          equipment?: string | null
+          icon?: string | null
+          id?: string
+          is_public?: boolean
+          metric_type: string
+          muscle_group?: string | null
+          name: string
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          environment?: string
+          equipment?: string | null
+          icon?: string | null
+          id?: string
+          is_public?: boolean
+          metric_type?: string
+          muscle_group?: string | null
+          name?: string
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      exercise_session_logs: {
+        Row: {
+          calories: number | null
+          created_at: string
+          duration_min: number | null
+          environment: string
+          fecha: string
+          hr_avg: number | null
+          id: string
+          location_label: string | null
+          notes: string | null
+          patient_id: string
+          rpe: number | null
+          source: string | null
+          started_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          calories?: number | null
+          created_at?: string
+          duration_min?: number | null
+          environment: string
+          fecha?: string
+          hr_avg?: number | null
+          id?: string
+          location_label?: string | null
+          notes?: string | null
+          patient_id: string
+          rpe?: number | null
+          source?: string | null
+          started_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          calories?: number | null
+          created_at?: string
+          duration_min?: number | null
+          environment?: string
+          fecha?: string
+          hr_avg?: number | null
+          id?: string
+          location_label?: string | null
+          notes?: string | null
+          patient_id?: string
+          rpe?: number | null
+          source?: string | null
+          started_at?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      exercise_set_logs: {
+        Row: {
+          created_at: string
+          distance_m: number | null
+          duration_sec: number | null
+          exercise_id: string
+          id: string
+          notes: string | null
+          patient_id: string
+          reps: number | null
+          rest_sec: number | null
+          rpe: number | null
+          session_log_id: string
+          set_number: number
+          weight_kg: number | null
+        }
+        Insert: {
+          created_at?: string
+          distance_m?: number | null
+          duration_sec?: number | null
+          exercise_id: string
+          id?: string
+          notes?: string | null
+          patient_id: string
+          reps?: number | null
+          rest_sec?: number | null
+          rpe?: number | null
+          session_log_id: string
+          set_number?: number
+          weight_kg?: number | null
+        }
+        Update: {
+          created_at?: string
+          distance_m?: number | null
+          duration_sec?: number | null
+          exercise_id?: string
+          id?: string
+          notes?: string | null
+          patient_id?: string
+          reps?: number | null
+          rest_sec?: number | null
+          rpe?: number | null
+          session_log_id?: string
+          set_number?: number
+          weight_kg?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exercise_set_logs_exercise_id_fkey"
+            columns: ["exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercise_catalog"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exercise_set_logs_session_log_id_fkey"
+            columns: ["session_log_id"]
+            isOneToOne: false
+            referencedRelation: "exercise_session_logs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       firmas_usuario: {
         Row: {
           created_at: string
