@@ -356,6 +356,10 @@ export type Database = {
           output_chars: number | null
           pii_fields_detected: Json
           provider: string
+          references_count: number
+          references_ids: string[]
+          rerank_latency_ms: number | null
+          rerank_used: boolean
           sanitization_notes: string | null
           sanitized: boolean
           sanitized_prompt: string | null
@@ -375,6 +379,10 @@ export type Database = {
           output_chars?: number | null
           pii_fields_detected?: Json
           provider?: string
+          references_count?: number
+          references_ids?: string[]
+          rerank_latency_ms?: number | null
+          rerank_used?: boolean
           sanitization_notes?: string | null
           sanitized?: boolean
           sanitized_prompt?: string | null
@@ -394,6 +402,10 @@ export type Database = {
           output_chars?: number | null
           pii_fields_detected?: Json
           provider?: string
+          references_count?: number
+          references_ids?: string[]
+          rerank_latency_ms?: number | null
+          rerank_used?: boolean
           sanitization_notes?: string | null
           sanitized?: boolean
           sanitized_prompt?: string | null
@@ -417,6 +429,12 @@ export type Database = {
           model: string
           notes: string | null
           provider: string
+          rag_categories: string[]
+          rag_enabled: boolean
+          rerank_enabled: boolean
+          rerank_keep: number
+          rerank_top_n: number
+          supports_references: boolean
           updated_at: string
         }
         Insert: {
@@ -433,6 +451,12 @@ export type Database = {
           model?: string
           notes?: string | null
           provider?: string
+          rag_categories?: string[]
+          rag_enabled?: boolean
+          rerank_enabled?: boolean
+          rerank_keep?: number
+          rerank_top_n?: number
+          supports_references?: boolean
           updated_at?: string
         }
         Update: {
@@ -449,6 +473,12 @@ export type Database = {
           model?: string
           notes?: string | null
           provider?: string
+          rag_categories?: string[]
+          rag_enabled?: boolean
+          rerank_enabled?: boolean
+          rerank_keep?: number
+          rerank_top_n?: number
+          supports_references?: boolean
           updated_at?: string
         }
         Relationships: []
@@ -2986,6 +3016,287 @@ export type Database = {
           verifier_type?: string
         }
         Relationships: []
+      }
+      knowledge_chunks: {
+        Row: {
+          chunk_index: number
+          content: string
+          created_at: string
+          document_id: string
+          embedding: string | null
+          id: string
+          token_count: number | null
+        }
+        Insert: {
+          chunk_index: number
+          content: string
+          created_at?: string
+          document_id: string
+          embedding?: string | null
+          id?: string
+          token_count?: number | null
+        }
+        Update: {
+          chunk_index?: number
+          content?: string
+          created_at?: string
+          document_id?: string
+          embedding?: string | null
+          id?: string
+          token_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_chunks_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      knowledge_curation_log: {
+        Row: {
+          action: string
+          actor_id: string | null
+          created_at: string
+          diff: Json | null
+          document_id: string
+          from_status: string | null
+          id: string
+          notes: string | null
+          to_status: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          created_at?: string
+          diff?: Json | null
+          document_id: string
+          from_status?: string | null
+          id?: string
+          notes?: string | null
+          to_status?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          created_at?: string
+          diff?: Json | null
+          document_id?: string
+          from_status?: string | null
+          id?: string
+          notes?: string | null
+          to_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_curation_log_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      knowledge_documents: {
+        Row: {
+          body_md: string
+          body_md_original: string | null
+          category: string
+          created_at: string
+          created_by: string | null
+          id: string
+          is_public: boolean
+          language: string
+          published_at: string | null
+          reviewed_by: string | null
+          slug: string
+          source: string
+          source_attribution: string | null
+          source_language: string
+          source_url: string | null
+          status: string
+          summary: string | null
+          tags: string[]
+          title: string
+          translated_at: string | null
+          translated_by_ai: boolean
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          body_md?: string
+          body_md_original?: string | null
+          category: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_public?: boolean
+          language?: string
+          published_at?: string | null
+          reviewed_by?: string | null
+          slug: string
+          source?: string
+          source_attribution?: string | null
+          source_language?: string
+          source_url?: string | null
+          status?: string
+          summary?: string | null
+          tags?: string[]
+          title: string
+          translated_at?: string | null
+          translated_by_ai?: boolean
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          body_md?: string
+          body_md_original?: string | null
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_public?: boolean
+          language?: string
+          published_at?: string | null
+          reviewed_by?: string | null
+          slug?: string
+          source?: string
+          source_attribution?: string | null
+          source_language?: string
+          source_url?: string | null
+          status?: string
+          summary?: string | null
+          tags?: string[]
+          title?: string
+          translated_at?: string | null
+          translated_by_ai?: boolean
+          updated_at?: string
+          version?: number
+        }
+        Relationships: []
+      }
+      knowledge_ingest_jobs: {
+        Row: {
+          created_at: string
+          error: string | null
+          finished_at: string | null
+          id: string
+          query: string | null
+          source: string
+          started_at: string | null
+          started_by: string | null
+          stats: Json
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          query?: string | null
+          source: string
+          started_at?: string | null
+          started_by?: string | null
+          stats?: Json
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          query?: string | null
+          source?: string
+          started_at?: string | null
+          started_by?: string | null
+          stats?: Json
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      knowledge_locks: {
+        Row: {
+          document_id: string
+          expires_at: string
+          locked_at: string
+          locked_by: string
+          locked_by_name: string | null
+          section: string | null
+        }
+        Insert: {
+          document_id: string
+          expires_at?: string
+          locked_at?: string
+          locked_by: string
+          locked_by_name?: string | null
+          section?: string | null
+        }
+        Update: {
+          document_id?: string
+          expires_at?: string
+          locked_at?: string
+          locked_by?: string
+          locked_by_name?: string | null
+          section?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_locks_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: true
+            referencedRelation: "knowledge_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      knowledge_translations_queue: {
+        Row: {
+          attempts: number
+          created_at: string
+          document_id: string
+          id: string
+          last_error: string | null
+          source_language: string
+          status: string
+          target_language: string
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          document_id: string
+          id?: string
+          last_error?: string | null
+          source_language: string
+          status?: string
+          target_language?: string
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          document_id?: string
+          id?: string
+          last_error?: string | null
+          source_language?: string
+          status?: string
+          target_language?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_translations_queue_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_documents"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       mapeo_medicos: {
         Row: {
@@ -7409,6 +7720,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      acquire_knowledge_lock: {
+        Args: { _document_id: string; _section?: string }
+        Returns: Json
+      }
       add_ai_tokens: {
         Args: { _tokens: number; _user_id: string }
         Returns: undefined
@@ -7509,6 +7824,24 @@ export type Database = {
         Args: { _notification_id: string }
         Returns: boolean
       }
+      match_knowledge: {
+        Args: {
+          categories?: string[]
+          match_count?: number
+          min_similarity?: number
+          query_embedding: string
+        }
+        Returns: {
+          category: string
+          chunk_id: string
+          document_id: string
+          similarity: number
+          snippet: string
+          source: string
+          source_url: string
+          title: string
+        }[]
+      }
       pharmacy_customer_aging: {
         Args: { _customer_id: string }
         Returns: {
@@ -7547,6 +7880,10 @@ export type Database = {
       pos_open_session: {
         Args: { _branch_id: string; _fondo_inicial?: number; _notas?: string }
         Returns: string
+      }
+      release_knowledge_lock: {
+        Args: { _document_id: string }
+        Returns: undefined
       }
       resolve_share_token: { Args: { _token: string }; Returns: Json }
       set_active_role: {
