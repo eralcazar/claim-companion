@@ -8,7 +8,7 @@ import type { SyncStatus } from "@/hooks/useMonitorHealth";
 type Props = {
   status: SyncStatus;
   lastReadingAt: string | null;
-  onRetry?: () => void | Promise<void>;
+  onRetry?: () => unknown | Promise<unknown>;
   retrying?: boolean;
   deviceLabel?: string | null;
 };
