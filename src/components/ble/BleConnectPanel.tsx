@@ -164,6 +164,14 @@ export function BleConnectPanel() {
           />
         )}
 
+        {conn.status === "error" && conn.result && (
+          <BleFailureDiagnostic
+            errorCode={conn.result.errorCode}
+            errorMessage={conn.result.error}
+            service={conn.result.service}
+          />
+        )}
+
         {session.connected && (
           <Alert>
             <Bluetooth className="h-4 w-4" />
