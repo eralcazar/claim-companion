@@ -17,9 +17,8 @@ async function getCapacitorGeo(): Promise<any | null> {
   try {
     const cap: any = (globalThis as any).Capacitor;
     if (!cap?.isNativePlatform?.()) return null;
-    const mod = await import(/* @vite-ignore */ "@capacitor/geolocation").catch(
-      () => null,
-    );
+    // @ts-expect-error optional native module, may be absent on web build
+    const mod = await import(/* @vite-ignore */ "@capacitor/geolocation").catch(() => null);
     return mod?.Geolocation ?? null;
   } catch {
     return null;
