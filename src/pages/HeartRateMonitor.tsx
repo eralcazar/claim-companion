@@ -25,8 +25,6 @@ import { useMonitorHealth } from "@/hooks/useMonitorHealth";
 import { MonitorAlertsCard } from "@/components/health/MonitorAlertsCard";
 import { SyncStatusPill } from "@/components/health/SyncStatusPill";
 import { useResolvedThreshold } from "@/hooks/usePatientThresholds";
-import { Link } from "react-router-dom";
-import { SlidersHorizontal } from "lucide-react";
 
 const RANGES = [
   { key: "1", label: "24 h" },
