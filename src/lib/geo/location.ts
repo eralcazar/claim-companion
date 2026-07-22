@@ -72,13 +72,13 @@ export async function getCurrentLocation(
 
 export async function watchLocation(
   onPoint: (p: GeoPoint) => void,
-  opts: { highAccuracy?: boolean } = {},
+  opts: { highAccuracy?: boolean; maximumAgeMs?: number; timeoutMs?: number } = {},
 ): Promise<WatchHandle> {
-  const { highAccuracy = true } = opts;
+  const { highAccuracy = true, maximumAgeMs = 2000, timeoutMs = 15000 } = opts;
   const capGeo = await getCapacitorGeo();
   if (capGeo) {
     const id = await capGeo.watchPosition(
-      { enableHighAccuracy: highAccuracy, timeout: 15000 },
+      { enableHighAccuracy: highAccuracy, timeout: timeoutMs },
       (pos: any, err: any) => {
         if (err || !pos) return;
         onPoint(toGeoPoint(pos));
@@ -92,7 +92,7 @@ export async function watchLocation(
   const id = navigator.geolocation.watchPosition(
     (pos) => onPoint(toGeoPoint(pos)),
     () => undefined,
-    { enableHighAccuracy: highAccuracy, maximumAge: 2000, timeout: 15000 },
+    { enableHighAccuracy: highAccuracy, maximumAge: maximumAgeMs, timeout: timeoutMs },
   );
   return { clear: () => navigator.geolocation.clearWatch(id) };
 }
