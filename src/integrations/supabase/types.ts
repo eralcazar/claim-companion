@@ -109,6 +109,10 @@ export type Database = {
           external_uuid: string | null
           fecha: string
           id: string
+          latitude: number | null
+          location_accuracy_m: number | null
+          location_captured_at: string | null
+          longitude: number | null
           patient_id: string
           requires_review: boolean
           review_notes: string | null
@@ -127,6 +131,10 @@ export type Database = {
           external_uuid?: string | null
           fecha: string
           id?: string
+          latitude?: number | null
+          location_accuracy_m?: number | null
+          location_captured_at?: string | null
+          longitude?: number | null
           patient_id: string
           requires_review?: boolean
           review_notes?: string | null
@@ -145,6 +153,10 @@ export type Database = {
           external_uuid?: string | null
           fecha?: string
           id?: string
+          latitude?: number | null
+          location_accuracy_m?: number | null
+          location_captured_at?: string | null
+          longitude?: number | null
           patient_id?: string
           requires_review?: boolean
           review_notes?: string | null
@@ -1214,6 +1226,10 @@ export type Database = {
           diastolic: number
           external_uuid: string | null
           id: string
+          latitude: number | null
+          location_accuracy_m: number | null
+          location_captured_at: string | null
+          longitude: number | null
           notes: string | null
           patient_id: string
           position: string | null
@@ -1235,6 +1251,10 @@ export type Database = {
           diastolic: number
           external_uuid?: string | null
           id?: string
+          latitude?: number | null
+          location_accuracy_m?: number | null
+          location_captured_at?: string | null
+          longitude?: number | null
           notes?: string | null
           patient_id: string
           position?: string | null
@@ -1256,6 +1276,10 @@ export type Database = {
           diastolic?: number
           external_uuid?: string | null
           id?: string
+          latitude?: number | null
+          location_accuracy_m?: number | null
+          location_captured_at?: string | null
+          longitude?: number | null
           notes?: string | null
           patient_id?: string
           position?: string | null
@@ -2511,6 +2535,10 @@ export type Database = {
           glucose_mgdl: number
           hours_since_meal: number | null
           id: string
+          latitude: number | null
+          location_accuracy_m: number | null
+          location_captured_at: string | null
+          longitude: number | null
           measurement_context: string
           notes: string | null
           patient_id: string
@@ -2529,6 +2557,10 @@ export type Database = {
           glucose_mgdl: number
           hours_since_meal?: number | null
           id?: string
+          latitude?: number | null
+          location_accuracy_m?: number | null
+          location_captured_at?: string | null
+          longitude?: number | null
           measurement_context?: string
           notes?: string | null
           patient_id: string
@@ -2547,6 +2579,10 @@ export type Database = {
           glucose_mgdl?: number
           hours_since_meal?: number | null
           id?: string
+          latitude?: number | null
+          location_accuracy_m?: number | null
+          location_captured_at?: string | null
+          longitude?: number | null
           measurement_context?: string
           notes?: string | null
           patient_id?: string
@@ -2594,6 +2630,10 @@ export type Database = {
           device_name: string | null
           external_uuid: string | null
           id: string
+          latitude: number | null
+          location_accuracy_m: number | null
+          location_captured_at: string | null
+          longitude: number | null
           measured_at: string
           notes: string | null
           patient_id: string
@@ -2607,6 +2647,10 @@ export type Database = {
           device_name?: string | null
           external_uuid?: string | null
           id?: string
+          latitude?: number | null
+          location_accuracy_m?: number | null
+          location_captured_at?: string | null
+          longitude?: number | null
           measured_at?: string
           notes?: string | null
           patient_id: string
@@ -2620,6 +2664,10 @@ export type Database = {
           device_name?: string | null
           external_uuid?: string | null
           id?: string
+          latitude?: number | null
+          location_accuracy_m?: number | null
+          location_captured_at?: string | null
+          longitude?: number | null
           measured_at?: string
           notes?: string | null
           patient_id?: string
@@ -6772,6 +6820,8 @@ export type Database = {
           health_last_synced_at: string | null
           id: string
           interior_number: string | null
+          location_tagging_enabled: boolean
+          location_tracking_enabled: boolean
           maternal_surname: string
           medico_tratante_apellido_m: string | null
           medico_tratante_apellido_p: string | null
@@ -6830,6 +6880,8 @@ export type Database = {
           health_last_synced_at?: string | null
           id?: string
           interior_number?: string | null
+          location_tagging_enabled?: boolean
+          location_tracking_enabled?: boolean
           maternal_surname?: string
           medico_tratante_apellido_m?: string | null
           medico_tratante_apellido_p?: string | null
@@ -6888,6 +6940,8 @@ export type Database = {
           health_last_synced_at?: string | null
           id?: string
           interior_number?: string | null
+          location_tagging_enabled?: boolean
+          location_tracking_enabled?: boolean
           maternal_surname?: string
           medico_tratante_apellido_m?: string | null
           medico_tratante_apellido_p?: string | null
@@ -7351,6 +7405,10 @@ export type Database = {
           device_name: string | null
           external_uuid: string | null
           id: string
+          latitude: number | null
+          location_accuracy_m: number | null
+          location_captured_at: string | null
+          longitude: number | null
           notes: string | null
           patient_id: string
           pulse: number | null
@@ -7370,6 +7428,10 @@ export type Database = {
           device_name?: string | null
           external_uuid?: string | null
           id?: string
+          latitude?: number | null
+          location_accuracy_m?: number | null
+          location_captured_at?: string | null
+          longitude?: number | null
           notes?: string | null
           patient_id: string
           pulse?: number | null
@@ -7389,6 +7451,10 @@ export type Database = {
           device_name?: string | null
           external_uuid?: string | null
           id?: string
+          latitude?: number | null
+          location_accuracy_m?: number | null
+          location_captured_at?: string | null
+          longitude?: number | null
           notes?: string | null
           patient_id?: string
           pulse?: number | null
@@ -7569,6 +7635,10 @@ export type Database = {
           device_name: string | null
           external_uuid: string | null
           id: string
+          latitude: number | null
+          location_accuracy_m: number | null
+          location_captured_at: string | null
+          longitude: number | null
           method: string | null
           notes: string | null
           patient_id: string
@@ -7588,6 +7658,10 @@ export type Database = {
           device_name?: string | null
           external_uuid?: string | null
           id?: string
+          latitude?: number | null
+          location_accuracy_m?: number | null
+          location_captured_at?: string | null
+          longitude?: number | null
           method?: string | null
           notes?: string | null
           patient_id: string
@@ -7607,6 +7681,10 @@ export type Database = {
           device_name?: string | null
           external_uuid?: string | null
           id?: string
+          latitude?: number | null
+          location_accuracy_m?: number | null
+          location_captured_at?: string | null
+          longitude?: number | null
           method?: string | null
           notes?: string | null
           patient_id?: string
@@ -8176,6 +8254,104 @@ export type Database = {
           progression_scheme?: string
           updated_at?: string
           weeks?: number
+        }
+        Relationships: []
+      }
+      workout_route_points: {
+        Row: {
+          accuracy_m: number | null
+          altitude_m: number | null
+          captured_at: string
+          heading_deg: number | null
+          id: string
+          latitude: number
+          longitude: number
+          route_id: string
+          sequence: number
+          speed_mps: number | null
+        }
+        Insert: {
+          accuracy_m?: number | null
+          altitude_m?: number | null
+          captured_at?: string
+          heading_deg?: number | null
+          id?: string
+          latitude: number
+          longitude: number
+          route_id: string
+          sequence: number
+          speed_mps?: number | null
+        }
+        Update: {
+          accuracy_m?: number | null
+          altitude_m?: number | null
+          captured_at?: string
+          heading_deg?: number | null
+          id?: string
+          latitude?: number
+          longitude?: number
+          route_id?: string
+          sequence?: number
+          speed_mps?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workout_route_points_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "workout_routes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workout_routes: {
+        Row: {
+          activity_type: string
+          avg_pace_s_per_km: number | null
+          created_at: string
+          distance_m: number
+          duration_s: number
+          elevation_gain_m: number | null
+          ended_at: string | null
+          id: string
+          notes: string | null
+          started_at: string
+          steps_estimated: number | null
+          updated_at: string
+          user_id: string
+          workout_session_id: string | null
+        }
+        Insert: {
+          activity_type?: string
+          avg_pace_s_per_km?: number | null
+          created_at?: string
+          distance_m?: number
+          duration_s?: number
+          elevation_gain_m?: number | null
+          ended_at?: string | null
+          id?: string
+          notes?: string | null
+          started_at?: string
+          steps_estimated?: number | null
+          updated_at?: string
+          user_id: string
+          workout_session_id?: string | null
+        }
+        Update: {
+          activity_type?: string
+          avg_pace_s_per_km?: number | null
+          created_at?: string
+          distance_m?: number
+          duration_s?: number
+          elevation_gain_m?: number | null
+          ended_at?: string | null
+          id?: string
+          notes?: string | null
+          started_at?: string
+          steps_estimated?: number | null
+          updated_at?: string
+          user_id?: string
+          workout_session_id?: string | null
         }
         Relationships: []
       }
