@@ -14,6 +14,7 @@ import {
 import { Link } from "react-router-dom";
 import { useState } from "react";
 import { useBleConnectionTest } from "@/hooks/useBleConnectionTest";
+import { BleFailureDiagnostic } from "@/components/ble/BleFailureDiagnostic";
 import { BleTroubleshootingGuide } from "./BleTroubleshootingGuide";
 import { BlePairingWizard } from "./BlePairingWizard";
 
@@ -160,6 +161,14 @@ export function BleConnectPanel() {
         {(showGuide || conn.status === "error") && (
           <BleTroubleshootingGuide
             lastError={conn.status === "error" ? conn.result?.error ?? null : null}
+          />
+        )}
+
+        {conn.status === "error" && conn.result && (
+          <BleFailureDiagnostic
+            errorCode={conn.result.errorCode}
+            errorMessage={conn.result.error}
+            service={conn.result.service}
           />
         )}
 

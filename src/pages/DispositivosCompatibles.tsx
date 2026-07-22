@@ -25,6 +25,8 @@ import {
   type DeviceType,
 } from "@/lib/ble/compatibleDevices";
 import { BleCompatibilityCheck } from "@/components/ble/BleCompatibilityCheck";
+import { WearableConnectionTest } from "@/components/health/WearableConnectionTest";
+import { WearableCompatibilityLookup } from "@/components/health/WearableCompatibilityLookup";
 import { DeviceDetailSheet } from "@/components/ble/DeviceDetailSheet";
 import { MyVerificationsSection } from "@/components/ble/MyVerificationsSection";
 import { RequestDeviceIntegrationDialog } from "@/components/ble/RequestDeviceIntegrationDialog";
@@ -103,6 +105,11 @@ export default function DispositivosCompatibles() {
 
       <div id="probar">
         <BleCompatibilityCheck />
+      </div>
+
+      <div id="wearables" className="grid gap-4 md:grid-cols-2">
+        <WearableCompatibilityLookup />
+        <WearableConnectionTest />
       </div>
 
       <Card>
