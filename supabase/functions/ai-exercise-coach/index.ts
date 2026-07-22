@@ -17,6 +17,15 @@ Recibes datos numéricos anónimos (sin nombre, sin condiciones médicas). Devue
 }
 Español de México. No diagnósticas. Si los datos son insuficientes, sugiere una progresión conservadora.`;
 
+const SESSION_SUMMARY_PROMPT = `Eres un entrenador experto. Analizas una sesión completa (varios ejercicios) y las notas del atleta (RPE, calentamiento, molestias, descanso). Devuelves SOLO JSON válido con:
+{
+  "summary": "1-2 oraciones sobre cómo salió la sesión.",
+  "highlights": ["logro concreto 1", "logro concreto 2"],
+  "flags": ["señal a cuidar 1", "señal a cuidar 2"],
+  "next_session": "Recomendación clara para la próxima sesión, considerando RPE y molestias reportadas."
+}
+Español de México. Si hubo molestia o RPE >=9, prioriza recuperación antes que subir carga. No diagnósticas.`;
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -43,19 +52,43 @@ Deno.serve(async (req) => {
     if (!userData?.user) return json({ error: "Sesión inválida" }, 401);
 
     const body = await req.json();
-    const { exercise_name, category, recent_sets } = body ?? {};
-    if (!exercise_name || !Array.isArray(recent_sets)) {
-      return json({ error: "Faltan datos" }, 400);
-    }
+    const mode: string = body?.mode ?? "exercise";
+    let systemPrompt = SYSTEM_PROMPT;
+    let userPrompt = "";
 
-    const userPrompt = `Ejercicio: ${exercise_name}
+    if (mode === "session_summary") {
+      const { fecha, environment, duration_min, rpe, warmup_notes, discomforts, session_rest_sec, items } = body ?? {};
+      if (!Array.isArray(items) || items.length === 0) return json({ error: "Faltan items" }, 400);
+      systemPrompt = SESSION_SUMMARY_PROMPT;
+      const itemsText = items.map((it: any) => {
+        const setsTxt = (it.sets ?? []).map((s: any, i: number) =>
+          `  #${i + 1} reps=${s.reps ?? "-"} kg=${s.weight_kg ?? "-"} dist_m=${s.distance_m ?? "-"} seg=${s.duration_sec ?? "-"}`
+        ).join("\n");
+        return `• ${it.exercise_name}${it.category ? ` (${it.category})` : ""}\n${setsTxt}`;
+      }).join("\n");
+      userPrompt = `Fecha: ${fecha ?? "n/a"} · Entorno: ${environment ?? "n/a"} · Duración: ${duration_min ?? "-"} min
+RPE global: ${rpe ?? "-"} · Descanso prom.: ${session_rest_sec ?? "-"} seg
+Calentamiento: ${warmup_notes || "(sin registrar)"}
+Molestias: ${discomforts || "(sin registrar)"}
+
+Ejercicios:
+${itemsText}
+
+Devuelve el JSON pedido.`;
+    } else {
+      const { exercise_name, category, recent_sets } = body ?? {};
+      if (!exercise_name || !Array.isArray(recent_sets)) {
+        return json({ error: "Faltan datos" }, 400);
+      }
+      userPrompt = `Ejercicio: ${exercise_name}
 Categoría: ${category ?? "n/a"}
 Últimos sets (más recientes al final):
 ${recent_sets
-  .map((s: any, i: number) => `${i + 1}. reps=${s.reps ?? "-"} kg=${s.weight_kg ?? "-"} dist_m=${s.distance_m ?? "-"} seg=${s.duration_sec ?? "-"}${s.fecha ? ` (${s.fecha})` : ""}`)
+  .map((s: any, i: number) => `${i + 1}. reps=${s.reps ?? "-"} kg=${s.weight_kg ?? "-"} dist_m=${s.distance_m ?? "-"} seg=${s.duration_sec ?? "-"}${s.fecha ? ` (${s.fecha})` : ""}${s.rpe ? ` RPE=${s.rpe}` : ""}${s.discomforts ? ` MOLESTIA=${s.discomforts}` : ""}`)
   .join("\n")}
 
 Devuelve el JSON pedido.`;
+    }
 
     const gwRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -66,7 +99,7 @@ Devuelve el JSON pedido.`;
       body: JSON.stringify({
         model: "google/gemini-2.5-flash-lite",
         messages: [
-          { role: "system", content: SYSTEM_PROMPT },
+          { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
         ],
         response_format: { type: "json_object" },
@@ -86,6 +119,14 @@ Devuelve el JSON pedido.`;
     let parsed: any = {};
     try { parsed = JSON.parse(content); } catch { parsed = { summary: content }; }
 
+    if (mode === "session_summary") {
+      return json({
+        summary: parsed.summary ?? "",
+        highlights: Array.isArray(parsed.highlights) ? parsed.highlights : [],
+        flags: Array.isArray(parsed.flags) ? parsed.flags : [],
+        next_session: parsed.next_session ?? "",
+      });
+    }
     return json({
       summary: parsed.summary ?? "",
       progression: parsed.progression ?? "",
