@@ -1,5 +1,6 @@
 // Edge function: coach de actividad física con Lovable AI + descuento de tokens.
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { loadPolicy, callGateway, MODEL_COSTS } from "../_shared/ai-router.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -7,8 +8,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const MODEL = "google/gemini-3-flash-preview";
-const COST = { input: 30, output: 250 }; // micro-USD por token
+const DEFAULT_MODEL = "google/gemini-2.5-flash-lite";
 
 const SYSTEM_PROMPT = `Eres un coach de actividad física de CareCentral. Hablas español de México, cálido y claro.
 
@@ -56,6 +56,9 @@ Deno.serve(async (req) => {
     const user = userData.user;
 
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
+    const policy = await loadPolicy(admin, "activity_coach");
+    const MODEL = policy.model || DEFAULT_MODEL;
+    const COST = MODEL_COSTS[MODEL] ?? { input: 10, output: 80 };
 
     // Verificar saldo de tokens Kari
     const { data: bal } = await admin
@@ -111,32 +114,22 @@ Deno.serve(async (req) => {
 - Condiciones activas: ${conditions}
 - Metas actuales: pasos ${goalsRes.data?.steps_goal ?? 8000}, min activos ${goalsRes.data?.active_minutes_goal ?? 30}, sueño min ${goalsRes.data?.sleep_minutes_goal ?? 420}`;
 
-    const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: contextMsg },
-        ],
-        response_format: { type: "json_object" },
-      }),
-    });
-
-    if (aiResp.status === 429) return jsonResponse({ error: "IA saturada. Intenta en unos segundos.", code: "rate_limited" }, 429);
-    if (aiResp.status === 402) return jsonResponse({ error: "Créditos IA agotados.", code: "ai_credits" }, 402);
+    const aiResp = await callGateway(
+      LOVABLE_API_KEY,
+      MODEL,
+      [
+        { role: "system", content: SYSTEM_PROMPT },
+        { role: "user", content: contextMsg },
+      ],
+      { maxOutputTokens: policy.max_output_tokens, responseFormat: "json_object" },
+    );
     if (!aiResp.ok) {
-      const t = await aiResp.text();
-      console.error("AI gateway error", aiResp.status, t);
+      if (aiResp.status === 429) return jsonResponse({ error: "IA saturada. Intenta en unos segundos.", code: "rate_limited" }, 429);
+      if (aiResp.status === 402) return jsonResponse({ error: "Créditos IA agotados.", code: "ai_credits" }, 402);
+      console.error("AI gateway error", aiResp.status, aiResp.rawText);
       return jsonResponse({ error: "Error del servicio de IA" }, 502);
     }
-
-    const aiJson = await aiResp.json();
-    const content: string = aiJson?.choices?.[0]?.message?.content ?? "{}";
+    const content: string = aiResp.content || "{}";
     let parsed: any = {};
     try {
       parsed = JSON.parse(content);
@@ -144,9 +137,9 @@ Deno.serve(async (req) => {
       parsed = { summary: content };
     }
 
-    const promptTokens = Number(aiJson?.usage?.prompt_tokens) || Math.ceil(contextMsg.length / 3);
-    const completionTokens = Number(aiJson?.usage?.completion_tokens) || Math.ceil(content.length / 3);
-    const totalTokens = Number(aiJson?.usage?.total_tokens) || promptTokens + completionTokens;
+    const promptTokens = aiResp.usage.prompt_tokens || Math.ceil(contextMsg.length / 3);
+    const completionTokens = aiResp.usage.completion_tokens || Math.ceil(content.length / 3);
+    const totalTokens = aiResp.usage.total_tokens || promptTokens + completionTokens;
     const costMicros = promptTokens * COST.input + completionTokens * COST.output;
 
     const { data: inserted } = await admin
