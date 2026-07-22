@@ -1867,6 +1867,60 @@ export type Database = {
         }
         Relationships: []
       }
+      device_test_requests: {
+        Row: {
+          app_version: string | null
+          created_at: string
+          device_id: string
+          device_name: string
+          evidence_path: string | null
+          firmware: string | null
+          id: string
+          note: string | null
+          region: string | null
+          resolution_note: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          app_version?: string | null
+          created_at?: string
+          device_id: string
+          device_name: string
+          evidence_path?: string | null
+          firmware?: string | null
+          id?: string
+          note?: string | null
+          region?: string | null
+          resolution_note?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          app_version?: string | null
+          created_at?: string
+          device_id?: string
+          device_name?: string
+          evidence_path?: string | null
+          firmware?: string | null
+          id?: string
+          note?: string | null
+          region?: string | null
+          resolution_note?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       especialidad_busquedas: {
         Row: {
           area: string | null

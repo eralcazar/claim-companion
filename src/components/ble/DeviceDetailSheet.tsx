@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -18,6 +19,8 @@ import {
   Ban,
   Zap,
   RefreshCw,
+  FlaskConical,
+  FileText,
 } from "lucide-react";
 import {
   type CompatibleDevice,
@@ -29,8 +32,15 @@ import {
 } from "@/lib/ble/compatibleDevices";
 import { DeviceVerificationForm } from "./DeviceVerificationForm";
 import { MiFitnessBridgeGuide } from "./MiFitnessBridgeGuide";
+import { RequestDeviceTestDialog } from "./RequestDeviceTestDialog";
 import { useHealthDevices } from "@/hooks/useHealthDevices";
 import { useCreateDeviceVerification } from "@/hooks/useDeviceVerifications";
+import {
+  STATUS_LABEL as DTR_STATUS_LABEL,
+  STATUS_TONE as DTR_STATUS_TONE,
+  getEvidenceSignedUrl,
+  useMyDeviceTestRequest,
+} from "@/hooks/useDeviceTestRequests";
 
 const TONE_CLASS: Record<string, string> = {
   success: "bg-emerald-500/15 text-emerald-700 border-emerald-500/30",
@@ -59,6 +69,8 @@ export function DeviceDetailSheet({
   const navigate = useNavigate();
   const { sync, available, requestPerms, platform } = useHealthDevices();
   const logVerification = useCreateDeviceVerification();
+  const [requestOpen, setRequestOpen] = useState(false);
+  const myRequest = useMyDeviceTestRequest(device?.id);
   if (!device) return null;
   const tone = TONE_CLASS[STATUS_TONE[device.compatibilityStatus]];
   const isBle = device.connectionMethod === "ble_direct";
@@ -66,6 +78,18 @@ export function DeviceDetailSheet({
   const isHc = device.connectionMethod === "health_connect";
   const isHk = device.connectionMethod === "healthkit";
   const isBridge = device.connectionMethod === "vendor_app_bridge";
+  const canRequestTest =
+    !isIncompat && device.compatibilityStatus !== "verified";
+  const req = myRequest.data;
+
+  const openEvidence = async (path: string) => {
+    try {
+      const url = await getEvidenceSignedUrl(path);
+      window.open(url, "_blank", "noopener");
+    } catch (e: any) {
+      toast.error(e?.message ?? "No fue posible abrir la evidencia");
+    }
+  };
 
   const handleSyncNow = async () => {
     if (isBle) {
@@ -226,6 +250,40 @@ export function DeviceDetailSheet({
             )}
           </div>
 
+          {canRequestTest && (
+            <div className="rounded-lg border border-dashed border-border p-4 space-y-2">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-medium flex items-center gap-2">
+                    <FlaskConical className="h-4 w-4" />
+                    Solicitar prueba oficial
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Este modelo tiene un estado <span className="font-medium">{STATUS_LABELS[device.compatibilityStatus].toLowerCase()}</span>. Pide al equipo CareCentral verificarlo y publicar la evidencia.
+                  </p>
+                </div>
+                <Button size="sm" onClick={() => setRequestOpen(true)} disabled={!!req && req.status !== "rejected"}>
+                  {req && req.status !== "rejected" ? "Solicitud enviada" : "Solicitar prueba"}
+                </Button>
+              </div>
+              {req && (
+                <div className="flex flex-wrap items-center gap-2 pt-1">
+                  <Badge variant="outline" className={DTR_STATUS_TONE[req.status]}>
+                    {DTR_STATUS_LABEL[req.status]}
+                  </Badge>
+                  {req.resolution_note && (
+                    <span className="text-xs text-muted-foreground">{req.resolution_note}</span>
+                  )}
+                  {req.evidence_path && (
+                    <Button size="sm" variant="ghost" className="gap-1 h-7" onClick={() => openEvidence(req.evidence_path!)}>
+                      <FileText className="h-3.5 w-3.5" /> Ver evidencia
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
           {!isIncompat && (
             <div className="rounded-lg border border-border p-4">
               <p className="text-sm font-medium mb-3">Registrar mi verificación</p>
@@ -233,6 +291,7 @@ export function DeviceDetailSheet({
             </div>
           )}
         </div>
+        <RequestDeviceTestDialog device={device} open={requestOpen} onOpenChange={setRequestOpen} />
       </SheetContent>
     </Sheet>
   );

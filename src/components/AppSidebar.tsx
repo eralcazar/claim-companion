@@ -103,6 +103,7 @@ const adminItems: Item[] = [
   { title: "Proveedores IA", url: "/admin/ai-providers", icon: KeyRound, feature: "kari_admin" },
   { title: "API Keys IA", url: "/admin/api-keys", icon: KeyRound, feature: "kari_admin" },
   { title: "Dispositivos BLE", url: "/admin/ble-devices", icon: Bluetooth, feature: "admin_panel" },
+  { title: "Pruebas de dispositivos", url: "/admin/device-test-requests", icon: Bluetooth, feature: "admin_panel" },
   { title: "Auditoría MCP", url: "/admin/mcp-audit", icon: ShieldAlert, feature: "admin_panel" },
   { title: "Marketplace especialistas", url: "/admin/marketplace", icon: BadgeCheck, feature: "admin_panel" },
 ];
