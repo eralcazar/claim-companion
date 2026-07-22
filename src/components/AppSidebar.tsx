@@ -30,6 +30,7 @@ const saludItems: Item[] = [
   { title: "Expediente Digital", url: "/expediente", icon: FolderOpen, feature: "expediente_digital" },
   { title: "Historial de salud", url: "/historial-salud", icon: Activity, feature: "perfil" },
   { title: "Presión arterial", url: "/presion", icon: Activity, feature: "presion_arterial" },
+  { title: "Frecuencia cardíaca", url: "/frecuencia-cardiaca", icon: HeartPulse, feature: "perfil" },
   { title: "Glucosa", url: "/glucosa", icon: Activity, feature: "expediente_digital" },
   { title: "SpO₂", url: "/oxygen-saturation", icon: Activity, feature: "oxygen_saturation" },
   { title: "Temperatura", url: "/temperatura", icon: Activity, feature: "expediente_digital" },

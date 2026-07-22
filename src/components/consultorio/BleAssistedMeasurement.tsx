@@ -58,14 +58,22 @@ export function BleAssistedMeasurement({ patientId, patientName }: { patientId: 
         {session.connected && (
           <div className="rounded-md bg-muted p-2 text-xs">
             <div className="flex items-center gap-2">
-              <Badge variant="secondary">{session.connected.service === "blood_pressure" ? "Tensiómetro" : "Oxímetro"}</Badge>
+              <Badge variant="secondary">
+                {session.connected.service === "blood_pressure"
+                  ? "Tensiómetro"
+                  : session.connected.service === "heart_rate"
+                    ? "Monitor cardíaco"
+                    : "Oxímetro"}
+              </Badge>
               <span className="truncate">{session.connected.name ?? "dispositivo"}</span>
             </div>
             {session.lastReading && (
               <p className="mt-1">
                 {session.lastReading.kind === "blood_pressure"
                   ? `${session.lastReading.systolic}/${session.lastReading.diastolic} mmHg${session.lastReading.pulse ? ` · ${session.lastReading.pulse} bpm` : ""} — pendiente de revisión`
-                  : `SpO₂ ${session.lastReading.spo2}%${session.lastReading.pulse ? ` · ${session.lastReading.pulse} bpm` : ""}`}
+                  : session.lastReading.kind === "spo2"
+                    ? `SpO₂ ${session.lastReading.spo2}%${session.lastReading.pulse ? ` · ${session.lastReading.pulse} bpm` : ""}`
+                    : `${session.lastReading.bpm} bpm`}
               </p>
             )}
             <Button size="sm" variant="ghost" className="mt-1 h-7 px-2" onClick={() => session.disconnect()}>

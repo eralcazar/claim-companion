@@ -85,6 +85,7 @@ import MarketplaceReview from "@/pages/admin/MarketplaceReview";
 import Reservar from "@/pages/public/Reservar";
 import Actividad from "@/pages/Actividad";
 import MisDatosIA from "@/pages/MisDatosIA";
+import HeartRateMonitor from "@/pages/HeartRateMonitor";
 
 const queryClient = new QueryClient();
 
@@ -183,6 +184,7 @@ const App = () => (
               <Route path="/perfil/notificaciones" element={<NotificationPreferencesPage />} />
               <Route path="/dispositivos" element={<DispositivosCompatibles />} />
               <Route path="/historial-salud" element={<HistorialSalud />} />
+              <Route path="/frecuencia-cardiaca" element={<HeartRateMonitor />} />
               <Route path="/derechos-arco" element={<DerechosARCO />} />
               <Route path="/admin/integridad" element={<IntegrityDashboard />} />
               <Route path="/procedimientos" element={<Procedimientos />} />
