@@ -7,6 +7,10 @@ export type PriceTier = "económico" | "medio" | "premium";
 export type DeviceType = "oximeter" | "bp_monitor" | "thermometer" | "smartband" | "smartwatch" | "ring" | "scale";
 export type ConnectionMethod = "ble_direct" | "health_connect" | "healthkit" | "vendor_app_bridge" | "not_compatible";
 export type CompatibilityStatus = "verified" | "probable" | "community" | "incompatible";
+export type ReliabilityLevel = "clinical" | "reference" | "informational";
+export type ReadingReliability = Partial<
+  Record<CompatibleReading, { level: ReliabilityLevel; note?: string }>
+>;
 
 export type CompatibleDevice = {
   id: string;
@@ -25,6 +29,7 @@ export type CompatibleDevice = {
   notes: string;
   firmwareNote?: string;
   url?: string;
+  readingReliability?: ReadingReliability;
 };
 
 const BLE_STEPS = [
