@@ -106,7 +106,7 @@ function PolicyRow({ p }: { p: AiProviderPolicy }) {
       const count = Array.isArray((data as any)?.models) ? (data as any).models.length : (data as any)?.count ?? 0;
       toast.success(`${count} modelo(s) sincronizados desde ${draft.provider}`);
       // Ajustar el modelo si el actual dejó de existir tras la sync.
-      const refreshed = await qc.getQueryData<any[]>(["ai_external_providers"]);
+      const refreshed = qc.getQueryData<any[]>(["ai_external_providers"]);
       const row = refreshed?.find((r) => r.id === draft.provider);
       const models: string[] = row?.models ?? [];
       if (draft.model && draft.model !== "standard" && models.length > 0 && !models.includes(draft.model)) {
