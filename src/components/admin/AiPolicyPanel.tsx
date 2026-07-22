@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Sparkles, Database, Save } from "lucide-react";
+import { Sparkles, Database, Save, Info } from "lucide-react";
 import { useEffect, useState } from "react";
 import {
   useAiPolicies,
@@ -80,6 +80,14 @@ function PolicyRow({ p }: { p: AiProviderPolicy }) {
     });
   };
 
+  // Si el proveedor seleccionado no tiene modelos sincronizados, forzamos el
+  // uso del modelo "Estándar (auto)" automáticamente.
+  useEffect(() => {
+    if (providerRow && (providerRow.models?.length ?? 0) === 0 && draft.model !== "standard") {
+      setDraft((d) => ({ ...d, model: "standard" }));
+    }
+  }, [providerRow?.models?.length, draft.model]);
+
   return (
     <div className="border rounded-lg p-3 space-y-3">
       <div className="flex items-center justify-between flex-wrap gap-2">
@@ -122,9 +130,11 @@ function PolicyRow({ p }: { p: AiProviderPolicy }) {
             <SelectTrigger className="h-9">
               <SelectValue
                 placeholder={
-                  availableModels.length === 0
-                    ? "Sin modelos para este proveedor"
-                    : `Elegir modelo de ${draft.provider}`
+                  providerRow && (providerRow.models?.length ?? 0) === 0
+                    ? "Estándar (auto)"
+                    : availableModels.length === 0
+                      ? "Sin modelos para este proveedor"
+                      : `Elegir modelo de ${draft.provider}`
                 }
               />
             </SelectTrigger>
@@ -134,7 +144,17 @@ function PolicyRow({ p }: { p: AiProviderPolicy }) {
               ))}
             </SelectContent>
           </Select>
-          {availableModels.length === 0 && (
+          {providerRow && (providerRow.models?.length ?? 0) === 0 && (
+            <p className="text-[10px] text-amber-600 mt-1 flex items-start gap-1">
+              <Info className="h-3 w-3 mt-0.5 shrink-0" />
+              <span>
+                Este proveedor no tiene modelos sincronizados. Se usará{" "}
+                <span className="font-medium">“Estándar (auto)”</span> automáticamente; el endpoint
+                elegirá el modelo.
+              </span>
+            </p>
+          )}
+          {availableModels.length === 0 && !providerRow && (
             <p className="text-[10px] text-destructive mt-1">
               Sin modelos configurados para <span className="font-mono">{draft.provider}</span>.
               Sincronízalos en{" "}

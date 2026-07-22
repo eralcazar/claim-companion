@@ -118,7 +118,11 @@ export function modelsForProvider(
   }
   const row = external?.find((r) => r.id === provider);
   if (!row) return [];
-  return (row.models ?? []).map((m) => ({ value: m.id, label: m.label }));
+  const mapped = (row.models ?? []).map((m) => ({ value: m.id, label: m.label }));
+  if (mapped.length > 0) return mapped;
+  // Fallback: el proveedor no tiene modelos sincronizados. Usamos el marcador
+  // interno "standard" para que el endpoint decida el modelo.
+  return [{ value: "standard", label: "Estándar (auto)" }];
 }
 
 export function defaultModelForProvider(
@@ -128,7 +132,7 @@ export function defaultModelForProvider(
   if (!provider || provider === "lovable") return AI_MODEL_CHOICES[0]?.value ?? null;
   const row = external?.find((r) => r.id === provider);
   if (!row) return null;
-  return row.default_model ?? row.models?.[0]?.id ?? null;
+  return row.default_model ?? row.models?.[0]?.id ?? "standard";
 }
 
 export function useAiPolicies() {
