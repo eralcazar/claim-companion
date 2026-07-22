@@ -86,6 +86,9 @@ import Reservar from "@/pages/public/Reservar";
 import Actividad from "@/pages/Actividad";
 import MisDatosIA from "@/pages/MisDatosIA";
 import HeartRateMonitor from "@/pages/HeartRateMonitor";
+import Consultorios from "@/pages/Consultorios";
+import Soporte from "@/pages/Soporte";
+import { ActiveLocationProvider } from "@/contexts/ActiveLocationContext";
 
 const queryClient = new QueryClient();
 
@@ -109,6 +112,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
+          <ActiveLocationProvider>
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/legal" element={<Legal />} />
@@ -193,9 +197,12 @@ const App = () => (
               <Route path="/facturacion" element={<Facturacion />} />
               <Route path="/admin/facturacion" element={<CfdiConfigManager />} />
               <Route path="/mis-datos-ia" element={<MisDatosIA />} />
+              <Route path="/consultorios" element={<Consultorios />} />
+              <Route path="/soporte" element={<Soporte />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
+          </ActiveLocationProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>

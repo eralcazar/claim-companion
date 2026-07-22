@@ -13,6 +13,7 @@ import { PrivacyConsentTracker } from "@/components/legal/PrivacyConsentTracker"
 import { CfdiTestModeBanner } from "@/components/facturacion/CfdiModeBadge";
 import { KeyboardShortcutsHelp } from "@/components/KeyboardShortcutsHelp";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
+import { ActiveLocationSelector } from "@/components/ActiveLocationSelector";
 
 export function AppLayout() {
   const isMobile = useIsMobile();
@@ -39,6 +40,7 @@ export function AppLayout() {
               <div className="h-6 w-px bg-border" />
               <CareCentralLogo size={52} withText />
               <div className="ml-auto flex items-center gap-1">
+                <ActiveLocationSelector />
                 <KeyboardShortcutsHelp />
                 <NotificationBell />
               </div>

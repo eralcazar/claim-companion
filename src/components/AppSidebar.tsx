@@ -59,6 +59,7 @@ const dispositivosItems: Item[] = [
 const cuentaItems: Item[] = [
   { title: "Perfil", url: "/perfil", icon: User, feature: "perfil" },
   { title: "Mis datos y IA", url: "/mis-datos-ia", icon: Shield, feature: "perfil" },
+  { title: "Soporte", url: "/soporte", icon: FileText, feature: "perfil" },
 ];
 
 const brokerItems: Item[] = [
@@ -68,6 +69,7 @@ const brokerItems: Item[] = [
 const doctorItems: Item[] = [
   { title: "Panel Médico", url: "/medico", icon: Stethoscope, feature: "doctor_panel" },
   { title: "Consultorio digital", url: "/consultorio", icon: Stethoscope, feature: "consultorio" },
+  { title: "Mis consultorios", url: "/consultorios", icon: Store, feature: "doctor_profile" },
   { title: "Solicitudes sin informe", url: "/medico/reclamos-sin-informe", icon: FileWarning, feature: "claims_without_report" },
   { title: "Facturación", url: "/facturacion", icon: Receipt, feature: "facturacion" },
   { title: "Mi Perfil Médico", url: "/medico/perfil", icon: BadgeCheck, feature: "doctor_profile" },
