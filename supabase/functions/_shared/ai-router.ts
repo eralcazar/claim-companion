@@ -9,6 +9,8 @@ export type AiPolicy = {
   history_window: number;
   enable_cache: boolean;
   cache_ttl_hours: number;
+  provider?: string;
+  external_endpoint?: string | null;
 };
 
 const DEFAULT_POLICY: AiPolicy = {
@@ -19,6 +21,8 @@ const DEFAULT_POLICY: AiPolicy = {
   history_window: 8,
   enable_cache: false,
   cache_ttl_hours: 720,
+  provider: "lovable",
+  external_endpoint: null,
 };
 
 // Micro-USD por token para cada modelo (aprox Lovable AI Gateway).
@@ -36,10 +40,10 @@ export async function loadPolicy(
   try {
     const { data } = await admin
       .from("ai_provider_policy")
-      .select("feature_key, model, max_input_tokens, max_output_tokens, history_window, enable_cache, cache_ttl_hours")
+      .select("feature_key, model, max_input_tokens, max_output_tokens, history_window, enable_cache, cache_ttl_hours, provider, external_endpoint")
       .eq("feature_key", featureKey)
       .maybeSingle();
-    if (data) return data as AiPolicy;
+    if (data) return { provider: "lovable", external_endpoint: null, ...(data as AiPolicy) };
   } catch (e) {
     console.warn("loadPolicy fallback:", e);
   }
@@ -228,6 +232,39 @@ export async function callGateway(
 export function truncateText(text: string, maxChars: number): string {
   if (text.length <= maxChars) return text;
   return text.slice(0, maxChars) + "…[truncado]";
+}
+
+// ────────────────────────────────────────────────────────────────
+// Proveedor externo: ApiFreeLLM (compatible OpenAI, sin API key)
+// ────────────────────────────────────────────────────────────────
+export async function callApiFreeLLM(
+  endpoint: string,
+  model: string,
+  messages: Array<{ role: string; content: string }>,
+  opts: { maxOutputTokens?: number; responseFormat?: "json_object" } = {},
+): Promise<{ ok: boolean; status: number; content: string; usage: { prompt_tokens: number; completion_tokens: number; total_tokens: number }; rawText?: string }> {
+  const body: any = { model, messages };
+  if (opts.maxOutputTokens) body.max_tokens = opts.maxOutputTokens;
+  if (opts.responseFormat) body.response_format = { type: opts.responseFormat };
+  try {
+    const resp = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!resp.ok) {
+      const t = await resp.text().catch(() => "");
+      return { ok: false, status: resp.status, content: "", usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }, rawText: t };
+    }
+    const json = await resp.json();
+    const content: string = json?.choices?.[0]?.message?.content ?? "";
+    const pt = Number(json?.usage?.prompt_tokens) || 0;
+    const ct = Number(json?.usage?.completion_tokens) || 0;
+    const tt = Number(json?.usage?.total_tokens) || pt + ct;
+    return { ok: true, status: resp.status, content, usage: { prompt_tokens: pt, completion_tokens: ct, total_tokens: tt } };
+  } catch (e: any) {
+    return { ok: false, status: 0, content: "", usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }, rawText: e?.message ?? "network_error" };
+  }
 }
 
 // ────────────────────────────────────────────────────────────────

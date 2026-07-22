@@ -12,9 +12,25 @@ export type AiProviderPolicy = {
   history_window: number;
   enable_cache: boolean;
   cache_ttl_hours: number;
+  provider: "lovable" | "apifreellm";
+  external_endpoint: string | null;
   notes: string | null;
   updated_at: string;
 };
+
+export const AI_PROVIDER_CHOICES = [
+  {
+    value: "lovable" as const,
+    label: "Lovable AI (recomendado)",
+    description: "Proveedor interno con tokens de la app. Sin consentimiento adicional.",
+  },
+  {
+    value: "apifreellm" as const,
+    label: "ApiFreeLLM (externo, gratuito)",
+    description:
+      "Proveedor externo compatible con OpenAI. Sólo se envían prompts sanitizados. Requiere consentimiento del usuario por feature y activación del proveedor en el catálogo.",
+  },
+];
 
 export const AI_MODEL_CHOICES = [
   { value: "google/gemini-3-flash-preview", label: "Gemini 3 Flash (preview)", inputMicros: 30, outputMicros: 250 },

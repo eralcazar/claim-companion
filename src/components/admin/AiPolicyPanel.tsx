@@ -12,12 +12,14 @@ import {
   useUpdateAiPolicy,
   useAiCacheStats,
   AI_MODEL_CHOICES,
+  AI_PROVIDER_CHOICES,
   type AiProviderPolicy,
 } from "@/hooks/useAiPolicies";
 
 function PolicyRow({ p }: { p: AiProviderPolicy }) {
   const update = useUpdateAiPolicy();
   const [draft, setDraft] = useState({
+    provider: p.provider ?? "lovable",
     model: p.model,
     max_output_tokens: p.max_output_tokens,
     history_window: p.history_window,
@@ -25,6 +27,7 @@ function PolicyRow({ p }: { p: AiProviderPolicy }) {
     cache_ttl_hours: p.cache_ttl_hours,
   });
   const dirty =
+    draft.provider !== (p.provider ?? "lovable") ||
     draft.model !== p.model ||
     draft.max_output_tokens !== p.max_output_tokens ||
     draft.history_window !== p.history_window ||
@@ -57,6 +60,17 @@ function PolicyRow({ p }: { p: AiProviderPolicy }) {
       </div>
 
       <div className="grid md:grid-cols-4 gap-3">
+        <div>
+          <Label className="text-xs">Proveedor</Label>
+          <Select value={draft.provider} onValueChange={(v) => setDraft((d) => ({ ...d, provider: v as any }))}>
+            <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {AI_PROVIDER_CHOICES.map((pr) => (
+                <SelectItem key={pr.value} value={pr.value}>{pr.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
         <div>
           <Label className="text-xs">Modelo</Label>
           <Select value={draft.model} onValueChange={(v) => setDraft((d) => ({ ...d, model: v }))}>
@@ -97,6 +111,15 @@ function PolicyRow({ p }: { p: AiProviderPolicy }) {
           />
         </div>
       </div>
+
+      {draft.provider === "apifreellm" && (
+        <div className="text-[11px] rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-amber-900 dark:text-amber-200">
+          Al elegir un proveedor externo, los prompts se sanitizan (se remueven CURP, RFC, email, teléfono, direcciones,
+          fechas y números largos) antes de salir de la app. Cada usuario debe otorgar consentimiento explícito en
+          <span className="font-medium"> Mis datos y IA</span>. Si el consentimiento se revoca o el kill switch está activo,
+          la feature usa automáticamente Lovable AI como fallback.
+        </div>
+      )}
 
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2">
