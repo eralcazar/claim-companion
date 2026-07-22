@@ -4,7 +4,7 @@
  */
 export type CompatibleReading = "spo2" | "blood_pressure" | "temperature" | "heart_rate" | "activity" | "sleep" | "weight";
 export type PriceTier = "económico" | "medio" | "premium";
-export type DeviceType = "oximeter" | "bp_monitor" | "thermometer" | "smartband" | "smartwatch" | "ring" | "scale";
+export type DeviceType = "oximeter" | "bp_monitor" | "thermometer" | "smartband" | "smartwatch" | "ring" | "scale" | "chest_strap";
 export type ConnectionMethod = "ble_direct" | "health_connect" | "healthkit" | "vendor_app_bridge" | "not_compatible";
 export type CompatibilityStatus = "verified" | "probable" | "community" | "incompatible";
 export type ReliabilityLevel = "clinical" | "reference" | "informational";
@@ -650,6 +650,7 @@ export const DEVICE_TYPE_LABELS: Record<DeviceType, string> = {
   smartwatch: "Smartwatch",
   ring: "Anillo",
   scale: "Báscula",
+  chest_strap: "Banda pectoral FC",
 };
 
 export const CONNECTION_LABELS: Record<ConnectionMethod, string> = {
