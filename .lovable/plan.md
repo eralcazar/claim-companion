@@ -1,85 +1,85 @@
-# Ejercicios: sesiones enriquecidas, PDF, importación, calendario y planes IA
+# Plan — Monitores con alertas + Nutrición con IA y recetas MedlinePlus
 
-Amplío el módulo de Ejercicios ya existente (`/ejercicios`) con 5 capacidades pedidas. Reutilizo tablas actuales (`exercise_session_logs`, `exercise_set_logs`, `workout_plans`, `workout_sessions`, `exercise_catalog`) y agrego solo los campos y una tabla que faltan.
+## 1) Alertas y estado de sincronización en monitores
 
-## 1. Bloque de calentamiento y notas de sesión
+Alcance: `SleepMonitor`, `StepsMonitor`, `HeartRateMonitor` (más adelante el resto reutiliza el hook).
 
-Extiendo `exercise_session_logs` (ya tiene `rpe` y `notes`) con:
-- `warmup_notes text` — calentamiento realizado.
-- `discomforts text` — molestias/lesiones (rodilla, hombro, etc.).
-- `session_rest_sec int` — descanso promedio entre sets.
+- **Hook nuevo `useMonitorHealth(source, series, dateRange)`** que devuelve:
+  - `lastReadingAt`, `syncStatus` ("ok" | "stale" | "empty" | "syncing")
+  - `alerts[]`: gaps > 2 días, valores atípicos (z-score |z| > 2.5 sobre la media móvil de 14 días) y días con sólo un origen manual cuando debería haber wearable.
+  - `explanations`: texto corto ("posible dispositivo desconectado", "rango de fechas no cubre datos", etc.) + pasos accionables.
+- **Componente `MonitorAlertsCard`** con acordeón por alerta (severidad, motivo, pasos: revisar rango de fechas, verificar dispositivo, reintentar sync).
+- **Componente `SyncStatusPill`** reutilizable (última lectura formateada, badge de estado, botón "Reintentar" que llama `sync-health-data` — ya existe — y refresca la query).
+- Integrar ambos en la parte superior de cada uno de los 3 monitores mencionados (sin tocar el gráfico ni el PDF).
 
-Rediseño `RegisterWorkoutDialog.tsx` con un paso final "Notas de la sesión" que captura RPE global, calentamiento, molestias y descanso promedio. Esos campos se pasan al `ai-exercise-coach` (prompt actualizado) para que la sugerencia de progresión tome en cuenta RPE alto, dolor reportado o descansos cortos antes de subir carga.
+## 2) Nutrición: macros automáticos por ingredientes
 
-## 2. PDF resumen de sesión
+- **Tabla `nutrition_ingredients_catalog`** semilla (~80 alimentos base MX) con `name`, `kcal_100g`, `carbs_g`, `protein_g`, `fat_g`, `fiber_g`, `is_public`.
+- **Migración `recetas_nutricion`**: nueva tabla `nutrition_recipes` con `title`, `ingredients` (jsonb: `[{name, grams, ingredient_id?}]`), `steps`, `servings`, `total_kcal`, `total_carbs_g`, `total_protein_g`, `total_fat_g`, `source_type` (**obligatorio**: `nutriologa` | `medlineplus` | `web` | `libro` | `manual_paciente`), `source_url`, `source_author`, `notes`, RLS por dueño + lectura para nutriólogo asignado.
+- **Cálculo cliente en vivo**: `computeMacros(ingredients, catalog)` en `src/lib/nutrition/macros.ts`. Se recalcula al vuelo mientras el usuario edita.
+- **Componente `RecipeEditor`** con:
+  - selector con búsqueda del catálogo + gramos por ingrediente,
+  - contador de macros en tarjeta lateral (kcal/carbs/prot/grasa por porción),
+  - selector de **Origen** requerido (Zod, no permite guardar sin origen; `nutriologa` pide nombre, `web/medlineplus` pide URL).
 
-Nuevo componente `SessionPdfExport.tsx` (jsPDF + autotable, ya usados en el proyecto) que genera:
-- Encabezado con fecha, entorno, duración, RPE y HR promedio.
-- Tabla de ejercicios con sets (peso × reps, 1RM Epley, volumen, distancia/tiempo si aplica).
-- Comparativo vs. sesión previa por ejercicio (delta de volumen y peso máximo).
-- Bloque "Recomendaciones del Coach IA" — llama a `ai-exercise-coach` en modo `mode:"session_summary"` para producir 3-5 líneas de próximos pasos basados en la sesión firmada.
-- Notas, calentamiento y molestias al pie.
+## 3) Import MedlinePlus (ES)
 
-Boton "Descargar PDF" en el detalle de sesión (tarjeta en `EjercicioDetalle.tsx`) y en el historial de `Ejercicios.tsx`.
+- **Edge function `medlineplus-recipe-import`** (JWT verificado):
+  - Recibe `{ url }` de `medlineplus.gov/spanish/recetas/...`.
+  - Descarga vía `fetch` con `User-Agent`; parsea HTML con regex acotadas para título, "Acerca de", ingredientes (lista `<ul>` tras "Ingredientes"), instrucciones y "Origen"/"Fuente".
+  - Cita cumplimiento: guarda `source_url`, `source_author = "MedlinePlus (NIH)"` y `attribution` con link a `/spanish/acercade/usodecontenido/`.
+  - Devuelve un draft; el usuario confirma en `RecipeEditor` (donde se corren los macros con el catálogo).
+- **Botón "Importar de MedlinePlus"** en Nutrición → Recetas.
+- Rate limit simple (1 req cada 3s por usuario) y validación de dominio (solo `medlineplus.gov/spanish/recetas/`).
 
-## 3. Importación CSV/JSON
+## 4) Sugerencias IA con `AiAnswer` en Nutrición
 
-Nueva página `/ejercicios/importar` con:
-- Uploader que acepta `.csv` o `.json`.
-- Plantilla descargable (`plantilla-entrenamientos.csv`) con columnas: `fecha, entorno, ejercicio, set, reps, peso_kg, distancia_m, duracion_seg, descanso_seg, rpe, notas`.
-- Parser cliente (PapaParse ya está disponible o se agrega) que:
-  - Match del ejercicio por nombre normalizado contra `exercise_catalog`; si no existe, sugiere el más cercano por similitud y permite mapear manualmente o crearlo como "custom".
-  - Vista previa con validación (rango de RPE, valores negativos, fechas inválidas).
-  - Agrupa filas por `fecha + entorno` en sesiones y sus sets.
-- Inserta en `exercise_session_logs` + `exercise_set_logs` en batch. Al terminar refresca KPIs, sparkline y heatmap automáticamente (React Query invalidation).
+- **Sección "Pregunta al Coach de Nutrición"** dentro de `Nutricion.tsx`:
+  - Input + botón que llama `ai-nutrition-suggest` (ya existe) enviando `feature_key: 'nutrition_suggestions'` para respetar `ai_provider_policy`.
+  - Renderiza con `<AiAnswer text={data.text} references={data.references} />` (formato ya soportado).
+  - Si el feature está desactivado en políticas, muestra `AiProviderStatusBanner` con la causa.
 
-## 4. Vista calendario
+## 5) Reindex masivo del KB desde /admin/conocimiento
 
-Agrego una pestaña "Calendario" en `Ejercicios.tsx` con `react-day-picker` (ya en el stack shadcn):
-- Mes con marcadores de color por grupo muscular predominante de la sesión (`exercise_catalog.grupo_muscular`).
-- Al hacer click en un día: popover con lista de sesiones de ese día y acceso al detalle (`/ejercicios/sesion/:id`) o al ejercicio individual.
-- Filtro por entorno (gym/calle/casa) y por grupo muscular.
-- Reusa la consulta existente + un `useMonthlySessions(monthStart, monthEnd)`.
+- **Botón "Reindexar todo"** en `KnowledgeBase.tsx`:
+  - Query IDs de `knowledge_documents WHERE status='approved'`.
+  - Progreso visible (barra + contador X/Y) llamando `knowledge-embed` por lotes de 5 con `Promise.allSettled` y backoff en 429.
+  - Log de fallos (título + motivo) descargable como CSV.
+- **Botón "Reindexar sólo seed"** filtrando por `source='seed'`.
+- No cambia `knowledge-embed`, sólo lo orquesta el frontend admin.
 
-Nueva ruta `/ejercicios/sesion/:sessionId` = `SesionDetalle.tsx` con sets desglosados, botón PDF y edición inline de notas/RPE.
+## 6) Recetas manuales con origen obligatorio
 
-## 5. Plan semanal con Coach IA
-
-Ya existen `workout_plans` y `workout_sessions`; agrego `workout_exercises_planned` (o reuso `workout_exercises` existente — a confirmar en implementación) para la progresión objetivo por semana.
-
-Añado campos a `workout_plans`:
-- `weeks int default 4`
-- `progression_scheme text` (`linear`, `double_progression`, `undulating`)
-- `current_week int default 1`
-
-Nueva página `/ejercicios/plan` con:
-- Wizard "Crear plan": objetivo (fuerza/hipertrofia/resistencia/pérdida), nivel, días/semana, equipo disponible.
-- Edge function `ai-workout-plan-generate`: genera el plan (JSON estructurado) con `google/gemini-3-flash-preview` y lo persiste en `workout_plans` + `workout_sessions` + ejercicios sugeridos del catálogo.
-- Vista semanal: cada día con ejercicios objetivo (sets × reps × peso sugerido) y botón "Marcar como hecho" que abre el `RegisterWorkoutDialog` prellenado.
-- Botón "Ajustar plan con Coach IA": edge function `ai-workout-plan-adjust` que lee las últimas 2-3 semanas de `exercise_session_logs`/`exercise_set_logs` del paciente y devuelve ajustes de carga, volumen o descanso semana a semana. Los cambios se muestran como diff antes de aplicarlos.
-
-Governance: ambas funciones registran en `ai_provider_audit` con feature keys nuevas (`workout_plan_generate`, `workout_plan_adjust`) para que aparezcan en `/mis-datos-ia`.
+Cubierto en el punto 2 (`RecipeEditor` + `source_type` NOT NULL + validación Zod en cliente y CHECK en DB). Se agrega también en la lista de recetas un badge visible por origen y filtro rápido.
 
 ## Detalles técnicos
 
-- **Migración**: 1 sola. Agrega columnas a `exercise_session_logs` y `workout_plans`; opcional: tabla `workout_import_batches(id, patient_id, filename, rows_ok, rows_error, created_at)` para trazabilidad de imports. GRANTs completos y RLS por `patient_id = auth.uid()`.
-- **Frontend nuevo**: `SesionDetalle.tsx`, `ImportarEntrenamientos.tsx`, `PlanSemanal.tsx`, `SessionPdfExport.tsx`, `ExerciseCalendar.tsx` (tab).
-- **Frontend modificado**: `RegisterWorkoutDialog.tsx` (paso "Notas"), `Ejercicios.tsx` (tabs: Dashboard | Calendario | Plan | Importar), `EjercicioDetalle.tsx` (botón PDF).
-- **Edge functions nuevas**: `ai-workout-plan-generate`, `ai-workout-plan-adjust`. Extiendo `ai-exercise-coach` con `mode:"session_summary"`.
-- **Rutas**: `/ejercicios/sesion/:id`, `/ejercicios/importar`, `/ejercicios/plan` en `App.tsx`.
-- **Dependencias**: `papaparse` (si aún no está); jsPDF/autotable ya presentes.
-- **Auditoría IA**: nuevas features en `ai_provider_policy` con defaults Lovable.
+- IA: sigue `ai-router.ts` y no cambia el contrato de `AiAnswer` (texto + `references[]`).
+- DB: nuevas tablas con GRANTs para `authenticated` + `service_role`, RLS scoped a `patient_id = auth.uid()` con excepción para nutriólogo vía `patient_personnel`.
+- MedlinePlus: se guarda `attribution` textual porque es de dominio público del NIH; se muestra en el detalle de la receta.
+- Reindex: se hace desde el navegador del admin usando la sesión existente; sin nuevos secretos.
 
-```text
-Ejercicios/
-├── Tab Dashboard  ← KPIs + heatmap + tarjetas por ejercicio (existente)
-├── Tab Calendario ← NUEVO: mes con marcadores por grupo muscular
-├── Tab Plan       ← NUEVO: plan semanal + ajuste IA
-└── Tab Importar   ← NUEVO: CSV/JSON con preview y mapeo
-```
+## Archivos que se crean
+
+- `src/hooks/useMonitorHealth.ts`
+- `src/components/health/MonitorAlertsCard.tsx`
+- `src/components/health/SyncStatusPill.tsx`
+- `src/lib/nutrition/macros.ts`
+- `src/components/nutricion/RecipeEditor.tsx`
+- `src/components/nutricion/RecipesList.tsx`
+- `src/components/nutricion/NutritionAiPanel.tsx`
+- `src/components/admin/KnowledgeReindexPanel.tsx`
+- `supabase/functions/medlineplus-recipe-import/index.ts`
+- Migración: `nutrition_ingredients_catalog`, `nutrition_recipes` (+seed catálogo).
+
+## Archivos que se modifican
+
+- `src/pages/SleepMonitor.tsx`, `src/pages/StepsMonitor.tsx`, `src/pages/HeartRateMonitor.tsx` (insertar `SyncStatusPill` + `MonitorAlertsCard`).
+- `src/pages/Nutricion.tsx` (tabs: Recetas + Coach IA + import MedlinePlus).
+- `src/pages/admin/KnowledgeBase.tsx` (montar `KnowledgeReindexPanel`).
 
 ## Fuera de alcance
 
-- Sincronización con relojes (ya cubierta por el módulo BLE y Health Connect existentes).
-- Recordatorios push de rutina (se puede sumar después usando `pg_cron` como en citas).
-- Videos demostrativos por ejercicio.
+- No se toca el módulo de Ejercicios ni los PDFs existentes.
+- No se cambian políticas ni el catálogo de proveedores IA.
+- No se agrega scraping masivo (solo por URL individual, on-demand).
