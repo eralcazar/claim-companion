@@ -293,11 +293,11 @@ export default function Actividad() {
                       ))}
                     </ul>
                   )}
-                  {s.thresholds && typeof s.thresholds === "object" && (
+                  {(s as any).thresholds && typeof (s as any).thresholds === "object" && (
                     <div className="rounded-md border border-warning/40 bg-warning/5 p-2 text-xs">
                       <p className="font-semibold mb-1">Umbrales sugeridos para alertas automáticas</p>
                       <ul className="space-y-0.5">
-                        {Object.entries(s.thresholds as Record<string, unknown>).map(([k, v]) => (
+                        {Object.entries((s as any).thresholds as Record<string, unknown>).map(([k, v]) => (
                           <li key={k}>• {k}: {String(v)}</li>
                         ))}
                       </ul>
