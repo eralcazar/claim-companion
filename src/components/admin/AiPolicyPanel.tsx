@@ -42,14 +42,6 @@ function PolicyRow({ p }: { p: AiProviderPolicy }) {
       cache_ttl_hours: p.cache_ttl_hours,
     });
   }, [p.id, p.provider, p.model, p.max_output_tokens, p.history_window, p.enable_cache, p.cache_ttl_hours]);
-
-  // Si el proveedor seleccionado no tiene modelos sincronizados, forzamos el
-  // uso del modelo "Estándar (auto)" automáticamente.
-  useEffect(() => {
-    if (providerRow && (providerRow.models?.length ?? 0) === 0 && draft.model !== "standard") {
-      setDraft((d) => ({ ...d, model: "standard" }));
-    }
-  }, [providerRow?.models?.length, draft.model]);
   const dirty =
     draft.provider !== (p.provider ?? "lovable") ||
     draft.model !== p.model ||
