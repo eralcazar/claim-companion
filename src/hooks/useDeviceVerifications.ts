@@ -14,6 +14,9 @@ export type DeviceVerification = {
   notes: string | null;
   tested_at: string;
   created_at: string;
+  region: string | null;
+  model_label: string | null;
+  marked_compatible: boolean | null;
 };
 
 export function useDeviceVerifications(deviceId: string | null | undefined) {
@@ -58,6 +61,9 @@ export type CreateDeviceVerificationInput = {
   app_version?: string | null;
   connection_method?: string | null;
   notes?: string | null;
+  region?: string | null;
+  model_label?: string | null;
+  marked_compatible?: boolean | null;
 };
 
 export function useCreateDeviceVerification() {
