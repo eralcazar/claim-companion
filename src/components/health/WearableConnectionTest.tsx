@@ -230,7 +230,7 @@ export function WearableConnectionTest() {
           <span className="font-medium">{platformLabel}</span> y por tanto a CareCentral.
         </p>
 
-        <Button onClick={run} disabled={running} className="w-full">
+        <Button onClick={() => run()} disabled={running} className="w-full">
           {running ? (
             <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Probando…</>
           ) : (
