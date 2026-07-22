@@ -6850,7 +6850,10 @@ export type Database = {
           device_id: string
           firmware: string | null
           id: string
+          marked_compatible: boolean | null
+          model_label: string | null
           notes: string | null
+          region: string | null
           status: string
           tested_at: string
           user_id: string
@@ -6862,7 +6865,10 @@ export type Database = {
           device_id: string
           firmware?: string | null
           id?: string
+          marked_compatible?: boolean | null
+          model_label?: string | null
           notes?: string | null
+          region?: string | null
           status: string
           tested_at?: string
           user_id: string
@@ -6874,7 +6880,10 @@ export type Database = {
           device_id?: string
           firmware?: string | null
           id?: string
+          marked_compatible?: boolean | null
+          model_label?: string | null
           notes?: string | null
+          region?: string | null
           status?: string
           tested_at?: string
           user_id?: string
