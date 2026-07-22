@@ -199,7 +199,7 @@ export async function callGateway(
   model: string,
   messages: Array<{ role: string; content: string }>,
   opts: { maxOutputTokens?: number; responseFormat?: "json_object" } = {},
-): Promise<{ ok: boolean; status: number; content: string; usage: { prompt_tokens: number; completion_tokens: number; total_tokens: number }; rawText?: string }> {
+): Promise<{ ok: boolean; status: number; content: string; usage: { prompt_tokens: number; completion_tokens: number; total_tokens: number }; rawText?: string; gatewayRunId?: string; gatewayLogId?: string }> {
   // ApiFreeLLM no expone catálogo de modelos; usamos "standard" como marcador
   // interno y en ese caso no enviamos `model` para que el servicio use su default.
   const body: any = { messages };
@@ -216,6 +216,9 @@ export async function callGateway(
     body: JSON.stringify(body),
   });
 
+  const runId = resp.headers.get("x-lovable-aig-run-id") ?? undefined;
+  const logId = resp.headers.get("x-lovable-aig-log-id") ?? undefined;
+
   if (!resp.ok) {
     const t = await resp.text().catch(() => "");
     return {
@@ -224,6 +227,8 @@ export async function callGateway(
       content: "",
       usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
       rawText: t,
+      gatewayRunId: runId,
+      gatewayLogId: logId,
     };
   }
 
@@ -237,6 +242,8 @@ export async function callGateway(
     status: resp.status,
     content,
     usage: { prompt_tokens: pt, completion_tokens: ct, total_tokens: tt },
+    gatewayRunId: runId,
+    gatewayLogId: logId,
   };
 }
 

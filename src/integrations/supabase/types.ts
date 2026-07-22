@@ -752,6 +752,11 @@ export type Database = {
           cost_usd_micros: number
           created_at: string
           fallback_used: boolean
+          feature_key: string | null
+          gateway_cost_cents: number | null
+          gateway_credits: number | null
+          gateway_log_id: string | null
+          gateway_run_id: string | null
           id: string
           message_id: string | null
           model: string | null
@@ -767,6 +772,11 @@ export type Database = {
           cost_usd_micros?: number
           created_at?: string
           fallback_used?: boolean
+          feature_key?: string | null
+          gateway_cost_cents?: number | null
+          gateway_credits?: number | null
+          gateway_log_id?: string | null
+          gateway_run_id?: string | null
           id?: string
           message_id?: string | null
           model?: string | null
@@ -782,6 +792,11 @@ export type Database = {
           cost_usd_micros?: number
           created_at?: string
           fallback_used?: boolean
+          feature_key?: string | null
+          gateway_cost_cents?: number | null
+          gateway_credits?: number | null
+          gateway_log_id?: string | null
+          gateway_run_id?: string | null
           id?: string
           message_id?: string | null
           model?: string | null
@@ -8326,6 +8341,40 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_kari_usage_comparison_by_feature: {
+        Args: { _from: string; _to: string; _user_id?: string }
+        Returns: {
+          cost_estimated_micros: number
+          feature_key: string
+          gateway_cost_cents: number
+          gateway_credits: number
+          matched_requests: number
+          requests: number
+          total_tokens: number
+        }[]
+      }
+      get_kari_usage_comparison_by_model: {
+        Args: { _from: string; _to: string; _user_id?: string }
+        Returns: {
+          cost_estimated_micros: number
+          gateway_cost_cents: number
+          gateway_credits: number
+          matched_requests: number
+          model: string
+          requests: number
+          total_tokens: number
+        }[]
+      }
+      get_kari_usage_comparison_daily: {
+        Args: { _from: string; _to: string; _user_id?: string }
+        Returns: {
+          cost_estimated_micros: number
+          day: string
+          gateway_cost_cents: number
+          gateway_credits: number
+          total_tokens: number
+        }[]
+      }
       get_kari_usage_daily: {
         Args: { _from: string; _to: string }
         Returns: {
@@ -8468,6 +8517,10 @@ export type Database = {
       sync_subscription_ocr_quota: {
         Args: { _user_id: string }
         Returns: undefined
+      }
+      upsert_gateway_real_cost: {
+        Args: { _cost_cents: number; _credits: number; _gateway_log_id: string }
+        Returns: number
       }
       user_has_feature_access: {
         Args: { _feature: string; _user_id: string }
