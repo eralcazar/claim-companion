@@ -12,6 +12,7 @@ import { Home, MapPin, Plus, Clock } from "lucide-react";
 import { useHomeVisits, useCreateHomeVisit, useUpdateHomeVisit } from "@/hooks/useHomeVisits";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { AddressPicker, MiniMap, type AddressValue } from "./AddressPicker";
 
 const URGENCIAS = [
   { value: "baja", label: "Baja", color: "secondary" as const },
@@ -67,6 +68,7 @@ export function HomeVisitsPanel({ mode, userId }: Props) {
                       <MapPin className="h-3 w-3 mt-0.5 flex-shrink-0" />{v.direccion}
                     </div>
                     {v.notas && <p className="text-xs">{v.notas}</p>}
+                    {v.lat != null && v.lng != null && <MiniMap lat={Number(v.lat)} lng={Number(v.lng)} />}
                   </div>
                 </div>
               </CardHeader>
@@ -89,16 +91,16 @@ export function HomeVisitsPanel({ mode, userId }: Props) {
 function RequestForm({ onSubmit }: { onSubmit: (p: any) => Promise<void> }) {
   const { user } = useAuth();
   const [motivo, setMotivo] = useState("");
-  const [direccion, setDireccion] = useState("");
+  const [address, setAddress] = useState<AddressValue>({ direccion: "", lat: null, lng: null });
   const [urgencia, setUrgencia] = useState("media");
   const [fecha, setFecha] = useState("");
   const [notas, setNotas] = useState("");
   return (
-    <DialogContent>
+    <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
       <DialogHeader><DialogTitle>Solicitar médico a domicilio</DialogTitle></DialogHeader>
       <div className="space-y-3">
         <div><Label>Motivo</Label><Input value={motivo} onChange={(e) => setMotivo(e.target.value)} placeholder="Fiebre, mareo..." /></div>
-        <div><Label>Dirección</Label><Textarea value={direccion} onChange={(e) => setDireccion(e.target.value)} rows={2} /></div>
+        <AddressPicker value={address} onChange={setAddress} />
         <div className="grid grid-cols-2 gap-2">
           <div><Label>Urgencia</Label>
             <Select value={urgencia} onValueChange={setUrgencia}>
@@ -111,8 +113,12 @@ function RequestForm({ onSubmit }: { onSubmit: (p: any) => Promise<void> }) {
         <div><Label>Notas</Label><Textarea value={notas} onChange={(e) => setNotas(e.target.value)} rows={2} /></div>
       </div>
       <DialogFooter>
-        <Button disabled={!motivo || !direccion} onClick={() => onSubmit({
-          motivo, direccion, urgencia,
+        <Button disabled={!motivo || !address.direccion} onClick={() => onSubmit({
+          motivo,
+          direccion: address.direccion,
+          lat: address.lat,
+          lng: address.lng,
+          urgencia,
           fecha_preferida: fecha ? new Date(fecha).toISOString() : null,
           notas: notas || null,
           patient_id: user?.id,
