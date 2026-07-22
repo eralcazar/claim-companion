@@ -89,6 +89,7 @@ import MisDatosIA from "@/pages/MisDatosIA";
 import HeartRateMonitor from "@/pages/HeartRateMonitor";
 import SleepMonitor from "@/pages/SleepMonitor";
 import StepsMonitor from "@/pages/StepsMonitor";
+import Recorridos from "@/pages/Recorridos";
 import Consultorios from "@/pages/Consultorios";
 import Soporte from "@/pages/Soporte";
 import TensiometrosCompatibilidad from "@/pages/TensiometrosCompatibilidad";
@@ -204,6 +205,7 @@ const App = () => (
               <Route path="/frecuencia-cardiaca" element={<HeartRateMonitor />} />
               <Route path="/sueno" element={<SleepMonitor />} />
               <Route path="/pasos" element={<StepsMonitor />} />
+              <Route path="/recorridos" element={<Recorridos />} />
               <Route path="/derechos-arco" element={<DerechosARCO />} />
               <Route path="/admin/integridad" element={<IntegrityDashboard />} />
               <Route path="/procedimientos" element={<Procedimientos />} />
