@@ -13,6 +13,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { DailySeriesChart } from "@/components/health/DailySeriesChart";
+import { MonitorPdfExport } from "@/components/health/MonitorPdfExport";
+import { EnabledMonitorsCard } from "@/components/health/EnabledMonitorsCard";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type Row = {
   fecha: string;
@@ -34,12 +37,15 @@ export default function SleepMonitor() {
   const goalMin = goals?.sleep_minutes_goal ?? 420;
 
   const [form, setForm] = useState({ fecha: isoToday(), horas: 7, minutos: 0 });
+  const [rangeDays, setRangeDays] = useState<7 | 14 | 30 | 60 | 90>(30);
+  const [sourceFilter, setSourceFilter] = useState<string>("all");
+  const [deviceFilter, setDeviceFilter] = useState<string>("all");
 
   const { data: rows = [], isLoading } = useQuery({
-    queryKey: ["sleep-monitor", patientId],
+    queryKey: ["sleep-monitor", patientId, rangeDays],
     enabled: !!patientId,
     queryFn: async (): Promise<Row[]> => {
-      const from = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+      const from = new Date(Date.now() - rangeDays * 86400000).toISOString().slice(0, 10);
       const { data, error } = await supabase
         .from("activity_readings")
         .select("fecha, sleep_minutes, source, device_name")
@@ -52,18 +58,45 @@ export default function SleepMonitor() {
     },
   });
 
+  const sources = useMemo(
+    () => Array.from(new Set(rows.map((r) => r.source ?? "manual"))),
+    [rows],
+  );
+  const deviceNames = useMemo(
+    () => Array.from(new Set(rows.map((r) => r.device_name).filter(Boolean) as string[])),
+    [rows],
+  );
+
+  const filtered = useMemo(
+    () =>
+      rows.filter(
+        (r) =>
+          (sourceFilter === "all" || (r.source ?? "manual") === sourceFilter) &&
+          (deviceFilter === "all" || r.device_name === deviceFilter),
+      ),
+    [rows, sourceFilter, deviceFilter],
+  );
+
   const byDay = useMemo(() => {
     const map = new Map<string, number>();
-    for (const r of rows) {
+    const meta = new Map<string, { source?: string | null; device?: string | null }>();
+    for (const r of filtered) {
       if (r.sleep_minutes == null) continue;
-      // preferimos el valor más alto por día (varias fuentes)
       const prev = map.get(r.fecha) ?? 0;
-      map.set(r.fecha, Math.max(prev, r.sleep_minutes));
+      if (r.sleep_minutes >= prev) {
+        map.set(r.fecha, r.sleep_minutes);
+        meta.set(r.fecha, { source: r.source, device: r.device_name });
+      }
     }
     return Array.from(map.entries())
       .sort(([a], [b]) => (a < b ? -1 : 1))
-      .map(([fecha, mins]) => ({ fecha, value: +(mins / 60).toFixed(2) }));
-  }, [rows]);
+      .map(([fecha, mins]) => ({
+        fecha,
+        value: +(mins / 60).toFixed(2),
+        source: meta.get(fecha)?.source ?? null,
+        device: meta.get(fecha)?.device ?? null,
+      }));
+  }, [filtered]);
 
   const kpi = useMemo(() => {
     const last7 = byDay.slice(-7);
@@ -122,6 +155,61 @@ export default function SleepMonitor() {
           </Link>
         </Button>
       </header>
+
+      <EnabledMonitorsCard />
+
+      <Card>
+        <CardContent className="p-3 flex flex-wrap gap-2 items-end">
+          <div>
+            <Label className="text-xs">Rango</Label>
+            <Select value={String(rangeDays)} onValueChange={(v) => setRangeDays(Number(v) as any)}>
+              <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {[7, 14, 30, 60, 90].map((d) => (
+                  <SelectItem key={d} value={String(d)}>{d} días</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs">Fuente</Label>
+            <Select value={sourceFilter} onValueChange={setSourceFilter}>
+              <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas</SelectItem>
+                {sources.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs">Dispositivo</Label>
+            <Select value={deviceFilter} onValueChange={setDeviceFilter}>
+              <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                {deviceNames.map((d) => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="ml-auto">
+            <MonitorPdfExport
+              title="Monitor de Sueño"
+              subtitle={`Últimos ${rangeDays} días`}
+              unit="h"
+              goal={+kpi.goalH.toFixed(1)}
+              kpis={[
+                { label: "Última noche", value: byDay.length ? `${byDay[byDay.length-1].value.toFixed(1)} h` : "—" },
+                { label: "Promedio 7 días", value: `${kpi.avg7.toFixed(1)} h` },
+                { label: `Promedio ${rangeDays} días`, value: `${kpi.avg30.toFixed(1)} h` },
+                { label: "Noches bajo meta", value: String(kpi.below) },
+                { label: "Mejor noche", value: `${kpi.best.toFixed(1)} h` },
+              ]}
+              data={byDay}
+              fileName={`sueno-${rangeDays}d.pdf`}
+            />
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid gap-3 md:grid-cols-4">
         <Card>

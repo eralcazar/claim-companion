@@ -14,6 +14,9 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { DailySeriesChart } from "@/components/health/DailySeriesChart";
+import { MonitorPdfExport } from "@/components/health/MonitorPdfExport";
+import { EnabledMonitorsCard } from "@/components/health/EnabledMonitorsCard";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type Row = {
   fecha: string;
@@ -21,6 +24,7 @@ type Row = {
   active_minutes: number | null;
   calories: number | null;
   source: string | null;
+  device_name?: string | null;
 };
 
 function isoToday() {
@@ -41,15 +45,18 @@ export default function StepsMonitor() {
     active_minutes: number | "";
     calories: number | "";
   }>({ fecha: isoToday(), steps: 0, active_minutes: "", calories: "" });
+  const [rangeDays, setRangeDays] = useState<7 | 14 | 30 | 60 | 90>(30);
+  const [sourceFilter, setSourceFilter] = useState<string>("all");
+  const [deviceFilter, setDeviceFilter] = useState<string>("all");
 
   const { data: rows = [], isLoading } = useQuery({
-    queryKey: ["steps-monitor", patientId],
+    queryKey: ["steps-monitor", patientId, rangeDays],
     enabled: !!patientId,
     queryFn: async (): Promise<Row[]> => {
-      const from = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+      const from = new Date(Date.now() - rangeDays * 86400000).toISOString().slice(0, 10);
       const { data, error } = await supabase
         .from("activity_readings")
-        .select("fecha, steps, active_minutes, calories, source")
+        .select("fecha, steps, active_minutes, calories, source, device_name")
         .eq("patient_id", patientId!)
         .gte("fecha", from)
         .order("fecha", { ascending: true });
@@ -58,21 +65,40 @@ export default function StepsMonitor() {
     },
   });
 
+  const sources = useMemo(
+    () => Array.from(new Set(rows.map((r) => r.source ?? "manual"))),
+    [rows],
+  );
+  const deviceNames = useMemo(
+    () => Array.from(new Set(rows.map((r) => r.device_name).filter(Boolean) as string[])),
+    [rows],
+  );
+  const filtered = useMemo(
+    () =>
+      rows.filter(
+        (r) =>
+          (sourceFilter === "all" || (r.source ?? "manual") === sourceFilter) &&
+          (deviceFilter === "all" || r.device_name === deviceFilter),
+      ),
+    [rows, sourceFilter, deviceFilter],
+  );
+
   const byDay = useMemo(() => {
     const map = new Map<string, { steps: number; act: number; cal: number }>();
-    for (const r of rows) {
+    const meta = new Map<string, { source?: string | null; device?: string | null }>();
+    for (const r of filtered) {
       const prev = map.get(r.fecha) ?? { steps: 0, act: 0, cal: 0 };
-      // varias fuentes por día: tomamos el máximo (dispositivo suele ganar)
       map.set(r.fecha, {
         steps: Math.max(prev.steps, r.steps ?? 0),
         act: Math.max(prev.act, r.active_minutes ?? 0),
         cal: Math.max(prev.cal, r.calories ?? 0),
       });
+      meta.set(r.fecha, { source: r.source, device: r.device_name });
     }
     return Array.from(map.entries())
       .sort(([a], [b]) => (a < b ? -1 : 1))
-      .map(([fecha, v]) => ({ fecha, ...v }));
-  }, [rows]);
+      .map(([fecha, v]) => ({ fecha, ...v, ...meta.get(fecha) }));
+  }, [filtered]);
 
   const stepsSeries = byDay.map((d) => ({ fecha: d.fecha, value: d.steps }));
   const activeSeries = byDay.map((d) => ({ fecha: d.fecha, value: d.act }));
@@ -142,6 +168,61 @@ export default function StepsMonitor() {
           </Link>
         </Button>
       </header>
+
+      <EnabledMonitorsCard />
+
+      <Card>
+        <CardContent className="p-3 flex flex-wrap gap-2 items-end">
+          <div>
+            <Label className="text-xs">Rango</Label>
+            <Select value={String(rangeDays)} onValueChange={(v) => setRangeDays(Number(v) as any)}>
+              <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {[7, 14, 30, 60, 90].map((d) => (
+                  <SelectItem key={d} value={String(d)}>{d} días</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs">Fuente</Label>
+            <Select value={sourceFilter} onValueChange={setSourceFilter}>
+              <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas</SelectItem>
+                {sources.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs">Dispositivo</Label>
+            <Select value={deviceFilter} onValueChange={setDeviceFilter}>
+              <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                {deviceNames.map((d) => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="ml-auto">
+            <MonitorPdfExport
+              title="Monitor de Pasos y Actividad"
+              subtitle={`Últimos ${rangeDays} días`}
+              unit="pasos"
+              goal={stepsGoal}
+              kpis={[
+                { label: "Hoy", value: `${todaySteps.toLocaleString("es-MX")} pasos` },
+                { label: "Total 7 días", value: kpi.total7.toLocaleString("es-MX") },
+                { label: `Promedio ${rangeDays} días`, value: Math.round(kpi.avg30).toLocaleString("es-MX") },
+                { label: "Mejor día", value: kpi.best.toLocaleString("es-MX") },
+                { label: "Racha en meta", value: `${kpi.streak} d` },
+              ]}
+              data={byDay.map((d) => ({ fecha: d.fecha, value: d.steps, source: (d as any).source, device: (d as any).device }))}
+              fileName={`pasos-${rangeDays}d.pdf`}
+            />
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader className="pb-2">
