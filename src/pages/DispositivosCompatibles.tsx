@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Bluetooth, CheckCircle2, Search, Smartphone, Apple, Ban, Zap } from "lucide-react";
+import { Bluetooth, CheckCircle2, Search, Smartphone, Apple, Ban, Zap, PlusCircle } from "lucide-react";
 import {
   COMPATIBLE_DEVICES,
   CONNECTION_LABELS,
@@ -27,6 +27,7 @@ import {
 import { BleCompatibilityCheck } from "@/components/ble/BleCompatibilityCheck";
 import { DeviceDetailSheet } from "@/components/ble/DeviceDetailSheet";
 import { MyVerificationsSection } from "@/components/ble/MyVerificationsSection";
+import { RequestDeviceIntegrationDialog } from "@/components/ble/RequestDeviceIntegrationDialog";
 
 const TONE_CLASS: Record<string, string> = {
   success: "bg-emerald-500/15 text-emerald-700 border-emerald-500/30",
@@ -51,6 +52,7 @@ export default function DispositivosCompatibles() {
   const [status, setStatus] = useState<CompatibilityStatus | "all">("all");
   const [reading, setReading] = useState<CompatibleReading | "all">("all");
   const [selected, setSelected] = useState<CompatibleDevice | null>(null);
+  const [integrationOpen, setIntegrationOpen] = useState(false);
 
   const brands = useMemo(
     () => Array.from(new Set(COMPATIBLE_DEVICES.map((d) => d.brand))).sort(),
@@ -76,16 +78,28 @@ export default function DispositivosCompatibles() {
 
   return (
     <div className="container mx-auto py-6 space-y-6 max-w-6xl">
-      <header className="space-y-1">
-        <h1 className="text-2xl font-heading font-bold flex items-center gap-2">
-          <Bluetooth className="h-6 w-6 text-primary" />
-          Dispositivos y wearables compatibles
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Busca tu modelo, revisa su método de conexión (BLE directo, Google Health Connect o Apple HealthKit)
-          y consulta las instrucciones de emparejamiento paso a paso.
-        </p>
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-heading font-bold flex items-center gap-2">
+            <Bluetooth className="h-6 w-6 text-primary" />
+            Dispositivos y wearables compatibles
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Busca tu modelo, revisa su método de conexión (BLE directo, Google Health Connect o Apple HealthKit)
+            y consulta las instrucciones de emparejamiento paso a paso.
+          </p>
+        </div>
+        <Button
+          variant="outline"
+          className="gap-2 shrink-0"
+          onClick={() => setIntegrationOpen(true)}
+        >
+          <PlusCircle className="h-4 w-4" />
+          Solicitar integración de un modelo
+        </Button>
       </header>
+
+      <RequestDeviceIntegrationDialog open={integrationOpen} onOpenChange={setIntegrationOpen} />
 
       <div id="probar">
         <BleCompatibilityCheck />
