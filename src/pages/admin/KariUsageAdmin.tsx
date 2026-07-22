@@ -10,6 +10,8 @@ import {
 import { exportKariUsageCSV } from "@/lib/exportKariUsageCSV";
 import { KariMonthlyLimitsEditor } from "@/components/admin/KariMonthlyLimitsEditor";
 import { AiPolicyPanel } from "@/components/admin/AiPolicyPanel";
+import { AiKillSwitch } from "@/components/admin/AiKillSwitch";
+import { AiAuditExport } from "@/components/admin/AiAuditExport";
 import {
   useKariActiveModel,
   useSetKariActiveModel,
@@ -245,6 +247,8 @@ export default function KariUsageAdmin() {
 
       <KariMonthlyLimitsEditor />
       <AiPolicyPanel />
+      <AiKillSwitch />
+      <AiAuditExport />
     </div>
   );
 }
