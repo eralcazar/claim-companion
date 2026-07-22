@@ -17,8 +17,9 @@ async function getCapacitorGeo(): Promise<any | null> {
   try {
     const cap: any = (globalThis as any).Capacitor;
     if (!cap?.isNativePlatform?.()) return null;
-    // @ts-expect-error optional native module, may be absent on web build
-    const mod = await import(/* @vite-ignore */ "@capacitor/geolocation").catch(() => null);
+    // Optional native module — resolved at runtime only, hidden from Rollup.
+    const dynImport = new Function("m", "return import(m)") as (m: string) => Promise<any>;
+    const mod = await dynImport("@capacitor/geolocation").catch(() => null);
     return mod?.Geolocation ?? null;
   } catch {
     return null;
