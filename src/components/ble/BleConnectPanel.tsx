@@ -14,6 +14,7 @@ import {
 import { Link } from "react-router-dom";
 import { useState } from "react";
 import { useBleConnectionTest } from "@/hooks/useBleConnectionTest";
+import { BleFailureDiagnostic } from "@/components/ble/BleFailureDiagnostic";
 import { BleTroubleshootingGuide } from "./BleTroubleshootingGuide";
 import { BlePairingWizard } from "./BlePairingWizard";
 
