@@ -27,6 +27,9 @@ export type SessionLog = {
   hr_avg: number | null;
   calories: number | null;
   notes: string | null;
+  warmup_notes: string | null;
+  discomforts: string | null;
+  session_rest_sec: number | null;
   created_at: string;
 };
 
@@ -126,6 +129,9 @@ export type NewWorkoutPayload = {
   duration_min?: number;
   rpe?: number;
   notes?: string;
+  warmup_notes?: string;
+  discomforts?: string;
+  session_rest_sec?: number;
   items: Array<{
     exercise_id: string;
     sets: Array<{
@@ -156,6 +162,9 @@ export function useCreateWorkout() {
           duration_min: payload.duration_min ?? null,
           rpe: payload.rpe ?? null,
           notes: payload.notes ?? null,
+          warmup_notes: payload.warmup_notes ?? null,
+          discomforts: payload.discomforts ?? null,
+          session_rest_sec: payload.session_rest_sec ?? null,
         })
         .select()
         .single();
