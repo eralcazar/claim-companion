@@ -3,7 +3,7 @@ import { Navigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { KeyRound, RefreshCw, CheckCircle2, XCircle, Loader2, Copy, ShieldAlert, Zap, History, ListTree } from "lucide-react";
+import { KeyRound, RefreshCw, CheckCircle2, XCircle, Loader2, Copy, ShieldAlert, Zap, History, ListTree, AlertTriangle, RotateCw, Power } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
@@ -33,6 +33,99 @@ type AuditRow = {
   note: string | null;
   created_at: string;
 };
+
+type TestDiag = {
+  cause: string;
+  hint: string;
+  raw: string;
+  status?: number;
+  locked: boolean; // si true, deshabilita "Probar ahora" hasta que el usuario reactive
+};
+
+// Traduce cualquier fallo de invoke() o payload { ok:false } a un diagnóstico
+// legible con causa probable y sugerencia de acción concreta.
+function diagnoseTestError(params: {
+  invokeError: any;
+  data: any;
+  secretConfigured: boolean;
+}): TestDiag {
+  const { invokeError, data, secretConfigured } = params;
+  const raw =
+    invokeError?.message ??
+    data?.error_message ??
+    data?.error ??
+    "Error desconocido";
+  const status: number | undefined =
+    invokeError?.context?.status ??
+    invokeError?.status ??
+    data?.status;
+  const rawLower = String(raw).toLowerCase();
+
+  // Función no desplegada / ruta inexistente
+  if (status === 404 || rawLower.includes("not found") || rawLower.includes("no such function")) {
+    return {
+      cause: "La edge function test-ai-provider no está desplegada (404).",
+      hint: "Pídele a Lovable en el chat: “Desplega la edge function test-ai-provider”. Luego vuelve a Probar ahora.",
+      raw, status, locked: true,
+    };
+  }
+  // Falta secret
+  if (!secretConfigured || rawLower.includes("missing_api_key") || rawLower.includes("api key")) {
+    return {
+      cause: "La API key BYOK del proveedor no está configurada en el backend.",
+      hint: "Usa el botón Copiar instrucción y pégala en el chat de Lovable para abrir el formulario seguro.",
+      raw, status, locked: false,
+    };
+  }
+  // Auth
+  if (status === 401 || status === 403 || rawLower.includes("unauthorized") || rawLower.includes("forbidden")) {
+    return {
+      cause: "El proveedor rechazó la key (401/403). Puede estar revocada, mal copiada o sin permisos del modelo.",
+      hint: "Genera una nueva key en el panel del proveedor y rótala con el botón Copiar instrucción para rotar.",
+      raw, status, locked: false,
+    };
+  }
+  if (status === 402 || rawLower.includes("insufficient") || rawLower.includes("quota") || rawLower.includes("billing")) {
+    return {
+      cause: "El proveedor reportó falta de créditos / facturación (402).",
+      hint: "Recarga créditos o habilita facturación en la consola del proveedor y reintenta.",
+      raw, status, locked: false,
+    };
+  }
+  if (status === 429 || rawLower.includes("rate limit") || rawLower.includes("too many")) {
+    return {
+      cause: "Rate limit del proveedor (429).",
+      hint: "Espera unos segundos y presiona Reintentar. Si persiste, revisa cuotas en la consola del proveedor.",
+      raw, status, locked: false,
+    };
+  }
+  if (status === 400 || rawLower.includes("invalid") || rawLower.includes("bad request")) {
+    return {
+      cause: "Petición inválida (400). Suele significar modelo inexistente o formato de key incorrecto.",
+      hint: "Sincroniza modelos y verifica que el default_model exista en el catálogo del proveedor.",
+      raw, status, locked: false,
+    };
+  }
+  if (status && status >= 500) {
+    return {
+      cause: `Error del proveedor (${status}).`,
+      hint: "Reintenta en unos segundos. Si persiste, revisa el status page del proveedor.",
+      raw, status, locked: false,
+    };
+  }
+  if (rawLower.includes("failed to fetch") || rawLower.includes("network")) {
+    return {
+      cause: "No se pudo alcanzar la edge function (red o CORS).",
+      hint: "Verifica tu conexión y vuelve a intentar. Si persiste, pídele a Lovable que re-despliegue test-ai-provider.",
+      raw, locked: true,
+    };
+  }
+  return {
+    cause: "Falló la prueba por una razón no clasificada.",
+    hint: "Revisa el detalle debajo y reintenta. Si se repite, pídele a Lovable que inspeccione los logs de test-ai-provider.",
+    raw, status, locked: false,
+  };
+}
 
 const PROVIDER_META: Record<
   string,
@@ -83,6 +176,9 @@ export default function ApiKeysMaintenance() {
   const [checkedAt, setCheckedAt] = useState<string | null>(null);
   const [testing, setTesting] = useState<Record<string, boolean>>({});
   const [syncing, setSyncing] = useState<Record<string, boolean>>({});
+  // Último diagnóstico y bloqueo por secret (para 404 / red se bloquea el
+  // botón hasta que el admin lo reactive explícitamente).
+  const [diag, setDiag] = useState<Record<string, TestDiag | null>>({});
   const [history, setHistory] = useState<AuditRow[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
 
@@ -145,22 +241,28 @@ export default function ApiKeysMaintenance() {
   const runTest = async (secretName: string) => {
     const meta = PROVIDER_META[secretName];
     if (!meta) return;
+    const secret = secrets.find((x) => x.name === secretName);
     setTesting((t) => ({ ...t, [secretName]: true }));
     const { data, error } = await supabase.functions.invoke("test-ai-provider", {
       body: { provider: meta.provider },
     });
     setTesting((t) => ({ ...t, [secretName]: false }));
-    if (error) {
-      toast({ title: "Error al probar", description: error.message, variant: "destructive" });
-    } else if (data?.ok) {
+    if (!error && data?.ok) {
+      setDiag((d) => ({ ...d, [secretName]: null }));
       toast({
         title: `${meta.label}: OK`,
         description: `Modelo ${data.model_used} respondió en ${data.latency_ms} ms.`,
       });
     } else {
+      const d = diagnoseTestError({
+        invokeError: error,
+        data,
+        secretConfigured: !!secret?.configured,
+      });
+      setDiag((prev) => ({ ...prev, [secretName]: d }));
       toast({
         title: `${meta.label}: falló`,
-        description: (data?.error_message ?? "Error desconocido").slice(0, 200),
+        description: d.cause,
         variant: "destructive",
       });
     }
@@ -299,19 +401,26 @@ export default function ApiKeysMaintenance() {
                   </p>
                 )}
                 <div className="flex gap-2 flex-wrap">
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={() => runTest(s.name)}
-                    disabled={!s.configured || testing[s.name]}
-                  >
-                    {testing[s.name] ? (
-                      <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
-                    ) : (
-                      <Zap className="h-3.5 w-3.5 mr-1" />
-                    )}
-                    Probar ahora
-                  </Button>
+                  {(() => {
+                    const d = diag[s.name];
+                    const locked = !!d?.locked;
+                    return (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => runTest(s.name)}
+                        disabled={!s.configured || testing[s.name] || locked}
+                        title={locked ? "Deshabilitado por fallo previo. Reactiva el test para reintentar." : undefined}
+                      >
+                        {testing[s.name] ? (
+                          <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                        ) : (
+                          <Zap className="h-3.5 w-3.5 mr-1" />
+                        )}
+                        Probar ahora
+                      </Button>
+                    );
+                  })()}
                   <Button
                     size="sm"
                     variant="secondary"
@@ -336,6 +445,75 @@ export default function ApiKeysMaintenance() {
                     </Button>
                   )}
                 </div>
+                {diag[s.name] && (
+                  <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-xs space-y-2">
+                    <div className="flex items-start gap-2">
+                      <AlertTriangle className="h-4 w-4 text-destructive mt-0.5 flex-shrink-0" />
+                      <div className="space-y-1">
+                        <p className="font-semibold text-destructive flex items-center gap-2">
+                          Diagnóstico de la prueba
+                          {diag[s.name]?.status != null && (
+                            <Badge variant="outline" className="font-mono text-[10px]">
+                              HTTP {diag[s.name]!.status}
+                            </Badge>
+                          )}
+                          {diag[s.name]?.locked && (
+                            <Badge variant="destructive" className="text-[10px]">Bloqueado</Badge>
+                          )}
+                        </p>
+                        <p><span className="font-semibold">Causa probable:</span> {diag[s.name]!.cause}</p>
+                        <p><span className="font-semibold">Qué hacer:</span> {diag[s.name]!.hint}</p>
+                        <details className="text-muted-foreground">
+                          <summary className="cursor-pointer">Mensaje técnico</summary>
+                          <pre className="mt-1 whitespace-pre-wrap font-mono text-[11px] bg-background/60 p-2 rounded border">
+                            {diag[s.name]!.raw}
+                          </pre>
+                        </details>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 flex-wrap pt-1">
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => runTest(s.name)}
+                        disabled={testing[s.name] || diag[s.name]?.locked}
+                      >
+                        {testing[s.name] ? (
+                          <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                        ) : (
+                          <RotateCw className="h-3.5 w-3.5 mr-1" />
+                        )}
+                        Reintentar
+                      </Button>
+                      {diag[s.name]?.locked && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setDiag((prev) => ({
+                              ...prev,
+                              [s.name]: prev[s.name] ? { ...prev[s.name]!, locked: false } : null,
+                            }));
+                            toast({
+                              title: "Test reactivado",
+                              description: "Puedes volver a presionar Probar ahora bajo tu responsabilidad.",
+                            });
+                          }}
+                        >
+                          <Power className="h-3.5 w-3.5 mr-1" />
+                          Reactivar test
+                        </Button>
+                      )}
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setDiag((prev) => ({ ...prev, [s.name]: null }))}
+                      >
+                        Descartar
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           );
