@@ -80,6 +80,14 @@ function PolicyRow({ p }: { p: AiProviderPolicy }) {
     });
   };
 
+  // Si el proveedor seleccionado no tiene modelos sincronizados, forzamos el
+  // uso del modelo "Estándar (auto)" automáticamente.
+  useEffect(() => {
+    if (providerRow && (providerRow.models?.length ?? 0) === 0 && draft.model !== "standard") {
+      setDraft((d) => ({ ...d, model: "standard" }));
+    }
+  }, [providerRow?.models?.length, draft.model]);
+
   return (
     <div className="border rounded-lg p-3 space-y-3">
       <div className="flex items-center justify-between flex-wrap gap-2">
