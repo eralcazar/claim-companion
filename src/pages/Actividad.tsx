@@ -7,6 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Sparkles, Trash2, Plus, Dumbbell, Target, Loader2 } from "lucide-react";
 import { TodayDashboard } from "@/components/actividad/TodayDashboard";
+import { BitacoraTab } from "@/components/actividad/BitacoraTab";
+import { DispositivosTab } from "@/components/actividad/DispositivosTab";
 import {
   useActivityGoals,
   useUpsertActivityGoals,
@@ -77,6 +79,8 @@ export default function Actividad() {
           <TabsTrigger value="coach">Coach IA</TabsTrigger>
           <TabsTrigger value="metas">Metas</TabsTrigger>
           <TabsTrigger value="historial">Historial</TabsTrigger>
+          <TabsTrigger value="bitacora">Bitácora</TabsTrigger>
+          <TabsTrigger value="dispositivos">Dispositivos</TabsTrigger>
         </TabsList>
 
         <TabsContent value="hoy" className="pt-4">
@@ -262,12 +266,42 @@ export default function Actividad() {
                   {Array.isArray(s.recommendations) && s.recommendations.length > 0 && (
                     <ul className="text-sm space-y-1">
                       {s.recommendations.map((r: any, i: number) => (
-                        <li key={i} className="flex gap-2">
-                          <span className="text-primary">›</span>
-                          <span>{typeof r === "string" ? r : r.text ?? r.recommendation ?? JSON.stringify(r)}</span>
+                        <li key={i} className="rounded-md border p-2 space-y-1">
+                          <div className="flex gap-2">
+                            <span className="text-primary">›</span>
+                            <span className="font-medium">
+                              {typeof r === "string" ? r : r.text ?? r.recommendation ?? JSON.stringify(r)}
+                            </span>
+                            {r?.priority && (
+                              <Badge
+                                variant={r.priority === "high" ? "destructive" : r.priority === "medium" ? "default" : "outline"}
+                                className="ml-auto text-[10px]"
+                              >
+                                {r.priority}
+                              </Badge>
+                            )}
+                          </div>
+                          {r?.reason && <p className="text-xs text-muted-foreground pl-4">{r.reason}</p>}
+                          {r?.expected_impact && (
+                            <p className="text-xs text-primary pl-4">
+                              Impacto esperado: {r.expected_impact.delta_estimate}
+                              {r.expected_impact.metric ? ` (${r.expected_impact.metric})` : ""}
+                              {r.expected_impact.horizon_weeks ? ` · ${r.expected_impact.horizon_weeks} sem` : ""}
+                            </p>
+                          )}
                         </li>
                       ))}
                     </ul>
+                  )}
+                  {(s as any).thresholds && typeof (s as any).thresholds === "object" && (
+                    <div className="rounded-md border border-warning/40 bg-warning/5 p-2 text-xs">
+                      <p className="font-semibold mb-1">Umbrales sugeridos para alertas automáticas</p>
+                      <ul className="space-y-0.5">
+                        {Object.entries((s as any).thresholds as Record<string, unknown>).map(([k, v]) => (
+                          <li key={k}>• {k}: {String(v)}</li>
+                        ))}
+                      </ul>
+                    </div>
                   )}
                   {s.suggested_plan && !s.applied_plan_id && (
                     <Button size="sm" variant="outline" onClick={() => apply.mutate(s)} disabled={apply.isPending}>
@@ -369,6 +403,14 @@ export default function Actividad() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="bitacora" className="pt-4">
+          <BitacoraTab />
+        </TabsContent>
+
+        <TabsContent value="dispositivos" className="pt-4">
+          <DispositivosTab />
         </TabsContent>
       </Tabs>
     </div>
