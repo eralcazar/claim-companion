@@ -1,86 +1,122 @@
-# Integrar ApiFreeLLM como proveedor externo en Políticas de IA
 
-Objetivo: permitir elegir **ApiFreeLLM** como modelo por feature en `ai_provider_policy`, reutilizando toda la gobernanza que ya existe (kill switch, consentimiento por feature, sanitización, PII residual, auditoría automática, fallback a Lovable AI). Sin retirar Lovable AI: ApiFreeLLM es **opción opcional** y solo se usa cuando (a) el admin la eligió para esa feature, (b) el kill switch global está encendido y (c) el usuario dio consentimiento explícito para esa feature con ese proveedor.
+# Plan: activar ApiFreeLLM sólo donde es seguro
+
+## Objetivo
+Habilitar ApiFreeLLM en **exactamente dos features** con controles duros: un nuevo endpoint de glosario educativo (uso natural sin PII), y el coach de actividad rediseñado (sin condiciones médicas específicas). Todo lo demás sigue en Lovable AI. El usuario controla ambas desde "Mis datos y IA".
 
 ---
 
-## 1. Base de datos (una migración)
+## Alcance
 
-- `ai_provider_policy`: agregar
-  - `provider text NOT NULL DEFAULT 'lovable'` (`'lovable'` | `'apifreellm'`)
-  - `external_endpoint text` (para ApiFreeLLM u otros; nulo cuando provider = lovable)
-  - `requires_consent boolean NOT NULL DEFAULT false` (true cuando provider != 'lovable')
-- Seed / update: dejar todas las políticas actuales con `provider='lovable'`.
-- Registrar ApiFreeLLM en una nueva tabla ligera `ai_external_providers` (id text PK, nombre, endpoint, aviso legal corto, activo boolean) para poder listar/desactivar sin código. RLS: admin escribe, autenticados leen.
-- Ampliar `can_call_external_ai(_user_id, _feature_key)`:
-  - Si la política de la feature tiene `provider='lovable'`, devolver `{allowed:true, provider:'lovable'}` (no aplica gate externo).
-  - Si tiene `provider!='lovable'`, exigir kill switch encendido + consentimiento activo + proveedor activo en `ai_external_providers`.
-- GRANTs y RLS estándar (admin gestiona política y proveedores; usuarios ven su propia consent row — ya existe).
+### 1. Nueva edge function `ai-glossary`
+Propósito: responder preguntas educativas genéricas ("¿qué es la hipertensión?", "¿para qué sirve el metoprolol?") sin tocar datos del paciente.
 
-## 2. Router compartido (`supabase/functions/_shared/ai-router.ts`)
+Flujo:
+1. Auth requerida, valida sesión.
+2. Carga política `glossary` desde `ai_provider_policy`.
+3. **Gate estricto**: rechaza con 400 (`code: "not_generic"`) si `isCacheableGeneric(prompt, normalizePrompt(prompt))` devuelve `false`. No hay bypass.
+4. Busca en `ai_response_cache` (feature_key = `glossary`); si hit, devuelve.
+5. Llama al proveedor:
+   - Si `policy.provider === "apifreellm"` → `routeExternalOrFallback` (usa `callApiFreeLLM` como external, `callGateway` como fallback).
+   - Si `lovable` → `callGateway` directo.
+6. Guarda en caché (TTL largo, ~720h) porque las respuestas educativas son estables.
+7. Descuenta 0 tokens Kari cuando viene de caché o de ApiFreeLLM (ahorro real al usuario).
+8. Registra auditoría vía `recordAiAudit`.
 
-- `loadPolicy` devuelve también `provider` y `external_endpoint`.
-- Nuevo helper `callApiFreeLLM(endpoint, messages, opts)` con formato OpenAI-compatible (tal como el gateway actual) y timeout de 8s.
-- Nuevo orquestador `routeByPolicy({admin, userId, policy, rawUserPrompt, messages, ...})` que:
-  1. Si `policy.provider === 'lovable'` → llama `callGateway(...)` directamente (comportamiento actual).
-  2. Si es externo → envuelve la llamada en `routeExternalOrFallback` que ya existe (kill switch, consentimiento, sanitización, PII residual, auditoría) con:
-     - `external: () => callApiFreeLLM(policy.external_endpoint, sanitizedMessages, ...)`
-     - `fallback: () => callGateway(apiKey, DEFAULT_LOVABLE_MODEL, sanitizedMessages, ...)`
-     - Todas las llamadas externas usan `messages` sanitizados (system prompt intacto + user prompt reemplazado por `normalizePrompt` cuando contenga PII).
-- `ai-kari-chat` y `ai-activity-coach` cambian una línea: usan `routeByPolicy` en vez de llamar `callGateway` directo. Toda la lógica de descuento de tokens, historial y caché se mantiene.
+System prompt: "Eres un divulgador médico. Responde en español, en 3-6 oraciones, únicamente información educativa general. Si la pregunta pide diagnóstico, dosis personalizada o interpretación de datos del paciente, responde 'Esta pregunta requiere valoración médica personalizada, consulta a Kari o a tu médico.' No inventes marcas comerciales."
 
-## 3. Frontend
+Semilla de política: `feature_key='glossary'`, `provider='apifreellm'`, `model='gpt-3.5-turbo'`, `enable_cache=true`, `history_window=0`, `max_output_tokens=400`.
 
-- `src/hooks/useAiPolicies.ts`
-  - Extender `AI_MODEL_CHOICES` con etiqueta de proveedor (`lovable` | `apifreellm`) y modelos ApiFreeLLM que expongan (p.ej. `apifreellm/mistral-small`, `apifreellm/llama-3-8b`) tomados del registro `ai_external_providers`.
-  - Cargar la lista efectiva desde la tabla al montar (para no hardcodear).
-- `src/components/admin/AiPolicyPanel.tsx`
-  - Al elegir un modelo con `provider='apifreellm'`: mostrar aviso amarillo "Este proveedor es externo. Requiere consentimiento del usuario y activa el modo sanitizado obligatorio."
-  - Selector separado de proveedor (radio: Lovable AI / ApiFreeLLM) que filtra los modelos disponibles.
-- `src/pages/MisDatosIA.tsx`
-  - Ya lista consentimientos por feature. Añadir columna "Proveedor actual" leído de `ai_provider_policy.provider` para que el usuario vea a quién autoriza al aceptar.
-- `src/components/ai/AiProviderStatusBanner.tsx`
-  - Mostrar "Modo seguro (Lovable AI)" cuando la feature en uso resolvió fallback por consent/kill switch.
+### 2. Rediseño del prompt de `ai-activity-coach`
+Objetivo: que el prompt sea des-identificable para poder correr por ApiFreeLLM cuando la política y el consentimiento lo permitan.
 
-## 4. Legal (obligatorio antes de encender ApiFreeLLM en cualquier feature)
+Cambios en `supabase/functions/ai-activity-coach/index.ts`:
+- **Reemplazar** `conditions = condRes.data.map(c => c.condition_name).join(", ")` por una **categorización** en 4 buckets fijos calculada en el edge (sin nombres): `cardiovascular`, `metabólico`, `respiratorio`, `otro`. Se envía sólo la lista de buckets activos (ej. `["cardiovascular","metabólico"]`) — perfil clínico genérico, no identificable.
+- Reemplazar promedios crudos por rangos categóricos ("pasos_avg_bucket": `bajo|medio|alto`, "hr_bucket": `normal|elevado`, etc.) cuando `policy.provider === "apifreellm"`. Si es `lovable`, mantener valores exactos (ya es interno).
+- Envolver la llamada con `routeExternalOrFallback` cuando `policy.provider !== "lovable"`. Si `blockedReason` no es null, fallback silencioso a Lovable con el prompt detallado original.
 
-- Editar `src/pages/Legal.tsx` para agregar sección **"Proveedores externos de IA"** con:
-  - Nombre del proveedor (ApiFreeLLM), URL, país de procesamiento, base legal (consentimiento LFPDPPP art. 8-9).
-  - Qué se envía: prompt **sanitizado** (sin CURP, RFC, email, teléfono, direcciones, fechas, números largos, coordenadas).
-  - Qué no se envía: identificadores del paciente, expediente, historial médico crudo.
-  - Derecho ARCO: enlace a `/derechos-arco` (ya existe).
-  - Retención en el proveedor y cómo revocar (link a `/mis-datos-ia`).
-- Nuevo texto de consentimiento por feature (versionado) que el usuario debe firmar en `/mis-datos-ia` antes de que ApiFreeLLM procese cualquier request.
-- Bloque en `AiPolicyPanel` que impida guardar una política con provider externo si no existe el texto legal publicado para esa feature (validación en migración: check en tabla `ai_external_providers.legal_version`).
+Sigue existiendo la variante "personalizada" en Lovable: si el usuario **no** ha dado consentimiento para el coach en ApiFreeLLM, la governance function `can_call_external_ai` bloquea y el orquestador cae a Lovable con el prompt completo — sin regresión de calidad para usuarios que no aceptan el proveedor externo.
 
-## 5. Pruebas
+Política default: `provider='lovable'`. Un admin la cambia a `apifreellm` conscientemente.
 
-- `src/test/ai-sanitize.test.ts`: ya cubre PII; sin cambios.
-- Nuevo `src/test/ai-router-provider-selection.test.ts` (extiende `ai-router-governance.test.ts`) — Vitest con mocks:
-  - Política `provider='apifreellm'` + consent revocado → fallback a Lovable, `blockedReason='consent_revoked'`, `provider='lovable'` en el registro de auditoría.
-  - Política externa + consent OK + prompt con CURP → prompt sale sanitizado (assertion sobre el body enviado al mock de ApiFreeLLM).
-  - Política externa + consent OK + prompt con dirección residual → bloquea a fallback, `blockedReason='residual_pii'`.
-  - Política externa + kill switch OFF → fallback.
-  - Política `provider='lovable'` → nunca consulta consent ni sanitiza (comportamiento actual).
+### 3. Gate de "no genérico" reutilizable
+Añadir helper `assertGenericOrThrow(prompt)` en `supabase/functions/_shared/ai-router.ts` que:
+- Llama `normalizePrompt` + `isCacheableGeneric` (ya existen en el mismo archivo).
+- Si `false`, lanza un error tipado. Los endpoints capturan y devuelven `{ error: "Pregunta con datos personales, no puede usar proveedor educativo.", code: "not_generic" }`.
+- `ai-glossary` lo llama siempre.
+- `routeExternalOrFallback` gana un parámetro opcional `requireGeneric: boolean`; si es true y falla el gate, fuerza `blockedReason='not_generic'` y va al fallback (no bloquea al usuario, sólo evita salida externa). El coach lo usa así: si no es genérico, se queda internamente en Lovable aunque tuviera consentimiento.
 
-## 6. Fuera de alcance
+### 4. UI: "Mis datos y IA" (`src/pages/MisDatosIA.tsx`)
+- Añadir a `AI_FEATURES` en `useAiGovernance.ts` la entrada `{ key: "glossary", label: "Glosario educativo" }`.
+- La lista de consentimientos ya renderiza dinámicamente cada feature; sólo hace falta:
+  - Mostrar junto a cada feature el **proveedor configurado por admin** (leyendo `ai_provider_policy.provider`) — no sólo el del consentimiento del usuario. Nueva query `useAiPolicyProviders()` con SELECT público limitado a `feature_key, provider`.
+  - Cuando `provider === 'apifreellm'`, mostrar badge amarillo "Proveedor externo" y un texto: "Al activar esta función tus prompts sanitizados salen a ApiFreeLLM. Si desactivas, se usa Lovable AI."
+  - Cuando `provider === 'lovable'`, ocultar el switch (no hay decisión que tomar) y mostrar "Siempre interno" en gris.
+- Default de consentimiento cambia: para features con proveedor externo el default es **opt-out** (`granted=false`); para lovable no aplica.
 
-- No enviar imágenes / audio / documentos a ApiFreeLLM (solo texto conversacional). Features de OCR (`extract-study-indicators`, `detect-form-fields`) permanecen locked a Lovable AI en la migración.
-- No cambiar precios/tokens Kari (ApiFreeLLM es gratuito upstream pero seguimos cobrando los mismos tokens al usuario para mantener modelo económico y cubrir costos de infra/moderación).
+### 5. UI: Legal (`src/pages/Legal.tsx`)
+Añadir sección nueva "Proveedores de IA externos" con:
+- Lista dinámica desde `ai_external_providers` (nombre, endpoint, aviso legal, estado activo).
+- Explicación clara: qué se sanitiza, qué features pueden usarlo, cómo revocar.
+- Enlace a `/mis-datos-ia`.
+
+### 6. Router en `App.tsx`
+Ya existe `/mis-datos-ia`. Sin cambios de ruteo.
+
+---
+
+## Fuera de alcance
+- No se toca Kari conversacional (`ai-kari-chat`) — se queda 100% en Lovable AI.
+- No se activa ApiFreeLLM automáticamente en ninguna feature. El admin debe cambiar la política manualmente en `AiPolicyPanel`.
+- No se cambia el modelo de tokens Kari (glosario sigue sin descontar tokens al usuario cuando cachea o va por ApiFreeLLM; cuando cae a fallback Lovable, se descuenta normal).
+
+---
 
 ## Detalle técnico
 
-Endpoints ApiFreeLLM: `https://apifreellm.com/api/chat/completions` (OpenAI-compatible, sin API key). Timeout duro 8s; en `error/timeout/429` → fallback automático a Lovable AI (ya cubierto por `routeExternalOrFallback` porque cualquier throw cae en el catch y registra `status:error:*` — extender para que ese catch también dispare `fallback()` en vez de dejar contenido vacío).
+### Migración SQL (una sola)
+```sql
+INSERT INTO public.ai_provider_policy
+  (feature_key, label, model, max_input_tokens, max_output_tokens,
+   history_window, enable_cache, cache_ttl_hours, provider, notes)
+VALUES
+  ('glossary', 'Glosario educativo', 'gpt-3.5-turbo',
+   1000, 400, 0, true, 720, 'apifreellm',
+   'Preguntas educativas genéricas sin PII. Rechaza prompts no genéricos.')
+ON CONFLICT (feature_key) DO NOTHING;
+```
+No hay cambios de tablas; el schema ya soporta `provider` desde el turno anterior.
 
-Cambio menor a `routeExternalOrFallback`: si `external()` lanza o retorna vacío, ejecutar `fallback()` y marcar `fallbackUsed=true` con `blockedReason='external_error'`. Actualizar test correspondiente.
+### Nuevos archivos
+- `supabase/functions/ai-glossary/index.ts` — endpoint completo.
+- (opcional) test manual con `supabase--curl_edge_functions`.
 
-## Orden de entrega
+### Archivos modificados
+- `supabase/functions/_shared/ai-router.ts`: agrega `assertGenericOrThrow`, extiende `routeExternalOrFallback` con `requireGeneric?: boolean`.
+- `supabase/functions/ai-activity-coach/index.ts`: buckets clínicos + integración con `routeExternalOrFallback`.
+- `src/hooks/useAiGovernance.ts`: nueva feature `glossary` en `AI_FEATURES`; nuevo hook `useAiPolicyProviders()`.
+- `src/pages/MisDatosIA.tsx`: render diferenciado según proveedor de la política.
+- `src/pages/Legal.tsx`: sección "Proveedores de IA externos".
+- `supabase/config.toml`: no requiere cambios (verify_jwt=false por defecto no aplica; requiere JWT).
 
-1. Migración SQL (schema + `can_call_external_ai` + seed proveedor ApiFreeLLM inactivo por defecto).
-2. Router (`ai-router.ts`) + refactor de `ai-kari-chat` y `ai-activity-coach`.
-3. UI admin (`AiPolicyPanel` con selector de proveedor + aviso).
-4. Legal (`Legal.tsx` + textos de consentimiento versionados).
-5. `MisDatosIA` extendido y banner de estado.
-6. Tests.
+### Verificación
+1. `supabase--curl_edge_functions /ai-glossary` con "¿qué es la hipertensión?" → 200, respuesta cacheable, `provider: 'apifreellm'`.
+2. Mismo endpoint con "me duele la cabeza desde ayer" → 400 `not_generic`.
+3. Segunda llamada idéntica al primer prompt → cache hit, sin tokens gastados.
+4. Coach de actividad con política en `apifreellm` sin consentimiento → auditoría muestra `fallback_used=true, blocked_reason='consent_revoked'` y respuesta viene de Lovable.
+5. Coach con consentimiento → payload no contiene nombres de condiciones, sólo buckets.
+6. `MisDatosIA` muestra glosario con badge amarillo y switch funcional.
 
-Estimado: ~1.5 días. ApiFreeLLM queda **registrado pero inactivo** hasta que un admin lo encienda en `ai_external_providers` y elija una feature; ninguna llamada sale al exterior sin consentimiento explícito del usuario final.
+---
+
+## Entregables y orden
+1. Migración SQL (semilla glosario).
+2. `assertGenericOrThrow` y `requireGeneric` en el shared router.
+3. Nueva edge function `ai-glossary`.
+4. Refactor `ai-activity-coach` (buckets + orquestador).
+5. Hook `useAiPolicyProviders` + actualización `AI_FEATURES`.
+6. UI `MisDatosIA` diferenciada por proveedor.
+7. UI `Legal` con sección de proveedores externos.
+8. Test manual con curl a ambos endpoints y revisión de auditoría.
+
+Estimado: 1 sesión de build.
