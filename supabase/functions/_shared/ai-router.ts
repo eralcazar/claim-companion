@@ -14,6 +14,12 @@ export type AiPolicy = {
   cache_ttl_hours: number;
   provider?: string;
   external_endpoint?: string | null;
+  supports_references?: boolean;
+  rag_enabled?: boolean;
+  rag_categories?: string[];
+  rerank_enabled?: boolean;
+  rerank_top_n?: number;
+  rerank_keep?: number;
 };
 
 const DEFAULT_POLICY: AiPolicy = {
@@ -43,7 +49,7 @@ export async function loadPolicy(
   try {
     const { data } = await admin
       .from("ai_provider_policy")
-      .select("feature_key, model, max_input_tokens, max_output_tokens, history_window, enable_cache, cache_ttl_hours, provider, external_endpoint")
+      .select("feature_key, model, max_input_tokens, max_output_tokens, history_window, enable_cache, cache_ttl_hours, provider, external_endpoint, supports_references, rag_enabled, rag_categories, rerank_enabled, rerank_top_n, rerank_keep")
       .eq("feature_key", featureKey)
       .maybeSingle();
     if (data) return { provider: "lovable", external_endpoint: null, ...(data as AiPolicy) };
