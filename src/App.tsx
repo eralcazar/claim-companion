@@ -98,6 +98,8 @@ import EjerciciosImportar from "@/pages/EjerciciosImportar";
 import EjerciciosPlan from "@/pages/EjerciciosPlan";
 import Conocimiento from "@/pages/Conocimiento";
 import KnowledgeBase from "@/pages/admin/KnowledgeBase";
+import UmbralesMonitor from "@/pages/UmbralesMonitor";
+import RecipeImportRuns from "@/pages/admin/RecipeImportRuns";
 import { ActiveLocationProvider } from "@/contexts/ActiveLocationContext";
 
 const queryClient = new QueryClient();
@@ -219,6 +221,8 @@ const App = () => (
               <Route path="/ejercicios/:exerciseId" element={<EjercicioDetalle />} />
               <Route path="/conocimiento" element={<Conocimiento />} />
               <Route path="/admin/conocimiento" element={<KnowledgeBase />} />
+              <Route path="/umbrales-monitor" element={<UmbralesMonitor />} />
+              <Route path="/admin/recetas-sync" element={<RecipeImportRuns />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
