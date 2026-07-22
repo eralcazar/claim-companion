@@ -15,7 +15,8 @@ const SYSTEM_PROMPT = `Eres un coach de actividad física de CareCentral. Hablas
 Tu tarea: analizar los datos de actividad, frecuencia cardiaca, sueño y condiciones médicas del paciente y devolver una respuesta JSON con:
 - summary: 2-3 oraciones sobre cómo va la actividad del paciente.
 - red_flags: lista de banderas rojas clínicas detectadas (HTA no controlada, SpO2 bajo, taquicardia en reposo, sedentarismo severo, etc.). Puede estar vacía.
-- recommendations: lista de 3-5 recomendaciones específicas y accionables (tipo, motivo, prioridad low/medium/high).
+- recommendations: lista de 3-5 recomendaciones específicas y accionables. Cada una debe tener: text (qué hacer, concreto y medible), reason (por qué, citando el dato del paciente: pasos, HR, SpO2, BP), priority (low|medium|high), expected_impact (objeto con metric = steps|hr_resting|bp_systolic|spo2|sleep_min|weight, delta_estimate = string breve tipo "+1500 pasos/día" o "-5 mmHg en 4 semanas", horizon_weeks = número).
+- thresholds: objeto opcional con alertas sugeridas basadas en umbrales para el paciente { spo2_min, bp_systolic_max, bp_diastolic_max, hr_resting_max } — usá valores conservadores según sus condiciones.
 - suggested_plan: opcional. Si el paciente se beneficiaría de un plan estructurado, propón uno con name, objective, level, days_per_week, y sessions[] (day_of_week 0-6, title, duration_min, intensity, exercises[] con name, muscle_group, sets, reps, duration_seconds, rest_seconds, equipment).
 
 REGLAS DE SEGURIDAD:
