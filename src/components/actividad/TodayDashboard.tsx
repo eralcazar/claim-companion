@@ -1,7 +1,8 @@
 import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Activity, Flame, Footprints, Heart, Moon, Timer } from "lucide-react";
+import { Activity, AlertTriangle, Flame, Footprints, Gauge, Heart, Moon, Timer } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { useActivityGoals } from "@/hooks/useActivity";
 import { useUnifiedReadings } from "@/hooks/useUnifiedReadings";
 import { useAuth } from "@/contexts/AuthContext";
@@ -19,6 +20,9 @@ export function TodayDashboard() {
   const { data: goals } = useActivityGoals();
   const { from, to } = todayRange();
   const { data: readings } = useUnifiedReadings(user?.id, from, to);
+  // Ventana de 7 días para BP/SpO2: los tensiómetros no se usan cada hora.
+  const from7 = new Date(Date.now() - 7 * 86400_000).toISOString();
+  const { data: recent } = useUnifiedReadings(user?.id, from7, to, ["blood_pressure", "spo2"]);
 
   const steps = useMemo(
     () => (readings ?? []).filter((r) => r.kind === "steps").reduce((s, r) => s + r.value, 0),
@@ -31,6 +35,13 @@ export function TodayDashboard() {
   const hrAvg = hrValues.length ? Math.round(hrValues.reduce((a, b) => a + b, 0) / hrValues.length) : 0;
   const spo2Values = (readings ?? []).filter((r) => r.kind === "spo2").map((r) => r.value);
   const spo2Avg = spo2Values.length ? Math.round(spo2Values.reduce((a, b) => a + b, 0) / spo2Values.length) : 0;
+
+  const bpList = (recent ?? []).filter((r) => r.kind === "blood_pressure");
+  const lastBp = bpList[bpList.length - 1];
+  const lastSpo2 = [...(recent ?? []).filter((r) => r.kind === "spo2")].pop();
+
+  const bpAlert = lastBp && (lastBp.value >= 140 || (lastBp.value2 ?? 0) >= 90);
+  const spo2Alert = lastSpo2 && lastSpo2.value < 92;
 
   const stepsGoal = goals?.steps_goal ?? 8000;
   const stepsPct = Math.min(100, Math.round((steps / stepsGoal) * 100));
@@ -98,7 +109,45 @@ export function TodayDashboard() {
         </CardHeader>
         <CardContent>
           <div className="text-3xl font-bold">{spo2Avg || "—"}<span className="text-sm font-normal text-muted-foreground">%</span></div>
-          <div className="text-xs text-muted-foreground">Promedio del día</div>
+          <div className="text-xs text-muted-foreground">
+            {lastSpo2
+              ? `Última: ${lastSpo2.value}% · ${lastSpo2.source} ${lastSpo2.device_name ? `· ${lastSpo2.device_name}` : ""}`
+              : "Promedio del día"}
+          </div>
+          {spo2Alert && (
+            <div className="mt-2 flex items-start gap-1 rounded-md border border-destructive/40 bg-destructive/10 p-2 text-xs text-destructive">
+              <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+              SpO₂ por debajo de 92%. Reposá y considerá contactar a tu médico antes de ejercicio intenso.
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Gauge className="h-4 w-4 text-primary" /> Presión arterial
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-3xl font-bold">
+            {lastBp ? `${lastBp.value}/${lastBp.value2}` : "—"}
+            <span className="text-sm font-normal text-muted-foreground"> mmHg</span>
+          </div>
+          <div className="text-xs text-muted-foreground">
+            {lastBp
+              ? `${new Date(lastBp.measured_at).toLocaleString("es-MX", { dateStyle: "short", timeStyle: "short" })} · ${lastBp.source}`
+              : "Sin lecturas en 7 días"}
+          </div>
+          {lastBp?.source === "ble" && (
+            <Badge variant="secondary" className="mt-1 text-[10px]">Dispositivo homologado</Badge>
+          )}
+          {bpAlert && (
+            <div className="mt-2 flex items-start gap-1 rounded-md border border-destructive/40 bg-destructive/10 p-2 text-xs text-destructive">
+              <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+              Presión elevada (≥140/90). Evitá ejercicio de alta intensidad y revisá con tu médico.
+            </div>
+          )}
         </CardContent>
       </Card>
 
