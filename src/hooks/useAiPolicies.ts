@@ -117,22 +117,22 @@ export function modelsForProvider(
     return AI_MODEL_CHOICES.map((m) => ({ value: m.value, label: m.label }));
   }
   const row = external?.find((r) => r.id === provider);
-  if (!row) return [];
-  const mapped = (row.models ?? []).map((m) => ({ value: m.id, label: m.label }));
+  const mapped = (row?.models ?? []).map((m) => ({ value: m.id, label: m.label }));
   if (mapped.length > 0) return mapped;
-  // Fallback: el proveedor no tiene modelos sincronizados. Usamos el marcador
-  // interno "standard" para que el endpoint decida el modelo.
+  // Fallback: el proveedor no tiene modelos sincronizados (o aún no se cargó
+  // la fila desde el backend). Devolvemos el marcador interno "standard" para
+  // que el endpoint decida el modelo y la UI nunca quede sin opción.
   return [{ value: "standard", label: "Estándar (auto)" }];
 }
 
 export function defaultModelForProvider(
   provider: string,
   external: ExternalProviderRow[] | undefined,
-): string | null {
-  if (!provider || provider === "lovable") return AI_MODEL_CHOICES[0]?.value ?? null;
+): string {
+  if (!provider || provider === "lovable") return AI_MODEL_CHOICES[0]?.value ?? "standard";
   const row = external?.find((r) => r.id === provider);
-  if (!row) return null;
-  return row.default_model ?? row.models?.[0]?.id ?? "standard";
+  const fromRow = row?.default_model?.trim() || row?.models?.[0]?.id;
+  return fromRow || "standard";
 }
 
 export function useAiPolicies() {
