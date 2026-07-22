@@ -53,7 +53,38 @@ Deno.serve(async (req) => {
       };
     });
 
-    return json({ secrets: status, checked_at: new Date().toISOString() });
+    // Enriquecer con últimas acciones desde ai_api_key_audit
+    const { data: auditRows } = await admin
+      .from("ai_api_key_audit")
+      .select("secret_name, action, created_at, latency_ms, error_message, actor_email")
+      .in("secret_name", SECRETS)
+      .order("created_at", { ascending: false })
+      .limit(200);
+
+    const lastByName: Record<string, any> = {};
+    const lastTestByName: Record<string, any> = {};
+    for (const r of auditRows ?? []) {
+      if (!lastByName[r.secret_name]) lastByName[r.secret_name] = r;
+      if (
+        !lastTestByName[r.secret_name] &&
+        (r.action === "test_success" || r.action === "test_failed")
+      ) {
+        lastTestByName[r.secret_name] = r;
+      }
+    }
+
+    const enriched = status.map((s) => ({
+      ...s,
+      last_action: lastByName[s.name]?.action ?? null,
+      last_action_at: lastByName[s.name]?.created_at ?? null,
+      last_actor_email: lastByName[s.name]?.actor_email ?? null,
+      last_test_status: lastTestByName[s.name]?.action ?? null,
+      last_test_at: lastTestByName[s.name]?.created_at ?? null,
+      last_test_latency_ms: lastTestByName[s.name]?.latency_ms ?? null,
+      last_test_error: lastTestByName[s.name]?.error_message ?? null,
+    }));
+
+    return json({ secrets: enriched, checked_at: new Date().toISOString() });
   } catch (e) {
     return json({ error: (e as Error).message }, 500);
   }
