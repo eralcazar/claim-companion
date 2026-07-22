@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { KeyRound, RefreshCw, CheckCircle2, XCircle, Loader2, Copy, ShieldAlert, Zap, History, ListTree, AlertTriangle, RotateCw, Power } from "lucide-react";
+import { KeyRound, RefreshCw, CheckCircle2, XCircle, Loader2, Copy, ShieldAlert, Zap, History, ListTree, AlertTriangle, RotateCw, Power, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
@@ -181,6 +181,11 @@ export default function ApiKeysMaintenance() {
   const [diag, setDiag] = useState<Record<string, TestDiag | null>>({});
   const [history, setHistory] = useState<AuditRow[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  // Fingerprint por secret (length|preview|last_action_at). Al detectar un
+  // cambio (guardado/rotación) dispara automáticamente runTest en Gemini.
+  const fingerprintRef = useRef<Record<string, string>>({});
+  const autoTestedRef = useRef<Set<string>>(new Set());
+  const [autoTestPending, setAutoTestPending] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -188,8 +193,22 @@ export default function ApiKeysMaintenance() {
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
-      setSecrets(data?.secrets ?? []);
+      const next: SecretStatus[] = data?.secrets ?? [];
+      setSecrets(next);
       setCheckedAt(data?.checked_at ?? null);
+      // Detectar cambios en GEMINI_API_KEY y disparar auto-test.
+      const gemini = next.find((s) => s.name === "GEMINI_API_KEY");
+      if (gemini?.configured) {
+        const fp = `${gemini.length}|${gemini.preview ?? ""}|${gemini.last_action_at ?? ""}`;
+        const prev = fingerprintRef.current["GEMINI_API_KEY"];
+        const neverTested = !gemini.last_test_at;
+        const changed = prev !== undefined && prev !== fp;
+        fingerprintRef.current["GEMINI_API_KEY"] = fp;
+        if ((changed || (neverTested && !autoTestedRef.current.has(fp))) && !testing["GEMINI_API_KEY"]) {
+          autoTestedRef.current.add(fp);
+          setAutoTestPending("GEMINI_API_KEY");
+        }
+      }
     }
     setLoading(false);
   };
@@ -212,6 +231,19 @@ export default function ApiKeysMaintenance() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roles]);
+
+  // Ejecuta el auto-test cuando `load()` detectó cambio en la key.
+  useEffect(() => {
+    if (!autoTestPending) return;
+    const name = autoTestPending;
+    setAutoTestPending(null);
+    toast({
+      title: "Detecté un cambio en GEMINI_API_KEY",
+      description: "Probando Gemini automáticamente…",
+    });
+    runTest(name, { auto: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoTestPending]);
 
   if (roles && !roles.includes("admin")) return <Navigate to="/dashboard" replace />;
 
@@ -238,7 +270,7 @@ export default function ApiKeysMaintenance() {
     });
   };
 
-  const runTest = async (secretName: string) => {
+  const runTest = async (secretName: string, opts?: { auto?: boolean }) => {
     const meta = PROVIDER_META[secretName];
     if (!meta) return;
     const secret = secrets.find((x) => x.name === secretName);
@@ -250,7 +282,7 @@ export default function ApiKeysMaintenance() {
     if (!error && data?.ok) {
       setDiag((d) => ({ ...d, [secretName]: null }));
       toast({
-        title: `${meta.label}: OK`,
+        title: `${meta.label}: OK${opts?.auto ? " (auto-test)" : ""}`,
         description: `Modelo ${data.model_used} respondió en ${data.latency_ms} ms.`,
       });
     } else {
@@ -261,7 +293,7 @@ export default function ApiKeysMaintenance() {
       });
       setDiag((prev) => ({ ...prev, [secretName]: d }));
       toast({
-        title: `${meta.label}: falló`,
+        title: `${meta.label}: falló${opts?.auto ? " (auto-test)" : ""}`,
         description: d.cause,
         variant: "destructive",
       });
