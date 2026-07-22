@@ -1,50 +1,48 @@
 ## Objetivo
 
-Que el usuario, al abrir la **Xiaomi Smart Band 10** en el catálogo, vea claramente:
+Añadir un botón **"Solicitar integración de un modelo"** en el catálogo de dispositivos para que el usuario pida a CareCentral evaluar/integrar un modelo que **no está listado** (o cualquier modelo del que quiera integración directa BLE, no solo verificación).
 
-1. Qué mediciones expone dentro de CareCentral (FC, SpO₂, actividad, sueño).
-2. Qué tan confiable es cada una en uso clínico dentro de la app.
+Se distingue del flujo existente "Solicitar prueba" (que aplica a un dispositivo ya presente en el catálogo).
 
-## Cambios de datos (sin migración)
+## Ubicación del botón
 
-Extender el tipo `CompatibleDevice` en `src/lib/ble/compatibleDevices.ts` con un campo opcional:
+En `src/pages/DispositivosCompatibles.tsx`, en el header de la página (junto al título del catálogo), botón outline con ícono `Plus`: **"Solicitar integración de un modelo"**. Abre un diálogo modal.
 
-```ts
-readingReliability?: Partial<Record<CompatibleReading, {
-  level: "clinical" | "reference" | "informational";
-  note?: string;
-}>>;
-```
+## Diálogo nuevo
 
-Semántica visible al usuario:
-- **Clínica** — apta para seguimiento y alertas médicas.
-- **Referencial** — útil para tendencias, no reemplaza equipo clínico.
-- **Informativa** — solo estilo de vida / bienestar.
+Nuevo componente `src/components/ble/RequestDeviceIntegrationDialog.tsx`:
 
-Rellenar el objeto para `xiaomi-band-10` con:
-- `heart_rate` → **referencial** ("Óptico de muñeca; buena tendencia en reposo, menor precisión en ejercicio intenso").
-- `spo2` → **informativa** ("Medición puntual bajo demanda; no válida para diagnóstico. Confirmar con oxímetro dedicado si <94%").
-- `activity` → **referencial** ("Pasos y calorías estimadas por acelerómetro").
-- `sleep` → **informativa** ("Estimación por movimiento + FC; no equivale a polisomnografía").
+Campos del formulario:
+- **Marca** (obligatorio, texto).
+- **Modelo** (obligatorio, texto).
+- **Tipo de dispositivo** (select: oxímetro, tensiómetro, termómetro, smartband, smartwatch, anillo, báscula, otro).
+- **Métricas de interés** (multi-check: SpO₂, presión, temperatura, FC, actividad, sueño, peso).
+- **Región/país** (texto, opcional).
+- **App oficial del fabricante** (texto, opcional).
+- **Enlace del producto** (URL, opcional).
+- **Motivo / caso de uso** (textarea, opcional).
 
-## UI
+Al enviar: `insert` a `public.device_test_requests` con:
+- `device_id = "integration-request:<slug(marca-modelo)>"` para diferenciarlo de solicitudes ligadas al catálogo.
+- `device_name = "<marca> <modelo>"`.
+- `region`, `app_version = <app oficial>`.
+- `note = JSON.stringify({ kind: "integration_request", deviceType, readings, url, reason })` — reutiliza el campo `note` para conservar los extras sin migración.
+- `status = 'pending'`.
 
-En `src/components/ble/DeviceDetailSheet.tsx`, reemplazar el bloque actual "Mediciones" (badges simples) por una tarjeta **"Métricas soportadas y confiabilidad"** cuando el dispositivo tenga `readingReliability`. Para cada reading listada:
+Toast de éxito y cierre. Errores mostrados inline.
 
-- Ícono/etiqueta de la métrica (usa `READING_LABELS`).
-- Badge de nivel (color por nivel: emerald=clinical, amber=reference, slate=informational).
-- Nota breve.
+## Panel admin
 
-Si el dispositivo no define `readingReliability`, se mantiene el render actual (fallback) — así el cambio no afecta al resto del catálogo.
-
-Añadir un pie corto: *"La confiabilidad la define el equipo CareCentral según el protocolo de sincronización y validaciones internas."*
-
-## Archivos
-
-- `src/lib/ble/compatibleDevices.ts` — tipo extendido + campo poblado en la Band 10.
-- `src/components/ble/DeviceDetailSheet.tsx` — nueva tarjeta de métricas + confiabilidad.
+En `src/pages/admin/DeviceTestRequestsAdmin.tsx` (si existe) parsear `note` como JSON cuando `device_id` empieza con `integration-request:` y mostrar los campos extra (tipo, métricas, enlace, motivo) en la tarjeta. Sin cambios de flujo de resolución.
 
 ## Fuera de alcance
 
-- No se cambian otros dispositivos (se puede replicar más adelante).
-- No hay cambios de base de datos ni de flujos de sincronización.
+- No se agrega tabla nueva ni migración (se reutiliza `device_test_requests`).
+- No se toca el flujo existente "Solicitar prueba" del `DeviceDetailSheet`.
+- No se envían emails/notificaciones al equipo (queda para otra iteración).
+
+## Archivos
+
+- `src/components/ble/RequestDeviceIntegrationDialog.tsx` — nuevo.
+- `src/pages/DispositivosCompatibles.tsx` — botón + estado del diálogo en el header.
+- `src/pages/admin/DeviceTestRequestsAdmin.tsx` (si existe) — render enriquecido para solicitudes de integración.
