@@ -44,20 +44,6 @@ type TestDiag = {
   locked: boolean; // si true, deshabilita "Probar ahora" hasta que el usuario reactive
 };
 
-function formatRelative(iso: string): string {
-  const then = new Date(iso).getTime();
-  const diff = Date.now() - then;
-  if (Number.isNaN(diff)) return iso;
-  const s = Math.round(diff / 1000);
-  if (s < 60) return `hace ${s}s`;
-  const m = Math.round(s / 60);
-  if (m < 60) return `hace ${m} min`;
-  const h = Math.round(m / 60);
-  if (h < 24) return `hace ${h} h`;
-  const d = Math.round(h / 24);
-  return `hace ${d} d`;
-}
-
 // Traduce cualquier fallo de invoke() o payload { ok:false } a un diagnóstico
 // legible con causa probable y sugerencia de acción concreta.
 function diagnoseTestError(params: {
