@@ -24,6 +24,9 @@ import { Label } from "@/components/ui/label";
 import { useMonitorHealth } from "@/hooks/useMonitorHealth";
 import { MonitorAlertsCard } from "@/components/health/MonitorAlertsCard";
 import { SyncStatusPill } from "@/components/health/SyncStatusPill";
+import { useResolvedThreshold } from "@/hooks/usePatientThresholds";
+import { Link } from "react-router-dom";
+import { SlidersHorizontal } from "lucide-react";
 
 const RANGES = [
   { key: "1", label: "24 h" },
@@ -123,10 +126,12 @@ export default function HeartRateMonitor() {
 
   const recent = (hr.data ?? []).slice(0, 20);
 
+  const th = useResolvedThreshold("heart_rate");
   const { syncStatus, lastReadingAt, alerts } = useMonitorHealth({
     points: dailyAvg.map((d) => ({ fecha: d.fecha, value: d.value, source: d.source })),
     rangeDays: Number(rangeDays),
-    hardLow: 40, hardHigh: 180,
+    hardLow: th.hardLow ?? 40, hardHigh: th.hardHigh ?? 180,
+    outlierZ: th.outlierZ,
     label: "frecuencia cardíaca", unit: "bpm",
   });
 
