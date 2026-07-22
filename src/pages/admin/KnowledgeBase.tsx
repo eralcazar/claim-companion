@@ -22,8 +22,14 @@ type Doc = {
   updated_at: string;
 };
 
-const CATS = ["medicamentos", "guia_clinica", "estudio", "nutricion", "receta", "general"];
-const STATUSES = ["draft", "review", "published", "archived"];
+const CATS = ["medicamento", "estudio", "analisis", "receta", "guia_clinica", "glosario", "otro"];
+const STATUSES = ["draft", "review", "published", "retired"];
+const SOURCES = ["manual", "medlineplus", "pubmed", "uptodate", "internal", "imported", "other"];
+
+function slugify(s: string) {
+  return s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "").slice(0, 80) || `doc-${Date.now()}`;
+}
 
 export default function KnowledgeBase() {
   const [docs, setDocs] = useState<Doc[]>([]);
@@ -149,8 +155,8 @@ export default function KnowledgeBase() {
 function DocDialog({ onSaved }: { onSaved: () => void }) {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
-  const [category, setCategory] = useState("general");
-  const [source, setSource] = useState("Manual");
+  const [category, setCategory] = useState<string>("otro");
+  const [source, setSource] = useState<string>("manual");
   const [url, setUrl] = useState("");
   const [body, setBody] = useState("");
   const [busy, setBusy] = useState(false);
@@ -159,7 +165,13 @@ function DocDialog({ onSaved }: { onSaved: () => void }) {
     setBusy(true);
     try {
       const { data, error } = await supabase.from("knowledge_documents").insert({
-        title, category, source, source_url: url || null, body_md: body, status: "draft",
+        title,
+        slug: `${slugify(title)}-${Date.now().toString(36)}`,
+        category,
+        source,
+        source_url: url || null,
+        body_md: body,
+        status: "draft",
       }).select("id").single();
       if (error) throw error;
       await supabase.functions.invoke("knowledge-embed", { body: { document_id: data.id } });
@@ -180,7 +192,10 @@ function DocDialog({ onSaved }: { onSaved: () => void }) {
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>{CATS.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
             </Select>
-            <Input placeholder="Fuente" value={source} onChange={(e) => setSource(e.target.value)} />
+            <Select value={source} onValueChange={setSource}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>{SOURCES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+            </Select>
           </div>
           <Input placeholder="URL de la fuente (opcional)" value={url} onChange={(e) => setUrl(e.target.value)} />
           <Textarea placeholder="Cuerpo (Markdown)" value={body} onChange={(e) => setBody(e.target.value)} rows={10} />

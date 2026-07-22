@@ -19,12 +19,13 @@ type Result = {
 };
 
 const CATEGORIES = [
-  { key: "medicamentos", label: "Medicamentos" },
+  { key: "medicamento", label: "Medicamentos" },
   { key: "guia_clinica", label: "Guías clínicas" },
   { key: "estudio", label: "Estudios" },
-  { key: "nutricion", label: "Nutrición" },
+  { key: "analisis", label: "Análisis" },
   { key: "receta", label: "Recetas" },
-  { key: "general", label: "General" },
+  { key: "glosario", label: "Glosario" },
+  { key: "otro", label: "Otros" },
 ];
 
 export default function Conocimiento() {
