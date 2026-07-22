@@ -6,7 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sparkles, Database, Save } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   useAiPolicies,
   useUpdateAiPolicy,
@@ -30,6 +30,18 @@ function PolicyRow({ p }: { p: AiProviderPolicy }) {
     enable_cache: p.enable_cache,
     cache_ttl_hours: p.cache_ttl_hours,
   });
+  // Re-sync draft if the underlying policy row changes (refetch after save,
+  // external mutation, etc.). Prevents stale model/provider combos leaking in.
+  useEffect(() => {
+    setDraft({
+      provider: p.provider ?? "lovable",
+      model: p.model,
+      max_output_tokens: p.max_output_tokens,
+      history_window: p.history_window,
+      enable_cache: p.enable_cache,
+      cache_ttl_hours: p.cache_ttl_hours,
+    });
+  }, [p.id, p.provider, p.model, p.max_output_tokens, p.history_window, p.enable_cache, p.cache_ttl_hours]);
   const dirty =
     draft.provider !== (p.provider ?? "lovable") ||
     draft.model !== p.model ||
@@ -38,13 +50,19 @@ function PolicyRow({ p }: { p: AiProviderPolicy }) {
     draft.enable_cache !== p.enable_cache ||
     draft.cache_ttl_hours !== p.cache_ttl_hours;
 
-  const modelMeta = AI_MODEL_CHOICES.find((m) => m.value === draft.model);
+  // Modelos disponibles SIEMPRE derivados del proveedor seleccionado.
+  // Para `lovable` viene del catálogo interno; para BYOK/externos viene de
+  // `ai_external_providers.models` (poblado por `sync-ai-provider-models`).
+  const availableModels = modelsForProvider(draft.provider, externalProviders);
+  // Cost estimate solo aplica al catálogo interno de Lovable AI.
+  const modelMeta =
+    draft.provider === "lovable"
+      ? AI_MODEL_CHOICES.find((m) => m.value === draft.model)
+      : undefined;
   const estCost1k =
     modelMeta
       ? ((modelMeta.inputMicros * 2000 + modelMeta.outputMicros * draft.max_output_tokens) / 1_000_000).toFixed(4)
-      : "0.0000";
-
-  const availableModels = modelsForProvider(draft.provider, externalProviders);
+      : null;
   const providerRow = externalProviders?.find((r) => r.id === draft.provider);
   const modelValid = availableModels.some((m) => m.value === draft.model);
   const providerInactive = draft.provider !== "lovable" && providerRow && !providerRow.activo;
@@ -96,12 +114,19 @@ function PolicyRow({ p }: { p: AiProviderPolicy }) {
         <div>
           <Label className="text-xs">Modelo</Label>
           <Select
+            key={draft.provider}
             value={modelValid ? draft.model : ""}
             onValueChange={(v) => setDraft((d) => ({ ...d, model: v }))}
             disabled={availableModels.length === 0}
           >
             <SelectTrigger className="h-9">
-              <SelectValue placeholder={availableModels.length === 0 ? "Sin modelos" : "Elegir modelo"} />
+              <SelectValue
+                placeholder={
+                  availableModels.length === 0
+                    ? "Sin modelos para este proveedor"
+                    : `Elegir modelo de ${draft.provider}`
+                }
+              />
             </SelectTrigger>
             <SelectContent>
               {availableModels.map((m) => (
@@ -111,13 +136,17 @@ function PolicyRow({ p }: { p: AiProviderPolicy }) {
           </Select>
           {availableModels.length === 0 && (
             <p className="text-[10px] text-destructive mt-1">
-              Sin modelos configurados. Agrégalos en{" "}
+              Sin modelos configurados para <span className="font-mono">{draft.provider}</span>.
+              Sincronízalos en{" "}
+              <a href="/admin/api-keys" className="underline">Admin → API Keys</a>{" "}
+              (botón “Sincronizar modelos”) o edítalos en{" "}
               <a href="/admin/ai-providers" className="underline">Admin → Proveedores IA</a>.
             </p>
           )}
           {!modelValid && availableModels.length > 0 && (
             <p className="text-[10px] text-amber-600 mt-1">
-              Modelo actual (<span className="font-mono">{draft.model || "—"}</span>) no pertenece a este proveedor. Elige uno de la lista.
+              El modelo guardado (<span className="font-mono">{draft.model || "—"}</span>) no
+              pertenece a <span className="font-mono">{draft.provider}</span>. Elige uno de la lista.
             </p>
           )}
         </div>
@@ -179,7 +208,9 @@ function PolicyRow({ p }: { p: AiProviderPolicy }) {
           <span className="text-xs">Caché de respuestas educativas genéricas</span>
         </div>
         <span className="text-[11px] text-muted-foreground">
-          Costo estimado por request: ~${estCost1k} USD (2k tokens in + max out)
+          {estCost1k
+            ? `Costo estimado por request: ~$${estCost1k} USD (2k tokens in + max out)`
+            : `Costo gestionado por el proveedor externo (${draft.provider}).`}
         </span>
       </div>
     </div>
