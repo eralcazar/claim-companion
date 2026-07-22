@@ -12,7 +12,7 @@ export type AiProviderPolicy = {
   history_window: number;
   enable_cache: boolean;
   cache_ttl_hours: number;
-  provider: "lovable" | "apifreellm";
+  provider: "lovable" | "apifreellm" | "gemini" | "mistral" | string;
   external_endpoint: string | null;
   notes: string | null;
   updated_at: string;
@@ -30,7 +30,68 @@ export const AI_PROVIDER_CHOICES = [
     description:
       "Proveedor externo compatible con OpenAI. Sólo se envían prompts sanitizados. Requiere consentimiento del usuario por feature y activación del proveedor en el catálogo.",
   },
+  {
+    value: "gemini" as const,
+    label: "Google Gemini (BYOK)",
+    description:
+      "Usa tu propia API key de Google AI Studio. Requiere configurar GEMINI_API_KEY en Admin → Proveedores IA y activar el proveedor.",
+  },
+  {
+    value: "mistral" as const,
+    label: "Mistral AI (BYOK)",
+    description:
+      "Usa tu propia API key de Mistral (Francia/UE). Requiere configurar MISTRAL_API_KEY en Admin → Proveedores IA y activar el proveedor.",
+  },
 ];
+
+export type ExternalProviderRow = {
+  id: string;
+  nombre: string;
+  endpoint: string;
+  activo: boolean;
+  requires_api_key: boolean;
+  secret_name: string | null;
+  default_model: string | null;
+  docs_url: string | null;
+  aviso_legal: string;
+  models: Array<{ id: string; label: string }>;
+};
+
+export function useExternalProviders() {
+  return useQuery({
+    queryKey: ["ai_external_providers"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("ai_external_providers" as any)
+        .select("id, nombre, endpoint, activo, requires_api_key, secret_name, default_model, docs_url, aviso_legal, models")
+        .order("nombre");
+      if (error) throw error;
+      return ((data ?? []) as any[]).map((r) => ({
+        ...r,
+        models: Array.isArray(r.models) ? r.models : [],
+      })) as ExternalProviderRow[];
+    },
+  });
+}
+
+export function useUpdateExternalProvider() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (patch: { id: string; activo?: boolean; default_model?: string | null }) => {
+      const { id, ...rest } = patch;
+      const { error } = await supabase
+        .from("ai_external_providers" as any)
+        .update(rest as any)
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["ai_external_providers"] });
+      toast({ title: "Proveedor actualizado" });
+    },
+    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+}
 
 export const AI_MODEL_CHOICES = [
   { value: "google/gemini-3-flash-preview", label: "Gemini 3 Flash (preview)", inputMicros: 30, outputMicros: 250 },

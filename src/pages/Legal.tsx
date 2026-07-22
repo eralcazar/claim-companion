@@ -173,7 +173,10 @@ export default function Legal() {
               <p>
                 Algunas funciones puramente educativas —como el <strong>Glosario educativo</strong>
                 y opcionalmente el <strong>Coach de actividad</strong>— pueden configurarse para
-                usar el proveedor externo <strong>ApiFreeLLM</strong>. En esos casos:
+                usar proveedores externos: <strong>ApiFreeLLM</strong> (gratuito),
+                <strong> Google Gemini</strong> (con API key propia del operador de CareCentral) o
+                <strong> Mistral AI</strong> (servidores en Francia/UE, con API key propia).
+                En cualquiera de estos casos:
               </p>
               <ul>
                 <li>Los prompts se <strong>sanitizan</strong> antes de salir: se remueven CURP,
@@ -185,6 +188,9 @@ export default function Legal() {
                 revocarlo en cualquier momento y la función volverá a usar Lovable AI de inmediato.</li>
                 <li>Si el consentimiento no está activo, o si el kill switch de administración
                 está encendido, ningún dato tuyo sale a proveedores externos.</li>
+                <li>Cuando el operador activa Gemini o Mistral con su propia API key (BYOK),
+                la relación contractual y la responsabilidad del tratamiento de datos con ese
+                proveedor recae en el operador de CareCentral, no en Lovable.</li>
               </ul>
             </TabsContent>
           </Tabs>

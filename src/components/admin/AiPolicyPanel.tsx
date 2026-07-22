@@ -112,12 +112,14 @@ function PolicyRow({ p }: { p: AiProviderPolicy }) {
         </div>
       </div>
 
-      {draft.provider === "apifreellm" && (
+      {draft.provider !== "lovable" && (
         <div className="text-[11px] rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-amber-900 dark:text-amber-200">
-          Al elegir un proveedor externo, los prompts se sanitizan (se remueven CURP, RFC, email, teléfono, direcciones,
-          fechas y números largos) antes de salir de la app. Cada usuario debe otorgar consentimiento explícito en
-          <span className="font-medium"> Mis datos y IA</span>. Si el consentimiento se revoca o el kill switch está activo,
-          la feature usa automáticamente Lovable AI como fallback.
+          Proveedor externo (<span className="font-mono">{draft.provider}</span>): los prompts se sanitizan
+          (CURP, RFC, email, teléfono, direcciones, fechas y números largos) antes de salir. Cada usuario debe
+          otorgar consentimiento explícito en <span className="font-medium">Mis datos y IA</span>. Si el
+          consentimiento se revoca o el kill switch está activo, la feature usa automáticamente Lovable AI como
+          fallback. Configura la API key del proveedor en{" "}
+          <a href="/admin/ai-providers" className="underline font-medium">Admin → Proveedores IA</a>.
         </div>
       )}
 
