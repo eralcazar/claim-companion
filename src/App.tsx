@@ -184,6 +184,7 @@ const App = () => (
               <Route path="/perfil/notificaciones" element={<NotificationPreferencesPage />} />
               <Route path="/dispositivos" element={<DispositivosCompatibles />} />
               <Route path="/historial-salud" element={<HistorialSalud />} />
+              <Route path="/frecuencia-cardiaca" element={<HeartRateMonitor />} />
               <Route path="/derechos-arco" element={<DerechosARCO />} />
               <Route path="/admin/integridad" element={<IntegrityDashboard />} />
               <Route path="/procedimientos" element={<Procedimientos />} />
