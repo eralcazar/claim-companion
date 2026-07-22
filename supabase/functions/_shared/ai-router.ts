@@ -9,6 +9,8 @@ export type AiPolicy = {
   history_window: number;
   enable_cache: boolean;
   cache_ttl_hours: number;
+  provider?: string;
+  external_endpoint?: string | null;
 };
 
 const DEFAULT_POLICY: AiPolicy = {
@@ -19,6 +21,8 @@ const DEFAULT_POLICY: AiPolicy = {
   history_window: 8,
   enable_cache: false,
   cache_ttl_hours: 720,
+  provider: "lovable",
+  external_endpoint: null,
 };
 
 // Micro-USD por token para cada modelo (aprox Lovable AI Gateway).
@@ -36,10 +40,10 @@ export async function loadPolicy(
   try {
     const { data } = await admin
       .from("ai_provider_policy")
-      .select("feature_key, model, max_input_tokens, max_output_tokens, history_window, enable_cache, cache_ttl_hours")
+      .select("feature_key, model, max_input_tokens, max_output_tokens, history_window, enable_cache, cache_ttl_hours, provider, external_endpoint")
       .eq("feature_key", featureKey)
       .maybeSingle();
-    if (data) return data as AiPolicy;
+    if (data) return { provider: "lovable", external_endpoint: null, ...(data as AiPolicy) };
   } catch (e) {
     console.warn("loadPolicy fallback:", e);
   }
