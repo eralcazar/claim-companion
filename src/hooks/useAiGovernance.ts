@@ -128,6 +128,10 @@ export type AiAuditRow = {
   output_chars: number | null;
   latency_ms: number | null;
   created_at: string;
+  sanitized_prompt: string | null;
+  pii_fields_detected: string[] | null;
+  blocked_reason: string | null;
+  consent_checked: boolean;
 };
 
 export function useAiAudit(params: {
@@ -167,12 +171,17 @@ export function exportAiAuditCSV(rows: AiAuditRow[], from: string, to: string) {
     "modelo",
     "sanitizado",
     "notas_sanitizacion",
+    "campos_pii_detectados",
+    "prompt_sanitizado",
+    "consentimiento_verificado",
+    "razon_bloqueo",
     "fallback",
     "estado",
     "chars_entrada",
     "chars_salida",
     "latencia_ms",
   ];
+  const clean = (v: string) => `"${(v ?? "").replace(/"/g, '""').replace(/\n/g, " ")}"`;
   const csv = [
     header.join(","),
     ...rows.map((r) =>
@@ -183,7 +192,11 @@ export function exportAiAuditCSV(rows: AiAuditRow[], from: string, to: string) {
         r.provider,
         r.model ?? "",
         r.sanitized ? "si" : "no",
-        (r.sanitization_notes ?? "").replace(/[",\n]/g, " "),
+        clean(r.sanitization_notes ?? ""),
+        clean((r.pii_fields_detected ?? []).join("|")),
+        clean(r.sanitized_prompt ?? ""),
+        r.consent_checked ? "si" : "no",
+        clean(r.blocked_reason ?? ""),
         r.fallback_used ? "si" : "no",
         r.status,
         r.input_chars ?? 0,
