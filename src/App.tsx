@@ -94,6 +94,8 @@ import Soporte from "@/pages/Soporte";
 import TensiometrosCompatibilidad from "@/pages/TensiometrosCompatibilidad";
 import Ejercicios from "@/pages/Ejercicios";
 import EjercicioDetalle from "@/pages/EjercicioDetalle";
+import Conocimiento from "@/pages/Conocimiento";
+import KnowledgeBase from "@/pages/admin/KnowledgeBase";
 import { ActiveLocationProvider } from "@/contexts/ActiveLocationContext";
 
 const queryClient = new QueryClient();
@@ -211,6 +213,8 @@ const App = () => (
               <Route path="/tensiometros-compatibilidad" element={<TensiometrosCompatibilidad />} />
               <Route path="/ejercicios" element={<Ejercicios />} />
               <Route path="/ejercicios/:exerciseId" element={<EjercicioDetalle />} />
+              <Route path="/conocimiento" element={<Conocimiento />} />
+              <Route path="/admin/conocimiento" element={<KnowledgeBase />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
