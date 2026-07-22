@@ -3,7 +3,7 @@ import { Navigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { KeyRound, RefreshCw, CheckCircle2, XCircle, Loader2, Copy, ShieldAlert } from "lucide-react";
+import { KeyRound, RefreshCw, CheckCircle2, XCircle, Loader2, Copy, ShieldAlert, Zap, History } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
@@ -13,31 +13,77 @@ type SecretStatus = {
   configured: boolean;
   length: number;
   preview: string | null;
+  last_action?: string | null;
+  last_action_at?: string | null;
+  last_actor_email?: string | null;
+  last_test_status?: string | null;
+  last_test_at?: string | null;
+  last_test_latency_ms?: number | null;
+  last_test_error?: string | null;
 };
 
-const PROVIDER_META: Record<string, { label: string; docs: string; where: string }> = {
+type AuditRow = {
+  id: string;
+  secret_name: string;
+  action: string;
+  actor_email: string | null;
+  latency_ms: number | null;
+  model_used: string | null;
+  error_message: string | null;
+  note: string | null;
+  created_at: string;
+};
+
+const PROVIDER_META: Record<
+  string,
+  { label: string; docs: string; where: string; provider: string; prefix: string; length: string }
+> = {
   GEMINI_API_KEY: {
     label: "Google Gemini",
     docs: "https://aistudio.google.com/apikey",
     where: "Google AI Studio → Get API key",
+    provider: "gemini",
+    prefix: "AIza… (39 chars aprox)",
+    length: "≈ 39",
   },
   MISTRAL_API_KEY: {
     label: "Mistral AI",
     docs: "https://console.mistral.ai/api-keys",
     where: "Mistral Console → API Keys",
+    provider: "mistral",
+    prefix: "cadena hex de 32+ chars",
+    length: "≈ 32-64",
   },
   ANTHROPIC_API_KEY: {
     label: "Anthropic Claude",
     docs: "https://console.anthropic.com/settings/keys",
     where: "Anthropic Console → API Keys",
+    provider: "claude",
+    prefix: "sk-ant-… (100+ chars)",
+    length: "≈ 100+",
   },
 };
+
+function formatRelative(iso: string | null | undefined): string {
+  if (!iso) return "nunca";
+  const diff = Date.now() - new Date(iso).getTime();
+  const min = Math.round(diff / 60000);
+  if (min < 1) return "hace segundos";
+  if (min < 60) return `hace ${min} min`;
+  const h = Math.round(min / 60);
+  if (h < 24) return `hace ${h} h`;
+  const d = Math.round(h / 24);
+  return `hace ${d} d`;
+}
 
 export default function ApiKeysMaintenance() {
   const { roles } = useAuth();
   const [loading, setLoading] = useState(true);
   const [secrets, setSecrets] = useState<SecretStatus[]>([]);
   const [checkedAt, setCheckedAt] = useState<string | null>(null);
+  const [testing, setTesting] = useState<Record<string, boolean>>({});
+  const [history, setHistory] = useState<AuditRow[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -51,20 +97,73 @@ export default function ApiKeysMaintenance() {
     setLoading(false);
   };
 
+  const loadHistory = async () => {
+    setHistoryLoading(true);
+    const { data, error } = await supabase
+      .from("ai_api_key_audit" as any)
+      .select("id, secret_name, action, actor_email, latency_ms, model_used, error_message, note, created_at")
+      .order("created_at", { ascending: false })
+      .limit(50);
+    if (!error) setHistory((data ?? []) as unknown as AuditRow[]);
+    setHistoryLoading(false);
+  };
+
   useEffect(() => {
-    if (roles?.includes("admin")) load();
+    if (roles?.includes("admin")) {
+      load();
+      loadHistory();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roles]);
 
   if (roles && !roles.includes("admin")) return <Navigate to="/dashboard" replace />;
 
   const copyPrompt = async (secretName: string, action: "configura" | "rota") => {
-    const prompt = `${action === "configura" ? "Configura" : "Rota"} el secret ${secretName} para el proveedor BYOK de IA.`;
+    const meta = PROVIDER_META[secretName];
+    const lines = [
+      `${action === "configura" ? "Configura" : "Rota"} el secret ${secretName} para el proveedor BYOK de IA.`,
+      ``,
+      `Detalles esperados:`,
+      `- Nombre exacto del secret: ${secretName}`,
+      `- Proveedor: ${meta?.label ?? "—"}`,
+      `- Formato esperado: ${meta?.prefix ?? "—"}`,
+      `- Longitud aproximada: ${meta?.length ?? "—"}`,
+      `- Obtenla en: ${meta?.docs ?? "—"}`,
+      ``,
+      `Después de guardar, valida el valor con test-ai-provider antes de cerrar el formulario seguro,`,
+      `y avísame para volver a /admin/api-keys y probar la conexión con el botón "Probar ahora".`,
+    ];
+    const prompt = lines.join("\n");
     await navigator.clipboard.writeText(prompt);
     toast({
       title: "Instrucción copiada",
-      description: "Pégala en el chat de Lovable para abrir el formulario seguro.",
+      description: "Pégala en el chat de Lovable. Incluye formato esperado y validación posterior.",
     });
+  };
+
+  const runTest = async (secretName: string) => {
+    const meta = PROVIDER_META[secretName];
+    if (!meta) return;
+    setTesting((t) => ({ ...t, [secretName]: true }));
+    const { data, error } = await supabase.functions.invoke("test-ai-provider", {
+      body: { provider: meta.provider },
+    });
+    setTesting((t) => ({ ...t, [secretName]: false }));
+    if (error) {
+      toast({ title: "Error al probar", description: error.message, variant: "destructive" });
+    } else if (data?.ok) {
+      toast({
+        title: `${meta.label}: OK`,
+        description: `Modelo ${data.model_used} respondió en ${data.latency_ms} ms.`,
+      });
+    } else {
+      toast({
+        title: `${meta.label}: falló`,
+        description: (data?.error_message ?? "Error desconocido").slice(0, 200),
+        variant: "destructive",
+      });
+    }
+    await Promise.all([load(), loadHistory()]);
   };
 
   return (
@@ -85,7 +184,7 @@ export default function ApiKeysMaintenance() {
             </p>
           )}
         </div>
-        <Button onClick={load} variant="outline" size="sm" disabled={loading}>
+        <Button onClick={() => { load(); loadHistory(); }} variant="outline" size="sm" disabled={loading}>
           {loading ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-1" />}
           Actualizar
         </Button>
@@ -109,6 +208,7 @@ export default function ApiKeysMaintenance() {
       <div className="space-y-3">
         {secrets.map((s) => {
           const meta = PROVIDER_META[s.name] ?? { label: s.name, docs: "", where: "" };
+          const testStatus = s.last_test_status;
           return (
             <Card key={s.name}>
               <CardHeader className="pb-2">
@@ -130,7 +230,7 @@ export default function ApiKeysMaintenance() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3 text-sm">
-                <div className="grid grid-cols-2 gap-3 text-xs">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
                   <div>
                     <span className="text-muted-foreground">Longitud:</span>{" "}
                     <span className="font-mono">{s.length || "—"}</span>
@@ -139,17 +239,53 @@ export default function ApiKeysMaintenance() {
                     <span className="text-muted-foreground">Vista previa:</span>{" "}
                     <span className="font-mono">{s.preview ?? "—"}</span>
                   </div>
+                  <div>
+                    <span className="text-muted-foreground">Última acción:</span>{" "}
+                    <span>{s.last_action ?? "—"} · {formatRelative(s.last_action_at)}</span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Último test:</span>{" "}
+                    {testStatus === "test_success" && (
+                      <Badge className="bg-emerald-600 hover:bg-emerald-600 text-[10px]">
+                        OK · {s.last_test_latency_ms ?? "?"} ms · {formatRelative(s.last_test_at)}
+                      </Badge>
+                    )}
+                    {testStatus === "test_failed" && (
+                      <Badge variant="destructive" className="text-[10px]">
+                        Error · {formatRelative(s.last_test_at)}
+                      </Badge>
+                    )}
+                    {!testStatus && <span className="text-muted-foreground">nunca</span>}
+                  </div>
                 </div>
+                {s.last_test_error && testStatus === "test_failed" && (
+                  <p className="text-[11px] text-destructive font-mono bg-destructive/5 p-2 rounded border border-destructive/20">
+                    {s.last_test_error.slice(0, 300)}
+                  </p>
+                )}
                 {meta.docs && (
                   <p className="text-xs text-muted-foreground">
                     Obtén tu API key en{" "}
                     <a href={meta.docs} target="_blank" rel="noreferrer" className="text-primary hover:underline">
                       {meta.where}
                     </a>
-                    .
+                    . Formato esperado: <span className="font-mono">{(meta as any).prefix ?? "—"}</span>.
                   </p>
                 )}
                 <div className="flex gap-2 flex-wrap">
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => runTest(s.name)}
+                    disabled={!s.configured || testing[s.name]}
+                  >
+                    {testing[s.name] ? (
+                      <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                    ) : (
+                      <Zap className="h-3.5 w-3.5 mr-1" />
+                    )}
+                    Probar ahora
+                  </Button>
                   <Button size="sm" variant={s.configured ? "outline" : "default"} onClick={() => copyPrompt(s.name, "configura")}>
                     <Copy className="h-3.5 w-3.5 mr-1" />
                     {s.configured ? "Copiar instrucción para reconfigurar" : "Copiar instrucción para configurar"}
@@ -168,13 +304,65 @@ export default function ApiKeysMaintenance() {
       </div>
 
       <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <History className="h-4 w-4 text-primary" /> Historial auditado (últimos 50)
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          {historyLoading ? (
+            <p className="text-sm text-muted-foreground p-4">Cargando…</p>
+          ) : history.length === 0 ? (
+            <p className="text-sm text-muted-foreground p-4">Sin eventos registrados.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead className="bg-muted/50">
+                  <tr className="text-left">
+                    <th className="p-2">Fecha</th>
+                    <th className="p-2">Secret</th>
+                    <th className="p-2">Acción</th>
+                    <th className="p-2">Actor</th>
+                    <th className="p-2">Modelo</th>
+                    <th className="p-2">Latencia</th>
+                    <th className="p-2">Detalle</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {history.map((r) => (
+                    <tr key={r.id} className="border-t">
+                      <td className="p-2 whitespace-nowrap">{new Date(r.created_at).toLocaleString("es-MX")}</td>
+                      <td className="p-2 font-mono">{r.secret_name}</td>
+                      <td className="p-2">
+                        {r.action === "test_success" && <Badge className="bg-emerald-600 hover:bg-emerald-600">OK</Badge>}
+                        {r.action === "test_failed" && <Badge variant="destructive">FAIL</Badge>}
+                        {r.action !== "test_success" && r.action !== "test_failed" && (
+                          <Badge variant="outline">{r.action}</Badge>
+                        )}
+                      </td>
+                      <td className="p-2">{r.actor_email ?? "—"}</td>
+                      <td className="p-2 font-mono">{r.model_used ?? "—"}</td>
+                      <td className="p-2">{r.latency_ms != null ? `${r.latency_ms} ms` : "—"}</td>
+                      <td className="p-2 max-w-[240px] truncate" title={r.error_message ?? r.note ?? ""}>
+                        {r.error_message ?? r.note ?? "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
         <CardContent className="p-4 text-xs text-muted-foreground space-y-2">
           <p className="font-semibold text-foreground">Flujo recomendado de rotación</p>
           <ol className="list-decimal pl-4 space-y-1">
             <li>Genera una nueva key en el panel del proveedor (Google / Mistral / Anthropic).</li>
             <li>Copia la instrucción con el botón <em>Rotar</em> y pégala en el chat de Lovable.</li>
             <li>Pega el nuevo valor en el formulario seguro que abrirá el asistente.</li>
-            <li>Vuelve a esta pantalla y presiona <em>Actualizar</em> para confirmar la nueva longitud/preview.</li>
+            <li>Vuelve a esta pantalla, presiona <em>Actualizar</em> y luego <em>Probar ahora</em> para validar la key.</li>
             <li>Revoca la key anterior en el panel del proveedor.</li>
           </ol>
         </CardContent>
