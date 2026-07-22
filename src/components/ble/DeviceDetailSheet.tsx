@@ -33,6 +33,7 @@ import {
 import { DeviceVerificationForm } from "./DeviceVerificationForm";
 import { MiFitnessBridgeGuide } from "./MiFitnessBridgeGuide";
 import { RequestDeviceTestDialog } from "./RequestDeviceTestDialog";
+import { DeviceFieldsMap } from "./DeviceFieldsMap";
 import { useHealthDevices } from "@/hooks/useHealthDevices";
 import { useCreateDeviceVerification } from "@/hooks/useDeviceVerifications";
 import {
@@ -246,6 +247,8 @@ export function DeviceDetailSheet({
             <p className="text-xs text-muted-foreground">Nota firmware: {device.firmwareNote}</p>
           )}
           <p className="text-sm text-muted-foreground">{device.notes}</p>
+
+          <DeviceFieldsMap readings={device.readings} />
 
           <div className="flex flex-wrap gap-2">
             {!isIncompat && isBle && (
