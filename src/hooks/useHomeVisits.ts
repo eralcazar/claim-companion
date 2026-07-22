@@ -52,3 +52,22 @@ export function useUpdateHomeVisit() {
     onError: (e: any) => toast.error(e.message ?? "Error"),
   });
 }
+
+export function useAcceptHomeVisit() {
+  const qc = useQueryClient();
+  const { user } = useAuth();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("home_visit_requests" as any)
+        .update({ estado: "aceptada", doctor_id: user!.id })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["home_visits"] });
+      toast.success("Solicitud aceptada");
+    },
+    onError: (e: any) => toast.error(e.message ?? "Error"),
+  });
+}
