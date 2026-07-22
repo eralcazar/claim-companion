@@ -577,3 +577,164 @@ export async function pruneHistory(
     ...keep,
   ];
 }
+
+// ────────────────────────────────────────────────────────────────
+// RAG: embeddings, búsqueda semántica y rerank
+// ────────────────────────────────────────────────────────────────
+
+export type KnowledgeMatch = {
+  document_id: string;
+  chunk_id: string;
+  title: string;
+  category: string;
+  source: string;
+  source_url: string | null;
+  snippet: string;
+  similarity: number;
+};
+
+export type AiReference = {
+  id: string;
+  title: string;
+  source: string;
+  url?: string | null;
+  snippet?: string;
+  section?: string | null;
+};
+
+// Embebe un texto en un vector 1536-dim usando el gateway (openai/text-embedding-3-small).
+export async function embedText(apiKey: string, text: string): Promise<number[] | null> {
+  try {
+    const resp = await fetch("https://ai.gateway.lovable.dev/v1/embeddings", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "openai/text-embedding-3-small",
+        input: text.slice(0, 8000),
+        dimensions: 1536,
+      }),
+    });
+    if (!resp.ok) {
+      console.warn("embedText failed:", resp.status, await resp.text().catch(() => ""));
+      return null;
+    }
+    const json = await resp.json();
+    const vec = json?.data?.[0]?.embedding;
+    return Array.isArray(vec) ? vec : null;
+  } catch (e) {
+    console.warn("embedText error:", e);
+    return null;
+  }
+}
+
+// Recupera top-K documentos relevantes vía match_knowledge.
+export async function retrieveKnowledge(
+  admin: any,
+  apiKey: string,
+  query: string,
+  opts: { count?: number; minSimilarity?: number; categories?: string[] | null } = {},
+): Promise<KnowledgeMatch[]> {
+  const vec = await embedText(apiKey, query);
+  if (!vec) return [];
+  try {
+    const { data, error } = await admin.rpc("match_knowledge", {
+      query_embedding: vec as any,
+      match_count: opts.count ?? 6,
+      min_similarity: opts.minSimilarity ?? 0.72,
+      categories: opts.categories ?? null,
+    });
+    if (error) {
+      console.warn("match_knowledge error:", error);
+      return [];
+    }
+    return (data ?? []) as KnowledgeMatch[];
+  } catch (e) {
+    console.warn("retrieveKnowledge error:", e);
+    return [];
+  }
+}
+
+// Rerank clínico con Gemini Flash. Fusiona score coseno con score del modelo.
+export async function rerankKnowledge(
+  apiKey: string,
+  query: string,
+  candidates: KnowledgeMatch[],
+  keep: number,
+): Promise<KnowledgeMatch[]> {
+  if (candidates.length <= keep) return candidates;
+  const compact = candidates.slice(0, 30).map((c, i) => ({
+    n: i,
+    id: c.chunk_id,
+    title: c.title,
+    src: c.source,
+    snippet: c.snippet.slice(0, 300),
+  }));
+  const prompt = `Eres un asistente de recuperación clínica. Dada una consulta y candidatos, devuelve JSON puro:
+{"ranked":[{"n":<indice>,"score":0..1}]}
+Prioriza guías clínicas y fuentes primarias sobre resúmenes; descarta lo irrelevante.
+Consulta: ${query.slice(0, 400)}
+Candidatos: ${JSON.stringify(compact)}`;
+  try {
+    const r = await callGateway(apiKey, "google/gemini-3-flash-preview", [
+      { role: "system", content: "Responde solo JSON válido." },
+      { role: "user", content: prompt },
+    ], { maxOutputTokens: 800, responseFormat: "json_object" });
+    if (!r.ok || !r.content) return candidates.slice(0, keep);
+    const parsed = JSON.parse(r.content);
+    const ranked: Array<{ n: number; score: number }> = Array.isArray(parsed?.ranked) ? parsed.ranked : [];
+    const scored = candidates.slice(0, 30).map((c, i) => {
+      const rk = ranked.find((x) => x.n === i);
+      const rerankScore = rk ? Math.max(0, Math.min(1, Number(rk.score))) : 0;
+      const final = 0.6 * rerankScore + 0.4 * (c.similarity ?? 0);
+      return { c, final };
+    });
+    scored.sort((a, b) => b.final - a.final);
+    return scored.slice(0, keep).map((s) => s.c);
+  } catch (e) {
+    console.warn("rerankKnowledge error:", e);
+    return candidates.slice(0, keep);
+  }
+}
+
+// Construye un bloque de contexto para prepender a la prompt y su lista paralela de referencias.
+export function buildRagContext(matches: KnowledgeMatch[]): { context: string; references: AiReference[] } {
+  if (matches.length === 0) return { context: "", references: [] };
+  const references: AiReference[] = matches.map((m) => ({
+    id: m.document_id,
+    title: m.title,
+    source: m.source,
+    url: m.source_url,
+    snippet: m.snippet,
+  }));
+  const context = matches
+    .map((m, i) => `[[ref:${m.document_id}]] (${i + 1}) ${m.title} — ${m.snippet}`)
+    .join("\n");
+  return {
+    context: `Fuentes disponibles (cita usando [[ref:<id>]] cuando uses una):\n${context}`,
+    references,
+  };
+}
+
+// Reemplaza tokens [[ref:<id>]] por [1][2]… en el texto y devuelve las referencias efectivamente citadas.
+export function normalizeReferences(
+  text: string,
+  candidates: AiReference[],
+): { text: string; references: AiReference[] } {
+  const seen = new Map<string, number>();
+  const finalRefs: AiReference[] = [];
+  const replaced = text.replace(/\[\[ref:([a-f0-9-]+)\]\]/gi, (_m, id: string) => {
+    let n = seen.get(id);
+    if (!n) {
+      const found = candidates.find((c) => c.id === id);
+      if (!found) return "";
+      n = finalRefs.length + 1;
+      seen.set(id, n);
+      finalRefs.push(found);
+    }
+    return `[${n}]`;
+  });
+  return { text: replaced, references: finalRefs };
+}
