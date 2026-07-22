@@ -157,6 +157,51 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_api_key_audit: {
+        Row: {
+          action: string
+          actor_email: string | null
+          actor_user_id: string | null
+          created_at: string
+          error_message: string | null
+          id: string
+          latency_ms: number | null
+          length: number | null
+          model_used: string | null
+          note: string | null
+          preview: string | null
+          secret_name: string
+        }
+        Insert: {
+          action: string
+          actor_email?: string | null
+          actor_user_id?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          latency_ms?: number | null
+          length?: number | null
+          model_used?: string | null
+          note?: string | null
+          preview?: string | null
+          secret_name: string
+        }
+        Update: {
+          action?: string
+          actor_email?: string | null
+          actor_user_id?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          latency_ms?: number | null
+          length?: number | null
+          model_used?: string | null
+          note?: string | null
+          preview?: string | null
+          secret_name?: string
+        }
+        Relationships: []
+      }
       ai_chat_conversations: {
         Row: {
           created_at: string

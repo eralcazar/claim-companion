@@ -1,78 +1,67 @@
+# Plan: mantenimiento avanzado de API keys BYOK + fix selector de modelos
 
-## Objetivo
+## Bug confirmado
 
-Permitir que el superadmin configure sus propias API keys de **Gemini (todas las versiones)** y **Mistral** como proveedores externos en el registro `ai_external_providers`, con una pantalla dedicada de configuración, cambios legales necesarios y enrutamiento gobernado igual que ApiFreeLLM.
+En `src/components/admin/AiPolicyPanel.tsx` (línea 79) el dropdown "Modelo" siempre renderiza `AI_MODEL_CHOICES` completo — no filtra por el proveedor seleccionado. Por eso al cambiar a `claude` sigues viendo los modelos de Gemini y de todos los demás.
 
-## 1. Base de datos
+## Cambios
 
-Migración `ai_external_providers` (ya existente):
-- Agregar columnas: `requires_api_key boolean default false`, `secret_name text` (nombre del secret backend, ej. `GEMINI_API_KEY`, `MISTRAL_API_KEY`), `models jsonb` (lista de modelos soportados con su id y label).
-- Seed de 2 nuevos proveedores:
-  - `gemini` — endpoint OpenAI-compatible `https://generativelanguage.googleapis.com/v1beta/openai/chat/completions`, `secret_name='GEMINI_API_KEY'`, modelos: `gemini-2.5-pro`, `gemini-2.5-flash`, `gemini-2.5-flash-lite`, `gemini-3-flash-preview`, `gemini-3.1-flash-lite`, `gemini-3.5-flash`.
-  - `mistral` — endpoint `https://api.mistral.ai/v1/chat/completions`, `secret_name='MISTRAL_API_KEY'`, modelos: `mistral-large-latest`, `mistral-small-latest`, `open-mistral-nemo`, `codestral-latest`.
-- Ambos `activo=false` por defecto (se activan cuando el superadmin guarde su key).
-- RLS: `SELECT` para authenticated; `UPDATE/INSERT` solo `has_role(admin)`.
+### 1. Selector de modelo filtrado por proveedor (fix del bug)
+- En `useAiPolicies.ts`, etiquetar cada entrada de `AI_MODEL_CHOICES` con su `provider` (`lovable | gemini | mistral | claude`) o exponer `AI_MODELS_BY_PROVIDER`.
+- En `AiPolicyPanel.tsx` filtrar la lista según `draft.provider`; al cambiar proveedor, resetear `draft.model` al primer modelo válido de ese proveedor (o al `default_model` que ya trae `ai_external_providers`).
+- Mostrar leyenda vacía "Sin modelos configurados — agrégalos en /admin/ai-providers" si el proveedor externo no tiene modelos en `ai_external_providers.models`.
 
-## 2. Secrets (backend)
+### 2. Historial auditado de cambios de API keys
+- Nueva tabla `ai_api_key_audit` (admin-only, RLS estricta): `id`, `secret_name`, `action` (`configured|rotated|verified|test_success|test_failed`), `actor_user_id`, `actor_email`, `preview_before`, `preview_after`, `note`, `created_at`.
+- Grants: `SELECT` a `authenticated` con policy `has_role(auth.uid(),'admin')`; `INSERT/ALL` solo a `service_role`.
+- Todas las inserciones desde edge functions (nunca desde cliente).
 
-Usar `add_secret` para provisionar `GEMINI_API_KEY` y `MISTRAL_API_KEY` cuando el superadmin lo solicite desde la UI. La UI abre el formulario seguro nativo — no se persiste la key en texto plano ni en la tabla.
+### 3. Última rotación / verificación por proveedor
+- Extender `check-ai-secrets` para devolver, además del estado, el `last_action_at` y `last_action` leyendo el máximo `created_at` por `secret_name` de `ai_api_key_audit`.
+- En `/admin/api-keys` mostrar chip "Actualizada hace X" y "Último test: OK/ERROR hace Y".
 
-## 3. Router `supabase/functions/_shared/ai-router.ts`
+### 4. Test en vivo por proveedor
+- Nueva edge function `test-ai-provider` (admin-only, verifica `has_role`).
+  - Input: `{ provider: 'gemini'|'mistral'|'claude' }`.
+  - Ejecuta una llamada mínima (`"ping"`, max_tokens=5) al endpoint OpenAI-compatible del proveedor usando el secret correspondiente (`GEMINI_API_KEY` / `MISTRAL_API_KEY` / `ANTHROPIC_API_KEY`) con el `default_model` de `ai_external_providers`.
+  - Devuelve `{ ok, latency_ms, model_used, error_message? }` y registra el resultado en `ai_api_key_audit` (`test_success` o `test_failed`).
+- En `/admin/api-keys`: botón "Probar ahora" por tarjeta, spinner, badge de resultado con latencia y mensaje de error si aplica.
 
-- Añadir `callGeminiBYOK(endpoint, apiKey, model, messages, opts)` y `callMistral(endpoint, apiKey, model, messages, opts)` — ambos OpenAI-compatible, mismo shape que `callApiFreeLLM`.
-- Extender `routeExternalOrFallback` para leer `provider` de la política y despachar al helper correcto. Cada helper lee su secret con `Deno.env.get(provider.secret_name)`; si falta, degrada a fallback interno con `blockedReason='missing_api_key'` y registra en `ai_provider_audit`.
-- Mantener `requireGeneric`, sanitización y kill-switch iguales.
+### 5. Mejorar botón "Copiar instrucción"
+- El prompt copiado debe incluir:
+  - Nombre exacto del secret (`GEMINI_API_KEY` etc.).
+  - Formato esperado (prefijos: `sk-ant-` para Claude, longitud aproximada para Gemini/Mistral).
+  - URL oficial donde obtenerla.
+  - Recordatorio: "después de guardar, vuelve a /admin/api-keys y pulsa Probar ahora".
+- Tras copiar, mostrar un banner persistente "Esperando confirmación de rotación" con botón **Verificar ahora** que dispara el test en vivo y, si pasa, registra `rotated` en el audit.
 
-## 4. UI Superadmin — nueva pantalla
-
-Ruta nueva: `/admin/ai-providers` (guarded por `admin`).
-
-- Lista de proveedores desde `ai_external_providers`.
-- Por cada proveedor externo con `requires_api_key=true`:
-  - Estado: "Configurado" (secret presente) / "Sin API key".
-  - Botón **"Configurar API key"** → llama `add_secret({name: secret_name})`.
-  - Botón **"Rotar API key"** → llama `update_secret`.
-  - Toggle **Activo** (actualiza `ai_external_providers.activo`).
-  - Selector de modelos permitidos.
-  - Link a docs oficiales del proveedor.
-- Enlace visible desde `AiPolicyPanel.tsx` ("Gestionar proveedores externos").
-
-Añadir entrada en `AppSidebar.tsx` bajo Admin.
-
-## 5. `AiPolicyPanel.tsx` y `useAiPolicies`
-
-- El dropdown de `provider` en cada política ahora incluye dinámicamente: `internal`, `apifreellm`, `gemini`, `mistral` (leído de `ai_external_providers` activos).
-- Al elegir proveedor externo, mostrar warning si no hay key configurada.
-
-## 6. UI paciente `/mis-datos-ia`
-
-- El hook `useAiPolicyProviders` ya lee de la tabla — mostrar badges por proveedor (Gemini/Mistral) con consentimiento independiente. Default opt-out.
-
-## 7. Legales
-
-`src/pages/Legal.tsx` — sección "Proveedores de IA externos":
-- Añadir a la lista: Google Gemini (política Google), Mistral AI (política Mistral, servidores UE).
-- Nota: cuando el superadmin conecta su propia API key, la relación contractual con Google/Mistral es del operador de CareCentral, no de Lovable.
-- Reiterar sanitización PII, opt-out y kill switch.
-
-## 8. Verificación
-
-- Test unitario: `routeExternalOrFallback` degrada a fallback si `GEMINI_API_KEY`/`MISTRAL_API_KEY` faltan.
-- Smoke test manual: configurar key dummy → llamada real a `ai-glossary` con provider `gemini` → verificar registro en `ai_provider_audit`.
+### 6. Políticas de IA por feature (afinado)
+- En el mismo panel de políticas, tras el fix del selector, agregar validador que impida guardar si:
+  - `provider` es externo y el proveedor está `activo=false` en `ai_external_providers`.
+  - El `model` no pertenece al `provider` seleccionado.
+- Mostrar el `default_model` del proveedor como sugerencia visual.
 
 ## Detalles técnicos
 
-- Endpoints OpenAI-compatible para ambos → misma estructura de body/response; reusar la firma de `callApiFreeLLM`.
-- No persistir API keys en DB. Solo `secret_name` como referencia.
-- `has_role(auth.uid(),'admin')` protege escritura de `ai_external_providers` y acceso a `/admin/ai-providers`.
-- `gemini` OpenAI-compat requiere header `Authorization: Bearer <key>`; `mistral` idem.
-- No cambiar cost accounting: llamadas externas siguen sin descontar tokens del usuario, se registran en auditoría con proveedor real.
+**Archivos nuevos**
+- `supabase/functions/test-ai-provider/index.ts`
+- Migración: `ai_api_key_audit` + índice por `(secret_name, created_at desc)`.
 
-```text
-[Kari/Coach/Glossary] → routeExternalOrFallback
-        │
-        ├─ policy.provider = 'gemini'  → Deno.env.GEMINI_API_KEY  → Google endpoint
-        ├─ policy.provider = 'mistral' → Deno.env.MISTRAL_API_KEY → Mistral endpoint
-        ├─ policy.provider = 'apifreellm' → ApiFreeLLM
-        └─ fallback → Lovable AI Gateway
-```
+**Archivos a modificar**
+- `src/hooks/useAiPolicies.ts` — añadir `provider` a cada modelo o exponer `AI_MODELS_BY_PROVIDER`.
+- `src/components/admin/AiPolicyPanel.tsx` — filtrar modelos, reset al cambiar proveedor, validación al guardar.
+- `src/pages/admin/ApiKeysMaintenance.tsx` — badges de última acción, botón Probar ahora, tabla de historial (últimas 20 entradas por secret con paginación simple).
+- `supabase/functions/check-ai-secrets/index.ts` — join con `ai_api_key_audit` para `last_action`.
+- `supabase/functions/_shared/ai-router.ts` — ya expone `callByokProvider`, se reutiliza en `test-ai-provider` con `max_tokens=5`.
+
+**Modelos usados en el test**
+Se usará el `default_model` guardado en `ai_external_providers` para cada proveedor; si no hay uno, el primero de `models[]`. Body mínimo estilo OpenAI: `{ model, messages: [{role:'user',content:'ping'}], max_tokens: 5 }`.
+
+**Seguridad**
+- Todas las funciones nuevas validan `has_role(auth.uid(),'admin')`.
+- El audit no guarda valores de keys, solo `preview` (`xxxx…yyyy`), longitud y metadatos.
+- La tabla de audit nunca es escrita desde el cliente.
+
+## Fuera de alcance
+- Rotación automatizada de secrets (sigue requiriendo el formulario seguro de Lovable).
+- Alertas por email cuando una key falla (queda para siguiente iteración).

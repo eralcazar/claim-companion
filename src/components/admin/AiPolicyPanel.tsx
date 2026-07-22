@@ -13,11 +13,15 @@ import {
   useAiCacheStats,
   AI_MODEL_CHOICES,
   AI_PROVIDER_CHOICES,
+  useExternalProviders,
+  modelsForProvider,
+  defaultModelForProvider,
   type AiProviderPolicy,
 } from "@/hooks/useAiPolicies";
 
 function PolicyRow({ p }: { p: AiProviderPolicy }) {
   const update = useUpdateAiPolicy();
+  const { data: externalProviders } = useExternalProviders();
   const [draft, setDraft] = useState({
     provider: p.provider ?? "lovable",
     model: p.model,
@@ -40,6 +44,24 @@ function PolicyRow({ p }: { p: AiProviderPolicy }) {
       ? ((modelMeta.inputMicros * 2000 + modelMeta.outputMicros * draft.max_output_tokens) / 1_000_000).toFixed(4)
       : "0.0000";
 
+  const availableModels = modelsForProvider(draft.provider, externalProviders);
+  const providerRow = externalProviders?.find((r) => r.id === draft.provider);
+  const modelValid = availableModels.some((m) => m.value === draft.model);
+  const providerInactive = draft.provider !== "lovable" && providerRow && !providerRow.activo;
+  const canSave =
+    dirty &&
+    !update.isPending &&
+    availableModels.length > 0 &&
+    modelValid &&
+    !providerInactive;
+
+  const handleProviderChange = (v: string) => {
+    setDraft((d) => {
+      const nextModel = defaultModelForProvider(v, externalProviders) ?? "";
+      return { ...d, provider: v as any, model: nextModel };
+    });
+  };
+
   return (
     <div className="border rounded-lg p-3 space-y-3">
       <div className="flex items-center justify-between flex-wrap gap-2">
@@ -52,7 +74,7 @@ function PolicyRow({ p }: { p: AiProviderPolicy }) {
         </div>
         <Button
           size="sm"
-          disabled={!dirty || update.isPending}
+          disabled={!canSave}
           onClick={() => update.mutate({ id: p.id, ...draft })}
         >
           <Save className="h-3.5 w-3.5 mr-1" />Guardar
@@ -62,7 +84,7 @@ function PolicyRow({ p }: { p: AiProviderPolicy }) {
       <div className="grid md:grid-cols-4 gap-3">
         <div>
           <Label className="text-xs">Proveedor</Label>
-          <Select value={draft.provider} onValueChange={(v) => setDraft((d) => ({ ...d, provider: v as any }))}>
+          <Select value={draft.provider} onValueChange={handleProviderChange}>
             <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
             <SelectContent>
               {AI_PROVIDER_CHOICES.map((pr) => (
@@ -73,14 +95,31 @@ function PolicyRow({ p }: { p: AiProviderPolicy }) {
         </div>
         <div>
           <Label className="text-xs">Modelo</Label>
-          <Select value={draft.model} onValueChange={(v) => setDraft((d) => ({ ...d, model: v }))}>
-            <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+          <Select
+            value={modelValid ? draft.model : ""}
+            onValueChange={(v) => setDraft((d) => ({ ...d, model: v }))}
+            disabled={availableModels.length === 0}
+          >
+            <SelectTrigger className="h-9">
+              <SelectValue placeholder={availableModels.length === 0 ? "Sin modelos" : "Elegir modelo"} />
+            </SelectTrigger>
             <SelectContent>
-              {AI_MODEL_CHOICES.map((m) => (
+              {availableModels.map((m) => (
                 <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
               ))}
             </SelectContent>
           </Select>
+          {availableModels.length === 0 && (
+            <p className="text-[10px] text-destructive mt-1">
+              Sin modelos configurados. Agrégalos en{" "}
+              <a href="/admin/ai-providers" className="underline">Admin → Proveedores IA</a>.
+            </p>
+          )}
+          {!modelValid && availableModels.length > 0 && (
+            <p className="text-[10px] text-amber-600 mt-1">
+              Modelo actual (<span className="font-mono">{draft.model || "—"}</span>) no pertenece a este proveedor. Elige uno de la lista.
+            </p>
+          )}
         </div>
         <div>
           <Label className="text-xs">Max output tokens</Label>
@@ -111,6 +150,14 @@ function PolicyRow({ p }: { p: AiProviderPolicy }) {
           />
         </div>
       </div>
+
+      {providerInactive && (
+        <div className="text-[11px] rounded-md border border-destructive/40 bg-destructive/10 p-2 text-destructive">
+          Este proveedor externo está desactivado. Actívalo en{" "}
+          <a href="/admin/ai-providers" className="underline font-medium">Admin → Proveedores IA</a>{" "}
+          antes de guardar la política.
+        </div>
+      )}
 
       {draft.provider !== "lovable" && (
         <div className="text-[11px] rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-amber-900 dark:text-amber-200">
