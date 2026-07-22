@@ -17,13 +17,16 @@ type Draft = {
 
 export function RegisterWorkoutDialog({ trigger }: { trigger?: React.ReactNode }) {
   const [open, setOpen] = useState(false);
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [environment, setEnvironment] = useState<"gym" | "calle" | "casa">("gym");
   const [fecha, setFecha] = useState(() => new Date().toISOString().slice(0, 10));
   const [locationLabel, setLocationLabel] = useState("");
   const [durationMin, setDurationMin] = useState<string>("");
   const [rpe, setRpe] = useState<string>("");
   const [notes, setNotes] = useState("");
+  const [warmup, setWarmup] = useState("");
+  const [discomforts, setDiscomforts] = useState("");
+  const [sessionRest, setSessionRest] = useState<string>("");
   const [search, setSearch] = useState("");
   const [drafts, setDrafts] = useState<Draft[]>([]);
 
@@ -58,7 +61,9 @@ export function RegisterWorkoutDialog({ trigger }: { trigger?: React.ReactNode }
 
   function reset() {
     setStep(1); setEnvironment("gym"); setFecha(new Date().toISOString().slice(0, 10));
-    setLocationLabel(""); setDurationMin(""); setRpe(""); setNotes(""); setSearch(""); setDrafts([]);
+    setLocationLabel(""); setDurationMin(""); setRpe(""); setNotes("");
+    setWarmup(""); setDiscomforts(""); setSessionRest("");
+    setSearch(""); setDrafts([]);
   }
 
   async function submit() {
@@ -68,6 +73,9 @@ export function RegisterWorkoutDialog({ trigger }: { trigger?: React.ReactNode }
       duration_min: durationMin ? Number(durationMin) : undefined,
       rpe: rpe ? Number(rpe) : undefined,
       notes: notes || undefined,
+      warmup_notes: warmup || undefined,
+      discomforts: discomforts || undefined,
+      session_rest_sec: sessionRest ? Number(sessionRest) : undefined,
       items: drafts.map((d) => ({
         exercise_id: d.exercise.id,
         sets: d.sets.map((s, i) => ({ set_number: i + 1, ...s })),
@@ -84,7 +92,7 @@ export function RegisterWorkoutDialog({ trigger }: { trigger?: React.ReactNode }
       </DialogTrigger>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2"><Dumbbell className="h-5 w-5" /> Nuevo entrenamiento — Paso {step} de 3</DialogTitle>
+          <DialogTitle className="flex items-center gap-2"><Dumbbell className="h-5 w-5" /> Nuevo entrenamiento — Paso {step} de 4</DialogTitle>
         </DialogHeader>
 
         {step === 1 && (
@@ -188,18 +196,38 @@ export function RegisterWorkoutDialog({ trigger }: { trigger?: React.ReactNode }
                 </CardContent>
               </Card>
             ))}
-            <div className="grid grid-cols-2 gap-3">
+          </div>
+        )}
+
+        {step === 4 && (
+          <div className="space-y-4">
+            <div className="rounded-md border bg-muted/40 p-3 text-xs text-muted-foreground">
+              Estos datos ayudan al Coach IA a decidir si subir carga, mantener o priorizar recuperación.
+            </div>
+            <div>
+              <Label>Calentamiento realizado</Label>
+              <Textarea rows={2} value={warmup} onChange={(e) => setWarmup(e.target.value)} placeholder="Ej: 5' bicicleta + movilidad de hombro" />
+            </div>
+            <div>
+              <Label>Molestias o dolor (opcional)</Label>
+              <Textarea rows={2} value={discomforts} onChange={(e) => setDiscomforts(e.target.value)} placeholder="Ej: molestia leve en rodilla derecha al bajar" />
+            </div>
+            <div className="grid grid-cols-3 gap-3">
               <div>
-                <Label>Duración total (min)</Label>
+                <Label>Duración (min)</Label>
                 <Input type="number" value={durationMin} onChange={(e) => setDurationMin(e.target.value)} />
               </div>
               <div>
-                <Label>RPE (1-10)</Label>
+                <Label>RPE global (1-10)</Label>
                 <Input type="number" min="1" max="10" value={rpe} onChange={(e) => setRpe(e.target.value)} />
+              </div>
+              <div>
+                <Label>Descanso prom. (seg)</Label>
+                <Input type="number" value={sessionRest} onChange={(e) => setSessionRest(e.target.value)} />
               </div>
             </div>
             <div>
-              <Label>Notas</Label>
+              <Label>Notas generales</Label>
               <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
             </div>
           </div>
@@ -207,8 +235,8 @@ export function RegisterWorkoutDialog({ trigger }: { trigger?: React.ReactNode }
 
         <DialogFooter>
           {step > 1 && <Button variant="outline" onClick={() => setStep((s) => (s - 1) as any)}>Atrás</Button>}
-          {step < 3 && <Button onClick={() => setStep((s) => (s + 1) as any)} disabled={step === 2 && drafts.length === 0}>Siguiente</Button>}
-          {step === 3 && <Button onClick={submit} disabled={create.isPending || drafts.length === 0}>{create.isPending ? "Guardando..." : "Guardar entrenamiento"}</Button>}
+          {step < 4 && <Button onClick={() => setStep((s) => (s + 1) as any)} disabled={step === 2 && drafts.length === 0}>Siguiente</Button>}
+          {step === 4 && <Button onClick={submit} disabled={create.isPending || drafts.length === 0}>{create.isPending ? "Guardando..." : "Guardar entrenamiento"}</Button>}
         </DialogFooter>
       </DialogContent>
     </Dialog>

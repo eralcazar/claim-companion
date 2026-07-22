@@ -1,12 +1,14 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Dumbbell, TrendingUp, Flame, Timer, Trophy, ChevronRight, Trash2 } from "lucide-react";
+import { Dumbbell, TrendingUp, Flame, Timer, Trophy, ChevronRight, Trash2, Upload, Sparkles } from "lucide-react";
 import { RegisterWorkoutDialog } from "@/components/ejercicios/RegisterWorkoutDialog";
 import { TrainingHeatmap } from "@/components/ejercicios/TrainingHeatmap";
+import { TrainingCalendar } from "@/components/ejercicios/TrainingCalendar";
+import { SessionPdfExport } from "@/components/ejercicios/SessionPdfExport";
 import { useSessionLogs, useAllSetLogs, useExerciseCatalog, useDeleteSession, estimate1RM } from "@/hooks/useExercises";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
@@ -15,6 +17,7 @@ type Env = "all" | "gym" | "calle" | "casa";
 
 export default function Ejercicios() {
   const [env, setEnv] = useState<Env>("all");
+  const [tab, setTab] = useState<"dashboard" | "calendario">("dashboard");
   const { data: sessions = [] } = useSessionLogs(365);
   const { data: sets = [] } = useAllSetLogs(365);
   const { data: catalog = [] } = useExerciseCatalog();
@@ -75,7 +78,11 @@ export default function Ejercicios() {
           <h1 className="text-2xl font-bold flex items-center gap-2"><Dumbbell className="h-6 w-6 text-primary" /> Ejercicios</h1>
           <p className="text-sm text-muted-foreground">Registrá tu actividad y mirá tu progreso por ejercicio.</p>
         </div>
-        <RegisterWorkoutDialog />
+        <div className="flex flex-wrap gap-2">
+          <Button asChild variant="outline" size="sm" className="gap-1"><Link to="/ejercicios/plan"><Sparkles className="h-4 w-4" /> Plan IA</Link></Button>
+          <Button asChild variant="outline" size="sm" className="gap-1"><Link to="/ejercicios/importar"><Upload className="h-4 w-4" /> Importar</Link></Button>
+          <RegisterWorkoutDialog />
+        </div>
       </div>
 
       <Tabs value={env} onValueChange={(v) => setEnv(v as Env)}>
@@ -87,6 +94,13 @@ export default function Ejercicios() {
         </TabsList>
       </Tabs>
 
+      <Tabs value={tab} onValueChange={(v) => setTab(v as any)}>
+        <TabsList>
+          <TabsTrigger value="dashboard">Panel</TabsTrigger>
+          <TabsTrigger value="calendario">Calendario</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="dashboard" className="space-y-6 pt-4">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <KpiCard icon={<Dumbbell className="h-4 w-4" />} label="Sesiones (30d)" value={kpis.count} />
         <KpiCard icon={<TrendingUp className="h-4 w-4" />} label="Volumen (kg·rep)" value={kpis.volume.toLocaleString()} />
@@ -149,6 +163,15 @@ export default function Ejercicios() {
                 </div>
                 <div className="flex items-center gap-1">
                   <Badge variant="secondary">{sets.filter((x) => x.session_log_id === s.id).length} sets</Badge>
+                  <SessionPdfExport
+                    session={s}
+                    sets={sets.filter((x) => x.session_log_id === s.id)}
+                    catalog={catalog}
+                    previousSets={sets.filter((x) => {
+                      const parent = sessions.find((z) => z.id === x.session_log_id);
+                      return parent ? parent.fecha < s.fecha : false;
+                    })}
+                  />
                   <Button size="icon" variant="ghost" onClick={() => del.mutate(s.id)}><Trash2 className="h-4 w-4" /></Button>
                   <ChevronRight className="h-4 w-4 text-muted-foreground" />
                 </div>
@@ -160,6 +183,12 @@ export default function Ejercicios() {
           )}
         </div>
       </div>
+        </TabsContent>
+
+        <TabsContent value="calendario" className="pt-4">
+          <TrainingCalendar sessions={filteredSessions} sets={sets} catalog={catalog} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

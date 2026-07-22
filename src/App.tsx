@@ -94,6 +94,8 @@ import Soporte from "@/pages/Soporte";
 import TensiometrosCompatibilidad from "@/pages/TensiometrosCompatibilidad";
 import Ejercicios from "@/pages/Ejercicios";
 import EjercicioDetalle from "@/pages/EjercicioDetalle";
+import EjerciciosImportar from "@/pages/EjerciciosImportar";
+import EjerciciosPlan from "@/pages/EjerciciosPlan";
 import Conocimiento from "@/pages/Conocimiento";
 import KnowledgeBase from "@/pages/admin/KnowledgeBase";
 import { ActiveLocationProvider } from "@/contexts/ActiveLocationContext";
@@ -212,6 +214,8 @@ const App = () => (
               <Route path="/soporte" element={<Soporte />} />
               <Route path="/tensiometros-compatibilidad" element={<TensiometrosCompatibilidad />} />
               <Route path="/ejercicios" element={<Ejercicios />} />
+              <Route path="/ejercicios/importar" element={<EjerciciosImportar />} />
+              <Route path="/ejercicios/plan" element={<EjerciciosPlan />} />
               <Route path="/ejercicios/:exerciseId" element={<EjercicioDetalle />} />
               <Route path="/conocimiento" element={<Conocimiento />} />
               <Route path="/admin/conocimiento" element={<KnowledgeBase />} />

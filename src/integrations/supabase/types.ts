@@ -2246,6 +2246,7 @@ export type Database = {
         Row: {
           calories: number | null
           created_at: string
+          discomforts: string | null
           duration_min: number | null
           environment: string
           fecha: string
@@ -2255,13 +2256,16 @@ export type Database = {
           notes: string | null
           patient_id: string
           rpe: number | null
+          session_rest_sec: number | null
           source: string | null
           started_at: string | null
           updated_at: string
+          warmup_notes: string | null
         }
         Insert: {
           calories?: number | null
           created_at?: string
+          discomforts?: string | null
           duration_min?: number | null
           environment: string
           fecha?: string
@@ -2271,13 +2275,16 @@ export type Database = {
           notes?: string | null
           patient_id: string
           rpe?: number | null
+          session_rest_sec?: number | null
           source?: string | null
           started_at?: string | null
           updated_at?: string
+          warmup_notes?: string | null
         }
         Update: {
           calories?: number | null
           created_at?: string
+          discomforts?: string | null
           duration_min?: number | null
           environment?: string
           fecha?: string
@@ -2287,9 +2294,11 @@ export type Database = {
           notes?: string | null
           patient_id?: string
           rpe?: number | null
+          session_rest_sec?: number | null
           source?: string | null
           started_at?: string | null
           updated_at?: string
+          warmup_notes?: string | null
         }
         Relationships: []
       }
@@ -7563,6 +7572,36 @@ export type Database = {
           },
         ]
       }
+      workout_import_batches: {
+        Row: {
+          created_at: string
+          errors: Json
+          filename: string | null
+          id: string
+          patient_id: string
+          rows_error: number
+          rows_ok: number
+        }
+        Insert: {
+          created_at?: string
+          errors?: Json
+          filename?: string | null
+          id?: string
+          patient_id: string
+          rows_error?: number
+          rows_ok?: number
+        }
+        Update: {
+          created_at?: string
+          errors?: Json
+          filename?: string | null
+          id?: string
+          patient_id?: string
+          rows_error?: number
+          rows_ok?: number
+        }
+        Relationships: []
+      }
       workout_logs: {
         Row: {
           completed: boolean
@@ -7628,7 +7667,9 @@ export type Database = {
           ai_generated: boolean
           created_at: string
           created_by: string | null
+          current_week: number
           days_per_week: number
+          equipment: string[]
           id: string
           is_active: boolean
           level: Database["public"]["Enums"]["workout_level"]
@@ -7636,13 +7677,17 @@ export type Database = {
           notes: string | null
           objective: Database["public"]["Enums"]["workout_objective"]
           patient_id: string
+          progression_scheme: string
           updated_at: string
+          weeks: number
         }
         Insert: {
           ai_generated?: boolean
           created_at?: string
           created_by?: string | null
+          current_week?: number
           days_per_week?: number
+          equipment?: string[]
           id?: string
           is_active?: boolean
           level?: Database["public"]["Enums"]["workout_level"]
@@ -7650,13 +7695,17 @@ export type Database = {
           notes?: string | null
           objective?: Database["public"]["Enums"]["workout_objective"]
           patient_id: string
+          progression_scheme?: string
           updated_at?: string
+          weeks?: number
         }
         Update: {
           ai_generated?: boolean
           created_at?: string
           created_by?: string | null
+          current_week?: number
           days_per_week?: number
+          equipment?: string[]
           id?: string
           is_active?: boolean
           level?: Database["public"]["Enums"]["workout_level"]
@@ -7664,7 +7713,9 @@ export type Database = {
           notes?: string | null
           objective?: Database["public"]["Enums"]["workout_objective"]
           patient_id?: string
+          progression_scheme?: string
           updated_at?: string
+          weeks?: number
         }
         Relationships: []
       }
