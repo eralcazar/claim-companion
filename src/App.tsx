@@ -81,6 +81,7 @@ import Especialista from "@/pages/public/Especialista";
 import PerfilPublico from "@/pages/medico/PerfilPublico";
 import MarketplaceReview from "@/pages/admin/MarketplaceReview";
 import Reservar from "@/pages/public/Reservar";
+import Actividad from "@/pages/Actividad";
 
 const queryClient = new QueryClient();
 
@@ -128,6 +129,7 @@ const App = () => (
               <Route path="/tendencias" element={<Tendencias />} />
               <Route path="/presion" element={<PresionArterial />} />
               <Route path="/nutricion" element={<Nutricion />} />
+              <Route path="/actividad" element={<Actividad />} />
               <Route path="/reclamos/nuevo" element={<NewClaim />} />
               <Route path="/reclamos/editar/:id" element={<EditClaim />} />
               <Route path="/agenda" element={<Appointments />} />

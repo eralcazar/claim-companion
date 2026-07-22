@@ -1,7 +1,7 @@
 import {
   Home, FileText, Calendar, Pill, User, Shield, Users, Stethoscope, FolderOpen, Download, LogOut, FolderTree, UserCog, KeyRound, GraduationCap, BadgeCheck, FlaskConical, TrendingUp, HeartPulse, FlaskRound, Store, UserCheck, FileWarning, Package, Boxes, Layers, CreditCard, Activity, ScrollText, Apple
 } from "lucide-react";
-import { Receipt, Smile, Repeat2 } from "lucide-react";
+import { Receipt, Smile, Repeat2, Dumbbell } from "lucide-react";
 import { NavLink as RouterNavLink, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useImpersonation } from "@/contexts/ImpersonationContext";
@@ -35,6 +35,7 @@ const saludItems: Item[] = [
   { title: "Temperatura", url: "/temperatura", icon: Activity, feature: "expediente_digital" },
   { title: "Tendencias", url: "/tendencias", icon: TrendingUp, feature: "tendencias" },
   { title: "Nutrición", url: "/nutricion", icon: Apple, feature: "nutricion" },
+  { title: "Actividad", url: "/actividad", icon: Dumbbell, feature: "perfil" },
 ];
 
 const atencionItems: Item[] = [
