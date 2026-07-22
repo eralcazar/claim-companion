@@ -109,7 +109,7 @@ export function useCreateWorkoutPlan() {
           patient_id: user.id,
           created_by: user.id,
           ...input,
-        })
+        } as any)
         .select("*")
         .single();
       if (error) throw error;
