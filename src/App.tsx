@@ -87,6 +87,8 @@ import Reservar from "@/pages/public/Reservar";
 import Actividad from "@/pages/Actividad";
 import MisDatosIA from "@/pages/MisDatosIA";
 import HeartRateMonitor from "@/pages/HeartRateMonitor";
+import SleepMonitor from "@/pages/SleepMonitor";
+import StepsMonitor from "@/pages/StepsMonitor";
 import Consultorios from "@/pages/Consultorios";
 import Soporte from "@/pages/Soporte";
 import TensiometrosCompatibilidad from "@/pages/TensiometrosCompatibilidad";
