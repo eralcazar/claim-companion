@@ -7673,31 +7673,43 @@ export type Database = {
       }
       workout_import_batches: {
         Row: {
+          column_map: Json | null
           created_at: string
           errors: Json
+          errors_json: Json | null
           filename: string | null
           id: string
           patient_id: string
           rows_error: number
+          rows_failed: number
           rows_ok: number
+          rows_total: number
         }
         Insert: {
+          column_map?: Json | null
           created_at?: string
           errors?: Json
+          errors_json?: Json | null
           filename?: string | null
           id?: string
           patient_id: string
           rows_error?: number
+          rows_failed?: number
           rows_ok?: number
+          rows_total?: number
         }
         Update: {
+          column_map?: Json | null
           created_at?: string
           errors?: Json
+          errors_json?: Json | null
           filename?: string | null
           id?: string
           patient_id?: string
           rows_error?: number
+          rows_failed?: number
           rows_ok?: number
+          rows_total?: number
         }
         Relationships: []
       }
@@ -7757,6 +7769,56 @@ export type Database = {
             columns: ["session_id"]
             isOneToOne: false
             referencedRelation: "workout_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workout_plan_reminders: {
+        Row: {
+          active: boolean
+          channels: Json
+          created_at: string
+          hour: number
+          id: string
+          minute: number
+          minutes_before: number
+          patient_id: string
+          plan_id: string
+          updated_at: string
+          weekday: number
+        }
+        Insert: {
+          active?: boolean
+          channels?: Json
+          created_at?: string
+          hour: number
+          id?: string
+          minute?: number
+          minutes_before?: number
+          patient_id: string
+          plan_id: string
+          updated_at?: string
+          weekday: number
+        }
+        Update: {
+          active?: boolean
+          channels?: Json
+          created_at?: string
+          hour?: number
+          id?: string
+          minute?: number
+          minutes_before?: number
+          patient_id?: string
+          plan_id?: string
+          updated_at?: string
+          weekday?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workout_plan_reminders_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "workout_plans"
             referencedColumns: ["id"]
           },
         ]
@@ -7861,6 +7923,69 @@ export type Database = {
             columns: ["plan_id"]
             isOneToOne: false
             referencedRelation: "workout_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workout_sessions_scheduled: {
+        Row: {
+          created_at: string
+          gcal_event_id: string | null
+          id: string
+          notes: string | null
+          patient_id: string
+          plan_id: string | null
+          reminder_sent_at: string | null
+          scheduled_at: string
+          session_log_id: string | null
+          status: string
+          target_reference: Json | null
+          target_type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          gcal_event_id?: string | null
+          id?: string
+          notes?: string | null
+          patient_id: string
+          plan_id?: string | null
+          reminder_sent_at?: string | null
+          scheduled_at: string
+          session_log_id?: string | null
+          status?: string
+          target_reference?: Json | null
+          target_type?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          gcal_event_id?: string | null
+          id?: string
+          notes?: string | null
+          patient_id?: string
+          plan_id?: string | null
+          reminder_sent_at?: string | null
+          scheduled_at?: string
+          session_log_id?: string | null
+          status?: string
+          target_reference?: Json | null
+          target_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workout_sessions_scheduled_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "workout_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workout_sessions_scheduled_session_log_id_fkey"
+            columns: ["session_log_id"]
+            isOneToOne: false
+            referencedRelation: "exercise_session_logs"
             referencedColumns: ["id"]
           },
         ]

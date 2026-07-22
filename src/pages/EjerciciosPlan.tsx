@@ -12,6 +12,7 @@ import { ArrowLeft, Sparkles, Wand2, RefreshCw, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { PlanRemindersCard } from "@/components/ejercicios/PlanRemindersCard";
 
 const OBJECTIVES = [
   { v: "fuerza", label: "Fuerza" },
@@ -173,6 +174,7 @@ export default function EjerciciosPlan() {
                   </div>
                 </div>
                 {p.notes && <p className="text-sm text-muted-foreground">{p.notes}</p>}
+                <PlanRemindersCard planId={p.id} />
                 {adjustment?.planId === p.id && (
                   <div className="mt-2 rounded-md border bg-muted/40 p-3 space-y-2 text-sm">
                     <div className="font-medium">Sugerencias del Coach IA</div>
