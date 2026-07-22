@@ -317,6 +317,8 @@ export function externalProviderSecretName(provider: string): string | null {
       return "GEMINI_API_KEY";
     case "mistral":
       return "MISTRAL_API_KEY";
+    case "claude":
+      return "ANTHROPIC_API_KEY";
     default:
       return null; // apifreellm y otros sin key
   }
