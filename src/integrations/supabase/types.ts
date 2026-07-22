@@ -224,30 +224,45 @@ export type Database = {
           activo: boolean
           aviso_legal: string
           created_at: string
+          default_model: string | null
+          docs_url: string | null
           endpoint: string
           id: string
           legal_version: string
+          models: Json
           nombre: string
+          requires_api_key: boolean
+          secret_name: string | null
           updated_at: string
         }
         Insert: {
           activo?: boolean
           aviso_legal: string
           created_at?: string
+          default_model?: string | null
+          docs_url?: string | null
           endpoint: string
           id: string
           legal_version?: string
+          models?: Json
           nombre: string
+          requires_api_key?: boolean
+          secret_name?: string | null
           updated_at?: string
         }
         Update: {
           activo?: boolean
           aviso_legal?: string
           created_at?: string
+          default_model?: string | null
+          docs_url?: string | null
           endpoint?: string
           id?: string
           legal_version?: string
+          models?: Json
           nombre?: string
+          requires_api_key?: boolean
+          secret_name?: string | null
           updated_at?: string
         }
         Relationships: []
