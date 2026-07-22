@@ -9,6 +9,7 @@ import {
 } from "@/hooks/useKariUsageAdmin";
 import { exportKariUsageCSV } from "@/lib/exportKariUsageCSV";
 import { KariMonthlyLimitsEditor } from "@/components/admin/KariMonthlyLimitsEditor";
+import { AiPolicyPanel } from "@/components/admin/AiPolicyPanel";
 import {
   useKariActiveModel,
   useSetKariActiveModel,
@@ -243,6 +244,7 @@ export default function KariUsageAdmin() {
       </Card>
 
       <KariMonthlyLimitsEditor />
+      <AiPolicyPanel />
     </div>
   );
 }
