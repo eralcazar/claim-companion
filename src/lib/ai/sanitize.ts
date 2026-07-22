@@ -63,3 +63,25 @@ export function hasResidualPii(sanitized: string): boolean {
   ];
   return patterns.some((rx) => rx.test(sanitized));
 }
+
+/**
+ * Detecta tipos de PII presentes en el texto ORIGINAL (antes de sanitizar).
+ * Devuelve una lista de etiquetas ("curp", "rfc", "email", "telefono", "fecha",
+ * "direccion", "coordenada", "numero_largo") que se guardan como evidencia
+ * de sanitización en la auditoría.
+ */
+export function detectPiiFields(original: string): string[] {
+  const rules: Array<[string, RegExp]> = [
+    ["curp", /\b[a-z]{4}\d{6}[hm][a-z]{5}[a-z0-9]\d\b/i],
+    ["rfc", /\b[a-z&ñ]{3,4}\d{6}[a-z0-9]{3}\b/i],
+    ["email", /\b[\w.+-]+@[\w-]+\.[\w.-]+\b/],
+    ["telefono", /(\+\d{1,3}[\s-]?)?\b\d{3}[\s-]?\d{3}[\s-]?\d{4}\b/],
+    ["fecha", /\b\d{1,4}[\/\-]\d{1,2}[\/\-]\d{1,4}\b/],
+    ["direccion", /\b(calle|avenida|av\.|colonia|col\.|c\.p\.|codigo postal|cp)\b/i],
+    ["coordenada", /-?\d{1,3}\.\d{3,},\s*-?\d{1,3}\.\d{3,}/],
+    ["numero_largo", /\b\d{4,}\b/],
+  ];
+  const found = new Set<string>();
+  for (const [label, rx] of rules) if (rx.test(original)) found.add(label);
+  return Array.from(found);
+}
