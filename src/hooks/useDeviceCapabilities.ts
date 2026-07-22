@@ -49,7 +49,7 @@ export function useDeviceCapabilities() {
     queryKey: ["device-capabilities", patientId],
     enabled: !!patientId,
     queryFn: async (): Promise<DeviceCapabilitySummary> => {
-      const [pairsRes, actRes] = await Promise.all([
+      const [pairsRes, actRes, hrRes] = await Promise.all([
         supabase
           .from("patient_ble_pairings")
           .select("device_name, model, service_type, last_status, unpaired_at")
@@ -60,6 +60,11 @@ export function useDeviceCapabilities() {
           .select("steps, sleep_minutes, active_minutes, source")
           .eq("patient_id", patientId!)
           .gte("fecha", new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10)),
+        supabase
+          .from("heart_rate_readings")
+          .select("id", { count: "exact", head: true })
+          .eq("patient_id", patientId!)
+          .gte("measured_at", new Date(Date.now() - 30 * 86400000).toISOString()),
       ]);
 
       const caps = new Set<CompatibleReading>();
@@ -86,6 +91,7 @@ export function useDeviceCapabilities() {
         if ((r.sleep_minutes ?? 0) > 0) caps.add("sleep");
         if ((r.active_minutes ?? 0) > 0) caps.add("activity");
       }
+      if ((hrRes.count ?? 0) > 0) caps.add("heart_rate");
 
       const enabledMonitors = Object.fromEntries(
         Object.entries(MONITOR_MAP).map(([k, needs]) => [
