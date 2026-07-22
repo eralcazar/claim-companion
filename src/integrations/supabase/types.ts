@@ -219,6 +219,84 @@ export type Database = {
           },
         ]
       }
+      ai_feature_consents: {
+        Row: {
+          created_at: string
+          feature_key: string
+          granted: boolean
+          id: string
+          provider: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          feature_key: string
+          granted?: boolean
+          id?: string
+          provider?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          feature_key?: string
+          granted?: boolean
+          id?: string
+          provider?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      ai_provider_audit: {
+        Row: {
+          created_at: string
+          fallback_used: boolean
+          feature_key: string
+          id: string
+          input_chars: number | null
+          latency_ms: number | null
+          model: string | null
+          output_chars: number | null
+          provider: string
+          sanitization_notes: string | null
+          sanitized: boolean
+          status: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          fallback_used?: boolean
+          feature_key: string
+          id?: string
+          input_chars?: number | null
+          latency_ms?: number | null
+          model?: string | null
+          output_chars?: number | null
+          provider?: string
+          sanitization_notes?: string | null
+          sanitized?: boolean
+          status?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          fallback_used?: boolean
+          feature_key?: string
+          id?: string
+          input_chars?: number | null
+          latency_ms?: number | null
+          model?: string | null
+          output_chars?: number | null
+          provider?: string
+          sanitization_notes?: string | null
+          sanitized?: boolean
+          status?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       ai_provider_policy: {
         Row: {
           cache_ttl_hours: number
@@ -490,10 +568,13 @@ export type Database = {
           conversation_id: string | null
           cost_usd_micros: number
           created_at: string
+          fallback_used: boolean
           id: string
           message_id: string | null
           model: string | null
           prompt_tokens: number
+          provider: string
+          sanitized: boolean
           total_tokens: number
           user_id: string
         }
@@ -502,10 +583,13 @@ export type Database = {
           conversation_id?: string | null
           cost_usd_micros?: number
           created_at?: string
+          fallback_used?: boolean
           id?: string
           message_id?: string | null
           model?: string | null
           prompt_tokens?: number
+          provider?: string
+          sanitized?: boolean
           total_tokens?: number
           user_id: string
         }
@@ -514,10 +598,13 @@ export type Database = {
           conversation_id?: string | null
           cost_usd_micros?: number
           created_at?: string
+          fallback_used?: boolean
           id?: string
           message_id?: string | null
           model?: string | null
           prompt_tokens?: number
+          provider?: string
+          sanitized?: boolean
           total_tokens?: number
           user_id?: string
         }
