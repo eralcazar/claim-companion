@@ -166,7 +166,7 @@ async function persistReading(params: {
       { onConflict: "external_uuid" },
     );
     if (error) throw error;
-  } else {
+  } else if (parsed.kind === "spo2") {
     // SpO2: valores anormales (<92%) requieren revisión clínica
     const abnormal = parsed.spo2 < 92;
     const { error } = await supabase.from("spo2_readings" as any).upsert(
@@ -180,6 +180,24 @@ async function persistReading(params: {
         external_uuid,
         requires_review: abnormal,
         created_by: createdBy,
+      },
+      { onConflict: "external_uuid" },
+    );
+    if (error) throw error;
+  } else if (parsed.kind === "heart_rate") {
+    // HR BLE: fuera de rango [40, 130] requiere revisión clínica
+    const abnormal = parsed.bpm < 40 || parsed.bpm > 130;
+    const { error } = await supabase.from("heart_rate_readings" as any).upsert(
+      {
+        patient_id: targetPatientId,
+        measured_at: parsed.measured_at,
+        bpm: parsed.bpm,
+        source: "ble",
+        device_name: deviceName,
+        external_uuid,
+        requires_review: abnormal,
+        created_by: createdBy,
+        context: "otro",
       },
       { onConflict: "external_uuid" },
     );
