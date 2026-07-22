@@ -1,6 +1,30 @@
 // Edge function: coach de actividad física con Lovable AI + descuento de tokens.
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { loadPolicy, callGateway, MODEL_COSTS } from "../_shared/ai-router.ts";
+import { loadPolicy, callGateway, callApiFreeLLM, routeExternalOrFallback, MODEL_COSTS } from "../_shared/ai-router.ts";
+
+// Categoriza condiciones médicas en buckets genéricos NO identificables.
+// Usado sólo cuando la política envía datos a un proveedor externo.
+function bucketizeConditions(names: string[]): string[] {
+  const buckets = new Set<string>();
+  for (const raw of names) {
+    const n = (raw || "").toLowerCase();
+    if (/(hiperten|cardio|infart|arritm|coron|isquem|angina)/.test(n)) buckets.add("cardiovascular");
+    else if (/(diabet|obesid|metab|tiroid|colester|dislipid)/.test(n)) buckets.add("metabolico");
+    else if (/(asma|epoc|apnea|respirator|pulmon|bronqu)/.test(n)) buckets.add("respiratorio");
+    else buckets.add("otro");
+  }
+  return Array.from(buckets);
+}
+
+function bucketSteps(n: number): string { return n < 3000 ? "bajo" : n < 7500 ? "medio" : "alto"; }
+function bucketHr(n: number): string { return !n ? "sin_dato" : n < 60 ? "bajo" : n <= 90 ? "normal" : "elevado"; }
+function bucketSpo2(n: number): string { return !n ? "sin_dato" : n < 92 ? "bajo" : n < 95 ? "limite" : "normal"; }
+function bucketBp(sys: number, dia: number): string {
+  if (!sys) return "sin_dato";
+  if (sys >= 140 || dia >= 90) return "elevada";
+  if (sys >= 130 || dia >= 85) return "limite";
+  return "normal";
+}
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -59,6 +83,7 @@ Deno.serve(async (req) => {
     const policy = await loadPolicy(admin, "activity_coach");
     const MODEL = policy.model || DEFAULT_MODEL;
     const COST = MODEL_COSTS[MODEL] ?? { input: 10, output: 80 };
+    const providerCfg = policy.provider ?? "lovable";
 
     // Verificar saldo de tokens Kari
     const { data: bal } = await admin
@@ -102,34 +127,85 @@ Deno.serve(async (req) => {
       : 0;
     const bpLast = (bpRes.data ?? [])[0];
     const workoutsCompleted = (logsRes.data ?? []).filter((l: any) => l.completed).length;
-    const conditions = (condRes.data ?? []).map((c: any) => c.condition_name).join(", ") || "ninguna registrada";
+    const conditionNames = (condRes.data ?? []).map((c: any) => c.condition_name).filter(Boolean);
+    const conditionsFull = conditionNames.join(", ") || "ninguna registrada";
+    const conditionBuckets = bucketizeConditions(conditionNames);
 
-    const contextMsg = `Contexto del paciente (últimos 14 días):
+    // Prompt detallado (con valores exactos y nombres de condiciones) — SOLO para Lovable AI interno.
+    const contextMsgDetailed = `Contexto del paciente (últimos 14 días):
 - Promedio de pasos por día: ${stepsAvg}
 - Promedio de sueño por día (min): ${sleepAvg}
 - Frecuencia cardiaca promedio: ${hrAvg} bpm
 - SpO2 promedio: ${spo2Avg}%
 - Última presión arterial: ${bpLast ? `${bpLast.systolic}/${bpLast.diastolic} mmHg` : "no registrada"}
 - Entrenamientos completados: ${workoutsCompleted}
-- Condiciones activas: ${conditions}
+- Condiciones activas: ${conditionsFull}
 - Metas actuales: pasos ${goalsRes.data?.steps_goal ?? 8000}, min activos ${goalsRes.data?.active_minutes_goal ?? 30}, sueño min ${goalsRes.data?.sleep_minutes_goal ?? 420}`;
 
-    const aiResp = await callGateway(
-      LOVABLE_API_KEY,
-      MODEL,
-      [
-        { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: contextMsg },
-      ],
-      { maxOutputTokens: policy.max_output_tokens, responseFormat: "json_object" },
-    );
-    if (!aiResp.ok) {
-      if (aiResp.status === 429) return jsonResponse({ error: "IA saturada. Intenta en unos segundos.", code: "rate_limited" }, 429);
-      if (aiResp.status === 402) return jsonResponse({ error: "Créditos IA agotados.", code: "ai_credits" }, 402);
-      console.error("AI gateway error", aiResp.status, aiResp.rawText);
-      return jsonResponse({ error: "Error del servicio de IA" }, 502);
+    // Prompt des-identificado (buckets categóricos, sin nombres de patologías) — para proveedor externo.
+    const contextMsgGeneric = `Perfil de actividad genérico (últimos 14 días):
+- Actividad diaria: ${bucketSteps(stepsAvg)} (${stepsAvg} pasos promedio)
+- Sueño diario: ${sleepAvg < 360 ? "bajo" : sleepAvg < 480 ? "normal" : "alto"}
+- Frecuencia cardiaca en reposo: ${bucketHr(hrAvg)}
+- Saturación de oxígeno: ${bucketSpo2(spo2Avg)}
+- Presión arterial: ${bucketBp(bpLast?.systolic ?? 0, bpLast?.diastolic ?? 0)}
+- Entrenamientos completados en 14 días: ${workoutsCompleted}
+- Categorías clínicas activas: ${conditionBuckets.length ? conditionBuckets.join(", ") : "ninguna"}
+- Nivel objetivo de actividad diaria: ${goalsRes.data?.steps_goal ?? 8000} pasos`;
+
+    // Si la política apunta a un proveedor externo, orquesta con governance + fallback.
+    // Si es lovable, llamada directa con el prompt detallado (comportamiento previo).
+    let content = "";
+    let providerUsed = providerCfg;
+    let fallbackUsed = false;
+
+    if (providerCfg !== "lovable") {
+      const external = async () => {
+        const endpoint = policy.external_endpoint || "https://apifreellm.com/api/chat/completions";
+        const r = await callApiFreeLLM(endpoint, MODEL, [
+          { role: "system", content: SYSTEM_PROMPT },
+          { role: "user", content: contextMsgGeneric },
+        ], { maxOutputTokens: policy.max_output_tokens, responseFormat: "json_object" });
+        return { content: r.ok ? r.content : "", status: r.ok ? "ok" : `apifreellm_${r.status}` };
+      };
+      const fallback = async () => {
+        const r = await callGateway(LOVABLE_API_KEY, "google/gemini-2.5-flash-lite", [
+          { role: "system", content: SYSTEM_PROMPT },
+          { role: "user", content: contextMsgDetailed },
+        ], { maxOutputTokens: policy.max_output_tokens, responseFormat: "json_object" });
+        return { content: r.ok ? r.content : "", status: r.ok ? "ok" : `lovable_${r.status}` };
+      };
+      const routed = await routeExternalOrFallback({
+        admin,
+        userId: user.id,
+        featureKey: "activity_coach",
+        provider: providerCfg,
+        model: MODEL,
+        rawUserPrompt: contextMsgGeneric,
+        external,
+        fallback,
+      });
+      content = routed.content || "{}";
+      providerUsed = routed.provider;
+      fallbackUsed = routed.fallbackUsed;
+    } else {
+      const aiResp = await callGateway(
+        LOVABLE_API_KEY,
+        MODEL,
+        [
+          { role: "system", content: SYSTEM_PROMPT },
+          { role: "user", content: contextMsgDetailed },
+        ],
+        { maxOutputTokens: policy.max_output_tokens, responseFormat: "json_object" },
+      );
+      if (!aiResp.ok) {
+        if (aiResp.status === 429) return jsonResponse({ error: "IA saturada. Intenta en unos segundos.", code: "rate_limited" }, 429);
+        if (aiResp.status === 402) return jsonResponse({ error: "Créditos IA agotados.", code: "ai_credits" }, 402);
+        console.error("AI gateway error", aiResp.status, aiResp.rawText);
+        return jsonResponse({ error: "Error del servicio de IA" }, 502);
+      }
+      content = aiResp.content || "{}";
     }
-    const content: string = aiResp.content || "{}";
     let parsed: any = {};
     try {
       parsed = JSON.parse(content);
@@ -137,10 +213,13 @@ Deno.serve(async (req) => {
       parsed = { summary: content };
     }
 
-    const promptTokens = aiResp.usage.prompt_tokens || Math.ceil(contextMsg.length / 3);
-    const completionTokens = aiResp.usage.completion_tokens || Math.ceil(content.length / 3);
-    const totalTokens = aiResp.usage.total_tokens || promptTokens + completionTokens;
-    const costMicros = promptTokens * COST.input + completionTokens * COST.output;
+    const usedGeneric = providerUsed !== "lovable" && !fallbackUsed;
+    const contextForCount = usedGeneric ? contextMsgGeneric : contextMsgDetailed;
+    const promptTokens = Math.ceil(contextForCount.length / 3);
+    const completionTokens = Math.ceil(content.length / 3);
+    const totalTokens = promptTokens + completionTokens;
+    // Cuando el proveedor externo respondió (gratis), no cobramos costo micros al usuario.
+    const costMicros = usedGeneric ? 0 : promptTokens * COST.input + completionTokens * COST.output;
 
     const { data: inserted } = await admin
       .from("activity_ai_suggestions")
@@ -150,7 +229,7 @@ Deno.serve(async (req) => {
         red_flags: parsed.red_flags ?? [],
         recommendations: parsed.recommendations ?? [],
         suggested_plan: parsed.suggested_plan ?? null,
-        model: MODEL,
+        model: usedGeneric ? MODEL : "google/gemini-2.5-flash-lite",
         tokens_used: totalTokens,
       })
       .select("id")
@@ -167,7 +246,7 @@ Deno.serve(async (req) => {
       cost_usd_micros: costMicros,
     });
 
-    const consume = Math.min(totalTokens, balance);
+    const consume = usedGeneric ? 0 : Math.min(totalTokens, balance);
     await admin.rpc("consume_ai_tokens", { _user_id: user.id, _tokens: consume });
 
     return jsonResponse({
@@ -175,6 +254,8 @@ Deno.serve(async (req) => {
       ...parsed,
       tokens_used: totalTokens,
       remaining: balance - consume,
+      provider: providerUsed,
+      fallback_used: fallbackUsed,
     });
   } catch (e) {
     console.error("ai-activity-coach error", e);

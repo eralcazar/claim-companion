@@ -163,6 +163,29 @@ export default function Legal() {
                 Publicaremos cualquier cambio en esta misma página y, cuando sea relevante, te
                 avisaremos en la aplicación.
               </p>
+
+              <h3>9. Proveedores de IA</h3>
+              <p>
+                Por defecto, todas las funciones de inteligencia artificial de CareCentral se
+                procesan a través de <strong>Lovable AI</strong> (proveedor interno con Google
+                Gemini) bajo acuerdos de confidencialidad.
+              </p>
+              <p>
+                Algunas funciones puramente educativas —como el <strong>Glosario educativo</strong>
+                y opcionalmente el <strong>Coach de actividad</strong>— pueden configurarse para
+                usar el proveedor externo <strong>ApiFreeLLM</strong>. En esos casos:
+              </p>
+              <ul>
+                <li>Los prompts se <strong>sanitizan</strong> antes de salir: se remueven CURP,
+                RFC, correo, teléfono, direcciones, fechas y números largos.</li>
+                <li>Nunca se envían nombres de patologías específicas ni datos identificables del
+                paciente al proveedor externo.</li>
+                <li>Requiere tu <strong>consentimiento explícito</strong> por función desde{" "}
+                <Link to="/mis-datos-ia" className="underline">Mis datos y IA</Link>. Puedes
+                revocarlo en cualquier momento y la función volverá a usar Lovable AI de inmediato.</li>
+                <li>Si el consentimiento no está activo, o si el kill switch de administración
+                está encendido, ningún dato tuyo sale a proveedores externos.</li>
+              </ul>
             </TabsContent>
           </Tabs>
         </CardContent>

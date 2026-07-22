@@ -6,10 +6,27 @@ import { toast } from "@/hooks/use-toast";
 export const AI_FEATURES = [
   { key: "kari_chat", label: "Kari (chat clínico)" },
   { key: "activity_coach", label: "Coach de actividad" },
+  { key: "glossary", label: "Glosario educativo" },
   { key: "ocr_estudios", label: "OCR de estudios" },
   { key: "ocr_formularios", label: "OCR de formularios aseguradora" },
   { key: "field_mapping", label: "Sugerencia de mapeo de campos" },
 ] as const;
+
+// ────────────── Proveedor configurado por admin para cada feature ──────────────
+export function useAiPolicyProviders() {
+  return useQuery({
+    queryKey: ["ai_provider_policy", "providers"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("ai_provider_policy" as any)
+        .select("feature_key, provider");
+      if (error) throw error;
+      const map = new Map<string, string>();
+      for (const r of (data ?? []) as any[]) map.set(r.feature_key, r.provider ?? "lovable");
+      return map;
+    },
+  });
+}
 
 // ────────────── Kill switch global (admin) ──────────────
 export function useExternalProvidersEnabled() {
