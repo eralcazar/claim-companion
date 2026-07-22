@@ -100,14 +100,16 @@ export default function StepsMonitor() {
   const save = useMutation({
     mutationFn: async () => {
       if (!patientId) throw new Error("Sin sesión");
-      const payload: Record<string, unknown> = {
+      const payload = {
         patient_id: patientId,
         fecha: form.fecha,
         source: "manual",
         steps: Math.max(0, Math.round(form.steps)),
+        active_minutes:
+          form.active_minutes === "" ? undefined : Math.max(0, Math.round(Number(form.active_minutes))),
+        calories:
+          form.calories === "" ? undefined : Math.max(0, Math.round(Number(form.calories))),
       };
-      if (form.active_minutes !== "") payload.active_minutes = Math.max(0, Math.round(Number(form.active_minutes)));
-      if (form.calories !== "") payload.calories = Math.max(0, Math.round(Number(form.calories)));
       const { error } = await supabase
         .from("activity_readings")
         .upsert(payload, { onConflict: "patient_id,fecha,source" });
