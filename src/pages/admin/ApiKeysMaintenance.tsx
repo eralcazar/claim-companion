@@ -7,6 +7,8 @@ import { KeyRound, RefreshCw, CheckCircle2, XCircle, Loader2, Copy, ShieldAlert,
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
+import { useExternalProviders } from "@/hooks/useAiPolicies";
+import { Link } from "react-router-dom";
 
 type SecretStatus = {
   name: string;
@@ -171,6 +173,7 @@ function formatRelative(iso: string | null | undefined): string {
 
 export default function ApiKeysMaintenance() {
   const { roles } = useAuth();
+  const { data: externalProviders } = useExternalProviders();
   const [loading, setLoading] = useState(true);
   const [secrets, setSecrets] = useState<SecretStatus[]>([]);
   const [checkedAt, setCheckedAt] = useState<string | null>(null);
@@ -480,6 +483,59 @@ export default function ApiKeysMaintenance() {
                     {s.last_test_error.slice(0, 300)}
                   </p>
                 )}
+                {(() => {
+                  // Validación: proveedor configurado pero sin catálogo de modelos.
+                  // Alerta y sugiere sincronizar o usar "Estándar (auto)".
+                  const providerRow = externalProviders?.find((p) => p.id === meta.provider);
+                  const emptyModels = !!providerRow && providerRow.models.length === 0;
+                  if (!s.configured || !emptyModels) return null;
+                  const usingStandard = providerRow?.default_model === "standard";
+                  return (
+                    <div className="rounded-md border border-amber-500/40 bg-amber-500/5 p-3 text-xs space-y-2">
+                      <div className="flex items-start gap-2">
+                        <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                        <div className="space-y-1">
+                          <p className="font-semibold text-amber-900 dark:text-amber-200">
+                            Catálogo de modelos vacío para {meta.label}
+                          </p>
+                          <p className="text-muted-foreground">
+                            El proveedor está configurado pero no tiene modelos sincronizados. Las políticas de IA
+                            que lo usen no podrán elegir modelo específico.
+                          </p>
+                          <p className="text-muted-foreground">
+                            <span className="font-semibold">Recomendación:</span> presiona{" "}
+                            <em>Sincronizar modelos</em> para traer el catálogo en vivo, o deja el modelo por
+                            defecto en <span className="font-mono">standard</span> (“Estándar (auto)”) para que
+                            el endpoint elija automáticamente.
+                          </p>
+                          {usingStandard && (
+                            <p className="text-emerald-700 dark:text-emerald-400">
+                              Ya estás usando <span className="font-mono">Estándar (auto)</span> como modelo por defecto.
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex gap-2 flex-wrap pt-1">
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => runSync(s.name)}
+                          disabled={syncing[s.name]}
+                        >
+                          {syncing[s.name] ? (
+                            <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                          ) : (
+                            <ListTree className="h-3.5 w-3.5 mr-1" />
+                          )}
+                          Sincronizar modelos ahora
+                        </Button>
+                        <Button size="sm" variant="outline" asChild>
+                          <Link to="/admin/ai-policies">Abrir políticas de IA</Link>
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })()}
                 {meta.docs && (
                   <p className="text-xs text-muted-foreground">
                     Obtén tu API key en{" "}
