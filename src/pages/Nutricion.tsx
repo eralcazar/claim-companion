@@ -29,6 +29,8 @@ import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { MealPlanTab } from "@/components/nutricion/MealPlanTab";
+import { RecipesList } from "@/components/nutricion/RecipesList";
+import { NutritionAiPanel } from "@/components/nutricion/NutritionAiPanel";
 
 const COLOR_META: Record<FoodTrafficItem["color"], { label: string; cls: string; chip: string }> = {
   verde: { label: "Verde — consumo libre", cls: "border-success/30 bg-success/10", chip: "bg-success/20 text-success" },
@@ -552,6 +554,8 @@ export default function Nutricion() {
           <TabsTrigger value="metricas">Métricas</TabsTrigger>
           <TabsTrigger value="plan">Plan semanal</TabsTrigger>
           <TabsTrigger value="semaforo">Semáforo de alimentos</TabsTrigger>
+          <TabsTrigger value="recetas">Recetas</TabsTrigger>
+          <TabsTrigger value="ia">Coach IA</TabsTrigger>
         </TabsList>
         <TabsContent value="metricas" className="mt-4">
           <MetricsTab patientId={selectedPatient} canEditAll={canEditAllMetrics} />
@@ -565,6 +569,12 @@ export default function Nutricion() {
         </TabsContent>
         <TabsContent value="semaforo" className="mt-4">
           <FoodTrafficTab patientId={selectedPatient} canEdit={canEditFood} />
+        </TabsContent>
+        <TabsContent value="recetas" className="mt-4">
+          <RecipesList patientId={selectedPatient} />
+        </TabsContent>
+        <TabsContent value="ia" className="mt-4">
+          <NutritionAiPanel patientId={selectedPatient} />
         </TabsContent>
       </Tabs>
     </div>

@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Loader2, Plus, RefreshCw, BookOpen, Sparkles, Languages } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { KnowledgeReindexPanel } from "@/components/admin/KnowledgeReindexPanel";
 
 type Doc = {
   id: string;
@@ -90,6 +91,8 @@ export default function KnowledgeBase() {
         </div>
         <DocDialog onSaved={load} />
       </div>
+
+      <KnowledgeReindexPanel />
 
       <Card>
         <CardContent className="flex flex-col gap-2 pt-4 md:flex-row">
