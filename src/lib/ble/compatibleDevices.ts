@@ -436,6 +436,24 @@ export const COMPATIBLE_DEVICES: CompatibleDevice[] = [
     tested: true,
     notes:
       "Verificada por el equipo CareCentral: usa Mi Fitness y el puente Google Health Connect igual que la Band 9 ya verificada. Se validaron lecturas de frecuencia cardiaca, SpO2, actividad y sueño en Android 14.",
+    readingReliability: {
+      heart_rate: {
+        level: "reference",
+        note: "Sensor óptico de muñeca: buena tendencia en reposo, menor precisión en ejercicio intenso o arritmias.",
+      },
+      spo2: {
+        level: "informational",
+        note: "Medición puntual bajo demanda; no válida para diagnóstico. Confirmar con oxímetro dedicado si el valor es <94%.",
+      },
+      activity: {
+        level: "reference",
+        note: "Pasos y calorías estimadas por acelerómetro; útiles para seguimiento diario.",
+      },
+      sleep: {
+        level: "informational",
+        note: "Estimación por movimiento + frecuencia cardiaca; no equivale a polisomnografía.",
+      },
+    },
   },
   {
     id: "haylou-rs4-plus",
