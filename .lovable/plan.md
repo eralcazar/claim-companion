@@ -1,93 +1,123 @@
-# Plan: Diagnóstico avanzado de dispositivos wearables
 
-Cinco entregables sobre el módulo de dispositivos/salud existente (`WearableConnectionTest`, `useHealthDevices`, `/dispositivos`). Todo se apila sin tocar los monitores clínicos actuales.
+# Ampliación de conectividad de dispositivos
 
-## 1. Historial de pruebas de conexión
-- Nueva tabla `wearable_connection_tests` (id, user_id, tested_at, platform, availability, overall_status, duration_ms, notes) + tabla hija `wearable_connection_test_metrics` (test_id, metric, status, samples_count, last_value, last_at, error_code, error_message).
-- Grants + RLS por `user_id`.
-- Hook `useConnectionTestHistory` (list/insert). `WearableConnectionTest` guarda cada corrida al terminar.
-- Pestaña **Historial** en `/dispositivos` con lista por fecha, chips por métrica (FC, pasos, sueño, SpO₂) y expand con detalle de error.
+Cuatro entregables independientes bajo `/dispositivos`, sin tocar monitores clínicos existentes ni el parser BLE actual de presión/oximetría.
 
-## 2. Reintentos automáticos de sync (Health Connect / Apple Health)
-- Ampliar `useHealthDevices` con `useAutoRetrySync`: cuando `sync.mutateAsync` falla, agenda reintento exponencial (30s → 2m → 5m → 15m, máx 4 intentos) usando `setTimeout` + estado persistido en `localStorage` (clave por user).
-- Se cancela al éxito manual o al desmontar. Cada intento registra un test en la tabla del punto 1 con motivo del fallo.
-- Nuevo componente `AutoRetryStatusCard` que muestra: estado (esperando/reintentando/éxito/agotado), próximo intento, último motivo y botón "Reintentar ya" / "Cancelar reintentos".
-- Se monta en `SyncStatusCard` como sección extra cuando `sync.isError`.
+---
 
-## 3. Informe PDF de la prueba
-- `WearableConnectionTestPdf.tsx` con `jspdf` (ya usado en `MonitorPdfExport`): encabezado CareCentral, fecha, plataforma, resumen de compatibilidad y tabla por métrica (detectada/sin datos/error, samples, último valor, timestamp, código de error). Sección "Para soporte" con id de prueba, versión app, user agent.
-- Botón "Descargar PDF" en el resultado de `WearableConnectionTest` y en cada fila del historial.
+## 1. Catálogo ampliado de dispositivos clínicos BLE
 
-## 4. Multi-dispositivo con preferencia por métrica
-- Nueva tabla `user_metric_device_preferences` (user_id, metric, device_id, priority) + grants/RLS.
-- Hook `useMetricDevicePreferences` (get/set).
-- Componente `MetricDeviceRouter` en `/dispositivos` pestaña **Preferencias**: por cada métrica (FC, pasos, sueño, SpO₂) selector con dispositivos emparejados (desde `useBlePairings` + `patient_ble_pairings` + `user_device_verifications`).
-- `useUnifiedReadings` respeta la preferencia: si hay duplicados en el mismo timestamp (±60s), se queda con el del dispositivo prioritario. Sin preferencia → comportamiento actual (unión).
+Editar `src/lib/ble/compatibleDevices.ts` para agregar fichas con métricas soportadas explícitas.
 
-## 5. Modo verificación extendida
-- Botón "Verificación extendida" en `WearableConnectionTest`. Ejecuta 3 pruebas espaciadas: 5, 15 y 60 minutos (configurable). Persistente ante recarga vía `localStorage` (ejecuciones programadas + `Notification API` cuando esté permitido).
-- Resumen final `ExtendedVerificationSummary`: matriz métrica × intervalo con primera aparición, cadencia estimada, gaps. Guardado como una serie de tests enlazados por `run_id` (columna nueva `run_id uuid` en `wearable_connection_tests`).
+**Nuevos dispositivos** (todos con servicio GATT estándar, marcar `verified` los conocidos y `probable` el resto):
 
-## Sección técnica
+- **Oxímetros** (servicio `0x1822` Pulse Oximeter):
+  - Wellue O2Ring (anillo continuo nocturno) — verified
+  - Wellue Checkme O2 Max — probable
+  - Viatom PC-60FW — probable
+  - Contec CMS50D-BT — probable
+
+- **Tensiómetros** (servicio `0x1810` Blood Pressure) — complementar los ya existentes:
+  - A&D UA-651BLE — probable
+  - iHealth Track KN-550BT — probable
+  - Beurer BM 81 easyLock — probable
+
+- **Anillos / sensores continuos**:
+  - Wellue O2Ring Gen2 — verified
+  - Circul+ Ring — probable (SpO₂ + FC)
+
+- **Cinturones/bandas de pecho FC** (servicio `0x180D` Heart Rate) — nueva subcategoría:
+  - Polar H10 — verified
+  - Polar H9 — verified
+  - Garmin HRM-Pro Plus — probable
+  - Wahoo TICKR / TICKR X — probable
+  - CooSpo H6/H808S — probable
+
+**Cambio de esquema del catálogo:** agregar campo `metrics: MetricKey[]` a cada entrada (`heart_rate | spo2 | blood_pressure | temperature | glucose`) y `category: "watch" | "band" | "oximeter" | "bp" | "ring" | "chest_strap" | "thermometer" | "glucometer"`.
+
+Actualizar `DispositivosCompatibles.tsx` para mostrar chips de métricas y un filtro por categoría.
+
+---
+
+## 2. Asistente Health Connect (Xiaomi / Samsung)
+
+Nuevo componente `src/components/health/HealthConnectSetupWizard.tsx` — modal multi-paso con imágenes/iconos y checkboxes de confirmación. Pasos:
+
+1. Instalar Health Connect (Play Store) — solo Android 13-. En Android 14+ ya viene integrado.
+2. Instalar la app puente (**Mi Fitness** para Xiaomi / **Samsung Health** para Samsung/Galaxy).
+3. Emparejar el wearable dentro de la app puente y sincronizar una vez.
+4. Abrir Health Connect → **Apps y permisos** → habilitar la app puente para lectura+escritura de FC, SpO₂, pasos, sueño.
+5. Autorizar CareCentral (botón en el wizard que dispara `requestHealthPermissions()`).
+6. Correr una **prueba de conexión** integrada (llama al `WearableConnectionTest` existente) y mostrar qué métricas llegaron.
+
+Persistir "wizard completado" en `localStorage`. Entrada desde `/dispositivos` (nueva pestaña **Asistente**) y también como CTA en la ficha de dispositivos Xiaomi/Samsung.
+
+Variantes: si el usuario está en iOS mostrar aviso "En iPhone se usa Apple Health" y saltar al wizard equivalente ya existente. Si está en web mostrar "Requiere la app móvil de CareCentral".
+
+---
+
+## 3. Soporte BLE directo para Heart Rate GATT (0x180D)
+
+Extender `src/lib/ble/` con un nuevo parser sin tocar los actuales:
+
+- Nuevo archivo `src/lib/ble/heartRate.ts`:
+  - Función `connectHeartRateSensor()` que usa `navigator.bluetooth.requestDevice({ filters: [{ services: ['heart_rate'] }] })`.
+  - Suscribe a la característica `heart_rate_measurement` (notify) y decodifica el flag byte + BPM (uint8 o uint16 según flag) + intervalos RR opcionales.
+  - Callback `onReading({ bpm, rrIntervals, contact, timestamp })`.
+  - Manejo de desconexión (`gattserverdisconnected`) con auto-reconnect opcional.
+
+- Nuevo componente `src/components/ble/HeartRateLiveMonitor.tsx`:
+  - Botón "Conectar sensor" → muestra BPM en vivo, gráfica sparkline de últimos 60s, indicador de contacto.
+  - Botón "Guardar sesión" → inserta en `heart_rate_readings` con `source='ble_direct'`, `device_name` del dispositivo.
+  - Botón "Detener".
+
+- Integración: agregar la tarjeta en `HeartRateMonitor.tsx` como sección "Sensor BLE en vivo" (colapsable), sin alterar el registro manual ni el histórico.
+
+---
+
+## 4. Verificador de compatibilidad BLE directo
+
+Nueva pestaña **BLE directo** en `/dispositivos` que ejecuta un chequeo del entorno:
+
+Nuevo componente `src/components/ble/DirectBleChecker.tsx` que evalúa:
+
+- ✅/❌ Web Bluetooth disponible (`navigator.bluetooth`).
+- ✅/❌ HTTPS o localhost (requisito de la Web Bluetooth API).
+- ✅/❌ Plataforma (Chrome/Edge Android o desktop = OK; iOS Safari = no soportado).
+- ✅/❌ Permisos otorgados previamente (`navigator.bluetooth.getAvailability()`).
+- Lista de servicios GATT que CareCentral sabe leer (presión, oximetría, FC, termómetro, glucosa) con su estado (parser implementado / pendiente).
+
+Botón **"Escanear dispositivo cercano"** que reutiliza la lógica existente en `BleCompatibilityCheck.tsx` pero extiende la detección para reportar cuál de los parsers de CareCentral podría manejarlo. Muestra un resultado tipo:
 
 ```text
-src/
-  hooks/
-    useConnectionTestHistory.ts        (nuevo)
-    useAutoRetrySync.ts                (nuevo)
-    useMetricDevicePreferences.ts      (nuevo)
-    useExtendedVerification.ts         (nuevo)
-    useHealthDevices.ts                (extensión: onError → useAutoRetrySync)
-    useUnifiedReadings.ts              (dedup respetando preferencias)
-  components/health/
-    WearableConnectionTest.tsx         (persiste cada corrida, botón PDF, botón extendida)
-    WearableConnectionTestPdf.tsx      (nuevo)
-    ConnectionTestHistoryList.tsx      (nuevo)
-    AutoRetryStatusCard.tsx            (nuevo)
-    MetricDeviceRouter.tsx             (nuevo)
-    ExtendedVerificationSummary.tsx    (nuevo)
-    SyncStatusCard.tsx                 (integra AutoRetryStatusCard)
-  pages/DispositivosCompatibles.tsx    (pestañas: Catálogo · Probar · Historial · Preferencias)
+Dispositivo detectado: Polar H10
+Servicio: Heart Rate (0x180D)  → parser disponible ✅
+Acción: Conectar en "Frecuencia cardiaca → Sensor BLE en vivo"
 ```
 
-Migración SQL (esquema resumido):
+Si el dispositivo expone servicio propietario, sugiere el flujo puente (Health Connect / Apple Health) con link al wizard del punto 2.
 
-```sql
-CREATE TABLE public.wearable_connection_tests (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  run_id uuid,                     -- agrupa verificación extendida
-  tested_at timestamptz NOT NULL DEFAULT now(),
-  platform text,                   -- ios|android|web
-  availability boolean,
-  overall_status text NOT NULL,    -- ok|partial|error
-  duration_ms integer,
-  trigger text,                    -- manual|auto_retry|extended
-  notes text
-);
-CREATE TABLE public.wearable_connection_test_metrics (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  test_id uuid NOT NULL REFERENCES public.wearable_connection_tests(id) ON DELETE CASCADE,
-  metric text NOT NULL,            -- heart_rate|steps|sleep|spo2
-  status text NOT NULL,            -- ok|warn|error
-  samples_count integer DEFAULT 0,
-  last_value numeric,
-  last_at timestamptz,
-  error_code text,
-  error_message text
-);
-CREATE TABLE public.user_metric_device_preferences (
-  user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  metric text NOT NULL,
-  device_id text NOT NULL,
-  priority integer NOT NULL DEFAULT 1,
-  updated_at timestamptz NOT NULL DEFAULT now(),
-  PRIMARY KEY (user_id, metric, device_id)
-);
--- GRANT SELECT,INSERT,UPDATE,DELETE ... TO authenticated; GRANT ALL ... TO service_role;
--- RLS: (user_id = auth.uid()) en todas; hija enlaza por test_id.
-```
+---
 
-## Fuera de alcance
-- No se toca la lógica de parseo BLE, ni el catálogo de dispositivos, ni los monitores clínicos.
-- Sin reintentos server-side (todo client-side con `localStorage`), suficiente para Health Connect/HealthKit que corren en el dispositivo.
+## Detalles técnicos
+
+**Archivos nuevos**
+- `src/lib/ble/heartRate.ts`
+- `src/components/ble/HeartRateLiveMonitor.tsx`
+- `src/components/health/HealthConnectSetupWizard.tsx`
+- `src/components/ble/DirectBleChecker.tsx`
+
+**Archivos modificados**
+- `src/lib/ble/compatibleDevices.ts` — nuevas entradas + campos `metrics`, `category`
+- `src/pages/DispositivosCompatibles.tsx` — nuevas pestañas **Asistente** y **BLE directo**, filtro por categoría
+- `src/pages/HeartRateMonitor.tsx` — sección colapsable con `HeartRateLiveMonitor`
+- `src/components/ble/BleCompatibilityCheck.tsx` — extender resultado para mapear servicio → parser disponible
+
+**Datos**
+- No hay cambios de esquema en la base. Las lecturas del sensor HR BLE se insertan en la tabla `heart_rate_readings` existente usando `source='ble_direct'`.
+
+**Fuera de alcance**
+- No se modifican los parsers de presión/oximetría existentes.
+- No se agrega parseo de Xiaomi/Samsung propietario (imposible sin ingeniería inversa).
+- No se toca el módulo de ejercicios ni el AI coach.
+- No se agregan glucómetros nuevos (el catálogo GATT 0x1808 queda como está).
