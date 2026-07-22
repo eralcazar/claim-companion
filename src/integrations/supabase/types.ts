@@ -842,6 +842,8 @@ export type Database = {
           is_telemedicine: boolean
           meeting_url: string | null
           notes: string | null
+          reminder_1h_sent_at: string | null
+          reminder_24h_sent_at: string | null
           reminder_enabled: boolean
           reminder_minutes_before: number | null
           reminder_sent_at: string | null
@@ -862,6 +864,8 @@ export type Database = {
           is_telemedicine?: boolean
           meeting_url?: string | null
           notes?: string | null
+          reminder_1h_sent_at?: string | null
+          reminder_24h_sent_at?: string | null
           reminder_enabled?: boolean
           reminder_minutes_before?: number | null
           reminder_sent_at?: string | null
@@ -882,6 +886,8 @@ export type Database = {
           is_telemedicine?: boolean
           meeting_url?: string | null
           notes?: string | null
+          reminder_1h_sent_at?: string | null
+          reminder_24h_sent_at?: string | null
           reminder_enabled?: boolean
           reminder_minutes_before?: number | null
           reminder_sent_at?: string | null
@@ -3550,6 +3556,8 @@ export type Database = {
           quiet_hours_enabled: boolean
           quiet_hours_end: string | null
           quiet_hours_start: string | null
+          remind_appointment_1h: boolean
+          remind_appointment_24h: boolean
           reminders: boolean
           system_messages: boolean
           updated_at: string
@@ -3561,6 +3569,8 @@ export type Database = {
           quiet_hours_enabled?: boolean
           quiet_hours_end?: string | null
           quiet_hours_start?: string | null
+          remind_appointment_1h?: boolean
+          remind_appointment_24h?: boolean
           reminders?: boolean
           system_messages?: boolean
           updated_at?: string
@@ -3572,6 +3582,8 @@ export type Database = {
           quiet_hours_enabled?: boolean
           quiet_hours_end?: string | null
           quiet_hours_start?: string | null
+          remind_appointment_1h?: boolean
+          remind_appointment_24h?: boolean
           reminders?: boolean
           system_messages?: boolean
           updated_at?: string
@@ -3683,6 +3695,104 @@ export type Database = {
           id?: string
           notas?: string | null
           patient_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      nutrition_meal_plan_items: {
+        Row: {
+          alimento: string
+          alternativas: Json
+          created_at: string
+          dia_semana: number
+          id: string
+          kcal: number | null
+          momento: string
+          orden: number
+          plan_id: string
+          porcion: string | null
+          unidad: string | null
+          updated_at: string
+        }
+        Insert: {
+          alimento: string
+          alternativas?: Json
+          created_at?: string
+          dia_semana: number
+          id?: string
+          kcal?: number | null
+          momento: string
+          orden?: number
+          plan_id: string
+          porcion?: string | null
+          unidad?: string | null
+          updated_at?: string
+        }
+        Update: {
+          alimento?: string
+          alternativas?: Json
+          created_at?: string
+          dia_semana?: number
+          id?: string
+          kcal?: number | null
+          momento?: string
+          orden?: number
+          plan_id?: string
+          porcion?: string | null
+          unidad?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nutrition_meal_plan_items_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "nutrition_meal_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      nutrition_meal_plans: {
+        Row: {
+          activo: boolean
+          created_at: string
+          created_by: string
+          fecha_fin: string | null
+          fecha_inicio: string
+          id: string
+          kcal_objetivo: number | null
+          notas: string | null
+          patient_id: string
+          professional_id: string | null
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          activo?: boolean
+          created_at?: string
+          created_by?: string
+          fecha_fin?: string | null
+          fecha_inicio?: string
+          id?: string
+          kcal_objetivo?: number | null
+          notas?: string | null
+          patient_id: string
+          professional_id?: string | null
+          titulo?: string
+          updated_at?: string
+        }
+        Update: {
+          activo?: boolean
+          created_at?: string
+          created_by?: string
+          fecha_fin?: string | null
+          fecha_inicio?: string
+          id?: string
+          kcal_objetivo?: number | null
+          notas?: string | null
+          patient_id?: string
+          professional_id?: string | null
+          titulo?: string
           updated_at?: string
         }
         Relationships: []

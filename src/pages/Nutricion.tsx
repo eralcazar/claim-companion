@@ -28,6 +28,7 @@ import {
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { MealPlanTab } from "@/components/nutricion/MealPlanTab";
 
 const COLOR_META: Record<FoodTrafficItem["color"], { label: string; cls: string; chip: string }> = {
   verde: { label: "Verde — consumo libre", cls: "border-success/30 bg-success/10", chip: "bg-success/20 text-success" },
@@ -549,10 +550,18 @@ export default function Nutricion() {
       <Tabs defaultValue="metricas">
         <TabsList>
           <TabsTrigger value="metricas">Métricas</TabsTrigger>
+          <TabsTrigger value="plan">Plan semanal</TabsTrigger>
           <TabsTrigger value="semaforo">Semáforo de alimentos</TabsTrigger>
         </TabsList>
         <TabsContent value="metricas" className="mt-4">
           <MetricsTab patientId={selectedPatient} canEditAll={canEditAllMetrics} />
+        </TabsContent>
+        <TabsContent value="plan" className="mt-4">
+          <MealPlanTab
+            patientId={selectedPatient}
+            patientName={patientOptions.find((p) => p.id === selectedPatient)?.name ?? "Paciente"}
+            canEdit={canEditFood || roles.includes("medico")}
+          />
         </TabsContent>
         <TabsContent value="semaforo" className="mt-4">
           <FoodTrafficTab patientId={selectedPatient} canEdit={canEditFood} />
