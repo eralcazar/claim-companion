@@ -57,6 +57,7 @@ const dispositivosItems: Item[] = [
 
 const cuentaItems: Item[] = [
   { title: "Perfil", url: "/perfil", icon: User, feature: "perfil" },
+  { title: "Mis datos y IA", url: "/mis-datos-ia", icon: Shield, feature: "perfil" },
 ];
 
 const brokerItems: Item[] = [
