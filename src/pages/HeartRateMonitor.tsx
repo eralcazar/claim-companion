@@ -21,6 +21,9 @@ import { MonitorPdfExport } from "@/components/health/MonitorPdfExport";
 import { EnabledMonitorsCard } from "@/components/health/EnabledMonitorsCard";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { useMonitorHealth } from "@/hooks/useMonitorHealth";
+import { MonitorAlertsCard } from "@/components/health/MonitorAlertsCard";
+import { SyncStatusPill } from "@/components/health/SyncStatusPill";
 
 const RANGES = [
   { key: "1", label: "24 h" },
@@ -120,6 +123,13 @@ export default function HeartRateMonitor() {
 
   const recent = (hr.data ?? []).slice(0, 20);
 
+  const { syncStatus, lastReadingAt, alerts } = useMonitorHealth({
+    points: dailyAvg.map((d) => ({ fecha: d.fecha, value: d.value, source: d.source })),
+    rangeDays: Number(rangeDays),
+    hardLow: 40, hardHigh: 180,
+    label: "frecuencia cardíaca", unit: "bpm",
+  });
+
   return (
     <div className="container mx-auto py-6 space-y-6 max-w-6xl">
       <header className="flex flex-wrap items-start justify-between gap-3">
@@ -154,6 +164,17 @@ export default function HeartRateMonitor() {
       <HrAlertsBanner readings={readings} />
 
       <EnabledMonitorsCard />
+
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <SyncStatusPill
+          status={syncStatus}
+          lastReadingAt={lastReadingAt}
+          onRetry={() => refetch()}
+          retrying={isLoading}
+          deviceLabel={dailyAvg[dailyAvg.length - 1]?.device ?? null}
+        />
+      </div>
+      <MonitorAlertsCard alerts={alerts} />
 
       <Card>
         <CardContent className="p-3 flex flex-wrap gap-2 items-end">

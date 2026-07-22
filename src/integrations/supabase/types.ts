@@ -4235,6 +4235,42 @@ export type Database = {
         }
         Relationships: []
       }
+      nutrition_ingredients_catalog: {
+        Row: {
+          carbs_g: number
+          created_at: string
+          fat_g: number
+          fiber_g: number
+          id: string
+          is_public: boolean
+          kcal_100g: number
+          name: string
+          protein_g: number
+        }
+        Insert: {
+          carbs_g?: number
+          created_at?: string
+          fat_g?: number
+          fiber_g?: number
+          id?: string
+          is_public?: boolean
+          kcal_100g?: number
+          name: string
+          protein_g?: number
+        }
+        Update: {
+          carbs_g?: number
+          created_at?: string
+          fat_g?: number
+          fiber_g?: number
+          id?: string
+          is_public?: boolean
+          kcal_100g?: number
+          name?: string
+          protein_g?: number
+        }
+        Relationships: []
+      }
       nutrition_meal_plan_items: {
         Row: {
           alimento: string
@@ -4386,6 +4422,69 @@ export type Database = {
           peso_seco_kg?: number | null
           recorded_at?: string
           talla_cm?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      nutrition_recipes: {
+        Row: {
+          attribution: string | null
+          created_at: string
+          id: string
+          ingredients: Json
+          notes: string | null
+          patient_id: string
+          servings: number
+          source_author: string | null
+          source_type: string
+          source_url: string | null
+          steps: string | null
+          title: string
+          total_carbs_g: number
+          total_fat_g: number
+          total_fiber_g: number
+          total_kcal: number
+          total_protein_g: number
+          updated_at: string
+        }
+        Insert: {
+          attribution?: string | null
+          created_at?: string
+          id?: string
+          ingredients?: Json
+          notes?: string | null
+          patient_id: string
+          servings?: number
+          source_author?: string | null
+          source_type: string
+          source_url?: string | null
+          steps?: string | null
+          title: string
+          total_carbs_g?: number
+          total_fat_g?: number
+          total_fiber_g?: number
+          total_kcal?: number
+          total_protein_g?: number
+          updated_at?: string
+        }
+        Update: {
+          attribution?: string | null
+          created_at?: string
+          id?: string
+          ingredients?: Json
+          notes?: string | null
+          patient_id?: string
+          servings?: number
+          source_author?: string | null
+          source_type?: string
+          source_url?: string | null
+          steps?: string | null
+          title?: string
+          total_carbs_g?: number
+          total_fat_g?: number
+          total_fiber_g?: number
+          total_kcal?: number
+          total_protein_g?: number
           updated_at?: string
         }
         Relationships: []

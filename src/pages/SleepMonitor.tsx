@@ -16,6 +16,9 @@ import { DailySeriesChart } from "@/components/health/DailySeriesChart";
 import { MonitorPdfExport } from "@/components/health/MonitorPdfExport";
 import { EnabledMonitorsCard } from "@/components/health/EnabledMonitorsCard";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useMonitorHealth } from "@/hooks/useMonitorHealth";
+import { MonitorAlertsCard } from "@/components/health/MonitorAlertsCard";
+import { SyncStatusPill } from "@/components/health/SyncStatusPill";
 
 type Row = {
   fecha: string;
@@ -41,7 +44,7 @@ export default function SleepMonitor() {
   const [sourceFilter, setSourceFilter] = useState<string>("all");
   const [deviceFilter, setDeviceFilter] = useState<string>("all");
 
-  const { data: rows = [], isLoading } = useQuery({
+  const { data: rows = [], isLoading, refetch, isFetching } = useQuery({
     queryKey: ["sleep-monitor", patientId, rangeDays],
     enabled: !!patientId,
     queryFn: async (): Promise<Row[]> => {
@@ -111,6 +114,13 @@ export default function SleepMonitor() {
 
   const lastNight = byDay.length ? byDay[byDay.length - 1] : null;
 
+  const { syncStatus, lastReadingAt, alerts } = useMonitorHealth({
+    points: byDay.map((d) => ({ fecha: d.fecha, value: d.value, source: d.source ?? null })),
+    rangeDays,
+    hardLow: 3, hardHigh: 14,
+    label: "sueño", unit: "h",
+  });
+
   const save = useMutation({
     mutationFn: async () => {
       if (!patientId) throw new Error("Sin sesión");
@@ -157,6 +167,17 @@ export default function SleepMonitor() {
       </header>
 
       <EnabledMonitorsCard />
+
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <SyncStatusPill
+          status={syncStatus}
+          lastReadingAt={lastReadingAt}
+          onRetry={() => refetch()}
+          retrying={isFetching}
+          deviceLabel={lastNight?.device ?? null}
+        />
+      </div>
+      <MonitorAlertsCard alerts={alerts} />
 
       <Card>
         <CardContent className="p-3 flex flex-wrap gap-2 items-end">
