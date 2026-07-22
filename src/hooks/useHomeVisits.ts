@@ -71,3 +71,61 @@ export function useAcceptHomeVisit() {
     onError: (e: any) => toast.error(e.message ?? "Error"),
   });
 }
+
+export function useRejectHomeVisit() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, motivo }: { id: string; motivo: string }) => {
+      const { error } = await supabase
+        .from("home_visit_requests" as any)
+        .update({ estado: "rechazada", motivo_rechazo: motivo })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["home_visits"] });
+      toast.success("Solicitud rechazada");
+    },
+    onError: (e: any) => toast.error(e.message ?? "Error"),
+  });
+}
+
+export function useSetHomeVisitState() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, estado }: { id: string; estado: string }) => {
+      const { error } = await supabase
+        .from("home_visit_requests" as any)
+        .update({ estado })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["home_visits"] }),
+    onError: (e: any) => toast.error(e.message ?? "Error"),
+  });
+}
+
+export type HomeVisitEvent = {
+  id: string;
+  visit_id: string;
+  actor_id: string | null;
+  event: string;
+  metadata: Record<string, any>;
+  created_at: string;
+};
+
+export function useVisitEvents(visitId: string | null | undefined) {
+  return useQuery({
+    queryKey: ["home_visit_events", visitId],
+    enabled: !!visitId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("home_visit_events" as any)
+        .select("*")
+        .eq("visit_id", visitId!)
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as unknown as HomeVisitEvent[];
+    },
+  });
+}
