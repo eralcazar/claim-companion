@@ -5,14 +5,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Play, Pause, Square, MapPin, Footprints, Bike, Loader2 } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Play, Pause, Square, MapPin, Footprints, Bike, Loader2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { LiveRouteMap } from "@/components/map/LiveRouteMap";
 import { RouteMap } from "@/components/map/RouteMap";
+import { RoutePlayer } from "@/components/map/RoutePlayer";
+import { RoutesOverviewMap, type OverviewRoute } from "@/components/map/RoutesOverviewMap";
+import { ExportSingleGpxButton, ExportRangeGpxButton } from "@/components/map/RouteExportButtons";
 import { useLiveTracking } from "@/hooks/useLiveTracking";
 import { useLocationPreference } from "@/hooks/useLocationPreference";
 import { formatDistance, formatDuration, formatPace } from "@/lib/geo/haversine";
 import { supabase } from "@/integrations/supabase/client";
+import { checkGeoPermission, requestGeoPermission, permissionInstructions, type GeoPermissionState } from "@/lib/geo/permissions";
 
 type SavedRoute = {
   id: string;
@@ -22,7 +27,9 @@ type SavedRoute = {
   distance_m: number;
   duration_s: number;
   avg_pace_s_per_km: number | null;
-  points?: { latitude: number; longitude: number; sequence: number }[];
+  start_lat?: number | null;
+  start_lng?: number | null;
+  points?: { latitude: number; longitude: number; sequence: number; captured_at?: string; speed_mps?: number | null }[];
 };
 
 const ACTIVITIES = [
@@ -33,14 +40,16 @@ const ACTIVITIES = [
 
 export default function Recorridos() {
   const { state, start, pause, resume, stop, reset } = useLiveTracking();
-  const { tracking, tagging, update, loading } = useLocationPreference();
+  const { tracking, mode, update, loading } = useLocationPreference();
   const [activity, setActivity] = useState("walking");
   const [saving, setSaving] = useState(false);
   const [routes, setRoutes] = useState<SavedRoute[]>([]);
   const [selected, setSelected] = useState<SavedRoute | null>(null);
+  const [perm, setPerm] = useState<GeoPermissionState>("prompt");
 
   useEffect(() => {
     document.title = "Recorridos GPS · CareCentral";
+    checkGeoPermission().then(setPerm);
   }, []);
 
   const loadRoutes = async () => {
@@ -57,7 +66,7 @@ export default function Recorridos() {
 
   const loadRoutePoints = async (route: SavedRoute) => {
     const { data } = await (supabase.from("workout_route_points") as any)
-      .select("latitude, longitude, sequence")
+      .select("latitude, longitude, sequence, captured_at, speed_mps, altitude_m")
       .eq("route_id", route.id)
       .order("sequence", { ascending: true });
     setSelected({ ...route, points: (data as any) ?? [] });
@@ -68,7 +77,15 @@ export default function Recorridos() {
       toast.error("Activá primero el permiso de recorridos GPS en Ajustes de ubicación.");
       return;
     }
-    await start();
+    if (perm !== "granted") {
+      const r = await requestGeoPermission();
+      setPerm(r);
+      if (r !== "granted") {
+        toast.error("Se necesita permiso del navegador para grabar la ruta.");
+        return;
+      }
+    }
+    await start(mode);
   };
 
   const handleStop = async () => {
@@ -87,6 +104,7 @@ export default function Recorridos() {
       const distanceKm = state.distanceM / 1000;
       const pace = distanceKm > 0 ? durationS / distanceKm : null;
 
+      const first = state.points[0];
       const { data: route, error } = await (supabase.from("workout_routes") as any)
         .insert({
           user_id: uid,
@@ -97,6 +115,8 @@ export default function Recorridos() {
           duration_s: state.durationS,
           avg_pace_s_per_km: pace,
           elevation_gain_m: state.elevationGainM,
+          start_lat: first?.latitude ?? null,
+          start_lng: first?.longitude ?? null,
         })
         .select()
         .single();
@@ -131,16 +151,40 @@ export default function Recorridos() {
     ? state.durationS / (state.distanceM / 1000)
     : null;
 
+  const overviewRoutes: OverviewRoute[] = routes.map((r) => ({
+    id: r.id,
+    activity_type: r.activity_type,
+    started_at: r.started_at,
+    distance_m: r.distance_m,
+    duration_s: r.duration_s,
+    avg_pace_s_per_km: r.avg_pace_s_per_km,
+    start_lat: r.start_lat ?? null,
+    start_lng: r.start_lng ?? null,
+  }));
+
   return (
     <div className="container mx-auto max-w-5xl p-4 space-y-4">
       <div className="flex items-center gap-2">
         <MapPin className="h-5 w-5 text-primary" />
         <h1 className="text-2xl font-bold">Recorridos GPS</h1>
+        <Badge variant="outline" className="ml-2 capitalize">Modo: {mode.replace("_", " ")}</Badge>
       </div>
       <p className="text-sm text-muted-foreground">
         Registrá caminatas, carreras y rutas de ciclismo sobre OpenStreetMap. Tu ubicación
         sólo se captura mientras un recorrido está activo.
       </p>
+
+      {(perm === "denied" || perm === "unavailable") && (
+        <Card className="border-destructive bg-destructive/5">
+          <CardContent className="pt-4 flex items-start gap-2">
+            <AlertTriangle className="h-4 w-4 text-destructive mt-0.5" />
+            <div className="text-xs">
+              <div className="font-medium">Permiso de ubicación bloqueado</div>
+              <p className="text-muted-foreground mt-1">{permissionInstructions(perm)}</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {!loading && !tracking && (
         <Card className="border-warning bg-warning/5">
@@ -241,47 +285,83 @@ export default function Recorridos() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Mis recorridos recientes</CardTitle>
+          <CardTitle className="flex items-center justify-between gap-2">
+            <span>Mis recorridos recientes</span>
+            <ExportRangeGpxButton />
+          </CardTitle>
         </CardHeader>
         <CardContent>
           {routes.length === 0 ? (
             <p className="text-sm text-muted-foreground">Aún no tenés recorridos guardados.</p>
           ) : (
-            <div className="grid gap-2 sm:grid-cols-2">
-              {routes.map((r) => {
-                const info = ACTIVITIES.find((a) => a.value === r.activity_type) ?? ACTIVITIES[0];
-                const Icon = info.Icon;
-                return (
-                  <button
-                    key={r.id}
-                    onClick={() => loadRoutePoints(r)}
-                    className="text-left p-3 rounded-lg border hover:bg-accent transition-colors"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Icon className="h-4 w-4 text-primary" />
-                        <span className="font-medium">{info.label}</span>
-                      </div>
-                      <span className="text-xs text-muted-foreground">
-                        {new Date(r.started_at).toLocaleDateString()}
-                      </span>
-                    </div>
-                    <div className="text-xs text-muted-foreground mt-1 flex gap-3">
-                      <span>{formatDistance(r.distance_m)}</span>
-                      <span>{formatDuration(r.duration_s)}</span>
-                      <span>{formatPace(r.avg_pace_s_per_km)}</span>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          )}
+            <Tabs defaultValue="lista" className="w-full">
+              <TabsList>
+                <TabsTrigger value="lista">Lista</TabsTrigger>
+                <TabsTrigger value="mapa">Mapa general</TabsTrigger>
+                {selected && selected.points && selected.points.length > 1 && (
+                  <>
+                    <TabsTrigger value="ruta">Ver ruta</TabsTrigger>
+                    <TabsTrigger value="play">Reproducir</TabsTrigger>
+                  </>
+                )}
+              </TabsList>
 
-          {selected && selected.points && selected.points.length > 1 && (
-            <div className="mt-4">
-              <div className="text-sm font-medium mb-2">Vista del recorrido</div>
-              <RouteMap points={selected.points} height={280} />
-            </div>
+              <TabsContent value="lista" className="mt-3">
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {routes.map((r) => {
+                    const info = ACTIVITIES.find((a) => a.value === r.activity_type) ?? ACTIVITIES[0];
+                    const Icon = info.Icon;
+                    return (
+                      <div key={r.id} className="p-3 rounded-lg border hover:bg-accent transition-colors">
+                        <button onClick={() => loadRoutePoints(r)} className="w-full text-left">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <Icon className="h-4 w-4 text-primary" />
+                              <span className="font-medium">{info.label}</span>
+                            </div>
+                            <span className="text-xs text-muted-foreground">
+                              {new Date(r.started_at).toLocaleDateString()}
+                            </span>
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-1 flex gap-3">
+                            <span>{formatDistance(r.distance_m)}</span>
+                            <span>{formatDuration(r.duration_s)}</span>
+                            <span>{formatPace(r.avg_pace_s_per_km)}</span>
+                          </div>
+                        </button>
+                        <div className="flex justify-end mt-1">
+                          <ExportSingleGpxButton route={r} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </TabsContent>
+
+              <TabsContent value="mapa" className="mt-3">
+                <RoutesOverviewMap
+                  routes={overviewRoutes}
+                  onSelect={(id) => {
+                    const r = routes.find((x) => x.id === id);
+                    if (r) loadRoutePoints(r);
+                  }}
+                />
+                <p className="text-[11px] text-muted-foreground mt-2">
+                  Zoom + / − para expandir clusters. Click en un marcador abre el recorrido.
+                </p>
+              </TabsContent>
+
+              {selected && selected.points && selected.points.length > 1 && (
+                <>
+                  <TabsContent value="ruta" className="mt-3">
+                    <RouteMap points={selected.points} height={320} />
+                  </TabsContent>
+                  <TabsContent value="play" className="mt-3">
+                    <RoutePlayer points={selected.points as any} height={320} />
+                  </TabsContent>
+                </>
+              )}
+            </Tabs>
           )}
         </CardContent>
       </Card>

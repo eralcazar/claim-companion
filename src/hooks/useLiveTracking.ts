@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { watchLocation, type GeoPoint, type WatchHandle } from "@/lib/geo/location";
 import { haversineMeters } from "@/lib/geo/haversine";
+import type { TrackingMode } from "@/hooks/useLocationPreference";
 
 export type TrackingState = {
   isTracking: boolean;
@@ -48,9 +49,14 @@ export function useLiveTracking() {
     });
   }, []);
 
-  const start = useCallback(async () => {
+  const start = useCallback(async (mode: TrackingMode = "balanced") => {
     if (watchRef.current) return;
-    const handle = await watchLocation(handlePoint, { highAccuracy: true });
+    const opts = (() => {
+      if (mode === "high_accuracy") return { highAccuracy: true, maximumAgeMs: 0, timeoutMs: 15000 };
+      if (mode === "battery_saver") return { highAccuracy: false, maximumAgeMs: 15000, timeoutMs: 30000 };
+      return { highAccuracy: true, maximumAgeMs: 5000, timeoutMs: 15000 };
+    })();
+    const handle = await watchLocation(handlePoint, opts);
     watchRef.current = handle;
     const startedAt = Date.now();
     pausedRef.current = false;

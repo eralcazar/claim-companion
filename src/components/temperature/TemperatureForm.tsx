@@ -5,6 +5,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useCreateTemperature } from "@/hooks/useTemperature";
+import { attachLocationIfEnabled } from "@/lib/geo/attach";
+import { useLocationPreference } from "@/hooks/useLocationPreference";
+import { MapPin } from "lucide-react";
 
 function nowLocalDatetime(): string {
   const d = new Date();
@@ -19,6 +22,7 @@ interface Props {
 
 export function TemperatureForm({ patientId, onSuccess }: Props) {
   const create = useCreateTemperature();
+  const { tagging } = useLocationPreference();
   const [value, setValue] = useState("");
   const [method, setMethod] = useState("axilar");
   const [context, setContext] = useState("reposo");
@@ -29,14 +33,16 @@ export function TemperatureForm({ patientId, onSuccess }: Props) {
     e.preventDefault();
     const t = parseFloat(value.replace(",", "."));
     if (isNaN(t) || t < 30 || t > 45) return;
-    await create.mutateAsync({
+    const base = {
       patient_id: patientId,
       taken_at: new Date(takenAt).toISOString(),
       temperature_c: t,
       method,
       context,
       notes: notes.trim() || null,
-    });
+    };
+    const payload = await attachLocationIfEnabled(base);
+    await create.mutateAsync(payload as any);
     setValue("");
     setNotes("");
     setTakenAt(nowLocalDatetime());
@@ -89,6 +95,11 @@ export function TemperatureForm({ patientId, onSuccess }: Props) {
       <Button type="submit" disabled={create.isPending} className="w-full md:w-auto">
         {create.isPending ? "Guardando..." : "Registrar temperatura"}
       </Button>
+      {tagging && (
+        <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+          <MapPin className="h-3 w-3" /> Se guardará tu ubicación aproximada con esta lectura.
+        </p>
+      )}
     </form>
   );
 }

@@ -5,6 +5,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useCreateGlucose, type GlucoseContext } from "@/hooks/useGlucose";
+import { attachLocationIfEnabled } from "@/lib/geo/attach";
+import { useLocationPreference } from "@/hooks/useLocationPreference";
+import { MapPin } from "lucide-react";
 
 function nowLocalDatetime(): string {
   const d = new Date();
@@ -19,6 +22,7 @@ interface Props {
 
 export function GlucoseForm({ patientId, onSuccess }: Props) {
   const create = useCreateGlucose();
+  const { tagging } = useLocationPreference();
   const [value, setValue] = useState("");
   const [context, setContext] = useState<GlucoseContext>("aleatoria");
   const [hours, setHours] = useState("");
@@ -30,14 +34,16 @@ export function GlucoseForm({ patientId, onSuccess }: Props) {
     const g = parseInt(value, 10);
     if (isNaN(g) || g < 10 || g > 800) return;
     const h = hours ? parseFloat(hours.replace(",", ".")) : null;
-    await create.mutateAsync({
+    const base = {
       patient_id: patientId,
       taken_at: new Date(takenAt).toISOString(),
       glucose_mgdl: g,
       measurement_context: context,
       hours_since_meal: h,
       notes: notes.trim() || null,
-    });
+    };
+    const payload = await attachLocationIfEnabled(base);
+    await create.mutateAsync(payload as any);
     setValue("");
     setHours("");
     setNotes("");
@@ -82,6 +88,11 @@ export function GlucoseForm({ patientId, onSuccess }: Props) {
       <Button type="submit" disabled={create.isPending} className="w-full md:w-auto">
         {create.isPending ? "Guardando..." : "Registrar glucosa"}
       </Button>
+      {tagging && (
+        <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+          <MapPin className="h-3 w-3" /> Se guardará tu ubicación aproximada con esta lectura.
+        </p>
+      )}
     </form>
   );
 }

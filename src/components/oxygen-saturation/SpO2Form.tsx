@@ -12,6 +12,9 @@ import {
 } from "@/components/ui/select";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCreateSpO2 } from "@/hooks/useOxygenSaturation";
+import { attachLocationIfEnabled } from "@/lib/geo/attach";
+import { useLocationPreference } from "@/hooks/useLocationPreference";
+import { MapPin } from "lucide-react";
 
 interface SpO2FormProps {
   onSuccess?: () => void;
@@ -27,6 +30,7 @@ function nowLocalDatetime(): string {
 export function SpO2Form({ onSuccess }: SpO2FormProps) {
   const { user } = useAuth();
   const create = useCreateSpO2();
+  const { tagging } = useLocationPreference();
 
   const [spo2, setSpo2] = useState<string>("");
   const [pulse, setPulse] = useState<string>("");
@@ -48,14 +52,16 @@ export function SpO2Form({ onSuccess }: SpO2FormProps) {
       return;
     }
 
-    await create.mutateAsync({
+    const base = {
       patient_id: user.id,
       taken_at: new Date(takenAt).toISOString(),
       spo2: spo2Num,
       pulse: pulseNum,
       context: context || null,
       notes: notes.trim() || null,
-    });
+    };
+    const payload = await attachLocationIfEnabled(base);
+    await create.mutateAsync(payload as any);
 
     setSpo2("");
     setPulse("");
@@ -133,6 +139,11 @@ export function SpO2Form({ onSuccess }: SpO2FormProps) {
       <Button type="submit" disabled={create.isPending} className="w-full md:w-auto">
         {create.isPending ? "Guardando..." : "Registrar lectura"}
       </Button>
+      {tagging && (
+        <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+          <MapPin className="h-3 w-3" /> Se guardará tu ubicación aproximada con esta lectura.
+        </p>
+      )}
     </form>
   );
 }

@@ -1,105 +1,56 @@
-## Objetivo
+## Fase 3 — Recorridos GPS avanzados + etiquetado automático de mediciones
 
-Integrar GPS del dispositivo (web + móvil vía Capacitor) usando **Leaflet + OpenStreetMap** (gratis, sin API key) para:
+Cinco entregables sobre el módulo GPS ya existente (`/recorridos`, `useLocationPreference`, `attachLocationIfEnabled`, tablas `workout_routes` / `workout_route_points`, columnas `latitude`/`longitude`/`location_accuracy_m`/`location_captured_at` en tablas clínicas).
 
-1. **Etiquetar con ubicación** cualquier medición clínica (manual o BLE): temperatura, glucosa, SpO₂, presión, frecuencia cardiaca, pulso.
-2. **Registrar pasos y recorridos GPS** durante entrenamientos al aire libre, con mapa en vivo de la ruta.
-3. **Visualizar en mapas** el histórico de pasos/movimientos y mediciones geolocalizadas.
+### 1. Reproducción animada de recorridos (play/pause)
+- Nuevo componente `src/components/map/RoutePlayer.tsx`: recibe los `points` con `captured_at`, `speed_mps` y muestra:
+  - Mapa base + polilínea completa gris + polilínea "recorrida" resaltada.
+  - Marcador que avanza en el tiempo real del recorrido (interpolando por timestamp).
+  - Controles: Play, Pause, Reset, slider de progreso, selector de velocidad (1x, 2x, 4x, 10x).
+  - Panel HUD con tiempo transcurrido, distancia acumulada, ritmo instantáneo, velocidad km/h.
+- Integración en `Recorridos.tsx`: al abrir un recorrido guardado, además del `RouteMap` estático se muestra el `RoutePlayer` en una pestaña "Reproducir".
 
-## Alcance funcional
+### 2. Modo de seguimiento GPS con ahorro de batería + alertas de permisos
+- Extender `useLocationPreference` para persistir un nuevo campo `location_tracking_mode` en `profiles` (valores: `balanced` | `high_accuracy` | `battery_saver`).
+- Actualizar `useLiveTracking` para leer ese modo y ajustar `enableHighAccuracy`, `maximumAge` y frecuencia (por ejemplo, `battery_saver` = 15 s / lowAccuracy; `high_accuracy` = 1 s / highAccuracy; `balanced` = 5 s).
+- Nuevo helper `src/lib/geo/permissions.ts` que consulte `navigator.permissions.query({name:'geolocation'})` y, en Capacitor, `Geolocation.checkPermissions()`. Devuelve `granted | denied | prompt | unavailable`.
+- Añadir en `Recorridos.tsx` y `LocationSettingsCard.tsx` un banner de alerta cuando el permiso esté `denied` o `prompt`, con instrucciones específicas iOS/Android/desktop.
+- Soporte foreground/background: cuando corra sobre Capacitor, usar `@capacitor/geolocation` con `watchPosition`; en web mantener `navigator.geolocation.watchPosition`. Documentar que el "background real" requiere plugin nativo y añadir aviso "En web sólo se registra en primer plano".
 
-### A. Ubicación en mediciones (todas las métricas)
-- Al guardar una lectura (manual o BLE), capturar opcionalmente `lat/lng/accuracy/timestamp` del GPS.
-- Toggle por usuario en Ajustes: "Adjuntar ubicación a mis mediciones" (default **OFF**, consentimiento explícito por privacidad LFPDPPP/NOM-024).
-- Mostrar badge de ubicación en historial con popover de mini-mapa (Leaflet) y opción de borrar la ubicación de una lectura.
+### 3. Clustering y rendimiento en el mapa de recorridos
+- Instalar `leaflet.markercluster` y `react-leaflet-cluster` (o equivalente ya compatible con la versión de leaflet en uso).
+- Nuevo componente `src/components/map/RoutesOverviewMap.tsx`: muestra en un solo mapa TODOS los recorridos del usuario:
+  - Cada recorrido = un marcador en su punto de inicio, agrupados por cluster.
+  - Al hacer click en un marcador se resalta la polilínea y muestra popup con métricas.
+  - Zoom-in expande clusters; a nivel alto de zoom se dibuja la polilínea completa; a niveles bajos sólo el marcador (para performance con muchos registros).
+- Optimización de `RouteMap` existente: aplicar Douglas-Peucker (simplificación) a rutas con > 500 puntos antes de renderizar la polilínea.
+- Nueva sección en `Recorridos.tsx`: pestaña "Mapa general" que renderiza `RoutesOverviewMap`.
 
-### B. Recorridos GPS en Ejercicios / Pasos
-- Nuevo tipo de sesión "Actividad al aire libre" (correr, caminar, ciclismo).
-- Botón **"Iniciar recorrido"** en `/pasos` y `/ejercicios` que arranca tracking GPS (`watchPosition`).
-- Captura en vivo: puntos (lat, lng, alt, speed, ts), distancia (Haversine), ritmo, elevación acumulada, duración, pasos estimados (o Health Connect/HealthKit si disponible).
-- **Mapa en vivo** con Leaflet + tiles OSM mostrando la polyline creciendo.
-- Al finalizar: guardar recorrido, mostrar mapa estático con la ruta y stats. Export GPX opcional.
+### 4. Exportación GPX de recorridos
+- Nuevo helper `src/lib/geo/gpx.ts` con función `buildGpx(route, points): string` que genera un XML GPX 1.1 válido (`<trk><trkseg><trkpt lat lon><ele><time>`).
+- Nuevo componente `src/components/map/RouteExportButtons.tsx` con:
+  - Botón "Descargar GPX" por recorrido individual.
+  - Botón "Exportar rango" en la lista: date-range picker → junta varios recorridos en un `.zip` (o múltiples archivos) usando `jszip`.
+- Integrado en `Recorridos.tsx` junto a cada tarjeta de recorrido y en el header de la lista.
 
-### C. Vistas de mapa (nuevas)
-- **Mapa de mis mediciones**: marcadores agrupados (cluster) por métrica sobre OSM, filtrable por tipo/rango.
-- **Mapa de recorridos**: lista + mini-mapas de las últimas rutas.
-- **Heatmap opcional** de pasos por ubicación (fase 3).
+### 5. Etiquetado automático de ubicación en formularios manuales
+Aplicar `attachLocationIfEnabled` en los formularios manuales que hoy no lo usan:
+- `src/components/temperature/TemperatureForm.tsx`
+- `src/components/glucose/GlucoseForm.tsx`
+- `src/components/oxygen-saturation/SpO2Form.tsx`
+- Cualquier form manual de BP y HR que inserte en `blood_pressure_readings` / `heart_rate_readings` (localizar con un `rg` de `insert` antes de editar).
 
-## Cambios técnicos
+En cada uno:
+- Antes de `supabase.from(...).insert(payload)`, envolver `payload` con `await attachLocationIfEnabled(payload)`.
+- Asegurar que el `location_captured_at` corresponde al momento del guardado (ya se llena en el helper con `p.captured_at`).
+- Añadir un pequeño `<LocationBadge>` bajo el botón "Guardar" cuando `tagging` esté activo, indicando "Se guardará tu ubicación aproximada".
 
-### Base de datos (migración)
-- Columnas opcionales `latitude numeric`, `longitude numeric`, `location_accuracy_m numeric`, `location_captured_at timestamptz` en: `blood_pressure_readings`, `heart_rate_readings`, `spo2_readings`, `temperature_readings`, `glucose_readings`, `activity_readings`.
-- Nueva tabla `workout_routes`:
-  - Columnas: `id`, `user_id`, `workout_session_id` (FK opcional), `activity_type` (walking/running/cycling), `started_at`, `ended_at`, `distance_m`, `duration_s`, `avg_pace_s_per_km`, `elevation_gain_m`, `steps_estimated`, `notes`.
-  - GRANTs (authenticated CRUD, service_role ALL) + RLS owner-only.
-- Nueva tabla `workout_route_points`:
-  - `id`, `route_id` (FK cascade), `sequence int`, `captured_at`, `latitude`, `longitude`, `altitude_m`, `speed_mps`, `accuracy_m`, `heading_deg`.
-  - Índice (`route_id`, `sequence`). RLS via ownership de la ruta.
-- Nueva columna `profiles.location_tagging_enabled boolean default false` y `location_tracking_enabled boolean default false`.
+### Detalles técnicos
+- Nuevas dependencias: `leaflet.markercluster`, `@types/leaflet.markercluster`, `react-leaflet-cluster`, `jszip`.
+- Migración menor: agregar columna `location_tracking_mode text default 'balanced'` en `profiles`, con check de valores permitidos. Sin cambios en RLS existentes.
+- Sin cambios en las políticas actuales de `workout_routes` / `workout_route_points`.
+- Fix colateral: revisar el error de build reportado (dynamic import no resuelto) y corregirlo antes de terminar; probablemente ligado a un import faltante introducido en la fase 2.
 
-### Frontend
-- **Dependencias**: `leaflet`, `react-leaflet`, `@types/leaflet`. (Todo gratis, tiles de `tile.openstreetmap.org` con atribución obligatoria "© OpenStreetMap contributors").
-- `src/lib/geo/location.ts`: wrapper unificado Capacitor Geolocation (nativo) / `navigator.geolocation` (web) con timeout y fallback silencioso.
-- `src/lib/geo/haversine.ts`: cálculo de distancia y ritmo.
-- `src/hooks/useLocationPreference.ts`: lee/guarda toggles del usuario.
-- `src/hooks/useLiveTracking.ts`: gestiona `watchPosition`, buffer, distancia acumulada, pace, elevación, pausar/reanudar.
-- `src/components/map/RouteMap.tsx`: Leaflet + OSM tiles + polyline (histórico).
-- `src/components/map/LiveRouteMap.tsx`: mapa en vivo con recentrado automático.
-- `src/components/map/LocationBadge.tsx`: badge + popover mini-mapa para lecturas geolocalizadas.
-- `src/components/map/MeasurementsMap.tsx`: mapa con marcadores agrupados de todas las mediciones.
-- Modificar formularios: `SpO2Form`, `TemperatureForm`, `GlucoseForm`, `BloodPressureForm`, `HeartRateForm` → llamar `getCurrentPosition()` si el toggle está activo.
-- Modificar hooks BLE para inyectar ubicación al momento de la lectura.
-- Nueva página `src/pages/Recorridos.tsx`: iniciar/pausar/finalizar recorrido con mapa en vivo + historial.
-- Actualizar `StepsMonitor.tsx`: agregar botón "Iniciar recorrido" y sección "Mis rutas recientes".
-- Actualizar listas (`SpO2List`, `TemperatureList`, `BitacoraTab`) con badge de ubicación.
-
-### Ajustes de privacidad
-Sección "Ubicación y GPS" en `/profile`:
-- Toggle "Etiquetar mediciones con ubicación".
-- Toggle "Permitir recorridos GPS".
-- Botón "Borrar todas las ubicaciones guardadas" (bulk `UPDATE ... SET latitude=NULL`).
-- Texto legal breve sobre uso y retención.
-
-### Nativo (Capacitor)
-- Instalar `@capacitor/geolocation`.
-- Permisos iOS: `NSLocationWhenInUseUsageDescription`, `NSLocationAlwaysAndWhenInUseUsageDescription` (para tracking en background).
-- Permisos Android: `ACCESS_FINE_LOCATION`, `ACCESS_BACKGROUND_LOCATION`, `FOREGROUND_SERVICE`.
-- Instruir al usuario correr `git pull && npx cap sync` al terminar.
-
-## Detalle técnico — OpenStreetMap + Leaflet
-
-```tsx
-// tiles gratuitos, sin API key
-<MapContainer center={[lat, lng]} zoom={15}>
-  <TileLayer
-    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-  />
-  <Polyline positions={points} color="hsl(var(--primary))" />
-</MapContainer>
-```
-
-- Cumplir con la [Tile Usage Policy de OSM](https://operations.osmfoundation.org/policies/tiles/): atribución visible, sin uso masivo. Para producción a escala se puede cambiar a proveedor de tiles (MapTiler/Stadia) sin tocar el resto del código.
-
-## Entregables por fases
-
-**Fase 1 — Etiquetado de ubicación en mediciones** (rápido)
-- Migración de columnas geo en las 6 tablas.
-- Toggle en Ajustes + `useLocationPreference`.
-- Wrapper `getCurrentPosition` + integración en los 5 formularios manuales.
-- Badge de ubicación con mini-mapa en listas.
-
-**Fase 2 — Recorridos GPS con mapa en vivo**
-- Tablas `workout_routes` + `workout_route_points`.
-- `useLiveTracking` + página `Recorridos` con Leaflet en vivo.
-- Historial con `RouteMap` y stats.
-- Botón "Iniciar recorrido" en `StepsMonitor`.
-
-**Fase 3 — Mapa consolidado + nativo**
-- `MeasurementsMap` con clustering.
-- Inyección de ubicación en lecturas BLE.
-- `@capacitor/geolocation` + permisos iOS/Android + export GPX.
-
-## Notas
-- Este plan mantiene privacidad-por-defecto: nada de ubicación se captura ni almacena hasta que el usuario active el toggle explícitamente.
-- Uso de tiles OSM sin API key → cero costo. Atribución obligatoria incluida en cada mapa.
+### Fuera de alcance
+- Background tracking nativo real (requiere plugin `@capacitor-community/background-geolocation`): se deja como fase 4.
+- Compartir GPX directo por WhatsApp desde nativo: por ahora sólo descarga de archivo.

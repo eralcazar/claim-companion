@@ -6822,6 +6822,7 @@ export type Database = {
           interior_number: string | null
           location_tagging_enabled: boolean
           location_tracking_enabled: boolean
+          location_tracking_mode: string
           maternal_surname: string
           medico_tratante_apellido_m: string | null
           medico_tratante_apellido_p: string | null
@@ -6882,6 +6883,7 @@ export type Database = {
           interior_number?: string | null
           location_tagging_enabled?: boolean
           location_tracking_enabled?: boolean
+          location_tracking_mode?: string
           maternal_surname?: string
           medico_tratante_apellido_m?: string | null
           medico_tratante_apellido_p?: string | null
@@ -6942,6 +6944,7 @@ export type Database = {
           interior_number?: string | null
           location_tagging_enabled?: boolean
           location_tracking_enabled?: boolean
+          location_tracking_mode?: string
           maternal_surname?: string
           medico_tratante_apellido_m?: string | null
           medico_tratante_apellido_p?: string | null

@@ -2,6 +2,7 @@ import { MapContainer, TileLayer, Polyline, Marker } from "react-leaflet";
 import { useEffect, useMemo } from "react";
 import L from "leaflet";
 import { ensureLeafletIcons, OSM_ATTRIBUTION, OSM_TILE_URL } from "./leafletSetup";
+import { simplifyPath } from "@/lib/geo/simplify";
 
 export type LatLng = { latitude: number; longitude: number };
 
@@ -17,10 +18,10 @@ export function RouteMap({ points, height = 300, showStartEnd = true, className 
     ensureLeafletIcons();
   }, []);
 
-  const positions = useMemo<[number, number][]>(
-    () => points.map((p) => [p.latitude, p.longitude]),
-    [points],
-  );
+  const positions = useMemo<[number, number][]>(() => {
+    const src = points.length > 500 ? simplifyPath(points, 0.00003) : points;
+    return src.map((p) => [p.latitude, p.longitude]);
+  }, [points]);
 
   const center = positions[Math.floor(positions.length / 2)] ?? [19.4326, -99.1332];
   const bounds = useMemo(
