@@ -5,10 +5,11 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const PROVIDER_MAP: Record<string, { secret: string; label: string }> = {
-  gemini: { secret: "GEMINI_API_KEY", label: "Google Gemini" },
-  mistral: { secret: "MISTRAL_API_KEY", label: "Mistral AI" },
-  claude: { secret: "ANTHROPIC_API_KEY", label: "Anthropic Claude" },
+const PROVIDER_MAP: Record<string, { secret: string; label: string; standardFallback: string }> = {
+  gemini: { secret: "GEMINI_API_KEY", label: "Google Gemini", standardFallback: "gemini-2.5-flash" },
+  mistral: { secret: "MISTRAL_API_KEY", label: "Mistral AI", standardFallback: "mistral-small-latest" },
+  claude: { secret: "ANTHROPIC_API_KEY", label: "Anthropic Claude", standardFallback: "claude-3-5-haiku-latest" },
+  apifreellm: { secret: "", label: "ApiFreeLLM", standardFallback: "standard" },
 };
 
 function json(body: unknown, status = 200) {
@@ -68,11 +69,20 @@ Deno.serve(async (req) => {
       .maybeSingle();
     if (!prov) return json({ error: "Proveedor no registrado" }, 404);
 
-    const model =
-      prov.default_model ||
-      (Array.isArray(prov.models) && prov.models[0]?.id) ||
-      "";
+    // Resolver el modelo a usar. Si el default es "standard" (o no hay
+    // catálogo), se toma el fallback de ping del proveedor y se etiqueta
+    // como "standard (…)" para que el historial refleje que se usó el
+    // modo Estándar (auto).
+    const rawDefault = (prov.default_model ?? "").trim();
+    const isStandard = rawDefault === "" || rawDefault.toLowerCase() === "standard";
+    const firstCatalog =
+      Array.isArray(prov.models) && prov.models[0]?.id ? String(prov.models[0].id) : "";
+    const model = isStandard
+      ? (firstCatalog || meta.standardFallback)
+      : rawDefault;
     if (!model) return json({ error: "Sin modelos configurados" }, 400);
+    // Etiqueta legible para el historial auditado.
+    const modelLabel = isStandard ? `standard (${model})` : model;
 
     const t0 = performance.now();
     let ok = false;
@@ -107,15 +117,17 @@ Deno.serve(async (req) => {
       preview: `${apiKey.slice(0, 4)}…${apiKey.slice(-4)}`,
       length: apiKey.length,
       latency_ms: latency,
-      model_used: model,
+      model_used: modelLabel,
       error_message: errMsg,
-      note: `HTTP ${status}`,
+      note: `HTTP ${status}${isStandard ? " · modo Estándar (auto)" : ""}`,
     });
 
     return json({
       ok,
       provider,
-      model_used: model,
+      model_used: modelLabel,
+      model_resolved: model,
+      is_standard: isStandard,
       latency_ms: latency,
       http_status: status,
       error_message: errMsg,
