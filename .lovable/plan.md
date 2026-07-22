@@ -1,112 +1,86 @@
-# Plan: Optimización de costos de IA en CareCentral
+# Integrar ApiFreeLLM como proveedor externo en Políticas de IA
 
-**Objetivo:** reducir 40–70% el consumo de tokens/costos de Lovable AI en todas las features de IA (Kari, coach de actividad, sugerencias, resúmenes) **sin cambiar de proveedor** y **sin agregar riesgo legal**. Se apoya en cuatro palancas: router por feature, caché, poda de contexto y modelo correcto para cada tarea.
-
----
-
-## Estado actual (verificado)
-
-- `ai-kari-chat` usa `google/gemini-3-flash-preview` fijo o el modelo elegido en `ai_settings.kari_active_model`. Manda hasta **20 mensajes previos completos** en cada request → contexto grande = tokens caros.
-- `ai-activity-coach` también consume tokens Kari con Gemini Flash.
-- No hay caché: preguntas idénticas ("¿qué es la hipertensión?") gastan tokens cada vez.
-- No hay política por feature: todo usa el mismo modelo/config aunque la tarea sea trivial.
-
-Datos concretos de costos y consumo actual se validarán con `ai_gateway_logs--list_ai_gateway_requests` como primer paso del build para calibrar targets.
+Objetivo: permitir elegir **ApiFreeLLM** como modelo por feature en `ai_provider_policy`, reutilizando toda la gobernanza que ya existe (kill switch, consentimiento por feature, sanitización, PII residual, auditoría automática, fallback a Lovable AI). Sin retirar Lovable AI: ApiFreeLLM es **opción opcional** y solo se usa cuando (a) el admin la eligió para esa feature, (b) el kill switch global está encendido y (c) el usuario dio consentimiento explícito para esa feature con ese proveedor.
 
 ---
 
-## Alcance en 4 bloques
+## 1. Base de datos (una migración)
 
-### Bloque 1 — Router de IA por feature (~1 día)
-Nueva tabla `ai_provider_policy` (por feature, admin-editable):
-- `feature_key` (kari_chat, activity_coach, study_summary, glossary, etc.)
-- `model` (`gemini-3-flash-preview` / `gemini-2.5-flash-lite` / `gemini-2.5-pro`)
-- `max_input_tokens`, `max_output_tokens`
-- `enable_cache` boolean
-- `history_window` (cuántos mensajes previos incluir)
+- `ai_provider_policy`: agregar
+  - `provider text NOT NULL DEFAULT 'lovable'` (`'lovable'` | `'apifreellm'`)
+  - `external_endpoint text` (para ApiFreeLLM u otros; nulo cuando provider = lovable)
+  - `requires_consent boolean NOT NULL DEFAULT false` (true cuando provider != 'lovable')
+- Seed / update: dejar todas las políticas actuales con `provider='lovable'`.
+- Registrar ApiFreeLLM en una nueva tabla ligera `ai_external_providers` (id text PK, nombre, endpoint, aviso legal corto, activo boolean) para poder listar/desactivar sin código. RLS: admin escribe, autenticados leen.
+- Ampliar `can_call_external_ai(_user_id, _feature_key)`:
+  - Si la política de la feature tiene `provider='lovable'`, devolver `{allowed:true, provider:'lovable'}` (no aplica gate externo).
+  - Si tiene `provider!='lovable'`, exigir kill switch encendido + consentimiento activo + proveedor activo en `ai_external_providers`.
+- GRANTs y RLS estándar (admin gestiona política y proveedores; usuarios ven su propia consent row — ya existe).
 
-Edge function `ai-router` que resuelve la política y ejecuta la llamada centralizada. `ai-kari-chat` y `ai-activity-coach` se refactorizan para pasar por el router.
+## 2. Router compartido (`supabase/functions/_shared/ai-router.ts`)
 
-Beneficio: cambiar modelo/límites por feature sin redeploy. Base para todo lo demás.
+- `loadPolicy` devuelve también `provider` y `external_endpoint`.
+- Nuevo helper `callApiFreeLLM(endpoint, messages, opts)` con formato OpenAI-compatible (tal como el gateway actual) y timeout de 8s.
+- Nuevo orquestador `routeByPolicy({admin, userId, policy, rawUserPrompt, messages, ...})` que:
+  1. Si `policy.provider === 'lovable'` → llama `callGateway(...)` directamente (comportamiento actual).
+  2. Si es externo → envuelve la llamada en `routeExternalOrFallback` que ya existe (kill switch, consentimiento, sanitización, PII residual, auditoría) con:
+     - `external: () => callApiFreeLLM(policy.external_endpoint, sanitizedMessages, ...)`
+     - `fallback: () => callGateway(apiKey, DEFAULT_LOVABLE_MODEL, sanitizedMessages, ...)`
+     - Todas las llamadas externas usan `messages` sanitizados (system prompt intacto + user prompt reemplazado por `normalizePrompt` cuando contenga PII).
+- `ai-kari-chat` y `ai-activity-coach` cambian una línea: usan `routeByPolicy` en vez de llamar `callGateway` directo. Toda la lógica de descuento de tokens, historial y caché se mantiene.
 
-### Bloque 2 — Caché semántico de respuestas frecuentes (~2 días)
-Nueva tabla `ai_response_cache`:
-- `feature_key`, `prompt_hash` (SHA-256 del prompt normalizado), `prompt_normalized`, `response`, `model`, `tokens_saved`, `hit_count`, `created_at`, `expires_at`.
+## 3. Frontend
 
-Flujo:
-1. Antes de llamar al modelo, normalizar prompt (lowercase, quitar puntuación, quitar tokens PII con regex simple) y calcular hash.
-2. Si existe entrada válida en caché → devolver respuesta sin consumir tokens, incrementar `hit_count`, **no cobrar tokens Kari** al usuario.
-3. Si no, llamar al modelo, guardar respuesta si el prompt es "genérico" (clasificador simple por patrones: preguntas sin nombres/fechas/números específicos del paciente).
+- `src/hooks/useAiPolicies.ts`
+  - Extender `AI_MODEL_CHOICES` con etiqueta de proveedor (`lovable` | `apifreellm`) y modelos ApiFreeLLM que expongan (p.ej. `apifreellm/mistral-small`, `apifreellm/llama-3-8b`) tomados del registro `ai_external_providers`.
+  - Cargar la lista efectiva desde la tabla al montar (para no hardcodear).
+- `src/components/admin/AiPolicyPanel.tsx`
+  - Al elegir un modelo con `provider='apifreellm'`: mostrar aviso amarillo "Este proveedor es externo. Requiere consentimiento del usuario y activa el modo sanitizado obligatorio."
+  - Selector separado de proveedor (radio: Lovable AI / ApiFreeLLM) que filtra los modelos disponibles.
+- `src/pages/MisDatosIA.tsx`
+  - Ya lista consentimientos por feature. Añadir columna "Proveedor actual" leído de `ai_provider_policy.provider` para que el usuario vea a quién autoriza al aceptar.
+- `src/components/ai/AiProviderStatusBanner.tsx`
+  - Mostrar "Modo seguro (Lovable AI)" cuando la feature en uso resolvió fallback por consent/kill switch.
 
-Solo se cachea contenido **educativo genérico** (glosario, definiciones, "para qué sirve X medicamento" sin dosis). Prompts con contexto personal (síntomas específicos, mediciones) **nunca se cachean** para no cruzar información entre pacientes.
+## 4. Legal (obligatorio antes de encender ApiFreeLLM en cualquier feature)
 
-Beneficio esperado: 20–40% hit rate en Kari (preguntas médicas comunes se repiten mucho entre usuarios).
+- Editar `src/pages/Legal.tsx` para agregar sección **"Proveedores externos de IA"** con:
+  - Nombre del proveedor (ApiFreeLLM), URL, país de procesamiento, base legal (consentimiento LFPDPPP art. 8-9).
+  - Qué se envía: prompt **sanitizado** (sin CURP, RFC, email, teléfono, direcciones, fechas, números largos, coordenadas).
+  - Qué no se envía: identificadores del paciente, expediente, historial médico crudo.
+  - Derecho ARCO: enlace a `/derechos-arco` (ya existe).
+  - Retención en el proveedor y cómo revocar (link a `/mis-datos-ia`).
+- Nuevo texto de consentimiento por feature (versionado) que el usuario debe firmar en `/mis-datos-ia` antes de que ApiFreeLLM procese cualquier request.
+- Bloque en `AiPolicyPanel` que impida guardar una política con provider externo si no existe el texto legal publicado para esa feature (validación en migración: check en tabla `ai_external_providers.legal_version`).
 
-### Bloque 3 — Poda inteligente de contexto en Kari (~1 día)
-Cambios en `ai-kari-chat`:
-- Reducir ventana de historial de 20 → **8 mensajes** por defecto, configurable en `ai_provider_policy`.
-- Compresión de historial: si la conversación tiene >12 mensajes, resumir los primeros N en 1–2 párrafos con una llamada barata a `gemini-2.5-flash-lite`, y mantener solo los últimos 6 mensajes literales + resumen.
-- Truncar mensajes individuales del usuario >2000 chars con resumen (el límite actual es 4000).
-- System prompt actual (~500 tokens) → versión compacta (~200 tokens) sin perder reglas de seguridad.
+## 5. Pruebas
 
-Beneficio esperado: 30–50% menos tokens de input por request en conversaciones largas.
+- `src/test/ai-sanitize.test.ts`: ya cubre PII; sin cambios.
+- Nuevo `src/test/ai-router-provider-selection.test.ts` (extiende `ai-router-governance.test.ts`) — Vitest con mocks:
+  - Política `provider='apifreellm'` + consent revocado → fallback a Lovable, `blockedReason='consent_revoked'`, `provider='lovable'` en el registro de auditoría.
+  - Política externa + consent OK + prompt con CURP → prompt sale sanitizado (assertion sobre el body enviado al mock de ApiFreeLLM).
+  - Política externa + consent OK + prompt con dirección residual → bloquea a fallback, `blockedReason='residual_pii'`.
+  - Política externa + kill switch OFF → fallback.
+  - Política `provider='lovable'` → nunca consulta consent ni sanitiza (comportamiento actual).
 
-### Bloque 4 — Modelo correcto por tarea + selector admin (~1 día)
-Ajuste de defaults en `ai_provider_policy`:
-- **Kari chat conversacional** → `gemini-3-flash-preview` (default actual, correcto).
-- **Coach de actividad** (texto estructurado corto) → `gemini-2.5-flash-lite` (~4x más barato en output).
-- **Glosario / definiciones cortas** → `gemini-2.5-flash-lite`.
-- **Resúmenes de estudios largos** → `gemini-2.5-flash` (mejor calidad para clínico).
-- **Casos complejos con imagen** (futuro OCR) → `gemini-2.5-pro`.
+## 6. Fuera de alcance
 
-UI admin en `KariUsageAdmin.tsx`: tabla editable de políticas por feature con preview de costo estimado por 1k requests.
-
-Métricas visibles: tokens ahorrados por caché en los últimos 30 días, distribución de costo por feature, hit rate del caché.
-
----
-
-## Fuera de alcance (explícito)
-
-- NO integrar ApiFreeLLM ni otros proveedores gratuitos anónimos.
-- NO cambiar el modelo de negocio de tokens Kari (los usuarios siguen pagando lo mismo).
-- NO tocar features de IA con visión (OCR de estudios) — quedan en Lovable AI sin cambio.
-- NO modificar consentimientos ni aviso de privacidad (no aplica: seguimos con proveedor ya declarado).
-
----
+- No enviar imágenes / audio / documentos a ApiFreeLLM (solo texto conversacional). Features de OCR (`extract-study-indicators`, `detect-form-fields`) permanecen locked a Lovable AI en la migración.
+- No cambiar precios/tokens Kari (ApiFreeLLM es gratuito upstream pero seguimos cobrando los mismos tokens al usuario para mantener modelo económico y cubrir costos de infra/moderación).
 
 ## Detalle técnico
 
-**Migración SQL:**
-- `ai_provider_policy` (id, feature_key unique, model, max_input_tokens, max_output_tokens, enable_cache, history_window, updated_at)
-- `ai_response_cache` (id, feature_key, prompt_hash unique-per-feature, prompt_normalized, response, model, tokens_saved, hit_count, created_at, expires_at, índice en prompt_hash+feature_key)
-- Grants + RLS: solo admin lee/escribe policy; cache es server-only (grant solo a service_role).
-- Seed de políticas default para las features actuales.
+Endpoints ApiFreeLLM: `https://apifreellm.com/api/chat/completions` (OpenAI-compatible, sin API key). Timeout duro 8s; en `error/timeout/429` → fallback automático a Lovable AI (ya cubierto por `routeExternalOrFallback` porque cualquier throw cae en el catch y registra `status:error:*` — extender para que ese catch también dispare `fallback()` en vez de dejar contenido vacío).
 
-**Edge functions:**
-- `ai-router` (nueva): recibe `{feature_key, messages, user_id}`, aplica política, verifica caché, llama gateway con `createLovableAiGatewayProvider`, guarda en caché si aplica, devuelve `{response, tokens_used, cached: bool, model}`.
-- `ai-kari-chat`: refactor para delegar la llamada al modelo a `ai-router`. Mantiene toda la lógica de tokens Kari, conversaciones, límites mensuales.
-- `ai-activity-coach`: mismo refactor.
+Cambio menor a `routeExternalOrFallback`: si `external()` lanza o retorna vacío, ejecutar `fallback()` y marcar `fallbackUsed=true` con `blockedReason='external_error'`. Actualizar test correspondiente.
 
-**Frontend:**
-- `KariUsageAdmin.tsx`: nueva pestaña "Políticas y caché" con tabla editable + métricas.
-- `Kari.tsx`: badge sutil "Respuesta del caché" cuando aplique, para transparencia (opcional, discutible).
-- Hook `useAiPolicies` para admin.
+## Orden de entrega
 
-**Verificación:**
-1. Antes de empezar: `list_ai_gateway_requests` últimos 30 días para baseline de tokens/costo por feature.
-2. Test manual de Kari con preguntas repetidas → segunda vez debe ser cache hit.
-3. Test de conversación larga (15 mensajes) → verificar compresión y ventana reducida.
-4. Comparar tokens en `ai_gateway_logs` antes vs después de deploy.
+1. Migración SQL (schema + `can_call_external_ai` + seed proveedor ApiFreeLLM inactivo por defecto).
+2. Router (`ai-router.ts`) + refactor de `ai-kari-chat` y `ai-activity-coach`.
+3. UI admin (`AiPolicyPanel` con selector de proveedor + aviso).
+4. Legal (`Legal.tsx` + textos de consentimiento versionados).
+5. `MisDatosIA` extendido y banner de estado.
+6. Tests.
 
----
-
-## Entregables y orden
-
-1. Migración SQL (tablas + grants + RLS + seed).
-2. `ai-router` edge function + tests curl.
-3. Refactor `ai-kari-chat` para usar router + poda de contexto.
-4. Refactor `ai-activity-coach` para usar router.
-5. UI admin en `KariUsageAdmin.tsx`.
-6. Verificación con logs del gateway y ajuste de defaults.
-
-Total estimado: **5 días de desarrollo**. Ahorro esperado: **40–70% en costo de tokens de IA** manteniendo calidad y cero riesgo legal nuevo.
+Estimado: ~1.5 días. ApiFreeLLM queda **registrado pero inactivo** hasta que un admin lo encienda en `ai_external_providers` y elija una feature; ninguna llamada sale al exterior sin consentimiento explícito del usuario final.
