@@ -57,8 +57,9 @@ export function hasResidualPii(sanitized: string): boolean {
     /\b(calle|avenida|av\.|colonia|col\.|c\.p\.|codigo postal|cp)\b/i,
     // Coordenadas GPS
     /-?\d{1,3}\.\d{3,},\s*-?\d{1,3}\.\d{3,}/,
-    // Números telefónicos con formato variado
-    /\+?\d{2,3}[\s-]?\d{3}[\s-]?\d{3,4}[\s-]?\d{3,4}/,
+    // Números telefónicos con formato variado (permite grupos separados)
+    /\+\d{1,3}(?:[\s-]?\d{1,4}){2,5}/,
+    /\b\d{3}[\s-]\d{3}[\s-]\d{4}\b/,
   ];
   return patterns.some((rx) => rx.test(sanitized));
 }
