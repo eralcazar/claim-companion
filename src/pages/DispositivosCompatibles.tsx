@@ -34,6 +34,9 @@ import { ConnectionTestHistoryList } from "@/components/health/ConnectionTestHis
 import { MetricDeviceRouter } from "@/components/health/MetricDeviceRouter";
 import { HealthConnectSetupWizard } from "@/components/health/HealthConnectSetupWizard";
 import { DirectBleChecker } from "@/components/ble/DirectBleChecker";
+import { ImportHistoryPanel } from "@/components/health/ImportHistoryPanel";
+import { PermissionsTroubleshooter } from "@/components/health/PermissionsTroubleshooter";
+import { ImportedReadingsPdfExport } from "@/components/health/ImportedReadingsPdfExport";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const TONE_CLASS: Record<string, string> = {
@@ -115,6 +118,9 @@ export default function DispositivosCompatibles() {
           <TabsTrigger value="asistente">Asistente Health Connect</TabsTrigger>
           <TabsTrigger value="ble-directo">BLE directo</TabsTrigger>
           <TabsTrigger value="historial">Historial</TabsTrigger>
+          <TabsTrigger value="importaciones">Importaciones</TabsTrigger>
+          <TabsTrigger value="ayuda">Ayuda</TabsTrigger>
+          <TabsTrigger value="exportar">Exportar PDF</TabsTrigger>
           <TabsTrigger value="preferencias">Preferencias por métrica</TabsTrigger>
         </TabsList>
 
@@ -136,6 +142,18 @@ export default function DispositivosCompatibles() {
 
         <TabsContent value="historial">
           <ConnectionTestHistoryList />
+        </TabsContent>
+
+        <TabsContent value="importaciones">
+          <ImportHistoryPanel />
+        </TabsContent>
+
+        <TabsContent value="ayuda">
+          <PermissionsTroubleshooter />
+        </TabsContent>
+
+        <TabsContent value="exportar">
+          <ImportedReadingsPdfExport />
         </TabsContent>
 
         <TabsContent value="preferencias">
