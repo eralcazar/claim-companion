@@ -88,6 +88,7 @@ import MisDatosIA from "@/pages/MisDatosIA";
 import HeartRateMonitor from "@/pages/HeartRateMonitor";
 import Consultorios from "@/pages/Consultorios";
 import Soporte from "@/pages/Soporte";
+import TensiometrosCompatibilidad from "@/pages/TensiometrosCompatibilidad";
 import { ActiveLocationProvider } from "@/contexts/ActiveLocationContext";
 
 const queryClient = new QueryClient();
@@ -199,6 +200,7 @@ const App = () => (
               <Route path="/mis-datos-ia" element={<MisDatosIA />} />
               <Route path="/consultorios" element={<Consultorios />} />
               <Route path="/soporte" element={<Soporte />} />
+              <Route path="/tensiometros-compatibilidad" element={<TensiometrosCompatibilidad />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>

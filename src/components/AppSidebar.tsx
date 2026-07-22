@@ -54,6 +54,7 @@ const segurosItems: Item[] = [
 
 const dispositivosItems: Item[] = [
   { title: "Dispositivos BLE", url: "/dispositivos", icon: Bluetooth, feature: "perfil" },
+  { title: "Compatibilidad tensiómetros", url: "/tensiometros-compatibilidad", icon: Activity, feature: "perfil" },
 ];
 
 const cuentaItems: Item[] = [
