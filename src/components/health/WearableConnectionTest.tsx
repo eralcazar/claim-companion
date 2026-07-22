@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -12,6 +12,7 @@ import {
   Play,
   RefreshCw,
   ShieldAlert,
+  Timer,
   Wind,
   XCircle,
 } from "lucide-react";
@@ -22,6 +23,10 @@ import {
   requestHealthPermissions,
   type HealthMetric,
 } from "@/lib/health";
+import { useConnectionTestHistory } from "@/hooks/useConnectionTestHistory";
+import { useExtendedVerification } from "@/hooks/useExtendedVerification";
+import { DownloadConnectionTestPdfButton } from "./WearableConnectionTestPdf";
+import { ExtendedVerificationSummary } from "./ExtendedVerificationSummary";
 
 type StepStatus = "pending" | "running" | "ok" | "warn" | "error";
 
@@ -62,17 +67,66 @@ export function WearableConnectionTest() {
     METRICS.map((m) => ({ ...m, status: "pending" }))
   );
   const [finalError, setFinalError] = useState<string | null>(null);
+  const [lastTestId, setLastTestId] = useState<string | null>(null);
+  const { save, list: history } = useConnectionTestHistory(10);
+  const stepsRef = useRef<MetricStep[]>(steps);
+  stepsRef.current = steps;
 
   const platformLabel =
     platform === "ios" ? "Apple HealthKit" : platform === "android" ? "Google Health Connect" : "Web (no disponible)";
 
   const setStep = (key: HealthMetric, patch: Partial<MetricStep>) =>
-    setSteps((prev) => prev.map((s) => (s.key === key ? { ...s, ...patch } : s)));
+    setSteps((prev) => {
+      const next = prev.map((s) => (s.key === key ? { ...s, ...patch } : s));
+      stepsRef.current = next;
+      return next;
+    });
 
-  const run = async () => {
+  const persistRun = useCallback(
+    async (params: {
+      runId?: string | null;
+      trigger?: "manual" | "auto_retry" | "extended";
+      startedAt: number;
+      available: boolean | null;
+      overallStatus: "ok" | "partial" | "error";
+      notes?: string | null;
+    }) => {
+      const metrics = stepsRef.current.map((s) => ({
+        metric: s.key,
+        status:
+          s.status === "ok" ? ("ok" as const)
+          : s.status === "warn" ? ("warn" as const)
+          : s.status === "error" ? ("error" as const)
+          : ("error" as const),
+        samples_count: s.count ?? 0,
+        last_value: s.sample ? Number((s.sample.match(/(\d+(?:\.\d+)?)/) ?? [])[0]) || null : null,
+        last_at: null,
+        error_code: null,
+        error_message: s.status === "error" || s.status === "warn" ? (s.hint ?? null) : null,
+      }));
+      try {
+        const test = await save.mutateAsync({
+          run_id: params.runId ?? null,
+          platform,
+          availability: params.available,
+          overall_status: params.overallStatus,
+          duration_ms: Date.now() - params.startedAt,
+          trigger: params.trigger ?? "manual",
+          notes: params.notes ?? null,
+          metrics,
+        });
+        setLastTestId(test.id);
+      } catch { /* silent */ }
+    },
+    [save, platform],
+  );
+
+  const run = async (opts?: { runId?: string; trigger?: "manual" | "auto_retry" | "extended" }) => {
+    const startedAt = Date.now();
     setRunning(true);
     setFinalError(null);
     setSteps(METRICS.map((m) => ({ ...m, status: "pending" })));
+    stepsRef.current = METRICS.map((m) => ({ ...m, status: "pending" }));
     setPermStatus("running");
     setAvailStatus("running");
 
@@ -80,22 +134,28 @@ export function WearableConnectionTest() {
       const available = await checkHealthAvailability();
       setAvailStatus(available ? "ok" : "error");
       if (!available) {
-        setFinalError(
-          platform === "web"
+        const msg = platform === "web"
             ? "Health Connect / Apple Salud solo están disponibles en la app móvil de CareCentral. Instalá la app en tu teléfono y volvé a probar."
-            : "El sistema no expone Health Connect / Apple Salud. Verificá que Health Connect esté instalado y actualizado (Play Store)."
-        );
+            : "El sistema no expone Health Connect / Apple Salud. Verificá que Health Connect esté instalado y actualizado (Play Store).";
+        setFinalError(msg);
         setRunning(false);
+        await persistRun({
+          runId: opts?.runId, trigger: opts?.trigger, startedAt,
+          available: false, overallStatus: "error", notes: msg,
+        });
         return;
       }
 
       const granted = await requestHealthPermissions();
       setPermStatus(granted ? "ok" : "error");
       if (!granted) {
-        setFinalError(
-          "No se otorgaron permisos. Abrí Ajustes → Health Connect (o Salud) → CareCentral y activá lectura de Frecuencia cardíaca, Pasos, Sueño y SpO₂."
-        );
+        const msg = "No se otorgaron permisos. Abrí Ajustes → Health Connect (o Salud) → CareCentral y activá lectura de Frecuencia cardíaca, Pasos, Sueño y SpO₂.";
+        setFinalError(msg);
         setRunning(false);
+        await persistRun({
+          runId: opts?.runId, trigger: opts?.trigger, startedAt,
+          available: true, overallStatus: "error", notes: msg,
+        });
         return;
       }
 
@@ -129,10 +189,25 @@ export function WearableConnectionTest() {
           });
         }
       }
+
+      const oks = stepsRef.current.filter((s) => s.status === "ok").length;
+      const errs = stepsRef.current.filter((s) => s.status === "error").length;
+      const overall: "ok" | "partial" | "error" =
+        errs > 0 && oks === 0 ? "error" : oks === METRICS.length ? "ok" : "partial";
+      await persistRun({
+        runId: opts?.runId, trigger: opts?.trigger, startedAt,
+        available: true, overallStatus: overall,
+      });
     } finally {
       setRunning(false);
     }
   };
+
+  const extended = useExtendedVerification(async ({ runId, trigger }) => {
+    await run({ runId, trigger });
+  });
+
+  const lastSavedTest = (history.data ?? []).find((t) => t.id === lastTestId) ?? null;
 
   const StatusBadge = ({ s }: { s: StepStatus }) => {
     if (s === "ok") return <Badge className="gap-1 bg-emerald-500/15 text-emerald-700 border-emerald-500/30"><CheckCircle2 className="h-3 w-3" /> Detectado</Badge>;
@@ -162,6 +237,30 @@ export function WearableConnectionTest() {
             <><RefreshCw className="h-4 w-4 mr-1" /> Iniciar prueba</>
           )}
         </Button>
+
+        <div className="flex flex-wrap gap-2">
+          {lastSavedTest && (
+            <DownloadConnectionTestPdfButton test={lastSavedTest} label="Descargar informe PDF" />
+          )}
+          {!extended.state.active ? (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => extended.start([5, 15, 60])}
+              disabled={running}
+            >
+              <Timer className="h-4 w-4 mr-1" /> Verificación extendida (5 / 15 / 60 min)
+            </Button>
+          ) : (
+            <Button size="sm" variant="ghost" onClick={extended.cancel}>
+              <XCircle className="h-4 w-4 mr-1" /> Cancelar verificación extendida
+            </Button>
+          )}
+        </div>
+
+        {extended.state.run_id && (
+          <ExtendedVerificationSummary state={extended.state} onCancel={extended.cancel} />
+        )}
 
         <ol className="space-y-2">
           <li className="flex items-center justify-between rounded-md border p-2 text-sm">
