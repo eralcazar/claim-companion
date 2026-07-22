@@ -173,7 +173,9 @@ export function BleConnectPanel() {
                 <p className="mt-1 text-sm">
                   Última lectura: {session.lastReading.kind === "blood_pressure"
                     ? `${session.lastReading.systolic}/${session.lastReading.diastolic} mmHg`
-                    : `SpO₂ ${session.lastReading.spo2}%`}
+                    : session.lastReading.kind === "spo2"
+                      ? `SpO₂ ${session.lastReading.spo2}%`
+                      : `${session.lastReading.bpm} bpm`}
                 </p>
               )}
               <Button size="sm" variant="ghost" className="mt-2" onClick={() => session.disconnect()}>
