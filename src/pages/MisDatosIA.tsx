@@ -10,6 +10,7 @@ import {
   useAiAudit,
   exportAiAuditCSV,
   useExternalProvidersEnabled,
+  useAiPolicyProviders,
 } from "@/hooks/useAiGovernance";
 import { useState } from "react";
 
@@ -17,6 +18,7 @@ export default function MisDatosIA() {
   const { data: consents = [] } = useMyFeatureConsents();
   const setConsent = useSetFeatureConsent();
   const { data: externalsOn } = useExternalProvidersEnabled();
+  const { data: providers } = useAiPolicyProviders();
 
   const [days, setDays] = useState(30);
   const to = new Date();
@@ -68,22 +70,40 @@ export default function MisDatosIA() {
           <div className="divide-y">
             {AI_FEATURES.map((f) => {
               const c = consentByKey.get(f.key);
-              const granted = c?.granted ?? true; // default opt-in a Lovable AI
+              const configuredProvider = providers?.get(f.key) ?? "lovable";
+              const isExternal = configuredProvider !== "lovable";
+              // Opt-in por defecto en Lovable; opt-out por defecto en externo.
+              const granted = c?.granted ?? !isExternal;
               return (
                 <div key={f.key} className="py-3 flex items-center justify-between gap-3">
                   <div className="min-w-0">
-                    <div className="font-medium text-sm">{f.label}</div>
-                    <div className="text-xs text-muted-foreground truncate">
-                      Proveedor actual: {c?.provider ?? "lovable"}
+                    <div className="font-medium text-sm flex items-center gap-2">
+                      {f.label}
+                      {isExternal ? (
+                        <Badge className="bg-amber-500/15 text-amber-800 dark:text-amber-200 border-amber-500/40">
+                          Proveedor externo · {configuredProvider}
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-[10px]">Siempre interno</Badge>
+                      )}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {isExternal
+                        ? "Al activar, tus prompts (sin CURP, RFC, email, teléfono, direcciones ni fechas) salen a este proveedor. Si desactivas, se usa Lovable AI automáticamente."
+                        : "Esta función usa exclusivamente Lovable AI (interno). No hay envío a terceros."}
                     </div>
                   </div>
-                  <Switch
-                    checked={granted}
-                    disabled={setConsent.isPending}
-                    onCheckedChange={(v) =>
-                      setConsent.mutate({ feature_key: f.key, granted: v })
-                    }
-                  />
+                  {isExternal ? (
+                    <Switch
+                      checked={granted}
+                      disabled={setConsent.isPending}
+                      onCheckedChange={(v) =>
+                        setConsent.mutate({ feature_key: f.key, granted: v, provider: configuredProvider })
+                      }
+                    />
+                  ) : (
+                    <span className="text-[11px] text-muted-foreground">sin decisión</span>
+                  )}
                 </div>
               );
             })}
