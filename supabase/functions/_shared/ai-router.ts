@@ -194,7 +194,10 @@ export async function callGateway(
   messages: Array<{ role: string; content: string }>,
   opts: { maxOutputTokens?: number; responseFormat?: "json_object" } = {},
 ): Promise<{ ok: boolean; status: number; content: string; usage: { prompt_tokens: number; completion_tokens: number; total_tokens: number }; rawText?: string }> {
-  const body: any = { model, messages };
+  // ApiFreeLLM no expone catálogo de modelos; usamos "standard" como marcador
+  // interno y en ese caso no enviamos `model` para que el servicio use su default.
+  const body: any = { messages };
+  if (model && model !== "standard") body.model = model;
   if (opts.maxOutputTokens) body.max_tokens = opts.maxOutputTokens;
   if (opts.responseFormat) body.response_format = { type: opts.responseFormat };
 
