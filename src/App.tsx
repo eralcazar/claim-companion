@@ -186,6 +186,7 @@ const App = () => (
               <Route path="/domicilio" element={<Domicilio />} />
               <Route path="/facturacion" element={<Facturacion />} />
               <Route path="/admin/facturacion" element={<CfdiConfigManager />} />
+              <Route path="/mis-datos-ia" element={<MisDatosIA />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
