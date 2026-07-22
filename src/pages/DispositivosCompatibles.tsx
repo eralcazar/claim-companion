@@ -32,6 +32,8 @@ import { MyVerificationsSection } from "@/components/ble/MyVerificationsSection"
 import { RequestDeviceIntegrationDialog } from "@/components/ble/RequestDeviceIntegrationDialog";
 import { ConnectionTestHistoryList } from "@/components/health/ConnectionTestHistoryList";
 import { MetricDeviceRouter } from "@/components/health/MetricDeviceRouter";
+import { HealthConnectSetupWizard } from "@/components/health/HealthConnectSetupWizard";
+import { DirectBleChecker } from "@/components/ble/DirectBleChecker";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const TONE_CLASS: Record<string, string> = {
@@ -110,6 +112,8 @@ export default function DispositivosCompatibles() {
         <TabsList className="flex-wrap h-auto">
           <TabsTrigger value="catalogo">Catálogo</TabsTrigger>
           <TabsTrigger value="probar">Probar conexión</TabsTrigger>
+          <TabsTrigger value="asistente">Asistente Health Connect</TabsTrigger>
+          <TabsTrigger value="ble-directo">BLE directo</TabsTrigger>
           <TabsTrigger value="historial">Historial</TabsTrigger>
           <TabsTrigger value="preferencias">Preferencias por métrica</TabsTrigger>
         </TabsList>
@@ -120,6 +124,14 @@ export default function DispositivosCompatibles() {
             <WearableCompatibilityLookup />
             <WearableConnectionTest />
           </div>
+        </TabsContent>
+
+        <TabsContent value="asistente">
+          <HealthConnectSetupWizard />
+        </TabsContent>
+
+        <TabsContent value="ble-directo">
+          <DirectBleChecker />
         </TabsContent>
 
         <TabsContent value="historial">
