@@ -8,22 +8,26 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Home, MapPin, Plus, Clock, Check, Map as MapIcon, Settings2 } from "lucide-react";
+import { Home, MapPin, Plus, Clock, Check, Map as MapIcon, Settings2, Car, X, Flag, History } from "lucide-react";
 import { Link } from "react-router-dom";
-import { useHomeVisits, useCreateHomeVisit, useUpdateHomeVisit, useAcceptHomeVisit } from "@/hooks/useHomeVisits";
-import { useMedicoUsers } from "@/hooks/useMedicos";
+import {
+  useHomeVisits, useCreateHomeVisit, useUpdateHomeVisit,
+  useAcceptHomeVisit, useSetHomeVisitState,
+} from "@/hooks/useHomeVisits";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { AddressPicker, MiniMap, type AddressValue } from "./AddressPicker";
 import { VisitDetailDialog } from "./VisitDetailDialog";
+import { RejectVisitDialog } from "./RejectVisitDialog";
+import { SuggestedDoctorsList } from "./SuggestedDoctorsList";
 
 const URGENCIAS = [
   { value: "baja", label: "Baja", color: "secondary" as const },
   { value: "media", label: "Media", color: "default" as const },
   { value: "alta", label: "Alta", color: "destructive" as const },
 ];
-const ESTADOS = ["pendiente", "aceptada", "en_camino", "completada", "cancelada"];
+const ESTADOS = ["pendiente", "aceptada", "en_camino", "llegada", "completada", "rechazada", "cancelada"];
 
 interface Props { mode: "paciente" | "medico"; userId: string; isPatient?: boolean; isPro?: boolean }
 
@@ -32,8 +36,10 @@ export function HomeVisitsPanel({ mode, userId, isPatient = true, isPro = false 
   const create = useCreateHomeVisit();
   const update = useUpdateHomeVisit();
   const accept = useAcceptHomeVisit();
+  const setState = useSetHomeVisitState();
   const [open, setOpen] = useState(false);
   const [detail, setDetail] = useState<any | null>(null);
+  const [rejectId, setRejectId] = useState<string | null>(null);
 
   return (
     <div className="space-y-4">
@@ -103,11 +109,37 @@ export function HomeVisitsPanel({ mode, userId, isPatient = true, isPro = false 
                 <Button size="sm" variant="ghost" onClick={() => setDetail(v)}>
                   <MapIcon className="h-4 w-4 mr-1" />Ver mapa
                 </Button>
+                <Button size="sm" variant="ghost" onClick={() => setDetail(v)}>
+                  <History className="h-4 w-4 mr-1" />Historial
+                </Button>
+                {v.motivo_rechazo && (
+                  <div className="w-full text-xs text-destructive">Rechazada: {v.motivo_rechazo}</div>
+                )}
                 {mode === "medico" && (
                   <>
                     {v.estado === "pendiente" && (
-                      <Button size="sm" onClick={() => accept.mutate(v.id)} disabled={accept.isPending}>
-                        <Check className="h-4 w-4 mr-1" />Aceptar
+                      <>
+                        <Button size="sm" onClick={() => accept.mutate(v.id)} disabled={accept.isPending}>
+                          <Check className="h-4 w-4 mr-1" />Aceptar
+                        </Button>
+                        <Button size="sm" variant="destructive" onClick={() => setRejectId(v.id)}>
+                          <X className="h-4 w-4 mr-1" />Rechazar
+                        </Button>
+                      </>
+                    )}
+                    {v.estado === "aceptada" && (
+                      <Button size="sm" variant="secondary" onClick={() => setState.mutate({ id: v.id, estado: "en_camino" })}>
+                        <Car className="h-4 w-4 mr-1" />En camino
+                      </Button>
+                    )}
+                    {v.estado === "en_camino" && (
+                      <Button size="sm" variant="secondary" onClick={() => setState.mutate({ id: v.id, estado: "llegada" })}>
+                        <MapPin className="h-4 w-4 mr-1" />Llegué
+                      </Button>
+                    )}
+                    {v.estado === "llegada" && (
+                      <Button size="sm" onClick={() => setState.mutate({ id: v.id, estado: "completada" })}>
+                        <Flag className="h-4 w-4 mr-1" />Completar
                       </Button>
                     )}
                     <Select value={v.estado} onValueChange={(estado) => update.mutate({ id: v.id, estado, doctor_id: userId })}>
@@ -132,19 +164,19 @@ export function HomeVisitsPanel({ mode, userId, isPatient = true, isPro = false 
         }
         onClose={() => setDetail(null)}
       />
+      <RejectVisitDialog visitId={rejectId} open={!!rejectId} onClose={() => setRejectId(null)} />
     </div>
   );
 }
 
 function RequestForm({ onSubmit }: { onSubmit: (p: any) => Promise<void> }) {
   const { user } = useAuth();
-  const { data: medicos = [] } = useMedicoUsers();
   const [motivo, setMotivo] = useState("");
   const [address, setAddress] = useState<AddressValue>({ direccion: "", lat: null, lng: null, accuracy_m: null, location_source: null, in_coverage: null });
   const [urgencia, setUrgencia] = useState("media");
   const [fecha, setFecha] = useState("");
   const [notas, setNotas] = useState("");
-  const [medicoId, setMedicoId] = useState<string>("__any");
+  const [medicoId, setMedicoId] = useState<string | null>(null);
   return (
     <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
       <DialogHeader><DialogTitle>Solicitar médico a domicilio</DialogTitle></DialogHeader>
@@ -161,16 +193,13 @@ function RequestForm({ onSubmit }: { onSubmit: (p: any) => Promise<void> }) {
           <div><Label>Preferencia (opc.)</Label><Input type="datetime-local" value={fecha} onChange={(e) => setFecha(e.target.value)} /></div>
         </div>
         <div>
-          <Label>Médico (opcional)</Label>
-          <Select value={medicoId} onValueChange={setMedicoId}>
-            <SelectTrigger><SelectValue placeholder="Cualquier médico disponible" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__any">Cualquier médico disponible</SelectItem>
-              {medicos.map((m) => (
-                <SelectItem key={m.user_id} value={m.user_id}>{m.full_name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Label>Médico sugerido (opcional)</Label>
+          <SuggestedDoctorsList
+            lat={address.lat}
+            lng={address.lng}
+            selected={medicoId}
+            onSelect={setMedicoId}
+          />
         </div>
         <div><Label>Notas</Label><Textarea value={notas} onChange={(e) => setNotas(e.target.value)} rows={2} /></div>
       </div>
@@ -187,7 +216,7 @@ function RequestForm({ onSubmit }: { onSubmit: (p: any) => Promise<void> }) {
           fecha_preferida: fecha ? new Date(fecha).toISOString() : null,
           notas: notas || null,
           patient_id: user?.id,
-          requested_doctor_id: medicoId === "__any" ? null : medicoId,
+          requested_doctor_id: medicoId,
         })}>Enviar</Button>
       </DialogFooter>
     </DialogContent>
