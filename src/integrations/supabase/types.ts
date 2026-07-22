@@ -219,6 +219,93 @@ export type Database = {
           },
         ]
       }
+      ai_provider_policy: {
+        Row: {
+          cache_ttl_hours: number
+          created_at: string
+          enable_cache: boolean
+          feature_key: string
+          history_window: number
+          id: string
+          label: string
+          max_input_tokens: number
+          max_output_tokens: number
+          model: string
+          notes: string | null
+          updated_at: string
+        }
+        Insert: {
+          cache_ttl_hours?: number
+          created_at?: string
+          enable_cache?: boolean
+          feature_key: string
+          history_window?: number
+          id?: string
+          label: string
+          max_input_tokens?: number
+          max_output_tokens?: number
+          model?: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          cache_ttl_hours?: number
+          created_at?: string
+          enable_cache?: boolean
+          feature_key?: string
+          history_window?: number
+          id?: string
+          label?: string
+          max_input_tokens?: number
+          max_output_tokens?: number
+          model?: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      ai_response_cache: {
+        Row: {
+          created_at: string
+          expires_at: string
+          feature_key: string
+          hit_count: number
+          id: string
+          last_hit_at: string | null
+          model: string
+          prompt_hash: string
+          prompt_normalized: string
+          response: string
+          tokens_saved: number
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string
+          feature_key: string
+          hit_count?: number
+          id?: string
+          last_hit_at?: string | null
+          model: string
+          prompt_hash: string
+          prompt_normalized: string
+          response: string
+          tokens_saved?: number
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          feature_key?: string
+          hit_count?: number
+          id?: string
+          last_hit_at?: string | null
+          model?: string
+          prompt_hash?: string
+          prompt_normalized?: string
+          response?: string
+          tokens_saved?: number
+        }
+        Relationships: []
+      }
       ai_settings: {
         Row: {
           key: string

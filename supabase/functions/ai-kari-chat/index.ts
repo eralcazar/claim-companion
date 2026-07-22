@@ -1,5 +1,17 @@
 // Edge function: chat médico con Kari (Lovable AI Gateway + descuento de tokens).
 import { createClient } from "npm:@supabase/supabase-js@2";
+import {
+  loadPolicy,
+  normalizePrompt,
+  hashPrompt,
+  isCacheableGeneric,
+  lookupCache,
+  saveCache,
+  callGateway,
+  pruneHistory,
+  truncateText,
+  MODEL_COSTS,
+} from "../_shared/ai-router.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -7,50 +19,15 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const SYSTEM_PROMPT = `Eres Kari, asistente de salud digital de CareCentral. Hablas español de México de forma cálida, clara y respetuosa.
-
-REGLAS CRÍTICAS DE SEGURIDAD:
-- NO eres médico. NO diagnosticas, NO prescribes medicamentos, NO ajustas dosis ni tratamientos.
-- Si detectas señales de EMERGENCIA (dolor torácico intenso, dificultad para respirar, pérdida de conciencia, sangrado abundante, signos de infarto o ACV, ideación suicida) responde PRIMERO con:
-  "⚠️ Esto puede ser una emergencia. Llama al 911 o acude a urgencias inmediatamente."
-- Ante síntomas significativos, recomienda consultar a un profesional médico.
-- Recuérdale al usuario que esto NO sustituye una consulta médica.
-
-QUÉ PUEDES HACER:
-- Explicar términos médicos y resultados de estudios en lenguaje simple.
-- Orientar sobre cuándo buscar atención médica.
-- Ayudar a entender medicamentos (qué son, para qué se usan en general) sin recomendar dosis.
-- Dar consejos generales de bienestar (sueño, alimentación, ejercicio).
-- Ayudar a navegar la app CareCentral.
-
-Si la pregunta es completamente fuera del ámbito de salud, redirige amablemente.
-Sé breve por defecto (máx ~5 párrafos) salvo que el usuario pida detalle.`;
-
-// Micro-USD por token (1 USD = 1_000_000). Aproximaciones de Lovable AI Gateway.
-const MODEL_COSTS_USD_PER_TOKEN_MICROS: Record<string, { input: number; output: number }> = {
-  "google/gemini-3-flash-preview": { input: 30, output: 250 },
-  "google/gemini-2.5-flash": { input: 30, output: 250 },
-  "google/gemini-2.5-flash-lite": { input: 10, output: 80 },
-  "google/gemini-2.5-pro": { input: 1250, output: 5000 },
-};
-
-const DEFAULT_MODEL = "google/gemini-3-flash-preview";
-
-async function getActiveModel(admin: ReturnType<typeof createClient>): Promise<string> {
-  try {
-    const { data } = await admin
-      .from("ai_settings")
-      .select("value")
-      .eq("key", "kari_active_model")
-      .maybeSingle();
-    const v = data?.value;
-    const model = typeof v === "string" ? v : null;
-    if (model && MODEL_COSTS_USD_PER_TOKEN_MICROS[model]) return model;
-    return DEFAULT_MODEL;
-  } catch {
-    return DEFAULT_MODEL;
-  }
-}
+// System prompt compacto (~200 tokens vs ~500 anterior). Conserva reglas de seguridad.
+const SYSTEM_PROMPT = `Eres Kari, asistente de salud de CareCentral. Español de México, cálida y clara.
+REGLAS:
+- NO eres médico: no diagnosticas, no prescribes, no ajustas dosis.
+- Emergencia (dolor torácico intenso, disnea, pérdida de conciencia, sangrado abundante, signos de infarto/ACV, ideación suicida): responde PRIMERO con "⚠️ Esto puede ser una emergencia. Llama al 911 o acude a urgencias."
+- Ante síntomas significativos, recomienda ver a un profesional.
+- Recuerda que no sustituyes consulta médica.
+PUEDES: explicar términos, orientar cuándo buscar atención, describir medicamentos en general, dar consejos de bienestar, ayudar con la app.
+Sé breve (≤5 párrafos) salvo que pidan detalle. Sin markdown pesado.`;
 
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -87,7 +64,10 @@ Deno.serve(async (req) => {
     let conversationId: string | null = body?.conversation_id ?? null;
 
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
-    const ACTIVE_MODEL = await getActiveModel(admin);
+
+    // Cargar política del feature "kari_chat"
+    const policy = await loadPolicy(admin, "kari_chat");
+    const ACTIVE_MODEL = policy.model;
 
     // Verificar límite mensual por rol/paquete
     const { data: limitInfo } = await admin.rpc("check_kari_monthly_limit", { _user_id: user.id });
@@ -119,9 +99,12 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Truncar mensaje muy largo
+    const trimmedMessage = truncateText(message, 2000);
+
     // Crear conversación si no hay
     if (!conversationId) {
-      const title = message.slice(0, 60);
+      const title = trimmedMessage.slice(0, 60);
       const { data: conv, error: cErr } = await admin
         .from("ai_chat_conversations")
         .insert({ user_id: user.id, title })
@@ -141,60 +124,99 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Cargar historial reciente
-    const { data: history } = await admin
+    // Cargar historial reciente (más ancho porque después podamos)
+    const { data: rawHistory } = await admin
       .from("ai_chat_messages")
       .select("role, content")
       .eq("conversation_id", conversationId)
       .order("created_at", { ascending: true })
-      .limit(20);
+      .limit(40);
 
     // Insertar mensaje del usuario
     await admin.from("ai_chat_messages").insert({
       conversation_id: conversationId,
       user_id: user.id,
       role: "user",
-      content: message,
+      content: trimmedMessage,
       tokens_used: 0,
     });
 
-    const messages = [
-      { role: "system", content: SYSTEM_PROMPT },
-      ...(history ?? []).map((m) => ({ role: m.role, content: m.content })),
-      { role: "user", content: message },
-    ];
+    // === Intento de caché para preguntas educativas genéricas (solo si no hay historial personal) ===
+    const historyList = rawHistory ?? [];
+    const normalized = normalizePrompt(trimmedMessage);
+    const cacheable =
+      policy.enable_cache &&
+      historyList.length === 0 && // primera pregunta del hilo
+      isCacheableGeneric(trimmedMessage, normalized);
 
-    const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: ACTIVE_MODEL,
-        messages,
-      }),
-    });
+    let assistantContent = "";
+    let promptTokens = 0;
+    let completionTokens = 0;
+    let totalTokens = 0;
+    let servedFromCache = false;
+    let usedModel = ACTIVE_MODEL;
+    const promptHash = cacheable ? await hashPrompt(normalized) : "";
 
-    if (aiResp.status === 429) {
-      return jsonResponse({ error: "Kari está saturada. Intenta en unos segundos.", code: "rate_limited" }, 429);
-    }
-    if (aiResp.status === 402) {
-      return jsonResponse({ error: "Sin créditos del servicio de IA. Avisa al admin.", code: "ai_credits" }, 402);
-    }
-    if (!aiResp.ok) {
-      const t = await aiResp.text();
-      console.error("AI gateway error:", aiResp.status, t);
-      return jsonResponse({ error: "Error del servicio de IA" }, 502);
+    if (cacheable) {
+      const hit = await lookupCache(admin, "kari_chat", promptHash);
+      if (hit) {
+        assistantContent = hit.response;
+        usedModel = hit.model;
+        servedFromCache = true;
+        // Tokens = 0 al cachear (no consumimos gateway ni descontamos al usuario)
+      }
     }
 
-    const aiJson = await aiResp.json();
-    const assistantContent: string = aiJson?.choices?.[0]?.message?.content ?? "";
-    const promptTokens: number = Number(aiJson?.usage?.prompt_tokens) || Math.ceil(message.length / 3);
-    const completionTokens: number = Number(aiJson?.usage?.completion_tokens) || Math.ceil(assistantContent.length / 3);
-    const totalTokens: number = Number(aiJson?.usage?.total_tokens) || promptTokens + completionTokens;
+    if (!servedFromCache) {
+      // Podar historial: mantener últimos `policy.history_window`; resumir el resto
+      const prunedHistory = await pruneHistory(
+        LOVABLE_API_KEY,
+        historyList.map((m) => ({ role: m.role as string, content: m.content as string })),
+        policy.history_window,
+      );
 
-    const cost = MODEL_COSTS_USD_PER_TOKEN_MICROS[ACTIVE_MODEL] ?? { input: 0, output: 0 };
+      const messagesToSend = [
+        { role: "system", content: SYSTEM_PROMPT },
+        ...prunedHistory,
+        { role: "user", content: trimmedMessage },
+      ];
+
+      const aiResp = await callGateway(LOVABLE_API_KEY, ACTIVE_MODEL, messagesToSend, {
+        maxOutputTokens: policy.max_output_tokens,
+      });
+
+      if (!aiResp.ok) {
+        if (aiResp.status === 429) {
+          return jsonResponse({ error: "Kari está saturada. Intenta en unos segundos.", code: "rate_limited" }, 429);
+        }
+        if (aiResp.status === 402) {
+          return jsonResponse({ error: "Sin créditos del servicio de IA. Avisa al admin.", code: "ai_credits" }, 402);
+        }
+        console.error("AI gateway error:", aiResp.status, aiResp.rawText);
+        return jsonResponse({ error: "Error del servicio de IA" }, 502);
+      }
+
+      assistantContent = aiResp.content;
+      promptTokens = aiResp.usage.prompt_tokens || Math.ceil(trimmedMessage.length / 3);
+      completionTokens = aiResp.usage.completion_tokens || Math.ceil(assistantContent.length / 3);
+      totalTokens = aiResp.usage.total_tokens || promptTokens + completionTokens;
+
+      // Guardar en caché si aplicaba
+      if (cacheable && assistantContent) {
+        await saveCache(
+          admin,
+          "kari_chat",
+          promptHash,
+          normalized,
+          assistantContent,
+          ACTIVE_MODEL,
+          totalTokens,
+          policy.cache_ttl_hours,
+        );
+      }
+    }
+
+    const cost = MODEL_COSTS[usedModel] ?? { input: 0, output: 0 };
     const costMicros = promptTokens * cost.input + completionTokens * cost.output;
 
     // Guardar respuesta del asistente
@@ -211,16 +233,18 @@ Deno.serve(async (req) => {
       user_id: user.id,
       conversation_id: conversationId,
       message_id: insertedMsg?.id ?? null,
-      model: ACTIVE_MODEL,
+      model: servedFromCache ? `${usedModel} (cache)` : usedModel,
       prompt_tokens: promptTokens,
       completion_tokens: completionTokens,
       total_tokens: totalTokens,
       cost_usd_micros: costMicros,
     });
 
-    // Consumir tokens (usa min(saldo, totalTokens) para no fallar si excede)
+    // Consumir tokens (0 si es cache hit)
     const consume = Math.min(totalTokens, balance);
-    await admin.rpc("consume_ai_tokens", { _user_id: user.id, _tokens: consume });
+    if (consume > 0) {
+      await admin.rpc("consume_ai_tokens", { _user_id: user.id, _tokens: consume });
+    }
 
     // Tocar updated_at de la conversación
     await admin
@@ -234,6 +258,8 @@ Deno.serve(async (req) => {
       tokens_used: totalTokens,
       remaining: balance - consume,
       low_balance: balance - consume > 0 && balance - consume < 500,
+      cached: servedFromCache,
+      model: usedModel,
       monthly_used: limit?.used != null ? (limit.used as number) + totalTokens : undefined,
       monthly_cap: limit?.cap ?? undefined,
       monthly_resets_at: limit?.resets_at,

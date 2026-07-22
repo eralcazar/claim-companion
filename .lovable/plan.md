@@ -1,121 +1,112 @@
-# Plan — Actividad, Rutinas IA, Monitores por dispositivo y Paneles por especialidad
+# Plan: Optimización de costos de IA en CareCentral
 
-Divido en 4 bloques. Cada bloque es autocontenible y se puede aprobar/ejecutar por separado si prefieres.
-
----
-
-## Bloque A — Monitoreo de Actividad + Rutinas + IA (nuevo módulo "Actividad")
-
-Inspirado en Fitbit / Apple Fitness / Google Fit / Strava, adaptado a CareCentral (paciente + médico pueden ver).
-
-### A1. Ruta y navegación
-- Nueva ruta `/actividad` en `App.tsx`, entrada en `AppSidebar.tsx` (grupo Salud) y `BottomNav.tsx`.
-- Página `src/pages/Actividad.tsx` con tabs: **Hoy**, **Tendencias**, **Rutinas**, **Recomendaciones IA**.
-
-### A2. Dashboard "Hoy" (aprovecha datos ya sincronizados)
-Reutiliza `activity_readings`, `heart_rate_readings`, `useUnifiedReadings`:
-- Anillos de progreso (pasos, minutos activos, calorías estimadas) con meta configurable.
-- Racha diaria (streak) + comparativo semana vs. semana previa.
-- Zonas de frecuencia cardiaca del día (reposo/quema/cardio/pico) calculadas con FC máx = 220 − edad (de `profiles.date_of_birth`).
-- Mini-cards: sueño (si viene de HealthKit/Health Connect), SpO2 promedio, presión última toma.
-
-### A3. Rutinas de ejercicio programadas
-Nuevas tablas (migración):
-- `workout_plans` (owner_id, nombre, objetivo enum: perder_peso/tonificar/rehabilitacion/cardio/fuerza, nivel, dias_por_semana, created_by_role).
-- `workout_sessions` (plan_id, day_of_week, orden, titulo, duracion_min, intensidad, notas).
-- `workout_exercises` (session_id, nombre, series, reps, duracion_seg, descanso_seg, video_url opcional, grupo_muscular).
-- `workout_logs` (user_id, session_id, fecha, completado, rpe 1-10, notas, hr_promedio nullable).
-- RLS: dueño gestiona; médicos/nutricionistas con relación al paciente pueden asignar planes; GRANTs completos.
-- Trigger para `updated_at`.
-
-UI:
-- `RoutinePlanner.tsx`: crear plan con builder por día (drag & drop simple con teclado).
-- `TodayRoutineCard.tsx`: muestra la sesión de hoy con temporizador de series/descanso y botón "Marcar completado" que escribe `workout_logs`.
-- Catálogo semilla de ~40 ejercicios (`src/lib/fitness/exerciseCatalog.ts`) con grupo muscular, equipo, contraindicaciones.
-
-### A4. Recomendaciones IA (consume créditos Kari)
-- Nueva edge function `ai-activity-coach` (Lovable AI, `google/gemini-3-flash-preview` por defecto):
-  - Input: últimos 14 días de `activity_readings` + `heart_rate_readings` + `workout_logs` + condiciones activas (`medical_history_conditions`) + medicamentos + alertas.
-  - Output estructurado (AI SDK `Output.object` con schema pequeño): `resumen`, `banderas_rojas[]`, `recomendaciones[]` (tipo, motivo, prioridad), `plan_sugerido` opcional.
-  - Descuenta tokens usando la infra existente (`ai_token_balances`, `ai_token_usage_log`) — mismo patrón que `ai-kari-chat`.
-  - Respeta contraindicaciones: si hay HTA no controlada o SpO2 bajo, sugiere baja intensidad y marca bandera roja.
-- UI: tab **Recomendaciones IA** con botón "Generar sugerencia" (muestra costo estimado en tokens), historial de sugerencias y CTA "Aplicar plan sugerido" que crea un `workout_plan`.
+**Objetivo:** reducir 40–70% el consumo de tokens/costos de Lovable AI en todas las features de IA (Kari, coach de actividad, sugerencias, resúmenes) **sin cambiar de proveedor** y **sin agregar riesgo legal**. Se apoya en cuatro palancas: router por feature, caché, poda de contexto y modelo correcto para cada tarea.
 
 ---
 
-## Bloque B — Monitores por dispositivo homologado
+## Estado actual (verificado)
 
-Objetivo: para cada dispositivo BLE marcado como compatible/verificado, mostrar un **monitor en vivo** con lectura streaming + guardado.
+- `ai-kari-chat` usa `google/gemini-3-flash-preview` fijo o el modelo elegido en `ai_settings.kari_active_model`. Manda hasta **20 mensajes previos completos** en cada request → contexto grande = tokens caros.
+- `ai-activity-coach` también consume tokens Kari con Gemini Flash.
+- No hay caché: preguntas idénticas ("¿qué es la hipertensión?") gastan tokens cada vez.
+- No hay política por feature: todo usa el mismo modelo/config aunque la tarea sea trivial.
 
-### B1. Auditar catálogo actual
-- Recorrer `src/lib/ble/compatibleDevices.ts` y clasificar cada modelo por capacidad: `bp`, `spo2`, `hr`, `glucose`, `temperature`, `weight`, `activity`.
-- Marcar en el catálogo qué característica GATT usa cada uno (varios ya están; completar los faltantes con base a la ficha del fabricante).
-
-### B2. Monitores dedicados (páginas ya existen parcialmente)
-Estado actual y trabajo restante:
-- Presión: `PresionArterial.tsx` ✅ → agregar botón "Monitor en vivo" que abra `BleAssistedMeasurement` filtrado por tipo `bp`.
-- SpO2: `OxygenSaturation.tsx` ✅ → mismo patrón, tipo `spo2` + gráfico de pletismografía si el dispositivo lo expone.
-- Glucosa: `Glucosa.tsx` ✅ → soporte CGM (streaming) para modelos que lo permitan.
-- Temperatura: `Temperatura.tsx` ✅ → monitor con curva 60 s.
-- Frecuencia cardiaca: nueva `FrecuenciaCardiaca.tsx` con monitor en vivo (banda pectoral / smartwatch).
-- Peso/composición: nueva `Peso.tsx` + tabla `weight_readings` (kg, %grasa, %agua, imc) + BLE Weight Scale profile.
-- Actividad: usa Bloque A.
-
-### B3. Componente reutilizable `DeviceLiveMonitor`
-- Un solo componente que recibe `capability` y muestra: estado de conexión, valor actual grande, mini-gráfico últimos 60 s, botón "Guardar lectura", advertencias fuera de rango.
-- Reutiliza `src/lib/ble/*` y `useBleDevices`.
-
-### B4. Validación / homologación
-- Extender `user_device_verifications` con campos: `capability_tested[]`, `passed`, `deviation_pct`, `reference_device`.
-- Formulario de validación por capacidad (no solo "sí/no" global).
-- Badge "Homologado por N usuarios" en la ficha pública del dispositivo.
+Datos concretos de costos y consumo actual se validarán con `ai_gateway_logs--list_ai_gateway_requests` como primer paso del build para calibrar targets.
 
 ---
 
-## Bloque C — Paneles por especialidad
+## Alcance en 4 bloques
 
-Complementar especialidades que hoy solo aparecen en el catálogo pero no tienen UI dedicada. Propuesta (te muestro; tú marcas cuáles priorizar):
+### Bloque 1 — Router de IA por feature (~1 día)
+Nueva tabla `ai_provider_policy` (por feature, admin-editable):
+- `feature_key` (kari_chat, activity_coach, study_summary, glossary, etc.)
+- `model` (`gemini-3-flash-preview` / `gemini-2.5-flash-lite` / `gemini-2.5-pro`)
+- `max_input_tokens`, `max_output_tokens`
+- `enable_cache` boolean
+- `history_window` (cuántos mensajes previos incluir)
 
-| Especialidad | Panel propuesto | Reutiliza |
-|---|---|---|
-| Cardiología | Panel con ECG import, FC 24h, PA, riesgo Framingham | `heart_rate_readings`, `blood_pressure_readings` |
-| Endocrinología | Tablero glucosa (AGP), HbA1c, insulina | `glucose_readings` |
-| Neumología | SpO2 nocturno, espirometrías, oxigenoterapia | `spo2_readings` |
-| Pediatría | Curvas OMS (peso/talla/IMC/PC), vacunas, hitos | nuevo `pediatric_growth` |
-| Ginecología | Ciclo menstrual, embarazo/FPP, tamizajes | nuevo `gyn_cycles` |
-| Psicología/Psiquiatría | Escalas (PHQ-9, GAD-7), diario de ánimo, sesiones | nuevo `mental_scales` |
-| Fisioterapia/Rehab | Plan de ejercicios asignado (usa Bloque A), goniometría, dolor VAS | `workout_plans` |
-| Nutrición | Ya existe → agregar plan alimenticio + macros diarios | `nutrition_*` |
-| Oftalmología | Agudeza, refracción, PIO | nuevo `ophtha_exams` |
-| Dermatología | Galería lesional con seguimiento (regla ABCDE) | `body_annotations` |
-| Traumatología | Mapa de dolor + ROM + rutinas de rehab | `body_annotations` + `workout_plans` |
+Edge function `ai-router` que resuelve la política y ejecuta la llamada centralizada. `ai-kari-chat` y `ai-activity-coach` se refactorizan para pasar por el router.
 
-Cada panel: página `src/pages/especialidad/<slug>.tsx` visible solo si el rol activo o la relación médico-paciente lo permite, más entrada dinámica en sidebar según especialidad favorita/activa.
+Beneficio: cambiar modelo/límites por feature sin redeploy. Base para todo lo demás.
+
+### Bloque 2 — Caché semántico de respuestas frecuentes (~2 días)
+Nueva tabla `ai_response_cache`:
+- `feature_key`, `prompt_hash` (SHA-256 del prompt normalizado), `prompt_normalized`, `response`, `model`, `tokens_saved`, `hit_count`, `created_at`, `expires_at`.
+
+Flujo:
+1. Antes de llamar al modelo, normalizar prompt (lowercase, quitar puntuación, quitar tokens PII con regex simple) y calcular hash.
+2. Si existe entrada válida en caché → devolver respuesta sin consumir tokens, incrementar `hit_count`, **no cobrar tokens Kari** al usuario.
+3. Si no, llamar al modelo, guardar respuesta si el prompt es "genérico" (clasificador simple por patrones: preguntas sin nombres/fechas/números específicos del paciente).
+
+Solo se cachea contenido **educativo genérico** (glosario, definiciones, "para qué sirve X medicamento" sin dosis). Prompts con contexto personal (síntomas específicos, mediciones) **nunca se cachean** para no cruzar información entre pacientes.
+
+Beneficio esperado: 20–40% hit rate en Kari (preguntas médicas comunes se repiten mucho entre usuarios).
+
+### Bloque 3 — Poda inteligente de contexto en Kari (~1 día)
+Cambios en `ai-kari-chat`:
+- Reducir ventana de historial de 20 → **8 mensajes** por defecto, configurable en `ai_provider_policy`.
+- Compresión de historial: si la conversación tiene >12 mensajes, resumir los primeros N en 1–2 párrafos con una llamada barata a `gemini-2.5-flash-lite`, y mantener solo los últimos 6 mensajes literales + resumen.
+- Truncar mensajes individuales del usuario >2000 chars con resumen (el límite actual es 4000).
+- System prompt actual (~500 tokens) → versión compacta (~200 tokens) sin perder reglas de seguridad.
+
+Beneficio esperado: 30–50% menos tokens de input por request en conversaciones largas.
+
+### Bloque 4 — Modelo correcto por tarea + selector admin (~1 día)
+Ajuste de defaults en `ai_provider_policy`:
+- **Kari chat conversacional** → `gemini-3-flash-preview` (default actual, correcto).
+- **Coach de actividad** (texto estructurado corto) → `gemini-2.5-flash-lite` (~4x más barato en output).
+- **Glosario / definiciones cortas** → `gemini-2.5-flash-lite`.
+- **Resúmenes de estudios largos** → `gemini-2.5-flash` (mejor calidad para clínico).
+- **Casos complejos con imagen** (futuro OCR) → `gemini-2.5-pro`.
+
+UI admin en `KariUsageAdmin.tsx`: tabla editable de políticas por feature con preview de costo estimado por 1k requests.
+
+Métricas visibles: tokens ahorrados por caché en los últimos 30 días, distribución de costo por feature, hit rate del caché.
 
 ---
 
-## Bloque D — Cerrar pendientes anteriores
+## Fuera de alcance (explícito)
 
-1. **CI axe-core + Playwright** (`.github/workflows/a11y.yml`) con specs para atajos `/`, `g h`, `g c`, `g s`, `?` y foco en sidebar/búsqueda/bottom-nav.
-2. **E2E enlaces compartibles**: dos usuarios, uno crea filtro compartible, otro abre y verifica país/área/sector/texto/favoritas idénticas.
+- NO integrar ApiFreeLLM ni otros proveedores gratuitos anónimos.
+- NO cambiar el modelo de negocio de tokens Kari (los usuarios siguen pagando lo mismo).
+- NO tocar features de IA con visión (OCR de estudios) — quedan en Lovable AI sin cambio.
+- NO modificar consentimientos ni aviso de privacidad (no aplica: seguimos con proveedor ya declarado).
 
 ---
 
-## Cómo propongo ejecutar
+## Detalle técnico
 
-Sugiero orden por impacto visible:
-1. **Bloque A completo** (actividad + rutinas + IA) — es lo que más "llena" la app.
-2. **Bloque B** (monitores unificados + peso + FC dedicada + validación por capacidad).
-3. **Bloque C** por especialidad, en tandas de 2-3 paneles.
-4. **Bloque D** al final (infra de tests, no cambia UX).
+**Migración SQL:**
+- `ai_provider_policy` (id, feature_key unique, model, max_input_tokens, max_output_tokens, enable_cache, history_window, updated_at)
+- `ai_response_cache` (id, feature_key, prompt_hash unique-per-feature, prompt_normalized, response, model, tokens_saved, hit_count, created_at, expires_at, índice en prompt_hash+feature_key)
+- Grants + RLS: solo admin lee/escribe policy; cache es server-only (grant solo a service_role).
+- Seed de políticas default para las features actuales.
 
-### Preguntas antes de arrancar (respóndelas y arranco con el Bloque A):
-1. ¿Metas por defecto para actividad? Sugiero 8 000 pasos, 30 min activos, 7 h sueño — configurables.
-2. ¿Costo en tokens Kari por sugerencia IA? Sugiero 50 tokens por análisis (ajustable).
-3. Para Bloque C, ¿empiezo con **Cardiología + Endocrinología + Pediatría** o prefieres otras 3?
+**Edge functions:**
+- `ai-router` (nueva): recibe `{feature_key, messages, user_id}`, aplica política, verifica caché, llama gateway con `createLovableAiGatewayProvider`, guarda en caché si aplica, devuelve `{response, tokens_used, cached: bool, model}`.
+- `ai-kari-chat`: refactor para delegar la llamada al modelo a `ai-router`. Mantiene toda la lógica de tokens Kari, conversaciones, límites mensuales.
+- `ai-activity-coach`: mismo refactor.
 
-## Detalles técnicos clave
-- Nada de nuevos secrets; usa `LOVABLE_API_KEY` ya presente para IA.
-- Todas las tablas nuevas siguen el patrón `CREATE TABLE → GRANT → RLS → POLICY` en la misma migración.
-- `Output.object` schemas se mantienen chicos (sin `.min/.max`); límites van en el prompt y se validan en código.
-- Reutilizo hooks existentes (`useUnifiedReadings`, `useBleDevices`, `useKariTokens`) para no duplicar lógica.
+**Frontend:**
+- `KariUsageAdmin.tsx`: nueva pestaña "Políticas y caché" con tabla editable + métricas.
+- `Kari.tsx`: badge sutil "Respuesta del caché" cuando aplique, para transparencia (opcional, discutible).
+- Hook `useAiPolicies` para admin.
+
+**Verificación:**
+1. Antes de empezar: `list_ai_gateway_requests` últimos 30 días para baseline de tokens/costo por feature.
+2. Test manual de Kari con preguntas repetidas → segunda vez debe ser cache hit.
+3. Test de conversación larga (15 mensajes) → verificar compresión y ventana reducida.
+4. Comparar tokens en `ai_gateway_logs` antes vs después de deploy.
+
+---
+
+## Entregables y orden
+
+1. Migración SQL (tablas + grants + RLS + seed).
+2. `ai-router` edge function + tests curl.
+3. Refactor `ai-kari-chat` para usar router + poda de contexto.
+4. Refactor `ai-activity-coach` para usar router.
+5. UI admin en `KariUsageAdmin.tsx`.
+6. Verificación con logs del gateway y ajuste de defaults.
+
+Total estimado: **5 días de desarrollo**. Ahorro esperado: **40–70% en costo de tokens de IA** manteniendo calidad y cero riesgo legal nuevo.

@@ -1,0 +1,183 @@
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Sparkles, Database, Save } from "lucide-react";
+import { useState } from "react";
+import {
+  useAiPolicies,
+  useUpdateAiPolicy,
+  useAiCacheStats,
+  AI_MODEL_CHOICES,
+  type AiProviderPolicy,
+} from "@/hooks/useAiPolicies";
+
+function PolicyRow({ p }: { p: AiProviderPolicy }) {
+  const update = useUpdateAiPolicy();
+  const [draft, setDraft] = useState({
+    model: p.model,
+    max_output_tokens: p.max_output_tokens,
+    history_window: p.history_window,
+    enable_cache: p.enable_cache,
+    cache_ttl_hours: p.cache_ttl_hours,
+  });
+  const dirty =
+    draft.model !== p.model ||
+    draft.max_output_tokens !== p.max_output_tokens ||
+    draft.history_window !== p.history_window ||
+    draft.enable_cache !== p.enable_cache ||
+    draft.cache_ttl_hours !== p.cache_ttl_hours;
+
+  const modelMeta = AI_MODEL_CHOICES.find((m) => m.value === draft.model);
+  const estCost1k =
+    modelMeta
+      ? ((modelMeta.inputMicros * 2000 + modelMeta.outputMicros * draft.max_output_tokens) / 1_000_000).toFixed(4)
+      : "0.0000";
+
+  return (
+    <div className="border rounded-lg p-3 space-y-3">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div>
+          <div className="font-medium text-sm flex items-center gap-2">
+            {p.label}
+            <Badge variant="outline" className="text-[10px] font-mono">{p.feature_key}</Badge>
+          </div>
+          {p.notes && <p className="text-xs text-muted-foreground mt-0.5">{p.notes}</p>}
+        </div>
+        <Button
+          size="sm"
+          disabled={!dirty || update.isPending}
+          onClick={() => update.mutate({ id: p.id, ...draft })}
+        >
+          <Save className="h-3.5 w-3.5 mr-1" />Guardar
+        </Button>
+      </div>
+
+      <div className="grid md:grid-cols-4 gap-3">
+        <div>
+          <Label className="text-xs">Modelo</Label>
+          <Select value={draft.model} onValueChange={(v) => setDraft((d) => ({ ...d, model: v }))}>
+            <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {AI_MODEL_CHOICES.map((m) => (
+                <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label className="text-xs">Max output tokens</Label>
+          <Input
+            type="number" min={100} max={8000} step={100}
+            value={draft.max_output_tokens}
+            onChange={(e) => setDraft((d) => ({ ...d, max_output_tokens: Number(e.target.value) }))}
+            className="h-9"
+          />
+        </div>
+        <div>
+          <Label className="text-xs">Historial (mensajes)</Label>
+          <Input
+            type="number" min={0} max={40}
+            value={draft.history_window}
+            onChange={(e) => setDraft((d) => ({ ...d, history_window: Number(e.target.value) }))}
+            className="h-9"
+          />
+        </div>
+        <div>
+          <Label className="text-xs">Caché TTL (horas)</Label>
+          <Input
+            type="number" min={1} max={8760}
+            value={draft.cache_ttl_hours}
+            onChange={(e) => setDraft((d) => ({ ...d, cache_ttl_hours: Number(e.target.value) }))}
+            className="h-9"
+            disabled={!draft.enable_cache}
+          />
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className="flex items-center gap-2">
+          <Switch
+            checked={draft.enable_cache}
+            onCheckedChange={(v) => setDraft((d) => ({ ...d, enable_cache: v }))}
+          />
+          <span className="text-xs">Caché de respuestas educativas genéricas</span>
+        </div>
+        <span className="text-[11px] text-muted-foreground">
+          Costo estimado por request: ~${estCost1k} USD (2k tokens in + max out)
+        </span>
+      </div>
+    </div>
+  );
+}
+
+export function AiPolicyPanel() {
+  const { data: policies = [], isLoading } = useAiPolicies();
+  const { data: cacheStats = [] } = useAiCacheStats();
+
+  const totalTokensSaved = cacheStats.reduce((s, c) => s + c.tokensSaved, 0);
+  const totalHits = cacheStats.reduce((s, c) => s + c.hits, 0);
+
+  return (
+    <Card>
+      <CardContent className="p-4 space-y-4">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-primary" />
+            <h2 className="font-semibold text-sm">Políticas de IA por feature</h2>
+          </div>
+          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+            <Badge variant="secondary" className="gap-1">
+              <Database className="h-3 w-3" />
+              {totalHits.toLocaleString("es-MX")} hits de caché
+            </Badge>
+            <Badge variant="secondary">
+              {totalTokensSaved.toLocaleString("es-MX")} tokens ahorrados
+            </Badge>
+          </div>
+        </div>
+        <p className="text-xs text-muted-foreground -mt-2">
+          Cada feature elige su modelo, límite de contexto y si activa caché de respuestas educativas.
+          Las preguntas con contexto personal (síntomas, mediciones, nombres) nunca se cachean.
+        </p>
+
+        {isLoading && <p className="text-xs text-muted-foreground">Cargando políticas…</p>}
+        {!isLoading && policies.length === 0 && (
+          <p className="text-xs text-muted-foreground">Sin políticas configuradas.</p>
+        )}
+        <div className="space-y-3">
+          {policies.map((p) => <PolicyRow key={p.id} p={p} />)}
+        </div>
+
+        {cacheStats.length > 0 && (
+          <div className="border-t pt-3">
+            <div className="text-xs font-semibold mb-2">Uso de caché por feature</div>
+            <table className="w-full text-xs">
+              <thead className="text-muted-foreground">
+                <tr className="border-b">
+                  <th className="text-left py-1">Feature</th>
+                  <th className="text-right py-1">Entradas</th>
+                  <th className="text-right py-1">Hits</th>
+                  <th className="text-right py-1">Tokens ahorrados</th>
+                </tr>
+              </thead>
+              <tbody>
+                {cacheStats.map((c) => (
+                  <tr key={c.feature_key} className="border-b last:border-0">
+                    <td className="py-1 font-mono">{c.feature_key}</td>
+                    <td className="text-right py-1 tabular-nums">{c.entries}</td>
+                    <td className="text-right py-1 tabular-nums">{c.hits}</td>
+                    <td className="text-right py-1 tabular-nums">{c.tokensSaved.toLocaleString("es-MX")}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
