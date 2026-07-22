@@ -19,6 +19,10 @@ export type MonitorHealthInput = {
   hardHigh?: number;
   label: string; // "pasos", "sueño", "frecuencia cardíaca"
   unit: string;
+  /** z-score threshold para detectar valores atípicos; default 2.5 */
+  outlierZ?: number;
+  /** lecturas mínimas por día para no marcar como "faltante" */
+  minReadingsPerDay?: number;
 };
 
 function daysBetween(a: string, b: string) {
@@ -27,7 +31,7 @@ function daysBetween(a: string, b: string) {
 
 export function useMonitorHealth(input: MonitorHealthInput) {
   return useMemo(() => {
-    const { points, rangeDays, hardLow, hardHigh, label, unit } = input;
+    const { points, rangeDays, hardLow, hardHigh, label, unit, outlierZ = 2.5 } = input;
     const alerts: MonitorAlert[] = [];
     const sorted = [...points].sort((a, b) => a.fecha.localeCompare(b.fecha));
     const lastReadingAt = sorted.length ? sorted[sorted.length - 1].fecha : null;
@@ -82,12 +86,12 @@ export function useMonitorHealth(input: MonitorHealthInput) {
       const values = sorted.map((p) => p.value);
       const mean = values.reduce((a, v) => a + v, 0) / values.length;
       const std = Math.sqrt(values.reduce((a, v) => a + (v - mean) ** 2, 0) / values.length) || 1;
-      const outliers = sorted.filter((p) => Math.abs((p.value - mean) / std) > 2.5);
+      const outliers = sorted.filter((p) => Math.abs((p.value - mean) / std) > outlierZ);
       if (outliers.length) {
         alerts.push({
           id: "outlier",
           severity: "warning",
-          title: `${outliers.length} valor(es) atípico(s) detectado(s)`,
+          title: `${outliers.length} valor(es) atípico(s) detectado(s) (z>${outlierZ})`,
           detail: `Últimos días con lecturas fuera del patrón habitual (promedio ${Math.round(mean)} ${unit}).`,
           steps: [
             "Revisá si el dispositivo estuvo bien colocado ese día.",

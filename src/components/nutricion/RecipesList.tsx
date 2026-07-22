@@ -9,6 +9,7 @@ import { Loader2, Plus, Pencil, Trash2, Globe, ExternalLink } from "lucide-react
 import { supabase } from "@/integrations/supabase/client";
 import { useRecipes, useDeleteRecipe, type NutritionRecipe, type RecipeSource } from "@/hooks/useRecipes";
 import { RecipeEditor } from "./RecipeEditor";
+import { RecipesExport } from "./RecipesExport";
 
 const SOURCE_LABEL: Record<RecipeSource, string> = {
   nutriologa: "Nutrióloga",
@@ -51,6 +52,7 @@ export function RecipesList({ patientId }: { patientId: string }) {
 
   return (
     <div className="space-y-4">
+      <RecipesExport patientId={patientId} patientName={patientId.slice(0, 8)} />
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-base flex items-center gap-2"><Globe className="h-4 w-4" /> Importar desde MedlinePlus (español)</CardTitle>

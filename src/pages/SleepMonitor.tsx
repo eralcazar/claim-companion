@@ -17,6 +17,7 @@ import { MonitorPdfExport } from "@/components/health/MonitorPdfExport";
 import { EnabledMonitorsCard } from "@/components/health/EnabledMonitorsCard";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useMonitorHealth } from "@/hooks/useMonitorHealth";
+import { useResolvedThreshold } from "@/hooks/usePatientThresholds";
 import { MonitorAlertsCard } from "@/components/health/MonitorAlertsCard";
 import { SyncStatusPill } from "@/components/health/SyncStatusPill";
 
@@ -114,10 +115,12 @@ export default function SleepMonitor() {
 
   const lastNight = byDay.length ? byDay[byDay.length - 1] : null;
 
+  const th = useResolvedThreshold("sleep");
   const { syncStatus, lastReadingAt, alerts } = useMonitorHealth({
     points: byDay.map((d) => ({ fecha: d.fecha, value: d.value, source: d.source ?? null })),
     rangeDays,
-    hardLow: 3, hardHigh: 14,
+    hardLow: th.hardLow ?? 3, hardHigh: th.hardHigh ?? 14,
+    outlierZ: th.outlierZ,
     label: "sueño", unit: "h",
   });
 

@@ -342,6 +342,48 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_nutrition_suggestions_saved: {
+        Row: {
+          answer_text: string
+          created_at: string
+          id: string
+          model: string | null
+          patient_id: string
+          prompt: string
+          provider: string | null
+          refs: Json
+          status: string
+          tags: string[] | null
+          updated_at: string
+        }
+        Insert: {
+          answer_text: string
+          created_at?: string
+          id?: string
+          model?: string | null
+          patient_id: string
+          prompt: string
+          provider?: string | null
+          refs?: Json
+          status?: string
+          tags?: string[] | null
+          updated_at?: string
+        }
+        Update: {
+          answer_text?: string
+          created_at?: string
+          id?: string
+          model?: string | null
+          patient_id?: string
+          prompt?: string
+          provider?: string | null
+          refs?: Json
+          status?: string
+          tags?: string[] | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ai_provider_audit: {
         Row: {
           blocked_reason: string | null
@@ -4085,6 +4127,30 @@ export type Database = {
         }
         Relationships: []
       }
+      medlineplus_url_state: {
+        Row: {
+          active: boolean
+          last_hash: string | null
+          last_seen_at: string
+          last_title: string | null
+          url: string
+        }
+        Insert: {
+          active?: boolean
+          last_hash?: string | null
+          last_seen_at?: string
+          last_title?: string | null
+          url: string
+        }
+        Update: {
+          active?: boolean
+          last_hash?: string | null
+          last_seen_at?: string
+          last_title?: string | null
+          url?: string
+        }
+        Relationships: []
+      }
       notification_preferences: {
         Row: {
           clinical_alerts: boolean
@@ -4430,8 +4496,12 @@ export type Database = {
         Row: {
           attribution: string | null
           created_at: string
+          external_hash: string | null
+          external_id: string | null
+          external_source: string | null
           id: string
           ingredients: Json
+          last_synced_at: string | null
           notes: string | null
           patient_id: string
           servings: number
@@ -4450,8 +4520,12 @@ export type Database = {
         Insert: {
           attribution?: string | null
           created_at?: string
+          external_hash?: string | null
+          external_id?: string | null
+          external_source?: string | null
           id?: string
           ingredients?: Json
+          last_synced_at?: string | null
           notes?: string | null
           patient_id: string
           servings?: number
@@ -4470,8 +4544,12 @@ export type Database = {
         Update: {
           attribution?: string | null
           created_at?: string
+          external_hash?: string | null
+          external_id?: string | null
+          external_source?: string | null
           id?: string
           ingredients?: Json
+          last_synced_at?: string | null
           notes?: string | null
           patient_id?: string
           servings?: number
@@ -4750,6 +4828,54 @@ export type Database = {
           patient_id?: string
           service_type?: string
           unpaired_at?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      patient_monitor_thresholds: {
+        Row: {
+          active: boolean
+          created_at: string
+          date_from: string | null
+          date_to: string | null
+          id: string
+          max_val: number | null
+          min_readings_per_day: number | null
+          min_val: number | null
+          monitor_type: string
+          notes: string | null
+          outlier_z: number | null
+          patient_id: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          date_from?: string | null
+          date_to?: string | null
+          id?: string
+          max_val?: number | null
+          min_readings_per_day?: number | null
+          min_val?: number | null
+          monitor_type: string
+          notes?: string | null
+          outlier_z?: number | null
+          patient_id: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          date_from?: string | null
+          date_to?: string | null
+          id?: string
+          max_val?: number | null
+          min_readings_per_day?: number | null
+          min_val?: number | null
+          monitor_type?: string
+          notes?: string | null
+          outlier_z?: number | null
+          patient_id?: string
           updated_at?: string
         }
         Relationships: []
@@ -6978,6 +7104,45 @@ export type Database = {
             referencedColumns: ["key_id"]
           },
         ]
+      }
+      recipe_import_runs: {
+        Row: {
+          added_count: number
+          changes: Json
+          ended_at: string | null
+          error_message: string | null
+          id: string
+          skipped_count: number
+          source: string
+          started_at: string
+          status: string
+          updated_count: number
+        }
+        Insert: {
+          added_count?: number
+          changes?: Json
+          ended_at?: string | null
+          error_message?: string | null
+          id?: string
+          skipped_count?: number
+          source?: string
+          started_at?: string
+          status?: string
+          updated_count?: number
+        }
+        Update: {
+          added_count?: number
+          changes?: Json
+          ended_at?: string | null
+          error_message?: string | null
+          id?: string
+          skipped_count?: number
+          source?: string
+          started_at?: string
+          status?: string
+          updated_count?: number
+        }
+        Relationships: []
       }
       resultados_estudios: {
         Row: {
