@@ -219,6 +219,39 @@ export type Database = {
           },
         ]
       }
+      ai_external_providers: {
+        Row: {
+          activo: boolean
+          aviso_legal: string
+          created_at: string
+          endpoint: string
+          id: string
+          legal_version: string
+          nombre: string
+          updated_at: string
+        }
+        Insert: {
+          activo?: boolean
+          aviso_legal: string
+          created_at?: string
+          endpoint: string
+          id: string
+          legal_version?: string
+          nombre: string
+          updated_at?: string
+        }
+        Update: {
+          activo?: boolean
+          aviso_legal?: string
+          created_at?: string
+          endpoint?: string
+          id?: string
+          legal_version?: string
+          nombre?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ai_feature_consents: {
         Row: {
           created_at: string
@@ -314,6 +347,7 @@ export type Database = {
           cache_ttl_hours: number
           created_at: string
           enable_cache: boolean
+          external_endpoint: string | null
           feature_key: string
           history_window: number
           id: string
@@ -322,12 +356,14 @@ export type Database = {
           max_output_tokens: number
           model: string
           notes: string | null
+          provider: string
           updated_at: string
         }
         Insert: {
           cache_ttl_hours?: number
           created_at?: string
           enable_cache?: boolean
+          external_endpoint?: string | null
           feature_key: string
           history_window?: number
           id?: string
@@ -336,12 +372,14 @@ export type Database = {
           max_output_tokens?: number
           model?: string
           notes?: string | null
+          provider?: string
           updated_at?: string
         }
         Update: {
           cache_ttl_hours?: number
           created_at?: string
           enable_cache?: boolean
+          external_endpoint?: string | null
           feature_key?: string
           history_window?: number
           id?: string
@@ -350,6 +388,7 @@ export type Database = {
           max_output_tokens?: number
           model?: string
           notes?: string | null
+          provider?: string
           updated_at?: string
         }
         Relationships: []
