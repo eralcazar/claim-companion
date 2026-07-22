@@ -251,6 +251,8 @@ export type Database = {
       }
       ai_provider_audit: {
         Row: {
+          blocked_reason: string | null
+          consent_checked: boolean
           created_at: string
           fallback_used: boolean
           feature_key: string
@@ -259,13 +261,17 @@ export type Database = {
           latency_ms: number | null
           model: string | null
           output_chars: number | null
+          pii_fields_detected: Json
           provider: string
           sanitization_notes: string | null
           sanitized: boolean
+          sanitized_prompt: string | null
           status: string
           user_id: string | null
         }
         Insert: {
+          blocked_reason?: string | null
+          consent_checked?: boolean
           created_at?: string
           fallback_used?: boolean
           feature_key: string
@@ -274,13 +280,17 @@ export type Database = {
           latency_ms?: number | null
           model?: string | null
           output_chars?: number | null
+          pii_fields_detected?: Json
           provider?: string
           sanitization_notes?: string | null
           sanitized?: boolean
+          sanitized_prompt?: string | null
           status?: string
           user_id?: string | null
         }
         Update: {
+          blocked_reason?: string | null
+          consent_checked?: boolean
           created_at?: string
           fallback_used?: boolean
           feature_key?: string
@@ -289,9 +299,11 @@ export type Database = {
           latency_ms?: number | null
           model?: string | null
           output_chars?: number | null
+          pii_fields_detected?: Json
           provider?: string
           sanitization_notes?: string | null
           sanitized?: boolean
+          sanitized_prompt?: string | null
           status?: string
           user_id?: string | null
         }
@@ -6975,6 +6987,10 @@ export type Database = {
         Args: { _months?: number; _plan_id: string; _user_id: string }
         Returns: undefined
       }
+      can_call_external_ai: {
+        Args: { _feature_key: string; _user_id: string }
+        Returns: Json
+      }
       canonical_json: { Args: { _row: Json }; Returns: string }
       check_kari_monthly_limit: { Args: { _user_id: string }; Returns: Json }
       consume_ai_tokens: {
@@ -7034,6 +7050,26 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      log_ai_audit: {
+        Args: {
+          _blocked_reason: string
+          _consent_checked: boolean
+          _fallback_used: boolean
+          _feature_key: string
+          _input_chars: number
+          _latency_ms: number
+          _model: string
+          _output_chars: number
+          _pii_fields: Json
+          _provider: string
+          _sanitization_notes: string
+          _sanitized: boolean
+          _sanitized_prompt: string
+          _status: string
+          _user_id: string
+        }
+        Returns: string
       }
       mark_notification_pushed: {
         Args: { _notification_id: string }
