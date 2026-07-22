@@ -16,6 +16,11 @@ import { UnifiedTimelineChart } from "@/components/health/UnifiedTimelineChart";
 import { BleHeartRateConnect } from "@/components/health/BleHeartRateConnect";
 import { useUnifiedReadings, SOURCE_LABEL } from "@/hooks/useUnifiedReadings";
 import { useHeartRateReadings, classifyHR } from "@/hooks/useHeartRate";
+import { DailySeriesChart } from "@/components/health/DailySeriesChart";
+import { MonitorPdfExport } from "@/components/health/MonitorPdfExport";
+import { EnabledMonitorsCard } from "@/components/health/EnabledMonitorsCard";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 
 const RANGES = [
   { key: "1", label: "24 h" },
@@ -34,6 +39,8 @@ export default function HeartRateMonitor() {
   const { actingAsPatientId } = useImpersonation();
   const patientId = actingAsPatientId ?? user?.id;
   const [rangeDays, setRangeDays] = useState<string>("7");
+  const [sourceFilter, setSourceFilter] = useState<string>("all");
+  const [deviceFilter, setDeviceFilter] = useState<string>("all");
 
   const { fromISO, toISO } = useMemo(() => {
     const to = new Date();
@@ -49,9 +56,47 @@ export default function HeartRateMonitor() {
   const hr = useHeartRateReadings(patientId, 500);
 
   const hrInRange = useMemo(
-    () => readings.filter((r) => r.kind === "heart_rate"),
-    [readings],
+    () =>
+      readings.filter(
+        (r) =>
+          r.kind === "heart_rate" &&
+          (sourceFilter === "all" || r.source === sourceFilter) &&
+          (deviceFilter === "all" || (r as any).device_name === deviceFilter),
+      ),
+    [readings, sourceFilter, deviceFilter],
   );
+
+  const deviceNames = useMemo(() => {
+    const s = new Set<string>();
+    for (const r of readings) {
+      if (r.kind === "heart_rate" && (r as any).device_name) s.add((r as any).device_name);
+    }
+    return Array.from(s);
+  }, [readings]);
+
+  const dailyAvg = useMemo(() => {
+    const map = new Map<string, { sum: number; n: number; src?: string | null; dev?: string | null }>();
+    for (const r of hrInRange) {
+      const v = typeof r.value === "number" ? r.value : Number.NaN;
+      if (!Number.isFinite(v)) continue;
+      const day = new Date(r.measured_at).toISOString().slice(0, 10);
+      const prev = map.get(day) ?? { sum: 0, n: 0 };
+      map.set(day, {
+        sum: prev.sum + v,
+        n: prev.n + 1,
+        src: r.source,
+        dev: (r as any).device_name,
+      });
+    }
+    return Array.from(map.entries())
+      .sort(([a], [b]) => (a < b ? -1 : 1))
+      .map(([fecha, v]) => ({
+        fecha,
+        value: Math.round(v.sum / v.n),
+        source: v.src ?? null,
+        device: v.dev ?? null,
+      }));
+  }, [hrInRange]);
 
   const stats = useMemo(() => {
     const values = hrInRange
@@ -108,8 +153,73 @@ export default function HeartRateMonitor() {
 
       <HrAlertsBanner readings={readings} />
 
+      <EnabledMonitorsCard />
+
+      <Card>
+        <CardContent className="p-3 flex flex-wrap gap-2 items-end">
+          <div>
+            <Label className="text-xs">Fuente</Label>
+            <Select value={sourceFilter} onValueChange={setSourceFilter}>
+              <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas</SelectItem>
+                {Array.from(new Set(readings.filter(r => r.kind === "heart_rate").map(r => r.source))).map((s) => (
+                  <SelectItem key={s} value={s}>{SOURCE_LABEL[s as keyof typeof SOURCE_LABEL] ?? s}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs">Dispositivo</Label>
+            <Select value={deviceFilter} onValueChange={setDeviceFilter}>
+              <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                {deviceNames.map((d) => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="ml-auto">
+            <MonitorPdfExport
+              title="Monitor de Frecuencia Cardíaca"
+              subtitle={`Últimos ${rangeDays} días · promedios diarios`}
+              unit="bpm"
+              kpis={
+                stats
+                  ? [
+                      { label: "Promedio", value: `${stats.avg} bpm` },
+                      { label: "Mínimo", value: `${stats.min} bpm` },
+                      { label: "Máximo", value: `${stats.max} bpm` },
+                      { label: "Lecturas", value: String(stats.count) },
+                    ]
+                  : [{ label: "Estado", value: "Sin lecturas" }]
+              }
+              data={dailyAvg}
+              fileName={`pulso-${rangeDays}d.pdf`}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
         <div className="space-y-4">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <HeartPulse className="h-4 w-4 text-destructive" />
+                Promedio diario · últimos {rangeDays} días
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <DailySeriesChart
+                data={dailyAvg}
+                unit="bpm"
+                color="hsl(0 70% 55%)"
+                emptyLabel="Aún no hay lecturas de pulso en este rango."
+              />
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center justify-between gap-2">
