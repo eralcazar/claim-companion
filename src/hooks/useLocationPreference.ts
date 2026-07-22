@@ -47,8 +47,7 @@ export function useLocationPreference() {
         payload.location_tagging_enabled = patch.tagging;
       if (patch.tracking !== undefined)
         payload.location_tracking_enabled = patch.tracking;
-      const { error } = await supabase
-        .from("profiles")
+      const { error } = await (supabase.from("profiles") as any)
         .update(payload)
         .eq("id", uid);
       if (!error) setState((s) => ({ ...s, ...patch }));
