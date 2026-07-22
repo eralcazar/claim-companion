@@ -3,7 +3,7 @@ import { Navigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { KeyRound, RefreshCw, CheckCircle2, XCircle, Loader2, Copy, ShieldAlert, Zap, History } from "lucide-react";
+import { KeyRound, RefreshCw, CheckCircle2, XCircle, Loader2, Copy, ShieldAlert, Zap, History, ListTree } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
@@ -82,6 +82,7 @@ export default function ApiKeysMaintenance() {
   const [secrets, setSecrets] = useState<SecretStatus[]>([]);
   const [checkedAt, setCheckedAt] = useState<string | null>(null);
   const [testing, setTesting] = useState<Record<string, boolean>>({});
+  const [syncing, setSyncing] = useState<Record<string, boolean>>({});
   const [history, setHistory] = useState<AuditRow[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
 
@@ -164,6 +165,31 @@ export default function ApiKeysMaintenance() {
       });
     }
     await Promise.all([load(), loadHistory()]);
+  };
+
+  const runSync = async (secretName: string) => {
+    const meta = PROVIDER_META[secretName];
+    if (!meta) return;
+    setSyncing((t) => ({ ...t, [secretName]: true }));
+    const { data, error } = await supabase.functions.invoke("sync-ai-provider-models", {
+      body: { provider: meta.provider },
+    });
+    setSyncing((t) => ({ ...t, [secretName]: false }));
+    if (error) {
+      toast({ title: "Error al sincronizar", description: error.message, variant: "destructive" });
+    } else if (data?.ok) {
+      toast({
+        title: `${meta.label}: ${data.count} modelos`,
+        description: `Catálogo actualizado. Default: ${data.default_model}`,
+      });
+    } else {
+      toast({
+        title: `${meta.label}: no se pudo sincronizar`,
+        description: (data?.error ?? "Error desconocido").slice(0, 200),
+        variant: "destructive",
+      });
+    }
+    await loadHistory();
   };
 
   return (
@@ -286,6 +312,19 @@ export default function ApiKeysMaintenance() {
                     )}
                     Probar ahora
                   </Button>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => runSync(s.name)}
+                    disabled={!s.configured || syncing[s.name]}
+                  >
+                    {syncing[s.name] ? (
+                      <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                    ) : (
+                      <ListTree className="h-3.5 w-3.5 mr-1" />
+                    )}
+                    Sincronizar modelos
+                  </Button>
                   <Button size="sm" variant={s.configured ? "outline" : "default"} onClick={() => copyPrompt(s.name, "configura")}>
                     <Copy className="h-3.5 w-3.5 mr-1" />
                     {s.configured ? "Copiar instrucción para reconfigurar" : "Copiar instrucción para configurar"}
@@ -336,7 +375,9 @@ export default function ApiKeysMaintenance() {
                       <td className="p-2">
                         {r.action === "test_success" && <Badge className="bg-emerald-600 hover:bg-emerald-600">OK</Badge>}
                         {r.action === "test_failed" && <Badge variant="destructive">FAIL</Badge>}
-                        {r.action !== "test_success" && r.action !== "test_failed" && (
+                        {r.action === "models_synced" && <Badge className="bg-sky-600 hover:bg-sky-600">SYNC</Badge>}
+                        {r.action === "models_sync_failed" && <Badge variant="destructive">SYNC FAIL</Badge>}
+                        {!["test_success","test_failed","models_synced","models_sync_failed"].includes(r.action) && (
                           <Badge variant="outline">{r.action}</Badge>
                         )}
                       </td>
