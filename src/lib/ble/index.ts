@@ -1,10 +1,12 @@
 import { Capacitor } from "@capacitor/core";
 
-export type BleService = "blood_pressure" | "pulse_oximeter";
+export type BleService = "blood_pressure" | "pulse_oximeter" | "heart_rate";
 
 export const BLE_SERVICE_UUIDS: Record<BleService, string> = {
   blood_pressure: "00001810-0000-1000-8000-00805f9b34fb",
   pulse_oximeter: "00001822-0000-1000-8000-00805f9b34fb",
+  // Heart Rate Service (0x180D)
+  heart_rate: "0000180d-0000-1000-8000-00805f9b34fb",
 };
 
 export const BLE_CHAR_UUIDS: Record<BleService, string> = {
@@ -12,6 +14,8 @@ export const BLE_CHAR_UUIDS: Record<BleService, string> = {
   blood_pressure: "00002a35-0000-1000-8000-00805f9b34fb",
   // PLX Continuous Measurement
   pulse_oximeter: "00002a5f-0000-1000-8000-00805f9b34fb",
+  // Heart Rate Measurement (0x2A37)
+  heart_rate: "00002a37-0000-1000-8000-00805f9b34fb",
 };
 
 export type BpParsed = {
@@ -30,7 +34,17 @@ export type SpO2Parsed = {
   measured_at: string;
 };
 
-export type BleParsed = BpParsed | SpO2Parsed;
+export type HrParsed = {
+  kind: "heart_rate";
+  bpm: number;
+  /** Energía gastada (kJ), opcional según el sensor. */
+  energy_kj?: number;
+  /** Contacto de la piel: true/false o undefined si no se reporta. */
+  contact?: boolean;
+  measured_at: string;
+};
+
+export type BleParsed = BpParsed | SpO2Parsed | HrParsed;
 
 // IEEE-11073 16-bit SFLOAT
 function parseSFloat(view: DataView, offset: number): number {
@@ -89,6 +103,37 @@ export function parsePulseOximeter(data: DataView): SpO2Parsed {
     kind: "spo2",
     spo2: Math.round(spo2),
     pulse: isFinite(pulse) ? Math.round(pulse) : undefined,
+    measured_at: new Date().toISOString(),
+  };
+}
+
+/**
+ * Parses the Heart Rate Measurement characteristic (0x2A37).
+ * Flags (byte 0):
+ *   bit 0: HR value format (0 = uint8, 1 = uint16 LE)
+ *   bit 1-2: sensor contact status
+ *   bit 3: energy expended present (uint16 LE, kJ)
+ *   bit 4: RR-intervals present (ignoradas aquí)
+ */
+export function parseHeartRate(data: DataView): HrParsed {
+  const flags = data.getUint8(0);
+  const is16 = (flags & 0x01) === 1;
+  const contactSupported = (flags & 0x04) === 0x04;
+  const contactDetected = (flags & 0x02) === 0x02;
+  let offset = 1;
+  const bpm = is16 ? data.getUint16(offset, true) : data.getUint8(offset);
+  offset += is16 ? 2 : 1;
+  const hasEnergy = (flags & 0x08) === 0x08;
+  let energy_kj: number | undefined;
+  if (hasEnergy && data.byteLength >= offset + 2) {
+    energy_kj = data.getUint16(offset, true);
+    offset += 2;
+  }
+  return {
+    kind: "heart_rate",
+    bpm: Math.max(0, Math.round(bpm)),
+    energy_kj,
+    contact: contactSupported ? contactDetected : undefined,
     measured_at: new Date().toISOString(),
   };
 }
@@ -158,7 +203,12 @@ export async function requestBleDevice(service: BleService): Promise<BleConnecti
   const handler = (event: any) => {
     const value: DataView = event.target.value;
     try {
-      const parsed = service === "blood_pressure" ? parseBloodPressure(value) : parsePulseOximeter(value);
+      const parsed =
+        service === "blood_pressure"
+          ? parseBloodPressure(value)
+          : service === "heart_rate"
+            ? parseHeartRate(value)
+            : parsePulseOximeter(value);
       listeners.forEach((cb) => cb(parsed));
     } catch (e) {
       console.error("BLE parse error", e);
@@ -201,7 +251,12 @@ async function requestNative(service: BleService): Promise<BleConnection> {
     BLE_CHAR_UUIDS[service],
     (value) => {
       try {
-        const parsed = service === "blood_pressure" ? parseBloodPressure(value) : parsePulseOximeter(value);
+        const parsed =
+          service === "blood_pressure"
+            ? parseBloodPressure(value)
+            : service === "heart_rate"
+              ? parseHeartRate(value)
+              : parsePulseOximeter(value);
         listeners.forEach((cb) => cb(parsed));
       } catch (e) {
         console.error("BLE parse error", e);
