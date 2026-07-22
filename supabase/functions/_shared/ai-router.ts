@@ -390,6 +390,7 @@ export async function routeExternalOrFallback(params: {
   rawUserPrompt: string;
   external: () => Promise<{ content: string; status?: string }>;
   fallback: () => Promise<{ content: string; status?: string }>;
+  requireGeneric?: boolean;
 }): Promise<{ content: string; provider: string; fallbackUsed: boolean; blockedReason: string | null }> {
   const started = Date.now();
   const decision = await checkGovernance(params.admin, params.userId, params.featureKey);
@@ -405,6 +406,13 @@ export async function routeExternalOrFallback(params: {
   if (allowExternal && hasResidualPii(sanitized)) {
     allowExternal = false;
     blockedReason = "residual_pii";
+  }
+
+  // Gate opcional: si la feature exige prompts educativos genéricos y este no lo es,
+  // no sale al exterior aunque haya consentimiento.
+  if (allowExternal && params.requireGeneric && !isCacheableGeneric(params.rawUserPrompt, sanitized)) {
+    allowExternal = false;
+    blockedReason = "not_generic";
   }
 
   let content = "";
