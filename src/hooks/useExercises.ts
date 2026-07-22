@@ -215,6 +215,67 @@ export function useDeleteSession() {
   });
 }
 
+export type UpdateWorkoutPayload = NewWorkoutPayload & { session_id: string };
+
+export function useUpdateWorkout() {
+  const { user } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: UpdateWorkoutPayload) => {
+      if (!user) throw new Error("Sin sesión");
+      const { error: se } = await supabase
+        .from("exercise_session_logs" as any)
+        .update({
+          fecha: payload.fecha,
+          environment: payload.environment,
+          location_label: payload.location_label ?? null,
+          duration_min: payload.duration_min ?? null,
+          rpe: payload.rpe ?? null,
+          notes: payload.notes ?? null,
+          warmup_notes: payload.warmup_notes ?? null,
+          discomforts: payload.discomforts ?? null,
+          session_rest_sec: payload.session_rest_sec ?? null,
+        })
+        .eq("id", payload.session_id)
+        .eq("patient_id", user.id);
+      if (se) throw se;
+      // Rewrite sets
+      const { error: delErr } = await supabase
+        .from("exercise_set_logs" as any)
+        .delete()
+        .eq("session_log_id", payload.session_id)
+        .eq("patient_id", user.id);
+      if (delErr) throw delErr;
+      const rows = payload.items.flatMap((it) =>
+        it.sets.map((s) => ({
+          session_log_id: payload.session_id,
+          exercise_id: it.exercise_id,
+          patient_id: user.id,
+          set_number: s.set_number,
+          reps: s.reps ?? null,
+          weight_kg: s.weight_kg ?? null,
+          distance_m: s.distance_m ?? null,
+          duration_sec: s.duration_sec ?? null,
+          rest_sec: s.rest_sec ?? null,
+          rpe: s.rpe ?? null,
+        })),
+      );
+      if (rows.length) {
+        const { error: setErr } = await supabase.from("exercise_set_logs" as any).insert(rows);
+        if (setErr) throw setErr;
+      }
+      return payload.session_id;
+    },
+    onSuccess: () => {
+      toast.success("Sesión actualizada. El Coach IA recalculará la próxima progresión.");
+      qc.invalidateQueries({ queryKey: ["exercise_sessions"] });
+      qc.invalidateQueries({ queryKey: ["exercise_sets_all"] });
+      qc.invalidateQueries({ queryKey: ["exercise_sets_by_ex"] });
+    },
+    onError: (e: any) => toast.error(e.message ?? "No se pudo actualizar"),
+  });
+}
+
 // Epley 1RM estimation
 export function estimate1RM(weight: number, reps: number): number {
   if (!weight || !reps) return 0;
