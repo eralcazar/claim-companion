@@ -17,6 +17,7 @@ import { HealthDevicesPanel } from "@/components/profile/HealthDevicesPanel";
 import { BleConnectPanel } from "@/components/ble/BleConnectPanel";
 import { BleTestSettingsCard } from "@/components/ble/BleTestSettingsCard";
 import { IntegrityCertificateCard } from "@/components/integrity/IntegrityCertificateCard";
+import { LocationSettingsCard } from "@/components/settings/LocationSettingsCard";
 
 const INITIAL_FORM = {
   first_name: "",
@@ -377,6 +378,7 @@ export default function Profile() {
       <HealthDevicesPanel />
       <BleConnectPanel />
       <BleTestSettingsCard />
+      <LocationSettingsCard />
       <IntegrityCertificateCard />
 
       <Button variant="outline" className="w-full text-destructive" onClick={signOut}>
