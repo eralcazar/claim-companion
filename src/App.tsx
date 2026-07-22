@@ -82,6 +82,7 @@ import PerfilPublico from "@/pages/medico/PerfilPublico";
 import MarketplaceReview from "@/pages/admin/MarketplaceReview";
 import Reservar from "@/pages/public/Reservar";
 import Actividad from "@/pages/Actividad";
+import MisDatosIA from "@/pages/MisDatosIA";
 
 const queryClient = new QueryClient();
 
@@ -185,6 +186,7 @@ const App = () => (
               <Route path="/domicilio" element={<Domicilio />} />
               <Route path="/facturacion" element={<Facturacion />} />
               <Route path="/admin/facturacion" element={<CfdiConfigManager />} />
+              <Route path="/mis-datos-ia" element={<MisDatosIA />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
