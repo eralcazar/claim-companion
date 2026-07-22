@@ -308,6 +308,32 @@ export default function ApiKeysMaintenance() {
     const meta = PROVIDER_META[secretName];
     if (!meta) return;
     setSyncing((t) => ({ ...t, [secretName]: true }));
+    const secret = secrets.find((x) => x.name === secretName);
+
+    // Preflight: verifica permisos y conectividad antes de sincronizar.
+    const preflight = await supabase.functions.invoke("test-ai-provider", {
+      body: { provider: meta.provider },
+    });
+    const preflightOk = !preflight.error && preflight.data?.ok;
+    if (!preflightOk) {
+      const d = diagnoseTestError({
+        invokeError: preflight.error,
+        data: preflight.data,
+        secretConfigured: !!secret?.configured,
+      });
+      setDiag((prev) => ({ ...prev, [secretName]: d }));
+      setSyncing((t) => ({ ...t, [secretName]: false }));
+      toast({
+        title: `Sincronización cancelada · ${meta.label}`,
+        description: `Preflight falló: ${d.cause}`,
+        variant: "destructive",
+      });
+      await Promise.all([load(), loadHistory()]);
+      return;
+    }
+    setDiag((prev) => ({ ...prev, [secretName]: null }));
+    const preflightLatency = preflight.data?.latency_ms;
+
     const { data, error } = await supabase.functions.invoke("sync-ai-provider-models", {
       body: { provider: meta.provider },
     });
@@ -317,7 +343,7 @@ export default function ApiKeysMaintenance() {
     } else if (data?.ok) {
       toast({
         title: `${meta.label}: ${data.count} modelos`,
-        description: `Catálogo actualizado. Default: ${data.default_model}`,
+        description: `Conexión OK (${preflightLatency ?? "?"} ms). Catálogo actualizado. Default: ${data.default_model}`,
       });
     } else {
       toast({
