@@ -3,7 +3,7 @@ import { Navigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { KeyRound, RefreshCw, CheckCircle2, XCircle, Loader2, Copy, ShieldAlert, Zap, History, ListTree, AlertTriangle, RotateCw, Power, Sparkles } from "lucide-react";
+import { KeyRound, RefreshCw, CheckCircle2, XCircle, Loader2, Copy, ShieldAlert, Zap, History, ListTree, AlertTriangle, RotateCw, Power, Sparkles, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
@@ -43,6 +43,20 @@ type TestDiag = {
   status?: number;
   locked: boolean; // si true, deshabilita "Probar ahora" hasta que el usuario reactive
 };
+
+function formatRelative(iso: string): string {
+  const then = new Date(iso).getTime();
+  const diff = Date.now() - then;
+  if (Number.isNaN(diff)) return iso;
+  const s = Math.round(diff / 1000);
+  if (s < 60) return `hace ${s}s`;
+  const m = Math.round(s / 60);
+  if (m < 60) return `hace ${m} min`;
+  const h = Math.round(m / 60);
+  if (h < 24) return `hace ${h} h`;
+  const d = Math.round(h / 24);
+  return `hace ${d} d`;
+}
 
 // Traduce cualquier fallo de invoke() o payload { ok:false } a un diagnóstico
 // legible con causa probable y sugerencia de acción concreta.
