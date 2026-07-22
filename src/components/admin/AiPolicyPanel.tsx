@@ -5,8 +5,12 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Sparkles, Database, Save, Info } from "lucide-react";
+import { Sparkles, Database, Save, Info, RefreshCw } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { FunctionsHttpError } from "@supabase/supabase-js";
+import { toast } from "sonner";
 import {
   useAiPolicies,
   useUpdateAiPolicy,
@@ -22,6 +26,8 @@ import {
 function PolicyRow({ p }: { p: AiProviderPolicy }) {
   const update = useUpdateAiPolicy();
   const { data: externalProviders } = useExternalProviders();
+  const qc = useQueryClient();
+  const [syncing, setSyncing] = useState(false);
   const [draft, setDraft] = useState({
     provider: p.provider ?? "lovable",
     model: p.model,
@@ -80,6 +86,42 @@ function PolicyRow({ p }: { p: AiProviderPolicy }) {
     });
   };
 
+  const handleSync = async () => {
+    if (draft.provider === "lovable") return;
+    setSyncing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("sync-ai-provider-models", {
+        body: { provider: draft.provider },
+      });
+      if (error) {
+        let msg = error.message;
+        if (error instanceof FunctionsHttpError) {
+          try {
+            msg = await error.context.text();
+          } catch {}
+        }
+        throw new Error(msg);
+      }
+      await qc.invalidateQueries({ queryKey: ["ai_external_providers"] });
+      const count = Array.isArray((data as any)?.models) ? (data as any).models.length : (data as any)?.count ?? 0;
+      toast.success(`${count} modelo(s) sincronizados desde ${draft.provider}`);
+      // Ajustar el modelo si el actual dejó de existir tras la sync.
+      const refreshed = await qc.getQueryData<any[]>(["ai_external_providers"]);
+      const row = refreshed?.find((r) => r.id === draft.provider);
+      const models: string[] = row?.models ?? [];
+      if (draft.model && draft.model !== "standard" && models.length > 0 && !models.includes(draft.model)) {
+        const next = defaultModelForProvider(draft.provider, refreshed) ?? "standard";
+        setDraft((d) => ({ ...d, model: next }));
+      } else if (models.length === 0) {
+        setDraft((d) => ({ ...d, model: "standard" }));
+      }
+    } catch (e: any) {
+      toast.error(`No se pudieron sincronizar los modelos: ${e.message ?? e}`);
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   // Si el proveedor seleccionado no tiene modelos sincronizados, forzamos el
   // uso del modelo "Estándar (auto)" automáticamente.
   useEffect(() => {
@@ -118,6 +160,20 @@ function PolicyRow({ p }: { p: AiProviderPolicy }) {
               ))}
             </SelectContent>
           </Select>
+          {draft.provider !== "lovable" && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="mt-1 h-7 text-[11px] w-full"
+              onClick={handleSync}
+              disabled={syncing}
+              title="Consulta el catálogo en vivo del proveedor y actualiza la lista de modelos"
+            >
+              <RefreshCw className={`h-3 w-3 mr-1 ${syncing ? "animate-spin" : ""}`} />
+              {syncing ? "Sincronizando…" : "Sincronizar modelos"}
+            </Button>
+          )}
         </div>
         <div>
           <Label className="text-xs">Modelo</Label>
