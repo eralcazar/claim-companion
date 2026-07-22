@@ -12,6 +12,9 @@ import { KariMonthlyLimitsEditor } from "@/components/admin/KariMonthlyLimitsEdi
 import { AiPolicyPanel } from "@/components/admin/AiPolicyPanel";
 import { AiKillSwitch } from "@/components/admin/AiKillSwitch";
 import { AiAuditExport } from "@/components/admin/AiAuditExport";
+import { UsageComparisonPanel } from "@/components/admin/UsageComparisonPanel";
+import { LovableUsageImporter } from "@/components/admin/LovableUsageImporter";
+import { AssistantTestLauncher } from "@/components/admin/AssistantTestLauncher";
 import {
   useKariActiveModel,
   useSetKariActiveModel,
@@ -246,6 +249,9 @@ export default function KariUsageAdmin() {
       </Card>
 
       <KariMonthlyLimitsEditor />
+      <AssistantTestLauncher />
+      <LovableUsageImporter />
+      <UsageComparisonPanel fromIso={fromIso} toIso={toIso} />
       <AiPolicyPanel />
       <AiKillSwitch />
       <AiAuditExport />
