@@ -230,6 +230,180 @@ export function truncateText(text: string, maxChars: number): string {
   return text.slice(0, maxChars) + "…[truncado]";
 }
 
+// ────────────────────────────────────────────────────────────────
+// Sanitización y detección de PII (espejo de src/lib/ai/sanitize.ts)
+// ────────────────────────────────────────────────────────────────
+export function detectPiiFields(original: string): string[] {
+  const rules: Array<[string, RegExp]> = [
+    ["curp", /\b[a-z]{4}\d{6}[hm][a-z]{5}[a-z0-9]\d\b/i],
+    ["rfc", /\b[a-z&ñ]{3,4}\d{6}[a-z0-9]{3}\b/i],
+    ["email", /\b[\w.+-]+@[\w-]+\.[\w.-]+\b/],
+    ["telefono", /(\+\d{1,3}[\s-]?)?\b\d{3}[\s-]?\d{3}[\s-]?\d{4}\b/],
+    ["fecha", /\b\d{1,4}[\/\-]\d{1,2}[\/\-]\d{1,4}\b/],
+    ["direccion", /\b(calle|avenida|av\.|colonia|col\.|c\.p\.|codigo postal|cp)\b/i],
+    ["coordenada", /-?\d{1,3}\.\d{3,},\s*-?\d{1,3}\.\d{3,}/],
+    ["numero_largo", /\b\d{4,}\b/],
+  ];
+  const found = new Set<string>();
+  for (const [label, rx] of rules) if (rx.test(original)) found.add(label);
+  return Array.from(found);
+}
+
+export function hasResidualPii(sanitized: string): boolean {
+  const patterns = [
+    /\b(calle|avenida|av\.|colonia|col\.|c\.p\.|codigo postal|cp)\b/i,
+    /-?\d{1,3}\.\d{3,},\s*-?\d{1,3}\.\d{3,}/,
+    /\+\d{1,3}(?:[\s-]?\d{1,4}){2,5}/,
+    /\b\d{3}[\s-]\d{3}[\s-]\d{4}\b/,
+  ];
+  return patterns.some((rx) => rx.test(sanitized));
+}
+
+// ────────────────────────────────────────────────────────────────
+// Governance: kill switch + consentimiento + auditoría automática
+// ────────────────────────────────────────────────────────────────
+
+export type GovernanceDecision =
+  | { allowed: true; provider: "external"; reason?: undefined }
+  | { allowed: false; provider: "fallback"; reason: "kill_switch" | "consent_revoked" | "residual_pii" | "no_user" };
+
+/**
+ * Consulta ai_settings.external_providers_enabled y ai_feature_consents.
+ * Devuelve la decisión de enrutamiento antes de cualquier llamada externa.
+ */
+export async function checkGovernance(
+  admin: any,
+  userId: string | null,
+  featureKey: string,
+): Promise<GovernanceDecision> {
+  try {
+    const { data } = await admin.rpc("can_call_external_ai", {
+      _user_id: userId,
+      _feature_key: featureKey,
+    });
+    const allowed = Boolean(data?.allowed);
+    if (allowed) return { allowed: true, provider: "external" };
+    const reason = (data?.reason ?? "consent_revoked") as
+      | "kill_switch"
+      | "consent_revoked"
+      | "no_user";
+    return { allowed: false, provider: "fallback", reason };
+  } catch (_e) {
+    // Fail-closed: si no podemos verificar, no salimos al exterior.
+    return { allowed: false, provider: "fallback", reason: "consent_revoked" };
+  }
+}
+
+export type AuditRecord = {
+  userId: string | null;
+  featureKey: string;
+  provider: string;
+  model: string | null;
+  sanitized: boolean;
+  sanitizationNotes: string | null;
+  sanitizedPrompt: string | null;
+  piiFieldsDetected: string[];
+  fallbackUsed: boolean;
+  status: string;
+  blockedReason: string | null;
+  consentChecked: boolean;
+  inputChars: number;
+  outputChars: number;
+  latencyMs: number | null;
+};
+
+export async function recordAiAudit(admin: any, rec: AuditRecord): Promise<void> {
+  try {
+    await admin.rpc("log_ai_audit", {
+      _user_id: rec.userId,
+      _feature_key: rec.featureKey,
+      _provider: rec.provider,
+      _model: rec.model,
+      _sanitized: rec.sanitized,
+      _sanitization_notes: rec.sanitizationNotes,
+      _sanitized_prompt: rec.sanitizedPrompt,
+      _pii_fields: rec.piiFieldsDetected,
+      _fallback_used: rec.fallbackUsed,
+      _status: rec.status,
+      _blocked_reason: rec.blockedReason,
+      _consent_checked: rec.consentChecked,
+      _input_chars: rec.inputChars,
+      _output_chars: rec.outputChars,
+      _latency_ms: rec.latencyMs,
+    });
+  } catch (e) {
+    console.warn("recordAiAudit failed:", e);
+  }
+}
+
+/**
+ * Orquestador seguro para cualquier feature que quiera invocar un proveedor externo.
+ * - Verifica kill switch + consentimiento vía checkGovernance.
+ * - Sanitiza el prompt del usuario y detecta PII.
+ * - Si hay PII residual tras sanitizar, bloquea también.
+ * - En bloqueo: llama fallback() (Lovable AI interno) y marca fallback_used.
+ * - En cualquier caso, registra una fila en ai_provider_audit con evidencia.
+ */
+export async function routeExternalOrFallback(params: {
+  admin: any;
+  userId: string | null;
+  featureKey: string;
+  provider: string;
+  model: string | null;
+  rawUserPrompt: string;
+  external: () => Promise<{ content: string; status?: string }>;
+  fallback: () => Promise<{ content: string; status?: string }>;
+}): Promise<{ content: string; provider: string; fallbackUsed: boolean; blockedReason: string | null }> {
+  const started = Date.now();
+  const decision = await checkGovernance(params.admin, params.userId, params.featureKey);
+
+  const pii = detectPiiFields(params.rawUserPrompt);
+  const sanitized = normalizePrompt(params.rawUserPrompt);
+  const notes = pii.length ? `sanitized:${pii.join(",")}` : null;
+
+  let blockedReason: string | null = decision.allowed ? null : decision.reason;
+  let allowExternal = decision.allowed;
+
+  // Red de seguridad: si tras sanitizar sigue habiendo PII, no salgas al exterior.
+  if (allowExternal && hasResidualPii(sanitized)) {
+    allowExternal = false;
+    blockedReason = "residual_pii";
+  }
+
+  let content = "";
+  let status = "ok";
+  let providerUsed = allowExternal ? params.provider : "lovable";
+  let fallbackUsed = !allowExternal;
+
+  try {
+    const res = allowExternal ? await params.external() : await params.fallback();
+    content = res.content ?? "";
+    status = res.status ?? "ok";
+  } catch (e: any) {
+    status = "error:" + (e?.message ?? "unknown").slice(0, 120);
+  }
+
+  await recordAiAudit(params.admin, {
+    userId: params.userId,
+    featureKey: params.featureKey,
+    provider: providerUsed,
+    model: params.model,
+    sanitized: pii.length > 0,
+    sanitizationNotes: notes,
+    sanitizedPrompt: sanitized.slice(0, 2000),
+    piiFieldsDetected: pii,
+    fallbackUsed,
+    status,
+    blockedReason,
+    consentChecked: true,
+    inputChars: params.rawUserPrompt.length,
+    outputChars: content.length,
+    latencyMs: Date.now() - started,
+  });
+
+  return { content, provider: providerUsed, fallbackUsed, blockedReason };
+}
+
 // Poda la ventana de historial: mantiene los últimos `window` mensajes.
 // Si hay más, resume los primeros con una llamada barata al gateway.
 export async function pruneHistory(

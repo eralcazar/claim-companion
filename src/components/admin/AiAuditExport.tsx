@@ -32,7 +32,8 @@ export function AiAuditExport() {
           <h2 className="font-semibold text-sm">Auditoría de llamadas a IA</h2>
         </div>
         <p className="text-xs text-muted-foreground -mt-1">
-          Filtra por fecha, feature y proveedor. La exportación incluye si se aplicó sanitización de PII y si se usó fallback.
+          Filtra por fecha, feature y proveedor. La exportación incluye el prompt sanitizado,
+          los campos de PII detectados, la razón de bloqueo y si se forzó fallback.
         </p>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3 items-end">
           <div>
@@ -86,6 +87,8 @@ export function AiAuditExport() {
                 <th className="text-left py-2 px-2">Proveedor</th>
                 <th className="text-left py-2 px-2">Modelo</th>
                 <th className="text-center py-2 px-2">Sanit.</th>
+                <th className="text-left py-2 px-2">PII detectada</th>
+                <th className="text-left py-2 px-2">Motivo bloqueo</th>
                 <th className="text-center py-2 px-2">Fallback</th>
                 <th className="text-left py-2 px-2">Estado</th>
               </tr>
@@ -98,12 +101,16 @@ export function AiAuditExport() {
                   <td className="py-1.5 px-2">{r.provider}</td>
                   <td className="py-1.5 px-2 truncate max-w-[180px]">{r.model ?? "—"}</td>
                   <td className="text-center py-1.5 px-2">{r.sanitized ? "✓" : "—"}</td>
+                  <td className="py-1.5 px-2 truncate max-w-[160px]">
+                    {(r.pii_fields_detected ?? []).join(", ") || "—"}
+                  </td>
+                  <td className="py-1.5 px-2">{r.blocked_reason ?? "—"}</td>
                   <td className="text-center py-1.5 px-2">{r.fallback_used ? "✓" : "—"}</td>
                   <td className="py-1.5 px-2">{r.status}</td>
                 </tr>
               ))}
               {rows.length === 0 && (
-                <tr><td colSpan={7} className="text-center text-muted-foreground py-4">Sin registros en el rango seleccionado.</td></tr>
+                <tr><td colSpan={9} className="text-center text-muted-foreground py-4">Sin registros en el rango seleccionado.</td></tr>
               )}
             </tbody>
           </table>
