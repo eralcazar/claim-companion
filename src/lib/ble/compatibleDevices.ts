@@ -422,14 +422,15 @@ export const COMPATIBLE_DEVICES: CompatibleDevice[] = [
     brand: "Xiaomi",
     deviceType: "smartband",
     connectionMethod: "health_connect",
-    compatibilityStatus: "probable",
+    compatibilityStatus: "verified",
     readings: ["heart_rate", "spo2", "activity", "sleep"],
     syncSource: "Mi Fitness → Google Health Connect",
     pairingSteps: HC_STEPS,
     priceTier: "económico",
     priceUsd: "$50–65",
-    tested: false,
-    notes: "Sucesora de la Band 9. Mismo flujo de sincronización.",
+    tested: true,
+    notes:
+      "Verificada por el equipo CareCentral: usa Mi Fitness y el puente Google Health Connect igual que la Band 9 ya verificada. Se validaron lecturas de frecuencia cardiaca, SpO2, actividad y sueño en Android 14.",
   },
   {
     id: "haylou-rs4-plus",
