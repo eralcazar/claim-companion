@@ -1,51 +1,50 @@
 ## Objetivo
 
-Añadir un botón **"Solicitar prueba de este dispositivo"** en la ficha del dispositivo (`DeviceDetailSheet`) para que un usuario pida al equipo CareCentral que verifique un modelo aún no probado, y permitir adjuntar evidencia (foto/PDF) cuando la prueba se realice.
+Que el usuario, al abrir la **Xiaomi Smart Band 10** en el catálogo, vea claramente:
 
-## Alcance de datos
+1. Qué mediciones expone dentro de CareCentral (FC, SpO₂, actividad, sueño).
+2. Qué tan confiable es cada una en uso clínico dentro de la app.
 
-Nueva tabla `public.device_test_requests`:
+## Cambios de datos (sin migración)
 
-- `id`, `user_id` (auth.uid), `device_id` (texto, ID del catálogo estático), `device_name`, `region`, `firmware`, `app_version`, `note`
-- `status`: enum textual `pending | in_review | verified | rejected` (default `pending`)
-- `evidence_url` (texto, opcional — path en storage)
-- `resolved_by` (uuid), `resolved_at` (timestamptz), `resolution_note`
-- `created_at`, `updated_at` con trigger
+Extender el tipo `CompatibleDevice` en `src/lib/ble/compatibleDevices.ts` con un campo opcional:
 
-Bucket privado nuevo `device-test-evidence` para subir la evidencia. Políticas: el dueño (`user_id`) puede leer/subir su carpeta; admin puede leer todo.
+```ts
+readingReliability?: Partial<Record<CompatibleReading, {
+  level: "clinical" | "reference" | "informational";
+  note?: string;
+}>>;
+```
 
-### RLS y grants
+Semántica visible al usuario:
+- **Clínica** — apta para seguimiento y alertas médicas.
+- **Referencial** — útil para tendencias, no reemplaza equipo clínico.
+- **Informativa** — solo estilo de vida / bienestar.
 
-- `GRANT SELECT, INSERT, UPDATE, DELETE ON public.device_test_requests TO authenticated;` + `GRANT ALL ... TO service_role;`
-- RLS: el usuario ve/crea/edita solo sus solicitudes; admin (`has_role(auth.uid(),'admin')`) ve y actualiza todas (para pasar a `in_review`, `verified` o `rejected` y subir evidencia oficial).
-- El campo `status` no lo puede cambiar el usuario a `verified` (chequeo por policy `WITH CHECK`).
+Rellenar el objeto para `xiaomi-band-10` con:
+- `heart_rate` → **referencial** ("Óptico de muñeca; buena tendencia en reposo, menor precisión en ejercicio intenso").
+- `spo2` → **informativa** ("Medición puntual bajo demanda; no válida para diagnóstico. Confirmar con oxímetro dedicado si <94%").
+- `activity` → **referencial** ("Pasos y calorías estimadas por acelerómetro").
+- `sleep` → **informativa** ("Estimación por movimiento + FC; no equivale a polisomnografía").
 
 ## UI
 
-**En `DeviceDetailSheet.tsx`:**
-- Botón **"Solicitar prueba"** (icono `FlaskConical`). Visible siempre que el dispositivo NO esté `verified` ni `incompatible`. Estado marcado como **probable** ya cumple.
-- Al hacer clic: abre un `Dialog` con formulario (región, firmware/versión app, nota corta) → `insertMutation` en `device_test_requests`.
-- Debajo del botón, si existe una solicitud del usuario para este `device_id`, mostrar badge de estado (`Pendiente / En revisión / Verificada / Rechazada`) y, si `evidence_url` existe, un enlace "Ver evidencia".
+En `src/components/ble/DeviceDetailSheet.tsx`, reemplazar el bloque actual "Mediciones" (badges simples) por una tarjeta **"Métricas soportadas y confiabilidad"** cuando el dispositivo tenga `readingReliability`. Para cada reading listada:
 
-**Nueva página admin `/admin/device-test-requests`** (`src/pages/admin/DeviceTestRequests.tsx`):
-- Lista de todas las solicitudes con filtros por status.
-- Cada fila: cambiar estado, subir evidencia al bucket privado (`device-test-evidence/{request_id}/…`), guardar `resolution_note`.
-- Registrar entrada en `AppSidebar` bajo la sección admin.
+- Ícono/etiqueta de la métrica (usa `READING_LABELS`).
+- Badge de nivel (color por nivel: emerald=clinical, amber=reference, slate=informational).
+- Nota breve.
+
+Si el dispositivo no define `readingReliability`, se mantiene el render actual (fallback) — así el cambio no afecta al resto del catálogo.
+
+Añadir un pie corto: *"La confiabilidad la define el equipo CareCentral según el protocolo de sincronización y validaciones internas."*
 
 ## Archivos
 
-Nuevos:
-- Migración SQL (tabla + bucket + policies).
-- `src/hooks/useDeviceTestRequests.ts` — list/create/update, signed URL para evidencia.
-- `src/components/ble/RequestDeviceTestDialog.tsx` — formulario.
-- `src/pages/admin/DeviceTestRequests.tsx` — bandeja admin.
-
-Modificados:
-- `src/components/ble/DeviceDetailSheet.tsx` — botón + badge de estado + evidencia.
-- `src/App.tsx` — ruta `/admin/device-test-requests`.
-- `src/components/layout/AppSidebar.tsx` — enlace admin.
+- `src/lib/ble/compatibleDevices.ts` — tipo extendido + campo poblado en la Band 10.
+- `src/components/ble/DeviceDetailSheet.tsx` — nueva tarjeta de métricas + confiabilidad.
 
 ## Fuera de alcance
 
-- No se toca el catálogo estático (`compatibleDevices.ts`). La verificación admin queda registrada en la tabla, no reescribe el status del catálogo.
-- No se notifica por email/push al admin (queda para siguiente iteración).
+- No se cambian otros dispositivos (se puede replicar más adelante).
+- No hay cambios de base de datos ni de flujos de sincronización.

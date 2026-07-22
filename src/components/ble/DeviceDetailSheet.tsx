@@ -175,14 +175,45 @@ export function DeviceDetailSheet({
           </div>
 
           {device.readings.length > 0 && (
-            <div>
-              <p className="text-xs font-medium text-muted-foreground mb-1.5">Mediciones</p>
-              <div className="flex flex-wrap gap-1">
-                {device.readings.map((r) => (
-                  <Badge key={r} variant="outline">{READING_LABELS[r]}</Badge>
-                ))}
+            device.readingReliability ? (
+              <div className="rounded-lg border border-border p-3">
+                <p className="text-sm font-medium mb-2">Métricas soportadas y confiabilidad</p>
+                <ul className="space-y-2">
+                  {device.readings.map((r) => {
+                    const rel = device.readingReliability?.[r];
+                    const level = rel?.level ?? "reference";
+                    const meta = {
+                      clinical: { label: "Clínica", cls: "bg-emerald-100 text-emerald-900 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-100 dark:border-emerald-900" },
+                      reference: { label: "Referencial", cls: "bg-amber-100 text-amber-900 border-amber-200 dark:bg-amber-950 dark:text-amber-100 dark:border-amber-900" },
+                      informational: { label: "Informativa", cls: "bg-slate-100 text-slate-900 border-slate-200 dark:bg-slate-800 dark:text-slate-100 dark:border-slate-700" },
+                    }[level];
+                    return (
+                      <li key={r} className="flex flex-col gap-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium">{READING_LABELS[r]}</span>
+                          <Badge variant="outline" className={meta.cls}>{meta.label}</Badge>
+                        </div>
+                        {rel?.note && (
+                          <p className="text-xs text-muted-foreground">{rel.note}</p>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+                <p className="text-[11px] text-muted-foreground mt-3">
+                  La confiabilidad la define el equipo CareCentral según el protocolo de sincronización y validaciones internas.
+                </p>
               </div>
-            </div>
+            ) : (
+              <div>
+                <p className="text-xs font-medium text-muted-foreground mb-1.5">Mediciones</p>
+                <div className="flex flex-wrap gap-1">
+                  {device.readings.map((r) => (
+                    <Badge key={r} variant="outline">{READING_LABELS[r]}</Badge>
+                  ))}
+                </div>
+              </div>
+            )
           )}
 
           <div className="rounded-lg border border-border p-3 text-sm">

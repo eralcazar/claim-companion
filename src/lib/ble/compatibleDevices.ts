@@ -7,6 +7,10 @@ export type PriceTier = "económico" | "medio" | "premium";
 export type DeviceType = "oximeter" | "bp_monitor" | "thermometer" | "smartband" | "smartwatch" | "ring" | "scale";
 export type ConnectionMethod = "ble_direct" | "health_connect" | "healthkit" | "vendor_app_bridge" | "not_compatible";
 export type CompatibilityStatus = "verified" | "probable" | "community" | "incompatible";
+export type ReliabilityLevel = "clinical" | "reference" | "informational";
+export type ReadingReliability = Partial<
+  Record<CompatibleReading, { level: ReliabilityLevel; note?: string }>
+>;
 
 export type CompatibleDevice = {
   id: string;
@@ -25,6 +29,7 @@ export type CompatibleDevice = {
   notes: string;
   firmwareNote?: string;
   url?: string;
+  readingReliability?: ReadingReliability;
 };
 
 const BLE_STEPS = [
@@ -431,6 +436,24 @@ export const COMPATIBLE_DEVICES: CompatibleDevice[] = [
     tested: true,
     notes:
       "Verificada por el equipo CareCentral: usa Mi Fitness y el puente Google Health Connect igual que la Band 9 ya verificada. Se validaron lecturas de frecuencia cardiaca, SpO2, actividad y sueño en Android 14.",
+    readingReliability: {
+      heart_rate: {
+        level: "reference",
+        note: "Sensor óptico de muñeca: buena tendencia en reposo, menor precisión en ejercicio intenso o arritmias.",
+      },
+      spo2: {
+        level: "informational",
+        note: "Medición puntual bajo demanda; no válida para diagnóstico. Confirmar con oxímetro dedicado si el valor es <94%.",
+      },
+      activity: {
+        level: "reference",
+        note: "Pasos y calorías estimadas por acelerómetro; útiles para seguimiento diario.",
+      },
+      sleep: {
+        level: "informational",
+        note: "Estimación por movimiento + frecuencia cardiaca; no equivale a polisomnografía.",
+      },
+    },
   },
   {
     id: "haylou-rs4-plus",
