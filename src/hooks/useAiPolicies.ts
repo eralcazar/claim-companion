@@ -12,7 +12,7 @@ export type AiProviderPolicy = {
   history_window: number;
   enable_cache: boolean;
   cache_ttl_hours: number;
-  provider: "lovable" | "apifreellm" | "gemini" | "mistral" | string;
+  provider: "lovable" | "apifreellm" | "gemini" | "mistral" | "claude" | string;
   external_endpoint: string | null;
   notes: string | null;
   updated_at: string;
@@ -41,6 +41,12 @@ export const AI_PROVIDER_CHOICES = [
     label: "Mistral AI (BYOK)",
     description:
       "Usa tu propia API key de Mistral (Francia/UE). Requiere configurar MISTRAL_API_KEY en Admin → Proveedores IA y activar el proveedor.",
+  },
+  {
+    value: "claude" as const,
+    label: "Anthropic Claude (BYOK)",
+    description:
+      "Usa tu propia API key de Anthropic. Requiere configurar ANTHROPIC_API_KEY en Admin → Proveedores IA y activar el proveedor.",
   },
 ];
 
