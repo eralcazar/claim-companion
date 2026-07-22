@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { KeyRound, RefreshCw, CheckCircle2, XCircle, Loader2, Copy, ShieldAlert, Zap, History, ListTree, AlertTriangle, RotateCw, Power } from "lucide-react";
+import { KeyRound, RefreshCw, CheckCircle2, XCircle, Loader2, Copy, ShieldAlert, Zap, History, ListTree, AlertTriangle, RotateCw, Power, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
@@ -181,6 +181,11 @@ export default function ApiKeysMaintenance() {
   const [diag, setDiag] = useState<Record<string, TestDiag | null>>({});
   const [history, setHistory] = useState<AuditRow[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  // Fingerprint por secret (length|preview|last_action_at). Al detectar un
+  // cambio (guardado/rotación) dispara automáticamente runTest en Gemini.
+  const fingerprintRef = useRef<Record<string, string>>({});
+  const autoTestedRef = useRef<Set<string>>(new Set());
+  const [autoTestPending, setAutoTestPending] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -188,8 +193,22 @@ export default function ApiKeysMaintenance() {
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
-      setSecrets(data?.secrets ?? []);
+      const next: SecretStatus[] = data?.secrets ?? [];
+      setSecrets(next);
       setCheckedAt(data?.checked_at ?? null);
+      // Detectar cambios en GEMINI_API_KEY y disparar auto-test.
+      const gemini = next.find((s) => s.name === "GEMINI_API_KEY");
+      if (gemini?.configured) {
+        const fp = `${gemini.length}|${gemini.preview ?? ""}|${gemini.last_action_at ?? ""}`;
+        const prev = fingerprintRef.current["GEMINI_API_KEY"];
+        const neverTested = !gemini.last_test_at;
+        const changed = prev !== undefined && prev !== fp;
+        fingerprintRef.current["GEMINI_API_KEY"] = fp;
+        if ((changed || (neverTested && !autoTestedRef.current.has(fp))) && !testing["GEMINI_API_KEY"]) {
+          autoTestedRef.current.add(fp);
+          setAutoTestPending("GEMINI_API_KEY");
+        }
+      }
     }
     setLoading(false);
   };
@@ -212,6 +231,19 @@ export default function ApiKeysMaintenance() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roles]);
+
+  // Ejecuta el auto-test cuando `load()` detectó cambio en la key.
+  useEffect(() => {
+    if (!autoTestPending) return;
+    const name = autoTestPending;
+    setAutoTestPending(null);
+    toast({
+      title: "Detecté un cambio en GEMINI_API_KEY",
+      description: "Probando Gemini automáticamente…",
+    });
+    runTest(name, { auto: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoTestPending]);
 
   if (roles && !roles.includes("admin")) return <Navigate to="/dashboard" replace />;
 
@@ -238,7 +270,7 @@ export default function ApiKeysMaintenance() {
     });
   };
 
-  const runTest = async (secretName: string) => {
+  const runTest = async (secretName: string, opts?: { auto?: boolean }) => {
     const meta = PROVIDER_META[secretName];
     if (!meta) return;
     const secret = secrets.find((x) => x.name === secretName);
@@ -250,7 +282,7 @@ export default function ApiKeysMaintenance() {
     if (!error && data?.ok) {
       setDiag((d) => ({ ...d, [secretName]: null }));
       toast({
-        title: `${meta.label}: OK`,
+        title: `${meta.label}: OK${opts?.auto ? " (auto-test)" : ""}`,
         description: `Modelo ${data.model_used} respondió en ${data.latency_ms} ms.`,
       });
     } else {
@@ -261,7 +293,7 @@ export default function ApiKeysMaintenance() {
       });
       setDiag((prev) => ({ ...prev, [secretName]: d }));
       toast({
-        title: `${meta.label}: falló`,
+        title: `${meta.label}: falló${opts?.auto ? " (auto-test)" : ""}`,
         description: d.cause,
         variant: "destructive",
       });
@@ -386,6 +418,63 @@ export default function ApiKeysMaintenance() {
                     {!testStatus && <span className="text-muted-foreground">nunca</span>}
                   </div>
                 </div>
+                {s.name === "GEMINI_API_KEY" && (
+                  <div className="rounded-md border border-primary/30 bg-primary/5 p-3 text-xs space-y-2">
+                    <div className="flex items-start gap-2">
+                      <Sparkles className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+                      <div className="space-y-1">
+                        <p className="font-semibold text-foreground">Auto-test tras guardar/actualizar</p>
+                        <p className="text-muted-foreground">
+                          Detecto automáticamente cambios en <span className="font-mono">GEMINI_API_KEY</span>
+                          {" "}(vía longitud, preview y fecha de última acción) y disparo{" "}
+                          <span className="font-mono">test-ai-provider</span> para reportar el estado y la
+                          latencia aquí mismo, sin salir de la pantalla.
+                        </p>
+                        {testing[s.name] && (
+                          <p className="text-primary flex items-center gap-1">
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                            Ejecutando auto-test…
+                          </p>
+                        )}
+                        {!testing[s.name] && s.last_test_at && testStatus === "test_success" && (
+                          <p className="text-emerald-700 dark:text-emerald-400">
+                            Último resultado: <strong>OK</strong> · {s.last_test_latency_ms ?? "?"} ms ·{" "}
+                            {formatRelative(s.last_test_at)}
+                          </p>
+                        )}
+                        {!testing[s.name] && s.last_test_at && testStatus === "test_failed" && (
+                          <p className="text-destructive">
+                            Último resultado: <strong>Falló</strong> · {formatRelative(s.last_test_at)}. Revisa
+                            el diagnóstico debajo o presiona “Acabo de actualizar la key”.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex gap-2 flex-wrap">
+                      <Button
+                        size="sm"
+                        variant="default"
+                        disabled={testing[s.name]}
+                        onClick={async () => {
+                          // Forzar re-detección + auto-test aunque el fingerprint no haya cambiado.
+                          fingerprintRef.current["GEMINI_API_KEY"] = "";
+                          autoTestedRef.current.delete(
+                            fingerprintRef.current["GEMINI_API_KEY"] ?? "",
+                          );
+                          await load();
+                          runTest("GEMINI_API_KEY", { auto: true });
+                        }}
+                      >
+                        {testing[s.name] ? (
+                          <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                        ) : (
+                          <Sparkles className="h-3.5 w-3.5 mr-1" />
+                        )}
+                        Acabo de actualizar la key — probar Gemini
+                      </Button>
+                    </div>
+                  </div>
+                )}
                 {s.last_test_error && testStatus === "test_failed" && (
                   <p className="text-[11px] text-destructive font-mono bg-destructive/5 p-2 rounded border border-destructive/20">
                     {s.last_test_error.slice(0, 300)}
