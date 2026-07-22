@@ -418,6 +418,63 @@ export default function ApiKeysMaintenance() {
                     {!testStatus && <span className="text-muted-foreground">nunca</span>}
                   </div>
                 </div>
+                {s.name === "GEMINI_API_KEY" && (
+                  <div className="rounded-md border border-primary/30 bg-primary/5 p-3 text-xs space-y-2">
+                    <div className="flex items-start gap-2">
+                      <Sparkles className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+                      <div className="space-y-1">
+                        <p className="font-semibold text-foreground">Auto-test tras guardar/actualizar</p>
+                        <p className="text-muted-foreground">
+                          Detecto automáticamente cambios en <span className="font-mono">GEMINI_API_KEY</span>
+                          {" "}(vía longitud, preview y fecha de última acción) y disparo{" "}
+                          <span className="font-mono">test-ai-provider</span> para reportar el estado y la
+                          latencia aquí mismo, sin salir de la pantalla.
+                        </p>
+                        {testing[s.name] && (
+                          <p className="text-primary flex items-center gap-1">
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                            Ejecutando auto-test…
+                          </p>
+                        )}
+                        {!testing[s.name] && s.last_test_at && testStatus === "test_success" && (
+                          <p className="text-emerald-700 dark:text-emerald-400">
+                            Último resultado: <strong>OK</strong> · {s.last_test_latency_ms ?? "?"} ms ·{" "}
+                            {formatRelative(s.last_test_at)}
+                          </p>
+                        )}
+                        {!testing[s.name] && s.last_test_at && testStatus === "test_failed" && (
+                          <p className="text-destructive">
+                            Último resultado: <strong>Falló</strong> · {formatRelative(s.last_test_at)}. Revisa
+                            el diagnóstico debajo o presiona “Acabo de actualizar la key”.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex gap-2 flex-wrap">
+                      <Button
+                        size="sm"
+                        variant="default"
+                        disabled={testing[s.name]}
+                        onClick={async () => {
+                          // Forzar re-detección + auto-test aunque el fingerprint no haya cambiado.
+                          fingerprintRef.current["GEMINI_API_KEY"] = "";
+                          autoTestedRef.current.delete(
+                            fingerprintRef.current["GEMINI_API_KEY"] ?? "",
+                          );
+                          await load();
+                          runTest("GEMINI_API_KEY", { auto: true });
+                        }}
+                      >
+                        {testing[s.name] ? (
+                          <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                        ) : (
+                          <Sparkles className="h-3.5 w-3.5 mr-1" />
+                        )}
+                        Acabo de actualizar la key — probar Gemini
+                      </Button>
+                    </div>
+                  </div>
+                )}
                 {s.last_test_error && testStatus === "test_failed" && (
                   <p className="text-[11px] text-destructive font-mono bg-destructive/5 p-2 rounded border border-destructive/20">
                     {s.last_test_error.slice(0, 300)}
