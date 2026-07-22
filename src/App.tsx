@@ -65,6 +65,7 @@ import NotificationPreferencesPage from "@/pages/NotificationPreferences";
 import Procedimientos from "@/pages/Procedimientos";
 import Odontograma from "@/pages/Odontograma";
 import Domicilio from "@/pages/Domicilio";
+import CoverageAreas from "@/pages/CoverageAreas";
 import Facturacion from "@/pages/Facturacion";
 import OAuthConsent from "@/pages/OAuthConsent";
 import DispositivosCompatibles from "@/pages/DispositivosCompatibles";
@@ -211,6 +212,7 @@ const App = () => (
               <Route path="/procedimientos" element={<Procedimientos />} />
               <Route path="/odontograma" element={<Odontograma />} />
               <Route path="/domicilio" element={<Domicilio />} />
+              <Route path="/domicilio/cobertura" element={<CoverageAreas />} />
               <Route path="/facturacion" element={<Facturacion />} />
               <Route path="/admin/facturacion" element={<CfdiConfigManager />} />
               <Route path="/mis-datos-ia" element={<MisDatosIA />} />
