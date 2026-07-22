@@ -1,7 +1,7 @@
 import {
   Home, FileText, Calendar, Pill, User, Shield, Users, Stethoscope, FolderOpen, Download, LogOut, FolderTree, UserCog, KeyRound, GraduationCap, BadgeCheck, FlaskConical, TrendingUp, HeartPulse, FlaskRound, Store, UserCheck, FileWarning, Package, Boxes, Layers, CreditCard, Activity, ScrollText, Apple
 } from "lucide-react";
-import { Receipt, Smile, Repeat2, Dumbbell } from "lucide-react";
+import { Receipt, Smile, Repeat2, Dumbbell, Moon, Footprints } from "lucide-react";
 import { NavLink as RouterNavLink, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useImpersonation } from "@/contexts/ImpersonationContext";
@@ -31,6 +31,8 @@ const saludItems: Item[] = [
   { title: "Historial de salud", url: "/historial-salud", icon: Activity, feature: "perfil" },
   { title: "Presión arterial", url: "/presion", icon: Activity, feature: "presion_arterial" },
   { title: "Frecuencia cardíaca", url: "/frecuencia-cardiaca", icon: HeartPulse, feature: "perfil" },
+  { title: "Sueño", url: "/sueno", icon: Moon, feature: "perfil" },
+  { title: "Pasos y actividad", url: "/pasos", icon: Footprints, feature: "perfil" },
   { title: "Glucosa", url: "/glucosa", icon: Activity, feature: "expediente_digital" },
   { title: "SpO₂", url: "/oxygen-saturation", icon: Activity, feature: "oxygen_saturation" },
   { title: "Temperatura", url: "/temperatura", icon: Activity, feature: "expediente_digital" },

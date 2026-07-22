@@ -87,6 +87,8 @@ import Reservar from "@/pages/public/Reservar";
 import Actividad from "@/pages/Actividad";
 import MisDatosIA from "@/pages/MisDatosIA";
 import HeartRateMonitor from "@/pages/HeartRateMonitor";
+import SleepMonitor from "@/pages/SleepMonitor";
+import StepsMonitor from "@/pages/StepsMonitor";
 import Consultorios from "@/pages/Consultorios";
 import Soporte from "@/pages/Soporte";
 import TensiometrosCompatibilidad from "@/pages/TensiometrosCompatibilidad";
@@ -192,6 +194,8 @@ const App = () => (
               <Route path="/dispositivos" element={<DispositivosCompatibles />} />
               <Route path="/historial-salud" element={<HistorialSalud />} />
               <Route path="/frecuencia-cardiaca" element={<HeartRateMonitor />} />
+              <Route path="/sueno" element={<SleepMonitor />} />
+              <Route path="/pasos" element={<StepsMonitor />} />
               <Route path="/derechos-arco" element={<DerechosARCO />} />
               <Route path="/admin/integridad" element={<IntegrityDashboard />} />
               <Route path="/procedimientos" element={<Procedimientos />} />
