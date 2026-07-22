@@ -370,7 +370,7 @@ export default function ApiKeysMaintenance() {
 
       <div className="space-y-3">
         {secrets.map((s) => {
-          const meta = PROVIDER_META[s.name] ?? { label: s.name, docs: "", where: "" };
+          const meta = PROVIDER_META[s.name] ?? { label: s.name, docs: "", where: "", provider: "", prefix: "", length: "" };
           const testStatus = s.last_test_status;
           return (
             <Card key={s.name}>
