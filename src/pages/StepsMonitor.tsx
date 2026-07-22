@@ -17,6 +17,9 @@ import { DailySeriesChart } from "@/components/health/DailySeriesChart";
 import { MonitorPdfExport } from "@/components/health/MonitorPdfExport";
 import { EnabledMonitorsCard } from "@/components/health/EnabledMonitorsCard";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useMonitorHealth } from "@/hooks/useMonitorHealth";
+import { MonitorAlertsCard } from "@/components/health/MonitorAlertsCard";
+import { SyncStatusPill } from "@/components/health/SyncStatusPill";
 
 type Row = {
   fecha: string;
@@ -49,7 +52,7 @@ export default function StepsMonitor() {
   const [sourceFilter, setSourceFilter] = useState<string>("all");
   const [deviceFilter, setDeviceFilter] = useState<string>("all");
 
-  const { data: rows = [], isLoading } = useQuery({
+  const { data: rows = [], isLoading, refetch, isFetching } = useQuery({
     queryKey: ["steps-monitor", patientId, rangeDays],
     enabled: !!patientId,
     queryFn: async (): Promise<Row[]> => {
@@ -105,6 +108,13 @@ export default function StepsMonitor() {
   const caloriesSeries = byDay.map((d) => ({ fecha: d.fecha, value: d.cal }));
 
   const today = byDay.find((d) => d.fecha === isoToday());
+
+  const { syncStatus, lastReadingAt, alerts } = useMonitorHealth({
+    points: byDay.map((d) => ({ fecha: d.fecha, value: d.steps, source: (d as any).source ?? null })),
+    rangeDays,
+    hardLow: 0,
+    label: "pasos", unit: "pasos",
+  });
   const todaySteps = today?.steps ?? 0;
   const pct = Math.min(100, Math.round((todaySteps / stepsGoal) * 100));
 
@@ -170,6 +180,17 @@ export default function StepsMonitor() {
       </header>
 
       <EnabledMonitorsCard />
+
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <SyncStatusPill
+          status={syncStatus}
+          lastReadingAt={lastReadingAt}
+          onRetry={() => refetch()}
+          retrying={isFetching}
+          deviceLabel={(today as any)?.device ?? null}
+        />
+      </div>
+      <MonitorAlertsCard alerts={alerts} />
 
       <Card>
         <CardContent className="p-3 flex flex-wrap gap-2 items-end">
