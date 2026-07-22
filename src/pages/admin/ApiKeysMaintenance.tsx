@@ -640,6 +640,7 @@ export default function ApiKeysMaintenance() {
                     variant="secondary"
                     onClick={() => runSync(s.name)}
                     disabled={!s.configured || syncing[s.name]}
+                    title="Verifica conexión y actualiza el catálogo del proveedor"
                   >
                     {syncing[s.name] ? (
                       <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
@@ -698,6 +699,19 @@ export default function ApiKeysMaintenance() {
                           <RotateCw className="h-3.5 w-3.5 mr-1" />
                         )}
                         Reintentar
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => runSync(s.name)}
+                        disabled={!s.configured || syncing[s.name] || diag[s.name]?.locked}
+                      >
+                        {syncing[s.name] ? (
+                          <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                        ) : (
+                          <ListTree className="h-3.5 w-3.5 mr-1" />
+                        )}
+                        Reintentar sincronización
                       </Button>
                       {diag[s.name]?.locked && (
                         <Button
