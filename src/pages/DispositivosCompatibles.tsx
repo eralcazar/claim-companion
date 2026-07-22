@@ -37,6 +37,10 @@ import { DirectBleChecker } from "@/components/ble/DirectBleChecker";
 import { ImportHistoryPanel } from "@/components/health/ImportHistoryPanel";
 import { PermissionsTroubleshooter } from "@/components/health/PermissionsTroubleshooter";
 import { ImportedReadingsPdfExport } from "@/components/health/ImportedReadingsPdfExport";
+import { ImportedReadingsCsvExport } from "@/components/health/ImportedReadingsCsvExport";
+import { ImportedChartsPanel } from "@/components/health/ImportedChartsPanel";
+import { SyncNowCard } from "@/components/health/SyncNowCard";
+import { ImportSettingsCard } from "@/components/health/ImportSettingsCard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const TONE_CLASS: Record<string, string> = {
@@ -115,12 +119,15 @@ export default function DispositivosCompatibles() {
         <TabsList className="flex-wrap h-auto">
           <TabsTrigger value="catalogo">Catálogo</TabsTrigger>
           <TabsTrigger value="probar">Probar conexión</TabsTrigger>
+          <TabsTrigger value="graficas">Gráficas</TabsTrigger>
+          <TabsTrigger value="sync">Sincronizar</TabsTrigger>
           <TabsTrigger value="asistente">Asistente Health Connect</TabsTrigger>
           <TabsTrigger value="ble-directo">BLE directo</TabsTrigger>
           <TabsTrigger value="historial">Historial</TabsTrigger>
           <TabsTrigger value="importaciones">Importaciones</TabsTrigger>
           <TabsTrigger value="ayuda">Ayuda</TabsTrigger>
-          <TabsTrigger value="exportar">Exportar PDF</TabsTrigger>
+          <TabsTrigger value="exportar">Exportar</TabsTrigger>
+          <TabsTrigger value="ajustes">Ajustes</TabsTrigger>
           <TabsTrigger value="preferencias">Preferencias por métrica</TabsTrigger>
         </TabsList>
 
@@ -152,8 +159,21 @@ export default function DispositivosCompatibles() {
           <PermissionsTroubleshooter />
         </TabsContent>
 
-        <TabsContent value="exportar">
+        <TabsContent value="graficas">
+          <ImportedChartsPanel />
+        </TabsContent>
+
+        <TabsContent value="sync">
+          <SyncNowCard />
+        </TabsContent>
+
+        <TabsContent value="exportar" className="space-y-4">
           <ImportedReadingsPdfExport />
+          <ImportedReadingsCsvExport />
+        </TabsContent>
+
+        <TabsContent value="ajustes">
+          <ImportSettingsCard />
         </TabsContent>
 
         <TabsContent value="preferencias">
