@@ -235,6 +235,39 @@ export function truncateText(text: string, maxChars: number): string {
 }
 
 // ────────────────────────────────────────────────────────────────
+// Proveedor externo: ApiFreeLLM (compatible OpenAI, sin API key)
+// ────────────────────────────────────────────────────────────────
+export async function callApiFreeLLM(
+  endpoint: string,
+  model: string,
+  messages: Array<{ role: string; content: string }>,
+  opts: { maxOutputTokens?: number; responseFormat?: "json_object" } = {},
+): Promise<{ ok: boolean; status: number; content: string; usage: { prompt_tokens: number; completion_tokens: number; total_tokens: number }; rawText?: string }> {
+  const body: any = { model, messages };
+  if (opts.maxOutputTokens) body.max_tokens = opts.maxOutputTokens;
+  if (opts.responseFormat) body.response_format = { type: opts.responseFormat };
+  try {
+    const resp = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!resp.ok) {
+      const t = await resp.text().catch(() => "");
+      return { ok: false, status: resp.status, content: "", usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }, rawText: t };
+    }
+    const json = await resp.json();
+    const content: string = json?.choices?.[0]?.message?.content ?? "";
+    const pt = Number(json?.usage?.prompt_tokens) || 0;
+    const ct = Number(json?.usage?.completion_tokens) || 0;
+    const tt = Number(json?.usage?.total_tokens) || pt + ct;
+    return { ok: true, status: resp.status, content, usage: { prompt_tokens: pt, completion_tokens: ct, total_tokens: tt } };
+  } catch (e: any) {
+    return { ok: false, status: 0, content: "", usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }, rawText: e?.message ?? "network_error" };
+  }
+}
+
+// ────────────────────────────────────────────────────────────────
 // Sanitización y detección de PII (espejo de src/lib/ai/sanitize.ts)
 // ────────────────────────────────────────────────────────────────
 export function detectPiiFields(original: string): string[] {
