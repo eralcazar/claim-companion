@@ -106,6 +106,31 @@ export const AI_MODEL_CHOICES = [
   { value: "google/gemini-2.5-pro", label: "Gemini 2.5 Pro (caro)", inputMicros: 1250, outputMicros: 5000 },
 ];
 
+// Devuelve los modelos disponibles para un proveedor específico.
+// Para `lovable` usa el catálogo interno; para proveedores externos usa el
+// campo `models` de `ai_external_providers`.
+export function modelsForProvider(
+  provider: string,
+  external: ExternalProviderRow[] | undefined,
+): Array<{ value: string; label: string }> {
+  if (!provider || provider === "lovable") {
+    return AI_MODEL_CHOICES.map((m) => ({ value: m.value, label: m.label }));
+  }
+  const row = external?.find((r) => r.id === provider);
+  if (!row) return [];
+  return (row.models ?? []).map((m) => ({ value: m.id, label: m.label }));
+}
+
+export function defaultModelForProvider(
+  provider: string,
+  external: ExternalProviderRow[] | undefined,
+): string | null {
+  if (!provider || provider === "lovable") return AI_MODEL_CHOICES[0]?.value ?? null;
+  const row = external?.find((r) => r.id === provider);
+  if (!row) return null;
+  return row.default_model ?? row.models?.[0]?.id ?? null;
+}
+
 export function useAiPolicies() {
   return useQuery({
     queryKey: ["ai_provider_policy"],
