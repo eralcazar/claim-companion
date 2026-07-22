@@ -103,9 +103,42 @@ function RowEditor({ req }: { req: DeviceTestRequest }) {
           <div className="truncate"><span className="text-muted-foreground">User:</span> {req.user_id.slice(0, 8)}</div>
         </div>
 
-        {req.note && (
-          <p className="text-sm bg-muted/40 rounded-md p-2">{req.note}</p>
-        )}
+        {req.note && (() => {
+          const isIntegration = req.device_id.startsWith("integration-request:");
+          if (isIntegration) {
+            try {
+              const parsed = JSON.parse(req.note);
+              if (parsed && parsed.kind === "integration_request") {
+                return (
+                  <div className="text-sm bg-muted/40 rounded-md p-2 space-y-1">
+                    <p className="text-xs font-medium text-primary">Solicitud de integración</p>
+                    <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+                      <div><span className="text-muted-foreground">Tipo:</span> {parsed.deviceType ?? "—"}</div>
+                      <div>
+                        <span className="text-muted-foreground">Métricas:</span>{" "}
+                        {Array.isArray(parsed.readings) && parsed.readings.length
+                          ? parsed.readings.join(", ")
+                          : "—"}
+                      </div>
+                      {parsed.url && (
+                        <div className="col-span-2 truncate">
+                          <span className="text-muted-foreground">Enlace:</span>{" "}
+                          <a href={parsed.url} target="_blank" rel="noreferrer" className="underline">
+                            {parsed.url}
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                    {parsed.reason && <p className="pt-1">{parsed.reason}</p>}
+                  </div>
+                );
+              }
+            } catch {
+              /* fallthrough to plain */
+            }
+          }
+          return <p className="text-sm bg-muted/40 rounded-md p-2">{req.note}</p>;
+        })()}
 
         <div className="grid md:grid-cols-2 gap-3 pt-2 border-t">
           <div>
