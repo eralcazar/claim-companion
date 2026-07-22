@@ -155,6 +155,8 @@ Deno.serve(async (req) => {
     let totalTokens = 0;
     let servedFromCache = false;
     let usedModel = ACTIVE_MODEL;
+    let gatewayRunId: string | null = null;
+    let gatewayLogId: string | null = null;
     const promptHash = cacheable ? await hashPrompt(normalized) : "";
 
     if (cacheable) {
@@ -200,6 +202,8 @@ Deno.serve(async (req) => {
       promptTokens = aiResp.usage.prompt_tokens || Math.ceil(trimmedMessage.length / 3);
       completionTokens = aiResp.usage.completion_tokens || Math.ceil(assistantContent.length / 3);
       totalTokens = aiResp.usage.total_tokens || promptTokens + completionTokens;
+      gatewayRunId = (aiResp as any)?.gatewayRunId ?? null;
+      gatewayLogId = (aiResp as any)?.gatewayLogId ?? null;
 
       // Guardar en caché si aplicaba
       if (cacheable && assistantContent) {
@@ -239,8 +243,8 @@ Deno.serve(async (req) => {
       total_tokens: totalTokens,
       cost_usd_micros: costMicros,
       feature_key: "kari-chat",
-      gateway_run_id: (aiResp as any)?.gatewayRunId ?? null,
-      gateway_log_id: (aiResp as any)?.gatewayLogId ?? null,
+      gateway_run_id: gatewayRunId,
+      gateway_log_id: gatewayLogId,
     });
 
     // Consumir tokens (0 si es cache hit)
