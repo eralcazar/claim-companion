@@ -7726,6 +7726,36 @@ export type Database = {
         }
         Relationships: []
       }
+      user_metric_device_preferences: {
+        Row: {
+          created_at: string
+          device_id: string
+          device_label: string | null
+          metric: string
+          priority: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          device_id: string
+          device_label?: string | null
+          metric: string
+          priority?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          device_id?: string
+          device_label?: string | null
+          metric?: string
+          priority?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_push_tokens: {
         Row: {
           created_at: string
@@ -7773,6 +7803,95 @@ export type Database = {
           created_at?: string
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      wearable_connection_test_metrics: {
+        Row: {
+          created_at: string
+          error_code: string | null
+          error_message: string | null
+          id: string
+          last_at: string | null
+          last_value: number | null
+          metric: string
+          samples_count: number
+          status: string
+          test_id: string
+        }
+        Insert: {
+          created_at?: string
+          error_code?: string | null
+          error_message?: string | null
+          id?: string
+          last_at?: string | null
+          last_value?: number | null
+          metric: string
+          samples_count?: number
+          status: string
+          test_id: string
+        }
+        Update: {
+          created_at?: string
+          error_code?: string | null
+          error_message?: string | null
+          id?: string
+          last_at?: string | null
+          last_value?: number | null
+          metric?: string
+          samples_count?: number
+          status?: string
+          test_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wearable_connection_test_metrics_test_id_fkey"
+            columns: ["test_id"]
+            isOneToOne: false
+            referencedRelation: "wearable_connection_tests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wearable_connection_tests: {
+        Row: {
+          availability: boolean | null
+          created_at: string
+          duration_ms: number | null
+          id: string
+          notes: string | null
+          overall_status: string
+          platform: string | null
+          run_id: string | null
+          tested_at: string
+          trigger: string
+          user_id: string
+        }
+        Insert: {
+          availability?: boolean | null
+          created_at?: string
+          duration_ms?: number | null
+          id?: string
+          notes?: string | null
+          overall_status: string
+          platform?: string | null
+          run_id?: string | null
+          tested_at?: string
+          trigger?: string
+          user_id: string
+        }
+        Update: {
+          availability?: boolean | null
+          created_at?: string
+          duration_ms?: number | null
+          id?: string
+          notes?: string | null
+          overall_status?: string
+          platform?: string | null
+          run_id?: string | null
+          tested_at?: string
+          trigger?: string
           user_id?: string
         }
         Relationships: []

@@ -30,6 +30,9 @@ import { WearableCompatibilityLookup } from "@/components/health/WearableCompati
 import { DeviceDetailSheet } from "@/components/ble/DeviceDetailSheet";
 import { MyVerificationsSection } from "@/components/ble/MyVerificationsSection";
 import { RequestDeviceIntegrationDialog } from "@/components/ble/RequestDeviceIntegrationDialog";
+import { ConnectionTestHistoryList } from "@/components/health/ConnectionTestHistoryList";
+import { MetricDeviceRouter } from "@/components/health/MetricDeviceRouter";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const TONE_CLASS: Record<string, string> = {
   success: "bg-emerald-500/15 text-emerald-700 border-emerald-500/30",
@@ -103,16 +106,32 @@ export default function DispositivosCompatibles() {
 
       <RequestDeviceIntegrationDialog open={integrationOpen} onOpenChange={setIntegrationOpen} />
 
-      <div id="probar">
-        <BleCompatibilityCheck />
-      </div>
+      <Tabs defaultValue="catalogo" className="space-y-4">
+        <TabsList className="flex-wrap h-auto">
+          <TabsTrigger value="catalogo">Catálogo</TabsTrigger>
+          <TabsTrigger value="probar">Probar conexión</TabsTrigger>
+          <TabsTrigger value="historial">Historial</TabsTrigger>
+          <TabsTrigger value="preferencias">Preferencias por métrica</TabsTrigger>
+        </TabsList>
 
-      <div id="wearables" className="grid gap-4 md:grid-cols-2">
-        <WearableCompatibilityLookup />
-        <WearableConnectionTest />
-      </div>
+        <TabsContent value="probar" className="space-y-4">
+          <div id="probar"><BleCompatibilityCheck /></div>
+          <div id="wearables" className="grid gap-4 md:grid-cols-2">
+            <WearableCompatibilityLookup />
+            <WearableConnectionTest />
+          </div>
+        </TabsContent>
 
-      <Card>
+        <TabsContent value="historial">
+          <ConnectionTestHistoryList />
+        </TabsContent>
+
+        <TabsContent value="preferencias">
+          <MetricDeviceRouter />
+        </TabsContent>
+
+        <TabsContent value="catalogo" className="space-y-4">
+          <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Buscar dispositivo</CardTitle>
         </CardHeader>
@@ -239,6 +258,8 @@ export default function DispositivosCompatibles() {
       />
 
       <MyVerificationsSection />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

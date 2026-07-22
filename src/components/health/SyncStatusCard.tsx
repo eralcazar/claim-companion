@@ -4,6 +4,8 @@ import { Badge } from "@/components/ui/badge";
 import { AlertCircle, CheckCircle2, RefreshCw, WifiOff } from "lucide-react";
 import { useHealthDevices } from "@/hooks/useHealthDevices";
 import { toast } from "sonner";
+import { useAutoRetrySync } from "@/hooks/useAutoRetrySync";
+import { AutoRetryStatusCard } from "@/components/health/AutoRetryStatusCard";
 
 type Props = {
   totalReadingsInRange: number;
@@ -12,6 +14,9 @@ type Props = {
 /** Estado consolidado de la última sincronización con Apple Health / Health Connect. */
 export function SyncStatusCard({ totalReadingsInRange }: Props) {
   const { platform, available, lastSyncedAt, sync } = useHealthDevices();
+  const retry = useAutoRetrySync(async () => {
+    await sync.mutateAsync();
+  });
 
   const status: "ok" | "error" | "pending" | "never" | "unavailable" =
     !available && platform === "web"
@@ -44,8 +49,11 @@ export function SyncStatusCard({ totalReadingsInRange }: Props) {
     try {
       const res = await sync.mutateAsync();
       toast.success(`Sincronizado: ${res.total} registros`);
+      retry.cancel();
     } catch (err: any) {
-      toast.error(err?.message ?? "Error al sincronizar");
+      const msg = err?.message ?? "Error al sincronizar";
+      toast.error(msg);
+      retry.start(msg);
     }
   };
 
@@ -106,6 +114,15 @@ export function SyncStatusCard({ totalReadingsInRange }: Props) {
           </Button>
         )}
       </CardContent>
+      {(retry.state.active || retry.state.lastError) && (
+        <div className="px-6 pb-4">
+          <AutoRetryStatusCard
+            state={retry.state}
+            onRetryNow={retry.retryNow}
+            onCancel={retry.cancel}
+          />
+        </div>
+      )}
     </Card>
   );
 }
