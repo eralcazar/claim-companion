@@ -238,6 +238,9 @@ Deno.serve(async (req) => {
       completion_tokens: completionTokens,
       total_tokens: totalTokens,
       cost_usd_micros: costMicros,
+      feature_key: "kari-chat",
+      gateway_run_id: (aiResp as any)?.gatewayRunId ?? null,
+      gateway_log_id: (aiResp as any)?.gatewayLogId ?? null,
     });
 
     // Consumir tokens (0 si es cache hit)
