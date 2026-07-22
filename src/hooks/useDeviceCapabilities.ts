@@ -57,7 +57,7 @@ export function useDeviceCapabilities() {
           .is("unpaired_at", null),
         supabase
           .from("activity_readings")
-          .select("steps, sleep_minutes, heart_rate_avg, source")
+          .select("steps, sleep_minutes, active_minutes, source")
           .eq("patient_id", patientId!)
           .gte("fecha", new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10)),
       ]);
@@ -84,7 +84,7 @@ export function useDeviceCapabilities() {
       for (const r of actRes.data ?? []) {
         if ((r.steps ?? 0) > 0) caps.add("activity");
         if ((r.sleep_minutes ?? 0) > 0) caps.add("sleep");
-        if ((r.heart_rate_avg ?? 0) > 0) caps.add("heart_rate");
+        if ((r.active_minutes ?? 0) > 0) caps.add("activity");
       }
 
       const enabledMonitors = Object.fromEntries(
