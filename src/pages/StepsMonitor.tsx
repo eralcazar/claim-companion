@@ -18,6 +18,7 @@ import { MonitorPdfExport } from "@/components/health/MonitorPdfExport";
 import { EnabledMonitorsCard } from "@/components/health/EnabledMonitorsCard";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useMonitorHealth } from "@/hooks/useMonitorHealth";
+import { useResolvedThreshold } from "@/hooks/usePatientThresholds";
 import { MonitorAlertsCard } from "@/components/health/MonitorAlertsCard";
 import { SyncStatusPill } from "@/components/health/SyncStatusPill";
 
@@ -109,10 +110,12 @@ export default function StepsMonitor() {
 
   const today = byDay.find((d) => d.fecha === isoToday());
 
+  const th = useResolvedThreshold("steps");
   const { syncStatus, lastReadingAt, alerts } = useMonitorHealth({
     points: byDay.map((d) => ({ fecha: d.fecha, value: d.steps, source: (d as any).source ?? null })),
     rangeDays,
-    hardLow: 0,
+    hardLow: th.hardLow ?? 0, hardHigh: th.hardHigh ?? undefined,
+    outlierZ: th.outlierZ,
     label: "pasos", unit: "pasos",
   });
   const todaySteps = today?.steps ?? 0;
