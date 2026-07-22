@@ -85,6 +85,7 @@ import MarketplaceReview from "@/pages/admin/MarketplaceReview";
 import Reservar from "@/pages/public/Reservar";
 import Actividad from "@/pages/Actividad";
 import MisDatosIA from "@/pages/MisDatosIA";
+import HeartRateMonitor from "@/pages/HeartRateMonitor";
 
 const queryClient = new QueryClient();
 
