@@ -2712,6 +2712,41 @@ export type Database = {
         }
         Relationships: []
       }
+      home_visit_events: {
+        Row: {
+          actor_id: string | null
+          created_at: string
+          event: string
+          id: string
+          metadata: Json
+          visit_id: string
+        }
+        Insert: {
+          actor_id?: string | null
+          created_at?: string
+          event: string
+          id?: string
+          metadata?: Json
+          visit_id: string
+        }
+        Update: {
+          actor_id?: string | null
+          created_at?: string
+          event?: string
+          id?: string
+          metadata?: Json
+          visit_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "home_visit_events_visit_id_fkey"
+            columns: ["visit_id"]
+            isOneToOne: false
+            referencedRelation: "home_visit_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       home_visit_requests: {
         Row: {
           accepted_at: string | null
@@ -2719,17 +2754,21 @@ export type Database = {
           created_at: string
           direccion: string
           doctor_id: string | null
+          en_camino_at: string | null
           estado: string
           fecha_preferida: string | null
           id: string
           in_coverage: boolean | null
           lat: number | null
+          llegado_at: string | null
           lng: number | null
           location_source: string | null
           motivo: string
+          motivo_rechazo: string | null
           notas: string | null
           patient_id: string
           precio_estimado: number | null
+          rechazado_at: string | null
           requested_by: string
           requested_doctor_id: string | null
           updated_at: string
@@ -2741,17 +2780,21 @@ export type Database = {
           created_at?: string
           direccion: string
           doctor_id?: string | null
+          en_camino_at?: string | null
           estado?: string
           fecha_preferida?: string | null
           id?: string
           in_coverage?: boolean | null
           lat?: number | null
+          llegado_at?: string | null
           lng?: number | null
           location_source?: string | null
           motivo: string
+          motivo_rechazo?: string | null
           notas?: string | null
           patient_id: string
           precio_estimado?: number | null
+          rechazado_at?: string | null
           requested_by: string
           requested_doctor_id?: string | null
           updated_at?: string
@@ -2763,17 +2806,21 @@ export type Database = {
           created_at?: string
           direccion?: string
           doctor_id?: string | null
+          en_camino_at?: string | null
           estado?: string
           fecha_preferida?: string | null
           id?: string
           in_coverage?: boolean | null
           lat?: number | null
+          llegado_at?: string | null
           lng?: number | null
           location_source?: string | null
           motivo?: string
+          motivo_rechazo?: string | null
           notas?: string | null
           patient_id?: string
           precio_estimado?: number | null
+          rechazado_at?: string | null
           requested_by?: string
           requested_doctor_id?: string | null
           updated_at?: string

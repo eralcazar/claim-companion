@@ -5,6 +5,8 @@ import { MapContainer, Marker, TileLayer } from "react-leaflet";
 import L from "leaflet";
 import { ensureLeafletIcons, OSM_ATTRIBUTION, OSM_TILE_URL } from "@/components/map/leafletSetup";
 import { useUpdateHomeVisit } from "@/hooks/useHomeVisits";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { VisitTimeline } from "./VisitTimeline";
 
 ensureLeafletIcons();
 
@@ -54,9 +56,14 @@ export function VisitDetailDialog({ visit, canEdit, onClose }: Props) {
         <DialogHeader>
           <DialogTitle>{visit.motivo}</DialogTitle>
         </DialogHeader>
-        <div className="space-y-3">
-          <p className="text-sm text-muted-foreground">{visit.direccion}</p>
-          <div className="h-[420px] w-full overflow-hidden rounded-md border">
+        <Tabs defaultValue="mapa">
+          <TabsList>
+            <TabsTrigger value="mapa">Mapa</TabsTrigger>
+            <TabsTrigger value="timeline">Historial</TabsTrigger>
+          </TabsList>
+          <TabsContent value="mapa" className="space-y-3">
+            <p className="text-sm text-muted-foreground">{visit.direccion}</p>
+            <div className="h-[380px] w-full overflow-hidden rounded-md border">
             {hasCoords && (
               <MapContainer center={[lat!, lng!]} zoom={17} style={{ height: "100%", width: "100%" }}>
                 <TileLayer url={OSM_TILE_URL} attribution={OSM_ATTRIBUTION} />
@@ -73,14 +80,18 @@ export function VisitDetailDialog({ visit, canEdit, onClose }: Props) {
                 Sin coordenadas
               </div>
             )}
-          </div>
-          {hasCoords && (
-            <p className="text-xs text-muted-foreground">
-              {lat!.toFixed(6)}, {lng!.toFixed(6)}
-              {canEdit && " · Arrastra el pin para reubicar"}
-            </p>
-          )}
-        </div>
+            </div>
+            {hasCoords && (
+              <p className="text-xs text-muted-foreground">
+                {lat!.toFixed(6)}, {lng!.toFixed(6)}
+                {canEdit && " · Arrastra el pin para reubicar"}
+              </p>
+            )}
+          </TabsContent>
+          <TabsContent value="timeline" className="pt-2">
+            <VisitTimeline visitId={visit.id} />
+          </TabsContent>
+        </Tabs>
         <DialogFooter>
           <Button variant="ghost" onClick={onClose}>Cerrar</Button>
           {canEdit && (

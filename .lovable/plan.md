@@ -1,110 +1,61 @@
-## Alcance
+## Objetivo
 
-Ampliar el flujo de `/domicilio` con: mapa ampliado, autocompletado, áreas de cobertura (con mantenimiento), precisión GPS, manejo de permisos, notificaciones + aceptación por médico y verificación de rol.
+Enriquecer el flujo de médico a domicilio con: rechazo con motivo, timeline de estados, sugerencia de médicos antes de solicitar, y transiciones "en camino" / "llegó" con notificaciones.
 
-## 1. Mapa ampliado dentro de la solicitud
+## Cambios de base de datos
 
-- Al abrir una tarjeta de solicitud (nuevo estado `openId`), mostrar un `Dialog` con mapa Leaflet a pantalla grande, pin arrastrable y HUD con lat/lng + dirección actual.
-- Botón **"Guardar ubicación"** que dispara `useUpdateHomeVisit` con `{ lat, lng, direccion }` y `toast` de confirmación. Sólo habilitado si el rol permite editar (paciente dueño o médico asignado).
-- Reutilizar `AddressPicker` extrayendo el `MapContainer` a un subcomponente `AddressMap` reutilizable entre picker chico y vista ampliada.
+**Migración 1 — Rechazo + timeline**
+- `home_visit_requests`: nuevas columnas
+  - `motivo_rechazo text`
+  - `rechazado_at timestamptz`
+  - `en_camino_at timestamptz`
+  - `llegado_at timestamptz`
+- Nueva tabla `home_visit_events` (timeline append-only)
+  - `visit_id uuid → home_visit_requests(id) on delete cascade`
+  - `actor_id uuid` (auth.uid del que dispara)
+  - `event text` (`created|accepted|rejected|en_route|arrived|completed|cancelled|updated`)
+  - `metadata jsonb` (motivo, notas)
+  - `created_at timestamptz default now()`
+  - GRANT + RLS: SELECT para paciente dueño, médico asignado, admin. INSERT vía trigger (bloqueado directo).
+- Trigger `home_visit_requests_log_events` (AFTER INSERT/UPDATE): inserta filas en `home_visit_events` detectando cambios de `estado` y campos clave.
+- Extender trigger de notificaciones existente:
+  - `rechazada` → notifica al paciente con `motivo_rechazo`.
+  - `en_camino` → notifica "Tu médico va en camino".
+  - `llegada` (nuevo estado) → notifica "Tu médico llegó".
+- Añadir estado `rechazada` y `llegada` a la lista permitida (`ESTADOS`).
 
-## 2. Autocompletado del buscador
+## Cambios de frontend
 
-- Reemplazar el botón "Buscar" por un `Command`/`Popover` con debounce 300 ms que llama a Nominatim `/search?q=…&limit=5&countrycodes=mx&addressdetails=1`.
-- Cada sugerencia muestra "calle y número, colonia, ciudad" (`address.road`, `house_number`, `suburb`, `city`).
-- Al elegir → setea `direccion`, `lat`, `lng` y `location_source = 'search'`.
+### Hooks
+- `useHomeVisits.ts`
+  - `useVisitEvents(visitId)` → lee `home_visit_events` ordenado asc.
+  - `useRejectHomeVisit()` → update `estado='rechazada'`, `motivo_rechazo`, `rechazado_at`.
+  - `useMarkEnRoute()` / `useMarkArrived()` → transiciones dedicadas.
+- `useDoctorSuggestions.ts` (nuevo)
+  - Input: `{ lat, lng, especialidad? }`.
+  - Combina `useMedicoUsers` + `coverage_areas` activas + `professional_availability` (si existe hoy) → devuelve médicos con badge "en cobertura" y "disponible hoy", orden por distancia al centro de cobertura.
 
-## 3. Áreas de cobertura + mantenimiento
+### Componentes
+- `RejectVisitDialog.tsx` (nuevo): select de motivos comunes (fuera de cobertura, sin disponibilidad, urgencia no compatible, otro) + textarea, botón "Rechazar".
+- `VisitTimeline.tsx` (nuevo): lista vertical con icono por evento, actor (nombre desde `profiles`), fecha relativa (`date-fns`).
+- `SuggestedDoctorsList.tsx` (nuevo): tarjetas seleccionables dentro del `RequestForm`, se activa cuando el paciente ya fijó dirección con lat/lng. Reemplaza al `Select` actual (o coexiste como "ver sugerencias").
+- `HomeVisitsPanel.tsx`:
+  - Médico: botones **En camino** (si `aceptada`), **Llegó** (si `en_camino`), **Rechazar** (si `pendiente`) además del `Select` de estado.
+  - Muestra `motivo_rechazo` cuando existe.
+  - Botón "Ver historial" abre `VisitDetailDialog` en tab Timeline.
+- `VisitDetailDialog.tsx`: nuevos tabs `Mapa | Timeline`.
 
-Nueva tabla `coverage_areas` (nombre, centro lat/lng, radio en metros, activa, `owner_id` = user_id del médico o `null` para áreas globales del admin).
-
-- RLS: lectura autenticada; escritura sólo para el `owner_id` o admin.
-- Página nueva **`/domicilio/cobertura`** (link visible sólo para roles `medico`/`admin`) con:
-  - Lista de áreas, mapa con círculos, formulario para crear/editar (nombre, radio, click en mapa para fijar centro).
-- En `AddressPicker`, dibujar los `Circle` de las áreas activas y mostrar un badge:
-  - Verde "Dentro del área de servicio" si la dirección cae dentro de al menos un círculo (cálculo por Haversine, ya existe `src/lib/geo/haversine.ts`).
-  - Ámbar "Fuera del área — pueden aplicar restricciones" si no.
-- Guardar en `home_visit_requests.in_coverage boolean` para consultas del médico.
-
-## 4. Precisión GPS + ubicación aproximada
-
-- Al llamar `getCurrentPosition` guardar `pos.coords.accuracy` y mostrar chip `± N m` en el picker.
-- Si `accuracy > 100 m` o el usuario deniega alta precisión: botón **"Usar ubicación aproximada"** que llama con `enableHighAccuracy: false` y marca `location_source = 'approx'`.
-- Guardar `accuracy_m` y `location_source` en la solicitud.
-
-## 5. Permisos de ubicación
-
-- Consultar `navigator.permissions.query({ name: 'geolocation' })` al montar el picker.
-- Estados:
-  - `granted` → botón normal.
-  - `prompt` → botón normal + tooltip "Se te pedirá permiso".
-  - `denied` → alerta clara con pasos por navegador (Chrome/Safari/Firefox) y botón deshabilitado; **la solicitud sigue enviable** capturando la dirección manualmente (o vía buscador).
-- Errores de `getCurrentPosition` (`PERMISSION_DENIED`, `TIMEOUT`, `POSITION_UNAVAILABLE`) mapeados a mensajes en español.
-
-## 6. Notificaciones + aceptación por médico
-
-- Añadir columnas a `home_visit_requests`: `requested_doctor_id uuid` (médico preferido opcional), `accepted_at timestamptz`.
-- En el formulario de solicitud, agregar `Select` **"Médico (opcional)"** poblado con `useMedicoUsers()` (catálogo existente) para asignación dirigida; si se deja vacío, la solicitud queda abierta a cualquier médico.
-- Trigger de DB `AFTER INSERT ON home_visit_requests` que inserta filas en `notifications`:
-  - Si `requested_doctor_id` no es null → notificar sólo a ese médico.
-  - Si es null → notificar a todos los usuarios con rol `medico` y `admin`.
-  - `category = 'home_visit'`, `link = '/domicilio'`, título y cuerpo con motivo + urgencia.
-- Trigger `AFTER UPDATE` cuando `estado` cambia a `aceptada` → notificar al paciente ("Tu solicitud fue aceptada por Dr. X"). También setea `accepted_at = now()` y `doctor_id = auth.uid()` si viene NULL.
-- Botón **"Aceptar"** en la bandeja profesional (además del selector de estado) que hace `update({ estado: 'aceptada' })`. La solicitud sale de la bandeja de pendientes del resto de médicos vía política de lectura filtrada (`doctor_id IS NULL OR doctor_id = auth.uid()` para estados no finales).
-
-## 7. Verificación de rol para "Solicitar"
-
-- Ya se respeta `active_role` en `Domicilio.tsx`; agregar además:
-  - Si el usuario no tiene rol `paciente` mostrar `Alert` claro: "Sólo pacientes pueden crear solicitudes. Cambia de rol en tu perfil o solicita el rol de paciente."
-  - Si tiene rol paciente pero está en modo profesional, mostrar hint junto al toggle: "Cambia a **Mis solicitudes** para crear una nueva."
-- El botón "Solicitar" ya sólo se pinta en `mode === 'paciente'`; añadimos un `disabled` con tooltip cuando falte `active_role='paciente'` en `profiles` para dejar el estado consistente.
+### Notificaciones cliente
+- `useNotifications.ts` reconoce nuevos títulos ("🚗 …en camino", "📍 …llegó", "❌ Solicitud rechazada") para toast con acción "Ver solicitud" que navega a `/domicilio`.
 
 ## Detalles técnicos
 
-**Migraciones (una sola):**
+- Los estados válidos quedan: `pendiente, aceptada, rechazada, en_camino, llegada, completada, cancelada`.
+- El trigger de eventos usa `TG_OP` y compara `OLD.estado`/`NEW.estado` para clasificar. `created` se registra en AFTER INSERT.
+- Sugerencias de médicos: si no hay `professional_availability` para hoy, se cae de vuelta a mostrar todos con badge "sin agenda publicada".
+- Distancia paciente↔centro de área se calcula con `haversine` ya existente en `src/lib/geo/haversine.ts`.
+- El paciente puede rechazar (cancelar) su propia solicitud vía botón separado ya existente; el rechazo con motivo es sólo para médico/admin.
 
-```sql
-ALTER TABLE public.home_visit_requests
-  ADD COLUMN accuracy_m numeric,
-  ADD COLUMN location_source text,          -- 'gps' | 'approx' | 'search' | 'manual' | 'map'
-  ADD COLUMN in_coverage boolean,
-  ADD COLUMN requested_doctor_id uuid,
-  ADD COLUMN accepted_at timestamptz;
-
-CREATE TABLE public.coverage_areas (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  owner_id uuid,                            -- null = área global (admin)
-  nombre text NOT NULL,
-  center_lat double precision NOT NULL,
-  center_lng double precision NOT NULL,
-  radius_m integer NOT NULL CHECK (radius_m > 0),
-  activa boolean NOT NULL DEFAULT true,
-  created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now()
-);
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.coverage_areas TO authenticated;
-GRANT ALL ON public.coverage_areas TO service_role;
-ALTER TABLE public.coverage_areas ENABLE ROW LEVEL SECURITY;
--- Lectura: cualquier autenticado. Escritura: owner o admin.
-```
-
-Trigger de notificaciones en el mismo migration + `update_updated_at_column` reutilizado.
-
-**Archivos frontend nuevos / modificados:**
-
-- `src/components/domicilio/AddressPicker.tsx` — autocompletado, precisión, permisos, círculos de cobertura.
-- `src/components/domicilio/AddressMap.tsx` (extraído) — mapa reutilizable.
-- `src/components/domicilio/VisitDetailDialog.tsx` — vista ampliada con edición de pin.
-- `src/components/domicilio/HomeVisitsPanel.tsx` — abrir detalle, botón "Aceptar", selector de médico preferido en el formulario, mensaje de rol.
-- `src/pages/CoverageAreas.tsx` + ruta `/domicilio/cobertura` en `src/App.tsx` y entrada de sidebar sólo para `medico`/`admin`.
-- `src/hooks/useCoverageAreas.ts` — CRUD con React Query.
-- `src/hooks/useHomeVisits.ts` — mutaciones `accept` y aceptación de campos nuevos.
-- `src/lib/geo/coverage.ts` — helper `isInsideAnyArea(lat, lng, areas)`.
-
-**Sin cambios de negocio en:** módulos ajenos a `/domicilio`. No se toca `AuthContext`, roles, ni el catálogo de médicos (sólo se consume vía hook existente).
-
-## Fuera de alcance
-
-- Ruteo/ETA del médico hacia el paciente (mapa en tiempo real).
-- Cobros / precios variables por zona.
-- Push mobile nativo (se usa la tabla `notifications` y el sistema existente).
+## Alcance fuera de este plan
+- Chat en vivo paciente-médico.
+- ETA en tiempo real por GPS del médico.
