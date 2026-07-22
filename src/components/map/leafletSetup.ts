@@ -8,8 +8,7 @@ let patched = false;
 export function ensureLeafletIcons() {
   if (patched) return;
   patched = true;
-  // @ts-expect-error internal API
-  delete (L.Icon.Default.prototype as any)._getIconUrl;
+  delete (L.Icon.Default.prototype as unknown as { _getIconUrl?: unknown })._getIconUrl;
   L.Icon.Default.mergeOptions({ iconRetinaUrl, iconUrl, shadowUrl });
 }
 
