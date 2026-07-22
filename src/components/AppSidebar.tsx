@@ -39,6 +39,7 @@ const saludItems: Item[] = [
   { title: "Tendencias", url: "/tendencias", icon: TrendingUp, feature: "tendencias" },
   { title: "Nutrición", url: "/nutricion", icon: Apple, feature: "nutricion" },
   { title: "Actividad", url: "/actividad", icon: Dumbbell, feature: "perfil" },
+  { title: "Ejercicios", url: "/ejercicios", icon: Dumbbell, feature: "perfil" },
 ];
 
 const atencionItems: Item[] = [

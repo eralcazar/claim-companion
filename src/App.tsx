@@ -92,6 +92,8 @@ import StepsMonitor from "@/pages/StepsMonitor";
 import Consultorios from "@/pages/Consultorios";
 import Soporte from "@/pages/Soporte";
 import TensiometrosCompatibilidad from "@/pages/TensiometrosCompatibilidad";
+import Ejercicios from "@/pages/Ejercicios";
+import EjercicioDetalle from "@/pages/EjercicioDetalle";
 import { ActiveLocationProvider } from "@/contexts/ActiveLocationContext";
 
 const queryClient = new QueryClient();
@@ -207,6 +209,8 @@ const App = () => (
               <Route path="/consultorios" element={<Consultorios />} />
               <Route path="/soporte" element={<Soporte />} />
               <Route path="/tensiometros-compatibilidad" element={<TensiometrosCompatibilidad />} />
+              <Route path="/ejercicios" element={<Ejercicios />} />
+              <Route path="/ejercicios/:exerciseId" element={<EjercicioDetalle />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
