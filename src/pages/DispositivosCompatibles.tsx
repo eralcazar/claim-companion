@@ -107,6 +107,11 @@ export default function DispositivosCompatibles() {
         <BleCompatibilityCheck />
       </div>
 
+      <div id="wearables" className="grid gap-4 md:grid-cols-2">
+        <WearableCompatibilityLookup />
+        <WearableConnectionTest />
+      </div>
+
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Buscar dispositivo</CardTitle>
