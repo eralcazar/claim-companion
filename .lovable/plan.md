@@ -1,48 +1,38 @@
 ## Objetivo
 
-Añadir un botón **"Solicitar integración de un modelo"** en el catálogo de dispositivos para que el usuario pida a CareCentral evaluar/integrar un modelo que **no está listado** (o cualquier modelo del que quiera integración directa BLE, no solo verificación).
+En `/admin/api-keys`, dentro del aviso amarillo **"Catálogo de modelos vacío"**, mostrar el estado de la última sincronización del proveedor: fecha (relativa + absoluta en tooltip), resultado (éxito / fallo) y latencia en ms.
 
-Se distingue del flujo existente "Solicitar prueba" (que aplica a un dispositivo ya presente en el catálogo).
+## Fuente de datos
 
-## Ubicación del botón
+Ya existe `history: AuditRow[]` cargado desde `ai_api_key_audit` (con `action`, `secret_name`, `latency_ms`, `error_message`, `note`, `created_at`). No requiere consulta ni migración adicional.
 
-En `src/pages/DispositivosCompatibles.tsx`, en el header de la página (junto al título del catálogo), botón outline con ícono `Plus`: **"Solicitar integración de un modelo"**. Abre un diálogo modal.
+## Cambios
 
-## Diálogo nuevo
+Archivo: `src/pages/admin/ApiKeysMaintenance.tsx`.
 
-Nuevo componente `src/components/ble/RequestDeviceIntegrationDialog.tsx`:
+1. En el bloque IIFE del aviso "Catálogo de modelos vacío" (aprox. líneas 486–538), calcular:
+   ```ts
+   const lastSync = history.find(
+     (h) => h.secret_name === s.name &&
+     (h.action === "models_synced" || h.action === "models_sync_failed"),
+   );
+   ```
+2. Renderizar debajo del párrafo de recomendación (antes del bloque de botones) una fila compacta con:
+   - Ícono + etiqueta **"Última sincronización"**.
+   - Badge de resultado: verde `OK` si `models_synced`, rojo `Fallo` si `models_sync_failed`, `Nunca` si no hay registro.
+   - Fecha relativa (`hace X min/h/d`) con `title` = fecha ISO local.
+   - Latencia `123 ms` cuando `latency_ms` esté presente.
+   - Si falló, mostrar `error_message` truncado a 160 chars en línea siguiente.
+   - Si nunca se sincronizó: solo el badge "Nunca" + hint "Presiona Sincronizar modelos ahora".
 
-Campos del formulario:
-- **Marca** (obligatorio, texto).
-- **Modelo** (obligatorio, texto).
-- **Tipo de dispositivo** (select: oxímetro, tensiómetro, termómetro, smartband, smartwatch, anillo, báscula, otro).
-- **Métricas de interés** (multi-check: SpO₂, presión, temperatura, FC, actividad, sueño, peso).
-- **Región/país** (texto, opcional).
-- **App oficial del fabricante** (texto, opcional).
-- **Enlace del producto** (URL, opcional).
-- **Motivo / caso de uso** (textarea, opcional).
-
-Al enviar: `insert` a `public.device_test_requests` con:
-- `device_id = "integration-request:<slug(marca-modelo)>"` para diferenciarlo de solicitudes ligadas al catálogo.
-- `device_name = "<marca> <modelo>"`.
-- `region`, `app_version = <app oficial>`.
-- `note = JSON.stringify({ kind: "integration_request", deviceType, readings, url, reason })` — reutiliza el campo `note` para conservar los extras sin migración.
-- `status = 'pending'`.
-
-Toast de éxito y cierre. Errores mostrados inline.
-
-## Panel admin
-
-En `src/pages/admin/DeviceTestRequestsAdmin.tsx` (si existe) parsear `note` como JSON cuando `device_id` empieza con `integration-request:` y mostrar los campos extra (tipo, métricas, enlace, motivo) en la tarjeta. Sin cambios de flujo de resolución.
+3. Helper local `formatRelative(iso: string)` (mm/hh/dd) — inline en el archivo, sin dependencias nuevas.
 
 ## Fuera de alcance
 
-- No se agrega tabla nueva ni migración (se reutiliza `device_test_requests`).
-- No se toca el flujo existente "Solicitar prueba" del `DeviceDetailSheet`.
-- No se envían emails/notificaciones al equipo (queda para otra iteración).
+- No se agrega registro de sync a otras vistas.
+- No se toca la sección de historial auditado (ya lo lista completo).
+- No se cambia el esquema ni el edge function `sync-ai-provider-models`.
 
-## Archivos
+## Archivo
 
-- `src/components/ble/RequestDeviceIntegrationDialog.tsx` — nuevo.
-- `src/pages/DispositivosCompatibles.tsx` — botón + estado del diálogo en el header.
-- `src/pages/admin/DeviceTestRequestsAdmin.tsx` (si existe) — render enriquecido para solicitudes de integración.
+- `src/pages/admin/ApiKeysMaintenance.tsx` — bloque de aviso + helper.

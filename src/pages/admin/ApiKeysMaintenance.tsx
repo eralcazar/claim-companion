@@ -3,7 +3,7 @@ import { Navigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { KeyRound, RefreshCw, CheckCircle2, XCircle, Loader2, Copy, ShieldAlert, Zap, History, ListTree, AlertTriangle, RotateCw, Power, Sparkles } from "lucide-react";
+import { KeyRound, RefreshCw, CheckCircle2, XCircle, Loader2, Copy, ShieldAlert, Zap, History, ListTree, AlertTriangle, RotateCw, Power, Sparkles, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
@@ -490,6 +490,10 @@ export default function ApiKeysMaintenance() {
                   const emptyModels = !!providerRow && providerRow.models.length === 0;
                   if (!s.configured || !emptyModels) return null;
                   const usingStandard = providerRow?.default_model === "standard";
+                  const lastSync = history.find(
+                    (h) => h.secret_name === s.name &&
+                      (h.action === "models_synced" || h.action === "models_sync_failed"),
+                  );
                   return (
                     <div className="rounded-md border border-amber-500/40 bg-amber-500/5 p-3 text-xs space-y-2">
                       <div className="flex items-start gap-2">
@@ -514,6 +518,45 @@ export default function ApiKeysMaintenance() {
                             </p>
                           )}
                         </div>
+                      </div>
+                      <div className="rounded-md border border-amber-500/30 bg-background/60 p-2 space-y-1">
+                        <div className="flex flex-wrap items-center gap-2 text-[11px]">
+                          <span className="inline-flex items-center gap-1 text-muted-foreground">
+                            <Clock className="h-3 w-3" />
+                            Última sincronización:
+                          </span>
+                          {!lastSync && (
+                            <>
+                              <Badge variant="outline">Nunca</Badge>
+                              <span className="text-muted-foreground">
+                                Presiona <em>Sincronizar modelos ahora</em>.
+                              </span>
+                            </>
+                          )}
+                          {lastSync && (
+                            <>
+                              {lastSync.action === "models_synced" ? (
+                                <Badge className="bg-emerald-600 hover:bg-emerald-600">OK</Badge>
+                              ) : (
+                                <Badge variant="destructive">Fallo</Badge>
+                              )}
+                              <span
+                                className="text-muted-foreground"
+                                title={new Date(lastSync.created_at).toLocaleString()}
+                              >
+                                {formatRelative(lastSync.created_at)}
+                              </span>
+                              {lastSync.latency_ms != null && (
+                                <span className="text-muted-foreground">· {lastSync.latency_ms} ms</span>
+                              )}
+                            </>
+                          )}
+                        </div>
+                        {lastSync?.action === "models_sync_failed" && lastSync.error_message && (
+                          <p className="text-[11px] font-mono text-destructive break-all">
+                            {lastSync.error_message.slice(0, 160)}
+                          </p>
+                        )}
                       </div>
                       <div className="flex gap-2 flex-wrap pt-1">
                         <Button
