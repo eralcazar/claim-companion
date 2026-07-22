@@ -1,6 +1,9 @@
 // Helpers compartidos para políticas de IA por feature y caché de respuestas.
 // Import via: import { ... } from "../_shared/ai-router.ts";
 
+// Deno global (edge runtime)
+declare const Deno: { env: { get(name: string): string | undefined } };
+
 export type AiPolicy = {
   feature_key: string;
   model: string;
