@@ -268,6 +268,85 @@ export async function callApiFreeLLM(
 }
 
 // ────────────────────────────────────────────────────────────────
+// Proveedores externos BYOK (Bring Your Own Key) — OpenAI-compatible
+// Cubre Google Gemini (endpoint /openai) y Mistral AI. Ambos aceptan
+// el mismo shape que ApiFreeLLM más el header `Authorization: Bearer`.
+// ────────────────────────────────────────────────────────────────
+export async function callByokProvider(
+  endpoint: string,
+  apiKey: string,
+  model: string,
+  messages: Array<{ role: string; content: string }>,
+  opts: { maxOutputTokens?: number; responseFormat?: "json_object" } = {},
+): Promise<{ ok: boolean; status: number; content: string; usage: { prompt_tokens: number; completion_tokens: number; total_tokens: number }; rawText?: string }> {
+  const body: any = { model, messages };
+  if (opts.maxOutputTokens) body.max_tokens = opts.maxOutputTokens;
+  if (opts.responseFormat) body.response_format = { type: opts.responseFormat };
+  try {
+    const resp = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify(body),
+    });
+    if (!resp.ok) {
+      const t = await resp.text().catch(() => "");
+      return { ok: false, status: resp.status, content: "", usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }, rawText: t };
+    }
+    const json = await resp.json();
+    const content: string = json?.choices?.[0]?.message?.content ?? "";
+    const pt = Number(json?.usage?.prompt_tokens) || 0;
+    const ct = Number(json?.usage?.completion_tokens) || 0;
+    const tt = Number(json?.usage?.total_tokens) || pt + ct;
+    return { ok: true, status: resp.status, content, usage: { prompt_tokens: pt, completion_tokens: ct, total_tokens: tt } };
+  } catch (e: any) {
+    return { ok: false, status: 0, content: "", usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }, rawText: e?.message ?? "network_error" };
+  }
+}
+
+// Devuelve el nombre del secret (env var) esperado para cada provider externo.
+// Estático para evitar un round-trip a DB dentro del hot path.
+export function externalProviderSecretName(provider: string): string | null {
+  switch (provider) {
+    case "gemini":
+      return "GEMINI_API_KEY";
+    case "mistral":
+      return "MISTRAL_API_KEY";
+    default:
+      return null; // apifreellm y otros sin key
+  }
+}
+
+// Despacha una llamada externa según el provider de la política.
+// Retorna `{ ok:false, status:401 }` si falta la API key para BYOK.
+export async function dispatchExternalProvider(
+  provider: string,
+  endpoint: string,
+  model: string,
+  messages: Array<{ role: string; content: string }>,
+  opts: { maxOutputTokens?: number; responseFormat?: "json_object" } = {},
+): Promise<{ ok: boolean; status: number; content: string; usage: { prompt_tokens: number; completion_tokens: number; total_tokens: number }; rawText?: string; missingKey?: boolean }> {
+  const secretName = externalProviderSecretName(provider);
+  if (secretName) {
+    const key = Deno.env.get(secretName);
+    if (!key) {
+      return {
+        ok: false,
+        status: 401,
+        content: "",
+        usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
+        rawText: `missing_api_key:${secretName}`,
+        missingKey: true,
+      };
+    }
+    return callByokProvider(endpoint, key, model, messages, opts);
+  }
+  return callApiFreeLLM(endpoint, model, messages, opts);
+}
+
+// ────────────────────────────────────────────────────────────────
 // Sanitización y detección de PII (espejo de src/lib/ai/sanitize.ts)
 // ────────────────────────────────────────────────────────────────
 export function detectPiiFields(original: string): string[] {
