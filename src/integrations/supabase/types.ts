@@ -1978,6 +1978,42 @@ export type Database = {
         }
         Relationships: []
       }
+      coverage_areas: {
+        Row: {
+          activa: boolean
+          center_lat: number
+          center_lng: number
+          created_at: string
+          id: string
+          nombre: string
+          owner_id: string | null
+          radius_m: number
+          updated_at: string
+        }
+        Insert: {
+          activa?: boolean
+          center_lat: number
+          center_lng: number
+          created_at?: string
+          id?: string
+          nombre: string
+          owner_id?: string | null
+          radius_m: number
+          updated_at?: string
+        }
+        Update: {
+          activa?: boolean
+          center_lat?: number
+          center_lng?: number
+          created_at?: string
+          id?: string
+          nombre?: string
+          owner_id?: string | null
+          radius_m?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       device_test_requests: {
         Row: {
           app_version: string | null
@@ -2678,53 +2714,68 @@ export type Database = {
       }
       home_visit_requests: {
         Row: {
+          accepted_at: string | null
+          accuracy_m: number | null
           created_at: string
           direccion: string
           doctor_id: string | null
           estado: string
           fecha_preferida: string | null
           id: string
+          in_coverage: boolean | null
           lat: number | null
           lng: number | null
+          location_source: string | null
           motivo: string
           notas: string | null
           patient_id: string
           precio_estimado: number | null
           requested_by: string
+          requested_doctor_id: string | null
           updated_at: string
           urgencia: string
         }
         Insert: {
+          accepted_at?: string | null
+          accuracy_m?: number | null
           created_at?: string
           direccion: string
           doctor_id?: string | null
           estado?: string
           fecha_preferida?: string | null
           id?: string
+          in_coverage?: boolean | null
           lat?: number | null
           lng?: number | null
+          location_source?: string | null
           motivo: string
           notas?: string | null
           patient_id: string
           precio_estimado?: number | null
           requested_by: string
+          requested_doctor_id?: string | null
           updated_at?: string
           urgencia?: string
         }
         Update: {
+          accepted_at?: string | null
+          accuracy_m?: number | null
           created_at?: string
           direccion?: string
           doctor_id?: string | null
           estado?: string
           fecha_preferida?: string | null
           id?: string
+          in_coverage?: boolean | null
           lat?: number | null
           lng?: number | null
+          location_source?: string | null
           motivo?: string
           notas?: string | null
           patient_id?: string
           precio_estimado?: number | null
           requested_by?: string
+          requested_doctor_id?: string | null
           updated_at?: string
           urgencia?: string
         }

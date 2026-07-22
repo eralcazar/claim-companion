@@ -42,7 +42,7 @@ export default function Domicilio() {
           </TabsList>
         </Tabs>
       )}
-      <HomeVisitsPanel mode={mode} userId={user.id} />
+      <HomeVisitsPanel mode={mode} userId={user.id} isPatient={isPatient} isPro={isPro} />
     </div>
   );
 }
