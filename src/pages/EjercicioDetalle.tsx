@@ -4,10 +4,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Trophy, Calendar as CalendarIcon } from "lucide-react";
+import { ArrowLeft, Trophy, Calendar as CalendarIcon, Pencil } from "lucide-react";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import { ExerciseCoachCard } from "@/components/ejercicios/ExerciseCoachCard";
-import { useExerciseCatalog, useSetsByExercise, estimate1RM } from "@/hooks/useExercises";
+import { useExerciseCatalog, useSetsByExercise, useSessionLogs, useAllSetLogs, estimate1RM } from "@/hooks/useExercises";
+import { ExerciseProgressPanel } from "@/components/ejercicios/ExerciseProgressPanel";
+import { EditSessionDialog } from "@/components/ejercicios/EditSessionDialog";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 
@@ -17,6 +19,9 @@ export default function EjercicioDetalle() {
   const { exerciseId } = useParams<{ exerciseId: string }>();
   const { data: catalog = [] } = useExerciseCatalog();
   const { data: sets = [] } = useSetsByExercise(exerciseId);
+  const { data: allSessions = [] } = useSessionLogs(365);
+  const { data: allSets = [] } = useAllSetLogs(365);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const exercise = catalog.find((c) => c.id === exerciseId);
 
   const availableMetrics: Metric[] = useMemo(() => {
@@ -155,6 +160,7 @@ export default function EjercicioDetalle() {
 
       <div className="grid md:grid-cols-3 gap-4">
         <div className="md:col-span-2 space-y-2">
+          <ExerciseProgressPanel sets={sets as any} />
           <h2 className="text-lg font-semibold">Historial por sesión</h2>
           {sessions.length === 0 && <div className="text-sm text-muted-foreground">Sin sesiones registradas.</div>}
           {sessions.map((s) => {
@@ -170,6 +176,9 @@ export default function EjercicioDetalle() {
                         {(s.sets as any[]).length} sets · mejor: {bestSet?.weight_kg ?? "-"}kg × {bestSet?.reps ?? "-"} · volumen {vol}
                       </div>
                     </div>
+                    <Button size="sm" variant="ghost" onClick={() => setEditingId(s.sessionId)} className="gap-1">
+                      <Pencil className="h-3 w-3" /> Editar
+                    </Button>
                   </div>
                   <div className="mt-2 flex flex-wrap gap-1">
                     {(s.sets as any[]).map((x, i) => (
@@ -187,6 +196,12 @@ export default function EjercicioDetalle() {
           <ExerciseCoachCard exerciseName={exercise.name} category={exercise.category} recentSets={recentForCoach} />
         </div>
       </div>
+      <EditSessionDialog
+        open={!!editingId}
+        onOpenChange={(o) => !o && setEditingId(null)}
+        session={(allSessions.find((s) => s.id === editingId) ?? null) as any}
+        sets={allSets as any}
+      />
     </div>
   );
 }

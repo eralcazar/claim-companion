@@ -26,6 +26,15 @@ const SESSION_SUMMARY_PROMPT = `Eres un entrenador experto. Analizas una sesión
 }
 Español de México. Si hubo molestia o RPE >=9, prioriza recuperación antes que subir carga. No diagnósticas.`;
 
+const PROGRESSION_ADJUST_PROMPT = `Eres un entrenador experto. Recibís los datos ORIGINALES y los EDITADOS de una sesión. Devuelves SOLO JSON válido con:
+{
+  "summary": "1-2 oraciones sobre qué cambió y cómo afecta la próxima sesión.",
+  "delta_notes": ["cambio relevante 1", "cambio relevante 2"],
+  "next_session": "Progresión ajustada para la próxima sesión.",
+  "flags": ["señal a cuidar (si aplica)"]
+}
+Español de México. Si el cambio revela molestia o RPE alto, prioriza recuperación. No diagnósticas.`;
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -56,7 +65,12 @@ Deno.serve(async (req) => {
     let systemPrompt = SYSTEM_PROMPT;
     let userPrompt = "";
 
-    if (mode === "session_summary") {
+    if (mode === "progression_adjust") {
+      const { original, edited } = body ?? {};
+      if (!original || !edited) return json({ error: "Faltan original/edited" }, 400);
+      systemPrompt = PROGRESSION_ADJUST_PROMPT;
+      userPrompt = `ORIGINAL:\n${JSON.stringify(original, null, 2)}\n\nEDITADO:\n${JSON.stringify(edited, null, 2)}\n\nDevuelve el JSON pedido.`;
+    } else if (mode === "session_summary") {
       const { fecha, environment, duration_min, rpe, warmup_notes, discomforts, session_rest_sec, items } = body ?? {};
       if (!Array.isArray(items) || items.length === 0) return json({ error: "Faltan items" }, 400);
       systemPrompt = SESSION_SUMMARY_PROMPT;
@@ -119,6 +133,14 @@ Devuelve el JSON pedido.`;
     let parsed: any = {};
     try { parsed = JSON.parse(content); } catch { parsed = { summary: content }; }
 
+    if (mode === "progression_adjust") {
+      return json({
+        summary: parsed.summary ?? "",
+        delta_notes: Array.isArray(parsed.delta_notes) ? parsed.delta_notes : [],
+        next_session: parsed.next_session ?? "",
+        flags: Array.isArray(parsed.flags) ? parsed.flags : [],
+      });
+    }
     if (mode === "session_summary") {
       return json({
         summary: parsed.summary ?? "",

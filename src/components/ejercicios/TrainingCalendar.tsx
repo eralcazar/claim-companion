@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useState } from "react";
 import type { SessionLog, SetLog, ExerciseCatalog } from "@/hooks/useExercises";
+import { useScheduledSessions } from "@/hooks/useWorkoutReminders";
+import { CalendarClock, BellRing } from "lucide-react";
 
 type Props = { sessions: SessionLog[]; sets: SetLog[]; catalog: ExerciseCatalog[] };
 
@@ -20,6 +22,7 @@ const CAT_COLOR: Record<string, string> = {
 
 export function TrainingCalendar({ sessions, sets, catalog }: Props) {
   const [month, setMonth] = useState(() => new Date());
+  const { data: scheduled = [] } = useScheduledSessions(60);
 
   const catById = useMemo(() => new Map(catalog.map((c) => [c.id, c])), [catalog]);
   const days = useMemo(() => eachDayOfInterval({ start: startOfMonth(month), end: endOfMonth(month) }), [month]);
@@ -33,6 +36,17 @@ export function TrainingCalendar({ sessions, sets, catalog }: Props) {
     }
     return map;
   }, [sessions]);
+
+  const scheduledByDay = useMemo(() => {
+    const map = new Map<string, typeof scheduled>();
+    for (const s of scheduled) {
+      const key = s.scheduled_at.slice(0, 10);
+      const arr = map.get(key) ?? [];
+      arr.push(s);
+      map.set(key, arr);
+    }
+    return map;
+  }, [scheduled]);
 
   const setsBySession = useMemo(() => {
     const map = new Map<string, SetLog[]>();
@@ -82,6 +96,12 @@ export function TrainingCalendar({ sessions, sets, catalog }: Props) {
                   {Array.from(cats).map((c) => (
                     <span key={c} className={`h-1.5 w-1.5 rounded-full ${CAT_COLOR[c] ?? "bg-muted-foreground"}`} title={c} />
                   ))}
+                  {(scheduledByDay.get(key) ?? []).some((s) => s.status === "pending") && (
+                    <span title="Sesión programada"><CalendarClock className="h-3 w-3 text-primary" /></span>
+                  )}
+                  {(scheduledByDay.get(key) ?? []).some((s) => s.reminder_sent_at) && (
+                    <span title="Recordatorio enviado"><BellRing className="h-3 w-3 text-amber-500" /></span>
+                  )}
                 </div>
                 {daySessions.length > 0 && (
                   <div className="mt-1 space-y-0.5">
