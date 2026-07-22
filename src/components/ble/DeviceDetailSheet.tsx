@@ -28,6 +28,7 @@ import {
   STATUS_TONE,
 } from "@/lib/ble/compatibleDevices";
 import { DeviceVerificationForm } from "./DeviceVerificationForm";
+import { MiFitnessBridgeGuide } from "./MiFitnessBridgeGuide";
 import { useHealthDevices } from "@/hooks/useHealthDevices";
 import { useCreateDeviceVerification } from "@/hooks/useDeviceVerifications";
 
@@ -181,6 +182,10 @@ export function DeviceDetailSheet({
               ))}
             </ol>
           </div>
+
+          {device.syncSource.toLowerCase().includes("mi fitness") && (
+            <MiFitnessBridgeGuide />
+          )}
 
           {device.firmwareNote && (
             <p className="text-xs text-muted-foreground">Nota firmware: {device.firmwareNote}</p>
