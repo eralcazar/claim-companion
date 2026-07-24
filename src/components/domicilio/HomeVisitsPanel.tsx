@@ -27,6 +27,7 @@ import { RejectVisitDialog } from "./RejectVisitDialog";
 import { SuggestedDoctorsList } from "./SuggestedDoctorsList";
 import { RescheduleVisitDialog } from "./RescheduleVisitDialog";
 import { VisitReview } from "./VisitReview";
+import { ShareLiveLocationButton } from "./ShareLiveLocationButton";
 
 const URGENCIAS = [
   { value: "baja", label: "Baja", color: "secondary" as const },
@@ -216,6 +217,9 @@ export function HomeVisitsPanel({ mode, userId, isPatient = true, isPro = false 
                       <Button size="sm" variant="secondary" onClick={() => setState.mutate({ id: v.id, estado: "llegada" })}>
                         <MapPin className="h-4 w-4 mr-1" />Llegué
                       </Button>
+                    )}
+                    {v.estado === "en_camino" && v.doctor_id === userId && (
+                      <ShareLiveLocationButton visitId={v.id} />
                     )}
                     {v.estado === "llegada" && (
                       <Button size="sm" onClick={() => setState.mutate({ id: v.id, estado: "completada" })}>
