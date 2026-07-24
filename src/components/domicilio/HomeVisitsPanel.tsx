@@ -26,6 +26,7 @@ import { VisitDetailDialog } from "./VisitDetailDialog";
 import { RejectVisitDialog } from "./RejectVisitDialog";
 import { SuggestedDoctorsList } from "./SuggestedDoctorsList";
 import { RescheduleVisitDialog } from "./RescheduleVisitDialog";
+import { VisitReview } from "./VisitReview";
 
 const URGENCIAS = [
   { value: "baja", label: "Baja", color: "secondary" as const },
@@ -121,6 +122,11 @@ export function HomeVisitsPanel({ mode, userId, isPatient = true, isPro = false 
                 </Button>
                 {v.motivo_rechazo && (
                   <div className="w-full text-xs text-destructive">Rechazada: {v.motivo_rechazo}</div>
+                )}
+                {v.estado === "completada" && (
+                  <div className="w-full">
+                    <VisitReview visit={v} currentUserId={userId} />
+                  </div>
                 )}
                 {v.reschedule_status === "pending" && (
                   <div className="w-full rounded-md border border-dashed p-2 space-y-2">
