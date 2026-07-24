@@ -129,3 +129,48 @@ export function useVisitEvents(visitId: string | null | undefined) {
     },
   });
 }
+
+export function useProposeReschedule() {
+  const qc = useQueryClient();
+  const { user } = useAuth();
+  return useMutation({
+    mutationFn: async ({ id, proposals, note }: { id: string; proposals: string[]; note?: string }) => {
+      const { error } = await supabase
+        .from("home_visit_requests" as any)
+        .update({
+          reschedule_status: "pending",
+          reschedule_proposed_by: user!.id,
+          reschedule_proposals: proposals,
+          reschedule_note: note ?? null,
+          reschedule_requested_at: new Date().toISOString(),
+        })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["home_visits"] });
+      toast.success("Reprogramación propuesta");
+    },
+    onError: (e: any) => toast.error(e.message ?? "Error"),
+  });
+}
+
+export function useRespondReschedule() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, accept, chosen }: { id: string; accept: boolean; chosen?: string }) => {
+      const patch: any = { reschedule_status: accept ? "accepted" : "rejected" };
+      if (accept && chosen) patch.fecha_preferida = chosen;
+      const { error } = await supabase
+        .from("home_visit_requests" as any)
+        .update(patch)
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: (_d, v) => {
+      qc.invalidateQueries({ queryKey: ["home_visits"] });
+      toast.success(v.accept ? "Reprogramación aceptada" : "Reprogramación rechazada");
+    },
+    onError: (e: any) => toast.error(e.message ?? "Error"),
+  });
+}
