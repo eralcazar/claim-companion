@@ -2754,6 +2754,11 @@ export type Database = {
           created_at: string
           direccion: string
           doctor_id: string | null
+          doctor_lat: number | null
+          doctor_lng: number | null
+          doctor_location_accuracy_m: number | null
+          doctor_location_sharing: boolean
+          doctor_location_updated_at: string | null
           en_camino_at: string | null
           estado: string
           fecha_preferida: string | null
@@ -2785,6 +2790,11 @@ export type Database = {
           created_at?: string
           direccion: string
           doctor_id?: string | null
+          doctor_lat?: number | null
+          doctor_lng?: number | null
+          doctor_location_accuracy_m?: number | null
+          doctor_location_sharing?: boolean
+          doctor_location_updated_at?: string | null
           en_camino_at?: string | null
           estado?: string
           fecha_preferida?: string | null
@@ -2816,6 +2826,11 @@ export type Database = {
           created_at?: string
           direccion?: string
           doctor_id?: string | null
+          doctor_lat?: number | null
+          doctor_lng?: number | null
+          doctor_location_accuracy_m?: number | null
+          doctor_location_sharing?: boolean
+          doctor_location_updated_at?: string | null
           en_camino_at?: string | null
           estado?: string
           fecha_preferida?: string | null
