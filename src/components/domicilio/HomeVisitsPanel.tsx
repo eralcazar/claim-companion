@@ -8,11 +8,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Home, MapPin, Plus, Clock, Check, Map as MapIcon, Settings2, Car, X, Flag, History } from "lucide-react";
+import { Home, MapPin, Plus, Clock, Check, Map as MapIcon, Settings2, Car, X, Flag, History, CalendarClock } from "lucide-react";
 import { Link } from "react-router-dom";
 import {
   useHomeVisits, useCreateHomeVisit, useUpdateHomeVisit,
-  useAcceptHomeVisit, useSetHomeVisitState,
+  useAcceptHomeVisit, useSetHomeVisitState, useRespondReschedule,
 } from "@/hooks/useHomeVisits";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { format } from "date-fns";
@@ -21,6 +21,7 @@ import { AddressPicker, MiniMap, type AddressValue } from "./AddressPicker";
 import { VisitDetailDialog } from "./VisitDetailDialog";
 import { RejectVisitDialog } from "./RejectVisitDialog";
 import { SuggestedDoctorsList } from "./SuggestedDoctorsList";
+import { RescheduleVisitDialog } from "./RescheduleVisitDialog";
 
 const URGENCIAS = [
   { value: "baja", label: "Baja", color: "secondary" as const },
@@ -37,9 +38,11 @@ export function HomeVisitsPanel({ mode, userId, isPatient = true, isPro = false 
   const update = useUpdateHomeVisit();
   const accept = useAcceptHomeVisit();
   const setState = useSetHomeVisitState();
+  const respondReschedule = useRespondReschedule();
   const [open, setOpen] = useState(false);
   const [detail, setDetail] = useState<any | null>(null);
   const [rejectId, setRejectId] = useState<string | null>(null);
+  const [rescheduleId, setRescheduleId] = useState<string | null>(null);
 
   return (
     <div className="space-y-4">
@@ -115,6 +118,50 @@ export function HomeVisitsPanel({ mode, userId, isPatient = true, isPro = false 
                 {v.motivo_rechazo && (
                   <div className="w-full text-xs text-destructive">Rechazada: {v.motivo_rechazo}</div>
                 )}
+                {v.reschedule_status === "pending" && (
+                  <div className="w-full rounded-md border border-dashed p-2 space-y-2">
+                    <div className="text-xs font-medium flex items-center gap-1">
+                      <CalendarClock className="h-3 w-3" />
+                      Propuesta de reprogramación
+                      {v.reschedule_proposed_by === userId && <Badge variant="outline" className="ml-1">enviada</Badge>}
+                    </div>
+                    {v.reschedule_note && <p className="text-xs text-muted-foreground">{v.reschedule_note}</p>}
+                    <div className="flex flex-wrap gap-1">
+                      {(v.reschedule_proposals ?? []).map((p: string) => (
+                        <div key={p} className="flex items-center gap-1">
+                          <Badge variant="secondary" className="text-xs">
+                            {format(new Date(p), "EEE d MMM HH:mm", { locale: es })}
+                          </Badge>
+                          {v.reschedule_proposed_by !== userId && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-6 px-2 text-xs"
+                              onClick={() => respondReschedule.mutate({ id: v.id, accept: true, chosen: p })}
+                            >
+                              <Check className="h-3 w-3 mr-1" />Aceptar
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    {v.reschedule_proposed_by !== userId && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 text-xs text-destructive"
+                        onClick={() => respondReschedule.mutate({ id: v.id, accept: false })}
+                      >
+                        <X className="h-3 w-3 mr-1" />Rechazar propuesta
+                      </Button>
+                    )}
+                  </div>
+                )}
+                {["pendiente", "aceptada", "en_camino"].includes(v.estado) && v.reschedule_status !== "pending" && (
+                  <Button size="sm" variant="outline" onClick={() => setRescheduleId(v.id)}>
+                    <CalendarClock className="h-4 w-4 mr-1" />Reprogramar
+                  </Button>
+                )}
                 {mode === "medico" && (
                   <>
                     {v.estado === "pendiente" && (
@@ -165,6 +212,7 @@ export function HomeVisitsPanel({ mode, userId, isPatient = true, isPro = false 
         onClose={() => setDetail(null)}
       />
       <RejectVisitDialog visitId={rejectId} open={!!rejectId} onClose={() => setRejectId(null)} />
+      <RescheduleVisitDialog visitId={rescheduleId} open={!!rescheduleId} onClose={() => setRescheduleId(null)} />
     </div>
   );
 }
