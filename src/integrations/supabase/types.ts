@@ -2771,6 +2771,11 @@ export type Database = {
           rechazado_at: string | null
           requested_by: string
           requested_doctor_id: string | null
+          reschedule_note: string | null
+          reschedule_proposals: string[] | null
+          reschedule_proposed_by: string | null
+          reschedule_requested_at: string | null
+          reschedule_status: string | null
           updated_at: string
           urgencia: string
         }
@@ -2797,6 +2802,11 @@ export type Database = {
           rechazado_at?: string | null
           requested_by: string
           requested_doctor_id?: string | null
+          reschedule_note?: string | null
+          reschedule_proposals?: string[] | null
+          reschedule_proposed_by?: string | null
+          reschedule_requested_at?: string | null
+          reschedule_status?: string | null
           updated_at?: string
           urgencia?: string
         }
@@ -2823,6 +2833,11 @@ export type Database = {
           rechazado_at?: string | null
           requested_by?: string
           requested_doctor_id?: string | null
+          reschedule_note?: string | null
+          reschedule_proposals?: string[] | null
+          reschedule_proposed_by?: string | null
+          reschedule_requested_at?: string | null
+          reschedule_status?: string | null
           updated_at?: string
           urgencia?: string
         }
