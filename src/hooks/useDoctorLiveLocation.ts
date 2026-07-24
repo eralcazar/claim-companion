@@ -127,7 +127,8 @@ export function useVisitLiveDoctorLocation(visit: any | null) {
             setTrack((prev) => {
               const last = prev[prev.length - 1];
               if (last && last[0] === next.lat && last[1] === next.lng) return prev;
-              return [...prev, [next.lat!, next.lng!]].slice(-500);
+              const point: [number, number] = [next.lat!, next.lng!];
+              return [...prev, point].slice(-500);
             });
           }
         },
