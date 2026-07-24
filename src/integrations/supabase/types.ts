@@ -2843,6 +2843,47 @@ export type Database = {
         }
         Relationships: []
       }
+      home_visit_reviews: {
+        Row: {
+          comment: string | null
+          created_at: string
+          doctor_id: string | null
+          id: string
+          patient_id: string
+          rating: number
+          updated_at: string
+          visit_id: string
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string
+          doctor_id?: string | null
+          id?: string
+          patient_id: string
+          rating: number
+          updated_at?: string
+          visit_id: string
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string
+          doctor_id?: string | null
+          id?: string
+          patient_id?: string
+          rating?: number
+          updated_at?: string
+          visit_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "home_visit_reviews_visit_id_fkey"
+            columns: ["visit_id"]
+            isOneToOne: true
+            referencedRelation: "home_visit_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       hr_alert_settings: {
         Row: {
           created_at: string
