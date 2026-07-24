@@ -8,12 +8,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Home, MapPin, Plus, Clock, Check, Map as MapIcon, Settings2, Car, X, Flag, History, CalendarClock } from "lucide-react";
+import { Home, MapPin, Plus, Clock, Check, Map as MapIcon, Settings2, Car, X, Flag, History, CalendarClock, Ban } from "lucide-react";
 import { Link } from "react-router-dom";
 import {
   useHomeVisits, useCreateHomeVisit, useUpdateHomeVisit,
   useAcceptHomeVisit, useSetHomeVisitState, useRespondReschedule,
 } from "@/hooks/useHomeVisits";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -161,6 +165,29 @@ export function HomeVisitsPanel({ mode, userId, isPatient = true, isPro = false 
                   <Button size="sm" variant="outline" onClick={() => setRescheduleId(v.id)}>
                     <CalendarClock className="h-4 w-4 mr-1" />Reprogramar
                   </Button>
+                )}
+                {mode === "paciente" && v.patient_id === userId && ["pendiente", "aceptada"].includes(v.estado) && (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button size="sm" variant="destructive">
+                        <Ban className="h-4 w-4 mr-1" />Cancelar
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>¿Cancelar solicitud?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Se notificará al médico asignado y la solicitud quedará marcada como cancelada.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Volver</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => setState.mutate({ id: v.id, estado: "cancelada" })}>
+                          Sí, cancelar
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 )}
                 {mode === "medico" && (
                   <>
