@@ -109,6 +109,7 @@ const adminItems: Item[] = [
   { title: "Dispositivos BLE", url: "/admin/ble-devices", icon: Bluetooth, feature: "admin_panel" },
   { title: "Pruebas de dispositivos", url: "/admin/device-test-requests", icon: Bluetooth, feature: "admin_panel" },
   { title: "Auditoría MCP", url: "/admin/mcp-audit", icon: ShieldAlert, feature: "admin_panel" },
+  { title: "Auditoría MexicoEs", url: "/admin/mexicoes-audit", icon: ShieldAlert, feature: "admin_panel" },
   { title: "Marketplace especialistas", url: "/admin/marketplace", icon: BadgeCheck, feature: "admin_panel" },
 ];
 
