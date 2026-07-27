@@ -174,6 +174,12 @@ Deno.serve(async (req) => {
 
     // ---- Server-to-server actions (called by MexicoEs) ----
     await verifyServerSignature(secret, req, rawBody);
+
+    // Health check: verifies only that both sides share the same secret.
+    if (action === "ping") {
+      return json({ ok: true, secret_match: true, at: new Date().toISOString() });
+    }
+
     const mexicoesUserId = String(body.mexicoes_user_id || "");
     if (!mexicoesUserId) return json({ error: "Falta mexicoes_user_id" }, 400);
     const link = await getLink(mexicoesUserId);
