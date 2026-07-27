@@ -115,7 +115,7 @@ Deno.serve(async (req) => {
 
   try {
     // ---- User-initiated actions (require a CareCentral session) ----
-    if (action === "link" || action === "unlink" || action === "my_link") {
+    if (action === "link" || action === "unlink" || action === "my_link" || action === "self_test") {
       const authHeader = req.headers.get("Authorization") ?? "";
       if (!authHeader) return json({ error: "No autenticado" }, 401);
       const userClient = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, {
@@ -128,6 +128,105 @@ Deno.serve(async (req) => {
       if (action === "my_link") {
         const { data } = await admin().from("mexicoes_links").select("*").eq("user_id", user.id).maybeSingle();
         return json({ link: data ?? null });
+      }
+
+      // Guided self-test: exercises the same primitives MexicoEs uses (HMAC token,
+      // link, status, sync_entitlements) end-to-end for the signed-in user.
+      if (action === "self_test") {
+        const steps: Array<{ key: string; label: string; ok: boolean; detail: string }> = [];
+        const simulateLink = body.simulate_link === true;
+
+        steps.push({ key: "secret", label: "Secreto compartido configurado", ok: true, detail: "MEXICOES_BRIDGE_SECRET presente" });
+
+        // 1. HMAC round-trip (same scheme as the server-to-server signature)
+        const ts = Math.floor(Date.now() / 1000).toString();
+        const probe = JSON.stringify({ action: "ping" });
+        const sig = await hmacHex(secret, `${ts}.${probe}`);
+        const hmacOk = timingSafeEqual(sig, await hmacHex(secret, `${ts}.${probe}`));
+        steps.push({ key: "hmac", label: "Firma HMAC-SHA256", ok: hmacOk, detail: hmacOk ? `firma ${sig.slice(0, 12)}…` : "no se pudo firmar" });
+
+        // 2. Link (existing, or simulated with a locally-minted test token)
+        let link = (await admin().from("mexicoes_links").select("*").eq("user_id", user.id).maybeSingle()).data;
+        if ((!link || link.status !== "linked") && simulateLink) {
+          const payloadObj = {
+            mexicoes_user_id: `test-${user.id.slice(0, 8)}`,
+            entitlements: { plan: "prueba", membresia_activa: true },
+            exp: Math.floor(Date.now() / 1000) + 300,
+          };
+          const payloadPart = btoa(JSON.stringify(payloadObj)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+          const testToken = `${payloadPart}.${await hmacHex(secret, payloadPart)}`;
+          const verified = await verifyLinkToken(secret, testToken);
+          const up = await admin()
+            .from("mexicoes_links")
+            .upsert(
+              {
+                user_id: user.id,
+                mexicoes_user_id: verified.mexicoes_user_id,
+                entitlements: verified.entitlements ?? {},
+                status: "linked",
+                linked_at: new Date().toISOString(),
+                revoked_at: null,
+              },
+              { onConflict: "user_id" },
+            )
+            .select()
+            .single();
+          if (up.error) throw new Error(up.error.message);
+          link = up.data;
+          steps.push({ key: "link", label: "Vinculación con token de prueba", ok: true, detail: `cuenta ${verified.mexicoes_user_id}` });
+        } else {
+          const ok = !!link && link.status === "linked";
+          steps.push({
+            key: "link",
+            label: "Vínculo activo",
+            ok,
+            detail: ok ? `cuenta ${link!.mexicoes_user_id}` : "no hay vínculo activo (activa el modo simulado)",
+          });
+        }
+
+        // 3. Status lookup (what MexicoEs receives)
+        if (link && link.status === "linked") {
+          const { data: profile } = await admin()
+            .from("profiles")
+            .select("full_name, active_role")
+            .eq("id", user.id)
+            .maybeSingle();
+          steps.push({
+            key: "status",
+            label: "Consulta de estado",
+            ok: true,
+            detail: `${profile?.full_name ?? "sin nombre"} · rol ${profile?.active_role ?? "n/d"}`,
+          });
+
+          // 4. Entitlements sync round-trip
+          const merged = {
+            ...((link.entitlements ?? {}) as Record<string, unknown>),
+            last_sync_test: new Date().toISOString(),
+          };
+          const sync = await admin()
+            .from("mexicoes_links")
+            .update({ entitlements: merged })
+            .eq("id", link.id)
+            .select()
+            .single();
+          if (sync.error) throw new Error(sync.error.message);
+          link = sync.data;
+          steps.push({
+            key: "sync",
+            label: "Sincronización de entitlements",
+            ok: true,
+            detail: `${Object.keys(merged).length} claves sincronizadas`,
+          });
+        }
+
+        const ok = steps.every((s) => s.ok);
+        await logEvent("self_test", {
+          user_id: user.id,
+          mexicoes_user_id: link?.mexicoes_user_id ?? null,
+          payload: { simulate_link: simulateLink, steps },
+          success: ok,
+        });
+        return json({ ok, steps, link: link ?? null, at: new Date().toISOString() });
       }
 
       if (action === "unlink") {

@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Link2, ShieldCheck, Unlink, Loader2 } from "lucide-react";
+import { Link2, ShieldCheck, Unlink, Loader2, PlugZap, CheckCircle2, XCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 
 type MexicoEsLink = {
@@ -18,6 +19,9 @@ type MexicoEsLink = {
   revoked_at: string | null;
 };
 
+type TestStep = { key: string; label: string; ok: boolean; detail: string };
+type TestResult = { ok: boolean; steps: TestStep[]; at: string } | null;
+
 export default function VinculacionMexicoEs() {
   const [params] = useSearchParams();
   const { toast } = useToast();
@@ -25,6 +29,9 @@ export default function VinculacionMexicoEs() {
   const [link, setLink] = useState<MexicoEsLink | null>(null);
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [simulate, setSimulate] = useState(false);
+  const [result, setResult] = useState<TestResult>(null);
 
   const isLinked = link?.status === "linked";
   const entitlements = useMemo(
@@ -68,6 +75,28 @@ export default function VinculacionMexicoEs() {
     await supabase.functions.invoke("mexicoes-bridge", { body: { action: "unlink" } });
     setWorking(false);
     toast({ title: "Vínculo cancelado", description: "Tu cuenta de MexicoEs fue desvinculada." });
+    loadLink();
+  }
+
+  async function handleTest() {
+    setTesting(true);
+    setResult(null);
+    const { data, error } = await supabase.functions.invoke("mexicoes-bridge", {
+      body: { action: "self_test", simulate_link: simulate },
+    });
+    setTesting(false);
+    const payload = data as { ok?: boolean; steps?: TestStep[]; at?: string; error?: string } | null;
+    const errMsg = payload?.error ?? error?.message;
+    if (errMsg || !payload?.steps) {
+      setResult({ ok: false, steps: [{ key: "error", label: "Prueba fallida", ok: false, detail: errMsg ?? "Sin respuesta del puente" }], at: new Date().toISOString() });
+      return;
+    }
+    setResult({ ok: !!payload.ok, steps: payload.steps, at: payload.at ?? new Date().toISOString() });
+    toast({
+      title: payload.ok ? "Conexión verificada" : "La prueba encontró problemas",
+      description: payload.ok ? "El puente respondió correctamente en todos los pasos." : "Revisa el detalle de cada paso.",
+      variant: payload.ok ? "default" : "destructive",
+    });
     loadLink();
   }
 
@@ -138,6 +167,62 @@ export default function VinculacionMexicoEs() {
                 {working ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Link2 className="h-4 w-4 mr-2" />}
                 Vincular cuenta
               </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <PlugZap className="h-5 w-5 text-primary" /> Probar conexión
+          </CardTitle>
+          <CardDescription>
+            Ejecuta el mismo flujo que usa MexicoEs (firma HMAC, enlace, consulta de estado y sincronización de
+            entitlements) y muestra el resultado paso a paso.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between gap-4 rounded-lg border p-3">
+            <div className="space-y-0.5">
+              <Label htmlFor="simulate">Modo simulado</Label>
+              <p className="text-xs text-muted-foreground">
+                Genera un token de prueba firmado y crea un vínculo ficticio si aún no tienes uno.
+              </p>
+            </div>
+            <Switch id="simulate" checked={simulate} onCheckedChange={setSimulate} />
+          </div>
+
+          <Button onClick={handleTest} disabled={testing} variant="secondary">
+            {testing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <PlugZap className="h-4 w-4 mr-2" />}
+            Probar conexión
+          </Button>
+
+          {result && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Badge variant={result.ok ? "default" : "destructive"}>
+                  {result.ok ? "Todo correcto" : "Con errores"}
+                </Badge>
+                <span className="text-xs text-muted-foreground">
+                  {new Date(result.at).toLocaleString("es-MX")}
+                </span>
+              </div>
+              <ul className="space-y-2">
+                {result.steps.map((s) => (
+                  <li key={s.key} className="flex items-start gap-2 rounded-md border p-3 text-sm">
+                    {s.ok ? (
+                      <CheckCircle2 className="h-4 w-4 mt-0.5 text-primary shrink-0" />
+                    ) : (
+                      <XCircle className="h-4 w-4 mt-0.5 text-destructive shrink-0" />
+                    )}
+                    <div>
+                      <p className="font-medium">{s.label}</p>
+                      <p className="text-xs text-muted-foreground break-all">{s.detail}</p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
         </CardContent>
