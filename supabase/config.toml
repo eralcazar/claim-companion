@@ -22,3 +22,6 @@ verify_jwt = false
 
 [functions.integrity-certificate-pdf]
 verify_jwt = false
+
+[functions.mexicoes-bridge]
+verify_jwt = false
