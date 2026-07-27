@@ -2761,6 +2761,7 @@ export type Database = {
           doctor_location_updated_at: string | null
           en_camino_at: string | null
           estado: string
+          external_ref: string | null
           fecha_preferida: string | null
           id: string
           in_coverage: boolean | null
@@ -2771,6 +2772,7 @@ export type Database = {
           motivo: string
           motivo_rechazo: string | null
           notas: string | null
+          origin: string
           patient_id: string
           precio_estimado: number | null
           rechazado_at: string | null
@@ -2797,6 +2799,7 @@ export type Database = {
           doctor_location_updated_at?: string | null
           en_camino_at?: string | null
           estado?: string
+          external_ref?: string | null
           fecha_preferida?: string | null
           id?: string
           in_coverage?: boolean | null
@@ -2807,6 +2810,7 @@ export type Database = {
           motivo: string
           motivo_rechazo?: string | null
           notas?: string | null
+          origin?: string
           patient_id: string
           precio_estimado?: number | null
           rechazado_at?: string | null
@@ -2833,6 +2837,7 @@ export type Database = {
           doctor_location_updated_at?: string | null
           en_camino_at?: string | null
           estado?: string
+          external_ref?: string | null
           fecha_preferida?: string | null
           id?: string
           in_coverage?: boolean | null
@@ -2843,6 +2848,7 @@ export type Database = {
           motivo?: string
           motivo_rechazo?: string | null
           notas?: string | null
+          origin?: string
           patient_id?: string
           precio_estimado?: number | null
           rechazado_at?: string | null
@@ -4380,6 +4386,75 @@ export type Database = {
           last_seen_at?: string
           last_title?: string | null
           url?: string
+        }
+        Relationships: []
+      }
+      mexicoes_bridge_events: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          event_type: string
+          id: string
+          mexicoes_user_id: string | null
+          payload: Json
+          success: boolean
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          event_type: string
+          id?: string
+          mexicoes_user_id?: string | null
+          payload?: Json
+          success?: boolean
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          event_type?: string
+          id?: string
+          mexicoes_user_id?: string | null
+          payload?: Json
+          success?: boolean
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      mexicoes_links: {
+        Row: {
+          created_at: string
+          entitlements: Json
+          id: string
+          linked_at: string
+          mexicoes_user_id: string
+          revoked_at: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          entitlements?: Json
+          id?: string
+          linked_at?: string
+          mexicoes_user_id: string
+          revoked_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          entitlements?: Json
+          id?: string
+          linked_at?: string
+          mexicoes_user_id?: string
+          revoked_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
