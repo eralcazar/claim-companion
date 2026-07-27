@@ -61,6 +61,7 @@ import ApiKeysMaintenance from "@/pages/admin/ApiKeysMaintenance";
 import BleDevicesManager from "@/pages/admin/BleDevicesManager";
 import DeviceTestRequestsPage from "@/pages/admin/DeviceTestRequests";
 import McpAuditLog from "@/pages/admin/McpAuditLog";
+import MexicoEsBridgeAudit from "@/pages/admin/MexicoEsBridgeAudit";
 import NotificationPreferencesPage from "@/pages/NotificationPreferences";
 import Procedimientos from "@/pages/Procedimientos";
 import Odontograma from "@/pages/Odontograma";
@@ -201,6 +202,7 @@ const App = () => (
               <Route path="/admin/ble-devices" element={<BleDevicesManager />} />
               <Route path="/admin/device-test-requests" element={<DeviceTestRequestsPage />} />
               <Route path="/admin/mcp-audit" element={<McpAuditLog />} />
+              <Route path="/admin/mexicoes-audit" element={<MexicoEsBridgeAudit />} />
               <Route path="/perfil/notificaciones" element={<NotificationPreferencesPage />} />
               <Route path="/dispositivos" element={<DispositivosCompatibles />} />
               <Route path="/historial-salud" element={<HistorialSalud />} />
